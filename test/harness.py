@@ -16,7 +16,7 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 ADDON = os.path.join(ROOT, 'addon', 'ForeverCoach')
 GQDIR = sys.argv[1] if len(sys.argv) > 1 else None
 FDJDIR = sys.argv[2] if len(sys.argv) > 2 else None
-FILES = ['Rules', 'Core', 'Route', 'Session', 'Gear', 'Talents', 'Dungeons', 'Audit', 'Macros', 'UI']
+FILES = ['Rules', 'Core', 'Route', 'Session', 'Gear', 'Talents', 'Dungeons', 'Audit', 'Macros', 'Reactions', 'UI']
 
 MOCK = r'''
 local now = 1000
@@ -215,7 +215,7 @@ check(not FC.UI.frame.IsShown(FC.UI.frame), '/coach closes the window')
 G.SlashCmdList.FOREVERCOACH('help')
 check(G.CHAT[len(G.CHAT)].startswith('|cff4fc3f7Relax Coach|r: '), 'chat prefix is Relax Coach')
 check(G.SLASH_FOREVERCOACH1 == '/coach' and '/coach macros' in G.CHAT[len(G.CHAT)], 'slash commands remain /coach')
-check(FC.VERSION == '1.4.2' and G.ForeverCoachDB.addonVersion == '1.4.2', 'addon and saved version are 1.4.2')
+check(FC.VERSION == '1.4.3' and G.ForeverCoachDB.addonVersion == '1.4.3', 'addon and saved version are 1.4.3')
 check(FC.SCHEMA == 1 and G.ForeverCoachDB.schema == 1 and G.RelaxCoachDB is None and G.RelaxCoach is None,
       'SavedVariables, global and schema remain compatible')
 L.execute('''

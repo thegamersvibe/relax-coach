@@ -112,8 +112,16 @@ SlashCmdList.FOREVERCOACH = function(msg)
         if #full > 0 then FC:Print("couldn't create (no free character macro slot?): " .. table.concat(full, ", ")) end
         FC:Print("Open /macro, Character Specific tab, and drag them to a bar that doesn't swap with stance.")
         if ShowMacroFrame then pcall(ShowMacroFrame) end
+    elseif cmd == "fun" then
+        if arg == "on" or arg == "off" then
+            FC.Reactions:SetEnabled(arg == "on")
+        elseif arg ~= "" and arg ~= "status" then
+            FC:Print("usage: /coach fun on|off|status")
+            return
+        end
+        FC:Print("fun extras: " .. (FC.Reactions:Enabled() and "on" or "off"))
     elseif cmd == "help" then
-        FC:Print("/coach (window), /coach top (top 3 in chat), /coach spec <id|auto>, /coach macros")
+        FC:Print("/coach (window), /coach top (top 3 in chat), /coach spec <id|auto>, /coach macros, /coach fun <on|off|status>")
     else
         UI:Toggle()
     end

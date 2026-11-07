@@ -14,6 +14,7 @@ import (
 // The ZIP and temporary game stay in memory / t.TempDir, never in the checkout.
 // This is not evidence for the parent's separately built release archive/EXE.
 func TestGuildRepositoryRuntimeBytes(t *testing.T) {
+	const version = "1.4.3"
 	entries := []addonZipEntry{}
 	for i, source := range []string{"../addon/ForeverCoach", "../addon/Journey", "../content/Journey-Content"} {
 		err := filepath.WalkDir(source, func(p string, d os.DirEntry, err error) error {
@@ -49,10 +50,12 @@ func TestGuildRepositoryRuntimeBytes(t *testing.T) {
 	for _, name := range []string{"RelaxCoach.exe", "README.md", "LICENSE-Coach", "Install-RelaxCoach.ps1", "Restore-RelaxCoach.ps1"} {
 		entries = append(entries, addonZipEntry{name, "inert fixture extra; never executed", 0644})
 	}
-	payload := guildZip(t, entries, nil)
-	u := guildUpdater(t, payload)
+	manifest := guildManifest(entries)
+	manifest["version"] = version
+	payload := guildZip(t, entries, manifest)
+	u := guildUpdaterForVersion(t, payload, version)
 	game := guildGame(t)
-	result, err := u.apply(context.Background(), game, guildInfo())
+	result, err := u.apply(context.Background(), game, guildInfoForVersion(version))
 	if err != nil {
 		t.Fatal(err)
 	}

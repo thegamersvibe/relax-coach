@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-var Version = "1.4.2" // May be overridden with -X main.Version for private verification builds.
+var Version = "1.4.3" // May be overridden with -X main.Version for private verification builds.
 const Repo = "thegamersvibe/relax-coach"
 const RulesSchema = 1
 

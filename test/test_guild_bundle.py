@@ -55,6 +55,42 @@ class GuildBuilderExeTests(unittest.TestCase):
         self.assertEqual(sums,{'RelaxCoach.exe','RelaxCoach-Guild-1.4.2.zip'})
         self.assertEqual(legacy.read_bytes(),b'leftover legacy asset')
 
+    def test_fun_mode_media_is_packaged_with_complete_hash_inventory(self):
+        (self.root/'addon/ForeverCoach/ForeverCoach.toc').write_text('## Title: Relax Coach\n## Version: 1.4.3\nReactions.lua\n')
+        expected={'Reactions.lua':b'-- synthetic reaction module\n','Media/Reactions/level_up.tga':b'synthetic artwork fixture'}
+        expected.update({'Media/Reactions/'+name+'.mp3':b'ID3synthetic audio '+name.encode() for name in ('level_up','bags_1','bags_2','death','campfire')})
+        for name,data in expected.items():
+            p=self.root/'addon/ForeverCoach'/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(data)
+        result=self.run_builder(self.exe,'1.4.3')
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        with zipfile.ZipFile(self.root/'dist/RelaxCoach-Guild-1.4.3.zip') as z:
+            manifest=json.loads(z.read('manifest.json'))
+            self.assertEqual(manifest['version'],'1.4.3')
+            rows={r['path']:r for r in manifest['files']}
+            self.assertEqual(set(rows),set(z.namelist())-{'manifest.json'})
+            for name,data in expected.items():
+                path='Interface/AddOns/ForeverCoach/'+name
+                self.assertEqual(z.read(path),data)
+                self.assertEqual(rows[path],{'path':path,'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)})
+
+    def test_unlisted_audio_and_old_version_audio_are_rejected(self):
+        for relative in ('ForeverCoach/Media/Reactions/other.mp3','ForeverCoach/Media/Reactions/LEVEL_UP.mp3','ForeverCoach/level_up.mp3','Journey/Media/Reactions/level_up.mp3'):
+            with self.subTest(path=relative):
+                (self.root/'addon/ForeverCoach/ForeverCoach.toc').write_text('## Title: Relax Coach\n## Version: 1.4.3\n')
+                p=self.root/'addon'/relative;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(b'ID3synthetic audio')
+                result=self.run_builder(self.exe,'1.4.3')
+                self.assertNotEqual(result.returncode,0)
+                self.assertIn('Unexpected addon file:',result.stderr)
+                self.assertFalse(self.standalone.exists())
+                self.assertFalse((self.root/'dist/guild-package').exists())
+                p.unlink()
+        (self.root/'addon/ForeverCoach/ForeverCoach.toc').write_text('## Title: Relax Coach\n## Version: 1.4.2\n')
+        p=self.root/'addon/ForeverCoach/Media/Reactions/level_up.mp3';p.write_bytes(b'ID3synthetic audio')
+        result=self.run_builder(self.exe,'1.4.2')
+        self.assertNotEqual(result.returncode,0)
+        self.assertIn('Unexpected addon file:',result.stderr)
+        self.assertFalse(self.standalone.exists())
+
     def test_manifest_declares_current_journey_and_guides(self):
         result=self.run_builder(self.exe)
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
@@ -98,11 +134,11 @@ class GuildBuilderExeTests(unittest.TestCase):
                 self.assertFalse((self.root/'dist/guild-package').exists())
 
 class GuildBundleTests(unittest.TestCase):
-    def test_release_inputs_keep_independent_coach_identity_at_142(self):
+    def test_release_inputs_keep_independent_coach_identity_at_143(self):
         toc=(ROOT/'addon/ForeverCoach/ForeverCoach.toc').read_text()
         core=(ROOT/'addon/ForeverCoach/Core.lua').read_text()
-        self.assertIn('## Version: 1.4.2\n',toc)
-        self.assertIn('FC.VERSION = "1.4.2"',core)
+        self.assertIn('## Version: 1.4.3\n',toc)
+        self.assertIn('FC.VERSION = "1.4.3"',core)
         self.assertIn('## SavedVariables: ForeverCoachDB\n',toc)
         self.assertNotRegex(toc,r'(?mi)^## (?:Dependencies|RequiredDeps):.*Journey')
 
@@ -122,7 +158,7 @@ class GuildBundleTests(unittest.TestCase):
         for line in result.splitlines():self.assertTrue(line.endswith(': text: unset'),line)
 
     def test_combined_archive_preserves_runtime_and_excludes_saves(self):
-        path=ROOT/'dist/RelaxCoach-Guild-1.4.2.zip'
+        path=ROOT/'dist/RelaxCoach-Guild-1.4.3.zip'
         self.assertTrue(path.is_file(),'combined guild archive is missing')
         with zipfile.ZipFile(path) as z:
             names=z.namelist()
@@ -138,7 +174,7 @@ class GuildBundleTests(unittest.TestCase):
                 self.assertFalse(name.startswith('/') or '\\' in name or ':' in name,name)
             manifest=json.loads(z.read('manifest.json'))
             self.assertEqual(manifest['kind'],'guild-combined')
-            self.assertEqual(manifest['version'],'1.4.2')
+            self.assertEqual(manifest['version'],'1.4.3')
             self.assertEqual(manifest['journeyVersion'],'4.00.04')
             self.assertEqual(manifest['contentVersion'],'4.00.06')
             self.assertEqual({r['path'] for r in manifest['files']},set(names)-{'manifest.json'})

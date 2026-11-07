@@ -25,6 +25,28 @@ var addonPublicFiles = map[string]bool{
 	"Macros.lua": true, "UI.lua": true, "ForeverCoach.tga": true,
 }
 
+// Preserve the legacy contract; only 1.4.3+ requires the reviewed Fun Mode files.
+func addonPublicFilesForVersion(version string) map[string]bool {
+	v, err := parseAddonVersion(version)
+	minimum, _ := parseAddonVersion("1.4.3")
+	if err != nil || minimum.newerThan(v) {
+		return addonPublicFiles
+	}
+	files := make(map[string]bool, len(addonPublicFiles)+7)
+	for name, allowed := range addonPublicFiles {
+		files[name] = allowed
+	}
+	for _, name := range []string{
+		"Reactions.lua",
+		"Media/Reactions/bags_1.mp3", "Media/Reactions/bags_2.mp3",
+		"Media/Reactions/campfire.mp3", "Media/Reactions/death.mp3",
+		"Media/Reactions/level_up.mp3", "Media/Reactions/level_up.tga",
+	} {
+		files[name] = true
+	}
+	return files
+}
+
 type addonFileDigest struct {
 	sum  [32]byte
 	size int64
@@ -248,14 +270,15 @@ func validateAddonTOC(b []byte, version string) error {
 			}
 		}
 	}
+	publicFiles := addonPublicFilesForVersion(version)
 	loaded := map[string]bool{}
 	for _, name := range files {
-		if !addonPublicFiles[name] || !strings.HasSuffix(name, ".lua") || loaded[name] {
+		if !publicFiles[name] || !strings.HasSuffix(name, ".lua") || loaded[name] {
 			return fmt.Errorf("unsafe or duplicate TOC load path %q", name)
 		}
 		loaded[name] = true
 	}
-	for name := range addonPublicFiles {
+	for name := range publicFiles {
 		if strings.HasSuffix(name, ".lua") && !loaded[name] {
 			return fmt.Errorf("incomplete addon TOC: missing module %s", name)
 		}

@@ -3,13 +3,13 @@
     "FileVersion": {
       "Major": 1,
       "Minor": 4,
-      "Patch": 2,
+      "Patch": 3,
       "Build": 0
     },
     "ProductVersion": {
       "Major": 1,
       "Minor": 4,
-      "Patch": 2,
+      "Patch": 3,
       "Build": 0
     },
     "FileFlagsMask": "3f",
@@ -19,12 +19,12 @@
   "StringFileInfo": {
     "CompanyName": "TheGamersVibe",
     "FileDescription": "Relax Coach - leveling report for WoW Forever",
-    "FileVersion": "1.4.2",
+    "FileVersion": "1.4.3",
     "InternalName": "ForeverCoach",
     "LegalCopyright": "MIT License, TheGamersVibe",
     "OriginalFilename": "RelaxCoach.exe",
     "ProductName": "Relax Coach",
-    "ProductVersion": "1.4.2"
+    "ProductVersion": "1.4.3"
   },
   "VarFileInfo": {
     "Translation": {

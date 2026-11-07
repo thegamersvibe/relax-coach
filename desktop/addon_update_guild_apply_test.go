@@ -15,6 +15,7 @@ import (
 
 var guildFixtureRoots = []string{"Interface/AddOns/ForeverCoach", "Interface/AddOns/Journey", "Interface/Content/Journey-Content"}
 
+// Historical guild fixtures stay at 1.4.2, without Fun Mode files or TOC loads.
 func guildEntries() []addonZipEntry {
 	entries := addonFixtureEntries("1.4.2")
 	for i := range entries {
@@ -55,18 +56,26 @@ func guildZip(t *testing.T, entries []addonZipEntry, manifest map[string]any) []
 	return addonZip(t, append(entries, addonZipEntry{"manifest.json", string(b), 0644}))
 }
 func guildInfo() AddonReleaseInfo {
-	const name = "RelaxCoach-Guild-1.4.2.zip"
-	const prefix = addonReleasePrefix + "download/v1.4.2/"
-	return AddonReleaseInfo{Version: "1.4.2", Available: true, AssetName: name, AssetURL: prefix + name, ChecksumURL: prefix + "SHA256SUMS.txt"}
+	return guildInfoForVersion("1.4.2")
+}
+func guildInfoForVersion(version string) AddonReleaseInfo {
+	name := "RelaxCoach-Guild-" + version + ".zip"
+	prefix := addonReleasePrefix + "download/v" + version + "/"
+	return AddonReleaseInfo{Version: version, Available: true, AssetName: name, AssetURL: prefix + name, ChecksumURL: prefix + "SHA256SUMS.txt"}
 }
 func guildUpdater(t *testing.T, payload []byte) *addonUpdater {
 	t.Helper()
+	return guildUpdaterForVersion(t, payload, "1.4.2")
+}
+func guildUpdaterForVersion(t *testing.T, payload []byte, version string) *addonUpdater {
+	t.Helper()
+	info := guildInfoForVersion(version)
 	return addonTestUpdater(t, func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "/SHA256SUMS.txt") {
-			fmt.Fprintf(w, "%x  %s\n", sha256.Sum256(payload), guildInfo().AssetName)
+			fmt.Fprintf(w, "%x  %s\n", sha256.Sum256(payload), info.AssetName)
 			return
 		}
-		if strings.HasSuffix(r.URL.Path, "/"+guildInfo().AssetName) {
+		if strings.HasSuffix(r.URL.Path, "/"+info.AssetName) {
 			w.Write(payload)
 			return
 		}

@@ -29,7 +29,7 @@ func addonGuildRoot(name string) string {
 	return ""
 }
 
-func addonGuildPath(name string, directory bool) bool {
+func addonGuildPath(name string, directory bool, coachFiles map[string]bool) bool {
 	if directory {
 		for _, root := range addonGuildRoots {
 			if name == root || strings.HasPrefix(root, name+"/") || strings.HasPrefix(name, root+"/") {
@@ -41,7 +41,7 @@ func addonGuildPath(name string, directory bool) bool {
 	root := addonGuildRoot(name)
 	switch root {
 	case addonGuildRoots[0]:
-		return addonPublicFiles[strings.TrimPrefix(name, root+"/")]
+		return coachFiles[strings.TrimPrefix(name, root+"/")]
 	case addonGuildRoots[1]:
 		switch strings.ToLower(path.Ext(name)) {
 		case ".lua", ".toc", ".tga", ".blp", ".xml", ".txt", ".md", ".ttf", ".otf", ".html", ".png":
@@ -56,6 +56,7 @@ func addonGuildPath(name string, directory bool) bool {
 }
 
 func (u *addonUpdater) extractGuild(ctx context.Context, payload []byte, stage, version string) (map[string]addonFileDigest, error) {
+	coachFiles := addonPublicFilesForVersion(version)
 	reader, err := zip.NewReader(bytes.NewReader(payload), int64(len(payload)))
 	if err != nil {
 		return nil, fmt.Errorf("invalid addon ZIP: %w", err)
@@ -99,7 +100,7 @@ func (u *addonUpdater) extractGuild(ctx context.Context, payload []byte, stage, 
 		if kind := f.Mode() & os.ModeType; kind != 0 && kind != os.ModeDir {
 			return nil, fmt.Errorf("archive contains a symlink or special file: %s", f.Name)
 		}
-		if !addonGuildPath(strings.TrimSuffix(f.Name, "/"), f.Mode().IsDir()) {
+		if !addonGuildPath(strings.TrimSuffix(f.Name, "/"), f.Mode().IsDir(), coachFiles) {
 			return nil, fmt.Errorf("archive path is outside the fixed guild allowlist: %s", f.Name)
 		}
 		if f.Mode().IsDir() {
@@ -113,8 +114,8 @@ func (u *addonUpdater) extractGuild(ctx context.Context, payload []byte, stage, 
 		}
 		expanded += f.UncompressedSize64
 	}
-	for name := range addonPublicFiles {
-		if !seen[strings.ToLower(addonGuildRoots[0]+"/"+name)] {
+	for name := range coachFiles {
+		if !files[strings.ToLower(addonGuildRoots[0]+"/"+name)] {
 			return nil, fmt.Errorf("incomplete addon archive: missing %s", name)
 		}
 	}

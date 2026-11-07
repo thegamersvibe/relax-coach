@@ -2,7 +2,7 @@
 
 A leveling coach for **World of Warcraft: Forever**, with a Windows application for reports and addon updates.
 
-This is a **legacy Coach-only archive**, not the current combined guild download. For Coach, Journey and guide content together, use `RelaxCoach-Guild-1.4.2.zip` on [release v1.4.2](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.4.2). A current release need not contain a Coach-only ZIP.
+This is a **legacy Coach-only archive**, not the current combined guild download. For Coach, Journey and guide content together, use `RelaxCoach-Guild-1.4.3.zip` on [release v1.4.3](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.4.3). A current release need not contain a Coach-only ZIP.
 
 ## Install
 
@@ -11,7 +11,7 @@ Download the latest available Coach ZIP from [the releases list](https://github.
 - Copy `ForeverCoach` into your game's `_forever_\Interface\AddOns` folder. It appears in game as **Relax Coach**. The internal folder/save IDs intentionally remain unchanged to retain existing settings.
 - Run **RelaxCoach.exe** for the Windows app. Choose **Coach Report** or **Update Addon** inside the application window. Microsoft WebView2 Runtime is required; Windows installations commonly already include it.
 - Set the game folder when prompted. Your game may be on any drive.
-- **Upgrade the app first.** App 1.4.1 supports **Update App**; older apps need one manual EXE replacement. Starting with app 1.4.2, **Update Addon** uses the combined guild package to update Coach, Journey and guide content, with checksum verification, backup and rollback. Close WoW first. Unrelated addons, SavedVariables and the running app are not replaced by this action.
+- **Upgrade the app first.** App 1.4.1 supports **Update App**; older apps need one manual EXE replacement. Current bundles require **app 1.4.3** before **Update Addon**. The combined guild package is used to update Coach, Journey and guide content, with checksum verification, backup and rollback. Close WoW first. Unrelated addons, SavedVariables and the running app are not replaced by this action.
 
 The Windows executable is unsigned. Follow your usual antivirus review process; do not disable protection globally. The addon works without the Windows app.
 
@@ -46,6 +46,6 @@ The technical source paths remain `addon/ForeverCoach` and `desktop`.
 - `uv run --with lupa python test/harness.py` (also run with provider fixtures)
 - `cd desktop && go vet ./... && go test -race ./...`
 
-The legacy Coach-only asset is `RelaxCoach-<version>.zip`; it is deliberately not published for 1.4.2. Current app addon updates require `RelaxCoach-Guild-<version>.zip`. App-only releases provide just `RelaxCoach.exe` and `SHA256SUMS.txt`; addon and combined guild ZIPs are included only when those packages are being released. The addon updater consumes published stable releases, not raw pushes to `main`; publishing a tested new release makes it available to players. Keep Journey and guide content out of the smaller Coach-only archive. Never include personal SavedVariables in either archive or this repository.
+The legacy Coach-only asset is `RelaxCoach-<version>.zip`; it is deliberately not published for 1.4.2 and later. Current app addon updates require `RelaxCoach-Guild-<version>.zip`. App-only releases provide just `RelaxCoach.exe` and `SHA256SUMS.txt`; addon and combined guild ZIPs are included only when those packages are being released. The addon updater consumes published stable releases, not raw pushes to `main`; publishing a tested new release makes it available to players. Keep Journey and guide content out of the smaller Coach-only archive. Never include personal SavedVariables in either archive or this repository.
 
 MIT-licensed Coach code by **TheGamersVibe**. Original upstream projects retain their own authorship and licenses.

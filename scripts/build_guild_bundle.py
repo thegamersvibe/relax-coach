@@ -3,13 +3,14 @@
 from pathlib import Path
 import argparse,hashlib,json,re,shutil,zipfile
 ROOT=Path(__file__).resolve().parents[1]
+REACTION_AUDIO={'Interface/AddOns/ForeverCoach/Media/Reactions/'+name+'.mp3' for name in ('level_up','bags_1','bags_2','death','campfire')}
 
 def digest(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument('--exe',type=Path,required=True)
-    ap.add_argument('--version',default='1.4.2')
+    ap.add_argument('--version',default='1.4.3')
     a=ap.parse_args()
     if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+',a.version):raise SystemExit('Invalid version')
     if not a.exe.is_file() or a.exe.read_bytes()[:2]!=b'MZ':raise SystemExit('Provide the verified Windows EXE')
@@ -33,7 +34,8 @@ def main():
         if any(x.lower() in {'wtf','private','evidence','backups','.git','__pycache__'} for x in parts):raise SystemExit('Private path rejected: '+name)
         if name.startswith('/') or '..' in parts or '\\' in name or ':' in name or name in names:raise SystemExit('Unsafe or duplicate path: '+name)
         if name.startswith('Interface/Content/') and p.suffix!='.html':raise SystemExit('Unexpected guide file: '+name)
-        if name.startswith('Interface/AddOns/') and p.suffix.lower() not in {'.lua','.toc','.tga','.blp','.xml','.txt','.md','.ttf','.otf','.html','.png'}:raise SystemExit('Unexpected addon file: '+name)
+        reaction_audio=name in REACTION_AUDIO and tuple(map(int,a.version.split('.'))) >= (1,4,3)
+        if name.startswith('Interface/AddOns/') and not reaction_audio and p.suffix.lower() not in {'.lua','.toc','.tga','.blp','.xml','.txt','.md','.ttf','.otf','.html','.png'}:raise SystemExit('Unexpected addon file: '+name)
         names.add(name)
     rows=[{'path':name,'sha256':digest(p),'bytes':p.stat().st_size} for p,name in inputs]
     manifest={'project':'Relax Coach','kind':'guild-combined','version':a.version,'journeyVersion':'4.00.04','contentVersion':'4.00.06','files':rows}
