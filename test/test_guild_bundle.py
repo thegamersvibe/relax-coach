@@ -137,8 +137,8 @@ class GuildBundleTests(unittest.TestCase):
     def test_release_inputs_keep_independent_coach_identity_at_144(self):
         toc=(ROOT/'addon/ForeverCoach/ForeverCoach.toc').read_text()
         core=(ROOT/'addon/ForeverCoach/Core.lua').read_text()
-        self.assertIn('## Version: 1.4.4\n',toc)
-        self.assertIn('FC.VERSION = "1.4.4"',core)
+        self.assertIn('## Version: 1.4.5\n',toc)
+        self.assertIn('FC.VERSION = "1.4.5"',core)
         self.assertIn('## SavedVariables: ForeverCoachDB\n',toc)
         self.assertNotRegex(toc,r'(?mi)^## (?:Dependencies|RequiredDeps):.*Journey')
 
@@ -158,7 +158,7 @@ class GuildBundleTests(unittest.TestCase):
         for line in result.splitlines():self.assertTrue(line.endswith(': text: unset'),line)
 
     def test_combined_archive_preserves_runtime_and_excludes_saves(self):
-        path=ROOT/'dist/RelaxCoach-Guild-1.4.4.zip'
+        path=ROOT/'dist/RelaxCoach-Guild-1.4.5.zip'
         self.assertTrue(path.is_file(),'combined guild archive is missing')
         with zipfile.ZipFile(path) as z:
             names=z.namelist()
@@ -174,7 +174,7 @@ class GuildBundleTests(unittest.TestCase):
                 self.assertFalse(name.startswith('/') or '\\' in name or ':' in name,name)
             manifest=json.loads(z.read('manifest.json'))
             self.assertEqual(manifest['kind'],'guild-combined')
-            self.assertEqual(manifest['version'],'1.4.4')
+            self.assertEqual(manifest['version'],'1.4.5')
             self.assertEqual(manifest['journeyVersion'],'4.00.04')
             self.assertEqual(manifest['contentVersion'],'4.00.06')
             self.assertEqual({r['path'] for r in manifest['files']},set(names)-{'manifest.json'})

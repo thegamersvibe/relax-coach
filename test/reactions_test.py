@@ -84,11 +84,12 @@ C_Container.GetContainerNumFreeSlots = function(b)
   return 0,0
 end
 C_UnitAuras = {GetPlayerAuraBySpellID = function(id)
-  assert(id == 1289723,'wrong aura')
+  assert(id == 1289723 or id == 1229739,'wrong aura')
   if STATE.auraNoReturn then return end
   if STATE.auraError then error('aura unavailable') end
   if STATE.auraSecret then return SECRET end
-  return STATE.aura
+  if id == 1289723 then return STATE.aura end
+  return STATE.alternateAura
 end}
 -- No guessed GameError enum: Forever's verified caller uses the localized second argument.
 ERR_INV_FULL = 'localized inventory-full text'
@@ -420,6 +421,135 @@ class ReactionsTest(unittest.TestCase):
         c=self.make(); c.run('DIE()'); c.wait(4)
         c.run('STATE.dead=SECRET; FIRE("PLAYER_ALIVE"); STATE.dead=true; FIRE("PLAYER_DEAD")')
         self.assertEqual(c.sounds(),['death.mp3'])
+
+    def test_campfire_alternate_variant_gain(self):
+        c = self.make()
+        c.run('STATE.alternateAura={spellId=1229739}; FIRE("UNIT_AURA","player",{})')
+        self.assertEqual(c.sounds(), ['campfire.mp3'])
+        self.assertTrue(c.r.campPresent)
+        self.assertIsNotNone(c.c.reactions.campfireLastPlayedAt)
+
+    def dual_campfire(self, first='absent', second='absent', db=None):
+        return self.make(db=db, setup=r'''
+            CAMP_MODES={}; OPAQUE={}
+            function canaccesstable(v) return not rawequal(v,OPAQUE) end
+            C_UnitAuras.GetPlayerAuraBySpellID=function(id)
+                assert(id==1289723 or id==1229739,'unexpected spell lookup')
+                local mode=CAMP_MODES[id]
+                if mode=='present' then return {spellId=id} end
+                if mode=='zero' then return end
+                if mode=='error' then error('aura query unavailable') end
+                if mode=='secret' then return SECRET end
+                if mode=='opaque' then return OPAQUE end
+                return nil
+            end
+            function CAMP_MODES_SET(a,b)
+                CAMP_MODES[1289723]=a; CAMP_MODES[1229739]=b
+                FIRE('UNIT_AURA','player',{})
+            end
+        ''' + f'CAMP_MODES_SET("{first}","{second}")')
+
+    def test_campfire_variant_observation_matrix(self):
+        modes = ('absent', 'present', 'zero', 'error', 'secret', 'opaque')
+        for first in modes:
+            for second in modes:
+                with self.subTest(first=first, second=second):
+                    c = self.dual_campfire(first, second)
+                    present = 'present' in (first, second)
+                    self.assertEqual(c.sounds(), ['campfire.mp3'] if present else [])
+                    self.assertEqual(c.r.campPresent, True if present else False if first == second == 'absent' else None)
+
+    def test_campfire_variant_unknown_cannot_rearm_known_presence(self):
+        for mode in ('zero', 'error', 'secret', 'opaque'):
+            for side in (0, 1):
+                with self.subTest(mode=mode, side=side):
+                    c = self.dual_campfire('present', 'absent'); c.wait(35)
+                    pair = ['absent', 'absent']; pair[side] = mode
+                    c.run(f'STATE.epochShift=3601; CAMP_MODES_SET("{pair[0]}","{pair[1]}")')
+                    self.assertTrue(c.r.campPresent)
+                    c.run('CAMP_MODES_SET("absent","present")')
+                    self.assertEqual(c.sounds(), ['campfire.mp3'])
+                    c.run('CAMP_MODES_SET("absent","absent"); CAMP_MODES_SET("absent","present")')
+                    self.assertEqual(c.sounds(), ['campfire.mp3', 'campfire.mp3'])
+
+    def test_campfire_variant_overlap_and_switch_are_one_episode(self):
+        for first, second in (('present','absent'), ('absent','present')):
+            with self.subTest(first=first):
+                c = self.dual_campfire(first, second); c.wait(35)
+                stamp = c.c.reactions.campfireLastPlayedAt
+                c.run('STATE.epochShift=3601; CAMP_MODES_SET("present","present")')
+                c.run(f'CAMP_MODES_SET("{second}","{first}")')
+                c.run(f'CAMP_MODES_SET("{first}","{second}")')
+                self.assertEqual(c.sounds(), ['campfire.mp3'])
+                self.assertEqual(c.c.reactions.campfireLastPlayedAt, stamp)
+                self.assertEqual(c.r.campEpisode, 1)
+
+    def test_campfire_variants_share_exact_one_hour_guard(self):
+        for first, second in (('present','absent'), ('absent','present')):
+            with self.subTest(first=first):
+                c = self.dual_campfire(first, second); c.wait(35)
+                stamp = c.c.reactions.campfireLastPlayedAt
+                c.run(f'STATE.epochShift=STATE.epochShift+{stamp}+3599-time(); CAMP_MODES_SET("absent","absent"); CAMP_MODES_SET("{second}","{first}")')
+                self.assertEqual(c.sounds(), ['campfire.mp3'])
+                self.assertEqual(c.c.reactions.campfireLastPlayedAt, stamp)
+                c.run(f'STATE.epochShift=STATE.epochShift+1; CAMP_MODES_SET("absent","absent"); CAMP_MODES_SET("{second}","{first}")')
+                self.assertEqual(c.sounds(), ['campfire.mp3', 'campfire.mp3'])
+                self.assertEqual(c.c.reactions.campfireLastPlayedAt, stamp + 3600)
+
+    def test_campfire_variant_reload_preserves_shared_guard(self):
+        for first, second in (('present','absent'), ('absent','present')):
+            with self.subTest(first=first):
+                c = self.dual_campfire(first, second)
+                reloaded = self.dual_campfire(second, first, db=c.save())
+                self.assertEqual(reloaded.sounds(), [])
+                self.assertEqual(reloaded.c.reactions.campfireLastPlayedAt, c.c.reactions.campfireLastPlayedAt)
+
+    def test_campfire_alternate_variant_muted_baseline_and_fresh_gain(self):
+        c = self.dual_campfire()
+        c.run('SlashCmdList.FOREVERCOACH("fun off"); CAMP_MODES_SET("absent","present"); SlashCmdList.FOREVERCOACH("fun on")')
+        self.assertEqual(c.sounds(), [])
+        self.assertIsNone(c.c.reactions.campfireLastPlayedAt)
+        c.run('CAMP_MODES_SET("absent","absent"); CAMP_MODES_SET("absent","present")')
+        self.assertEqual(c.sounds(), ['campfire.mp3'])
+
+    def test_campfire_variant_unknown_unmute_retains_silent_baseline(self):
+        c = self.dual_campfire()
+        c.run('SlashCmdList.FOREVERCOACH("fun off"); CAMP_MODES_SET("absent","zero"); SlashCmdList.FOREVERCOACH("fun on")')
+        self.assertTrue(c.r.campBaselinePending)
+        c.run('CAMP_MODES_SET("absent","present")')
+        self.assertEqual(c.sounds(), [])
+        self.assertIsNone(c.c.reactions.campfireLastPlayedAt)
+        c.run('CAMP_MODES_SET("absent","absent"); CAMP_MODES_SET("absent","present")')
+        self.assertEqual(c.sounds(), ['campfire.mp3'])
+
+    def test_campfire_variant_playback_failure_does_not_consume_guard(self):
+        c = self.dual_campfire()
+        c.run('STATE.soundFail=true; CAMP_MODES_SET("absent","present")'); c.wait(4)
+        self.assertEqual(c.sounds(), [])
+        self.assertEqual(len(c.g.ATTEMPTS), 3)
+        self.assertIsNone(c.c.reactions.campfireLastPlayedAt)
+        c.run('STATE.soundFail=false; CAMP_MODES_SET("present","absent")')
+        self.assertEqual(c.sounds(), [])
+        c.run('CAMP_MODES_SET("absent","absent"); CAMP_MODES_SET("present","absent")')
+        self.assertEqual(c.sounds(), ['campfire.mp3'])
+
+    def test_campfire_alternate_variant_queues_once_behind_other_audio(self):
+        c = self.dual_campfire()
+        c.run('DIE(); CAMP_MODES_SET("absent","present"); CAMP_MODES_SET("present","present")')
+        self.assertEqual(c.sounds(), ['death.mp3'])
+        self.assertIsNone(c.c.reactions.campfireLastPlayedAt)
+        self.assertEqual(len(c.r.queue), 1)
+        c.wait(3)
+        self.assertEqual(c.sounds(), ['death.mp3', 'campfire.mp3'])
+
+    def test_campfire_other_same_name_spell_is_not_accepted(self):
+        c = self.make(setup='''C_UnitAuras.GetPlayerAuraBySpellID=function(id)
+            if id==999999 then return {spellId=id,name='Welcoming Campfire'} end
+            return nil
+        end''')
+        c.run('FIRE("UNIT_AURA","player",{})')
+        self.assertEqual(c.sounds(), [])
+        self.assertIsNone(c.c.reactions.campfireLastPlayedAt)
 
     def test_campfire_gain_and_refreshes(self):
         c=self.make(); c.run('AURA_ON(1)')

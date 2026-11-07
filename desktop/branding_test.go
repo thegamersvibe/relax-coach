@@ -9,8 +9,8 @@ import (
 )
 
 func TestHelperVersionAndLegacyStorage(t *testing.T) {
-	if Version != "1.4.4" {
-		t.Errorf("helper version = %q, want 1.4.4", Version)
+	if Version != "1.4.5" {
+		t.Errorf("helper version = %q, want 1.4.5", Version)
 	}
 	game := t.TempDir()
 	sv := filepath.Join(game, "WTF", "Account", "TEST", "SavedVariables", "ForeverCoach.lua")

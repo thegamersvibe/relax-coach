@@ -10,7 +10,7 @@ local CLIPS = {
     bags1 = { "bags_1.mp3", 2.62 }, bags2 = { "bags_2.mp3", 1.27 },
     death = { "death.mp3", 2.12 }, campfire = { "campfire.mp3", 34 },
 }
-local CAMPFIRE, HOUR = 1289723, 3600
+local CAMPFIRES, HOUR = { 1289723, 1229739 }, 3600
 local RETRIES, RETRY_DELAY, END_MARGIN = 3, 1, 0.15
 
 -- Do not compare, coerce, stringify or index secret values. Checks fail closed.
@@ -67,7 +67,14 @@ end
 local function auraPresent()
     local fn = C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID
     if type(fn) ~= "function" then return nil end
-    return auraResult(pcall(fn, CAMPFIRE))
+    local unknown = false
+    for _, spellID in ipairs(CAMPFIRES) do
+        local present = auraResult(pcall(fn, spellID))
+        if present == true then return true end
+        if present == nil then unknown = true end
+    end
+    if unknown then return nil end
+    return false
 end
 local function bagsFull()
     if not inWorld() or not C_Container then return nil end
