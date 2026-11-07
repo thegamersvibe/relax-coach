@@ -2,7 +2,7 @@
 
 A leveling coach for **World of Warcraft: Forever**, with a Windows application for reports and addon updates.
 
-This is a **legacy Coach-only archive**, not the current combined guild download. For Coach, Journey and guide content together, use `RelaxCoach-Guild-1.4.3.zip` on [release v1.4.3](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.4.3). A current release need not contain a Coach-only ZIP.
+This is a **legacy Coach-only archive**, not the current combined guild download. For Coach, Journey and guide content together, use `RelaxCoach-Guild-1.4.4.zip` on [release v1.4.4](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.4.4). A current release need not contain a Coach-only ZIP.
 
 ## Install
 

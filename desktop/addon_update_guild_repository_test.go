@@ -14,7 +14,7 @@ import (
 // The ZIP and temporary game stay in memory / t.TempDir, never in the checkout.
 // This is not evidence for the parent's separately built release archive/EXE.
 func TestGuildRepositoryRuntimeBytes(t *testing.T) {
-	const version = "1.4.3"
+	const version = "1.4.4"
 	entries := []addonZipEntry{}
 	for i, source := range []string{"../addon/ForeverCoach", "../addon/Journey", "../content/Journey-Content"} {
 		err := filepath.WalkDir(source, func(p string, d os.DirEntry, err error) error {
