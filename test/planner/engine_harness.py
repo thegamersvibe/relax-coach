@@ -16,7 +16,7 @@ import sys
 sys.dont_write_bytecode = True
 
 ROOT = Path(__file__).resolve().parents[2]
-PRIVATE = Path(os.environ.get("RQP_PRIVATE_DATA", "/opt/data/projects/relax-coach/private/quest-db-sources"))
+PRIVATE = Path(os.environ.get("RQP_PRIVATE_DATA") or "/nonexistent-rqp-private-data")
 AVAILABLE = (PRIVATE / "QuestieDB/src/corrections/Forever/combined/foreverQuestDB.lua").is_file()
 if AVAILABLE:
     import lupa

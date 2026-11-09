@@ -15,8 +15,8 @@ import zlib
 from journey_harness import runtime, load_rqp, table, ROOT, JOURNEY
 
 sys.dont_write_bytecode = True
-PRIVATE = Path(os.environ.get('RQP_PRIVATE_DATA', '/opt/data/projects/relax-coach/private/quest-db-sources'))
-REFERENCE = Path(os.environ.get('RQP_PICKER_REFERENCE', '/opt/data/projects/relax-coach/evidence/journey-picker-study-2026-11-09/picker/prototype.py'))
+PRIVATE = Path(os.environ.get('RQP_PRIVATE_DATA') or '/nonexistent-rqp-private-data')
+REFERENCE = Path(os.environ.get('RQP_PICKER_REFERENCE') or '/nonexistent-rqp-picker-reference')
 CONTENT = PRIVATE / 'installed-2026-11-09/Content/Journey-Content'
 AVAILABLE = (CONTENT / 'guides.html').is_file() and REFERENCE.is_file() and (PRIVATE / 'snapshot/snapshot.json').is_file()
 
