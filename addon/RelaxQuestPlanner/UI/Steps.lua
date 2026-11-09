@@ -1,0 +1,130 @@
+-- Selection rules follow the tested RelaxDungeonPath prototype, not a cursor.
+-- Never mark a quest done just because the player clicked a button.
+local RQP = RelaxQuestPlanner
+local UI = RQP.UI
+local VERB = {accept="Pick up", complete="Do", turnin="Turn in"}
+
+local function questFlag(api, q, fallback)
+  local fn = C_QuestLog and C_QuestLog[api]
+  local result = fn and fn(q)
+  if RQP.IsSecret(result) then return false end
+  return result == true or fallback == true
+end
+
+local function done(q, P)
+  return questFlag("IsQuestFlaggedCompleted", q, P.done and P.done[q])
+end
+local function inlog(q, P)
+  return questFlag("IsOnQuest", q, P.log and P.log[q])
+end
+local function ready(q, P)
+  return questFlag("ReadyForTurnIn", q, P.ready and P.ready[q]) or questFlag("IsComplete", q)
+end
+local function stepDone(s, P)
+  if done(s.q, P) then return true end
+  if s.kind == "accept" then return inlog(s.q, P) end
+  if s.kind == "complete" then return inlog(s.q, P) and ready(s.q, P) end
+  return false
+end
+local function actionable(s, P)
+  if s.kind == "accept" then
+    for _, q in ipairs(s.needs or {}) do
+      local ok = done(q, P) or (s.activeNeeds and s.activeNeeds[q] and inlog(q, P))
+      if not ok then return false end
+    end
+    if RQP.Engine and RQP.Engine.State then
+      local state = RQP.Engine.State(s.q, P, {mode=RQP.GetDB().mode})
+      return state == "available"
+    end
+    return true
+  end
+  if s.kind == "complete" then return inlog(s.q, P) end
+  if s.kind == "turnin" then return inlog(s.q, P) and ready(s.q, P) end
+  return false
+end
+
+function UI.PickStep(route, P)
+  local map = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+  if RQP.IsSecret(map) then map = nil end
+  local zone = GetRealZoneText and GetRealZoneText()
+  if RQP.IsSecret(zone) then zone = nil end
+  local firstHere, firstAct, firstUndone, left = nil, nil, nil, 0
+  for i, s in ipairs(route.steps or {}) do
+    if not stepDone(s, P) then
+      left = left + 1
+      firstUndone = firstUndone or i
+      if actionable(s, P) then
+        firstAct = firstAct or i
+        if (map and s.map == map) or (zone and s.zone == zone) then firstHere = firstHere or i end
+      end
+    end
+  end
+  return firstHere or firstAct or firstUndone, left, firstAct ~= nil
+end
+
+function UI.RouteIssues(route)
+  if not route or not route.issues or #route.issues == 0 then return nil end
+  local issues = {}
+  for _, issue in ipairs(route.issues) do
+    -- Dependency diagnostics already have a persistent, dedicated status tag.
+    if type(issue) ~= "table" or (issue[1] ~= "limitedData" and issue[1] ~= "missingData") then
+      issues[#issues + 1] = issue
+    end
+  end
+  if #issues == 0 then return nil end
+  local issue, parts = issues[1], {}
+  if type(issue) == "table" then
+    for _, value in ipairs(issue) do
+      if type(value) == "string" or type(value) == "number" then parts[#parts + 1] = tostring(value) end
+    end
+  else parts[1] = tostring(issue) end
+  return tostring(#issues) .. " route issue(s): " .. table.concat(parts, " - ")
+end
+
+function UI.RenderRoute(P)
+  if not UI.frame then return end
+  local route = UI.route
+  if not route then return end
+  local index, left, canDo = UI.PickStep(route, P or RQP.Player.Snapshot())
+  UI.current = index and route.steps[index]
+  UI.title:SetText((route.title or "Quest route") .. "  (" .. tostring(left) .. " steps left)")
+  if not UI.current then
+    UI.line1:SetText(#(route.steps or {}) == 0 and "No available route steps." or "|cff33ff99All done.|r")
+    UI.line2:SetText("")
+    UI.tags:SetText("")
+    UI.note:SetText(#(route.later or {}) > 0 and "Other quests are listed for later; change the level mode to reconsider them." or "")
+    return
+  end
+  local s = UI.current
+  UI.line1:SetText((VERB[s.kind] or s.kind or "Quest") .. ": |cffffd100" .. (s.name or tostring(s.q)) .. "|r")
+  local where = s.who and (s.who .. (s.zone and (" - " .. s.zone) or "")) or (s.zone or "")
+  local x, y = RQP.Number(s.x), RQP.Number(s.y)
+  if x and y then where = where .. (" (%.1f, %.1f)"):format(x, y) end
+  UI.line2:SetText(where)
+  UI.tags:SetText("[" .. (s.source or "unknown source") .. "] [" .. (s.confidence or "unverified") .. "]")
+  local note = s.note or ""
+  if s.below then
+    local floor = RQP.Number(route.floor)
+    local reason = note ~= "" and note or "optional quest / reward"
+    note = "your choice - below " .. (floor and ("level " .. tostring(math.floor(floor))) or "the level floor") .. "; " .. reason
+  end
+  if not canDo then note = "Waiting for prerequisites / quest progress. " .. note end
+  UI.note:SetText(note)
+end
+
+function UI.SetWaypoint()
+  local s = UI.current
+  local map, x, y = s and RQP.Number(s.map), s and RQP.Number(s.x), s and RQP.Number(s.y)
+  if not (map and x and y) or x < 0 or x > 100 or y < 0 or y > 100 then
+    RQP.Print("No map pin for this step.")
+    return
+  end
+  if not (C_Map and C_Map.SetUserWaypoint and UiMapPoint and UiMapPoint.CreateFromCoordinates) then
+    RQP.Print("Map waypoints are unavailable on this client.")
+    return
+  end
+  local point = UiMapPoint.CreateFromCoordinates(map, x / 100, y / 100)
+  C_Map.SetUserWaypoint(point)
+  if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
+  RQP.Print(("%s %.1f, %.1f (map pin set)"):format(s.zone or "", x, y))
+end

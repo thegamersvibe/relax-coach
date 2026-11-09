@@ -1,0 +1,270 @@
+diff --git a/addon/Journey/Brand-Ext.lua b/addon/Journey/Brand-Ext.lua
+index 4645e28..4e365da 100644
+--- a/addon/Journey/Brand-Ext.lua
++++ b/addon/Journey/Brand-Ext.lua
+@@ -53,4 +53,142 @@ function Brand.resolveGuideAlias(guideID)
+ 		end
+ 	end
+ 	return guideID
+-end
+\ No newline at end of file
++end
++
++-- Relax local guides: additive, session-only integration; catalog services are
++-- not replaced. RQP_ is reserved for locally built tables, never catalog data.
++local relaxLocalGuides = { }
++local relaxAPI = { version = 1 }
++_G.RelaxJourneyAPI = relaxAPI
++
++function Brand.GetRelaxLocalGuide(guideID)
++    return relaxLocalGuides[guideID]
++end
++
++function relaxAPI.RegisterLocalGuide(guideID, info, buildFn)
++    if (type(guideID) ~= "string" or not guideID:match("^RQP_[%w_]+$")
++            or type(info) ~= "table" or type(buildFn) ~= "function") then
++        return false, "Invalid local guide registration"
++    end
++    for _, catalogInfo in ipairs(CatalogService.GetGuideInfos()) do
++        if (catalogInfo.guideID == guideID) then
++            return false, "A local guide cannot replace a catalog guide"
++        end
++    end
++    relaxLocalGuides[guideID] = {
++        info = { guideID = guideID, description = info.description or guideID,
++            moduleID = "RQP_Local", flags = "B" },
++        buildFn = buildFn,
++    }
++    GuideService.InvalidateRelaxLocalGuide(guideID)
++    return true
++end
++
++function relaxAPI.UnregisterLocalGuide(guideID)
++    if (not relaxLocalGuides[guideID]) then return false end
++    relaxLocalGuides[guideID] = nil
++    GuideService.InvalidateRelaxLocalGuide(guideID)
++    return true
++end
++
++function relaxAPI.Goto(guideID, stepID)
++    if (type(guideID) ~= "string") then return false, "Guide ID required" end
++    local ok, guide = pcall(GuideService.GetGuide, guideID)
++    if (not ok or not guide) then return false, "Guide unavailable" end
++    if (stepID and not guide.stepLUT[stepID]) then return false, "Step unavailable" end
++    local navigated, err = pcall(GuideNavigationService.Goto, guideID, stepID)
++    if (not navigated) then return false, tostring(err) end
++    State.SetGuideShown(true)
++    return true
++end
++
++-- Relax local guides: read-only catalog preview, never redirects signed loads.
++function relaxAPI.ListCatalogGuides()
++    local result = { }
++    for _, info in ipairs(CatalogService.GetGuideInfos()) do
++        local ok, passed = pcall(CheckCondition, info)
++        if (info.guideID and ok and passed) then
++            local copy = { }
++            for key, value in pairs(info) do copy[key] = value end
++            result[#result + 1] = copy
++        end
++    end
++    return result
++end
++
++local function relaxConditions(step, group, task)
++    local unknown
++    for _, node in ipairs({ step, group, task }) do
++        local ok, passed = pcall(CheckCondition, node)
++        if (ok and not passed) then return false end
++        if (not ok) then unknown = true end
++    end
++    if (not unknown) then return true end
++end
++
++local function relaxCompleted(step, group, task)
++    for _, node in ipairs({ step, group, task }) do
++        local ok, passed = pcall(CheckCompleted, node)
++        if (ok and passed) then return true end
++    end
++    -- Individual objectives can already be done while the quest is in the log.
++    if ((task.objective or task.objectives) and task.taskType) then
++        local ok, passed = pcall(task.taskType.IsCompleted, task.taskType, task)
++        if (ok and passed) then return true end
++    end
++    return false
++end
++
++-- checkpoint is optional: an async caller can yield between normalization steps
++-- and extraction steps. coroutine.resume protects the loader without Lua 5.1's
++-- pcall/yield restriction. Existing synchronous Journey callers are unchanged.
++function relaxAPI.ScanGuideQuests(guideID, checkpoint)
++    local ok, guide
++    if (checkpoint) then
++        local loader = coroutine.create(function()
++            return GuideService.GetGuide(guideID, coroutine.yield)
++        end)
++        repeat
++            ok, guide = coroutine.resume(loader)
++            if (not ok) then break end
++            if (coroutine.status(loader) ~= "dead") then checkpoint() end
++        until coroutine.status(loader) == "dead"
++    else
++        ok, guide = pcall(GuideService.GetGuide, guideID)
++    end
++    if (not ok) then return nil, "Guide normalization failed" end
++    if (not guide) then return nil, "Guide unavailable" end
++    local scan = { accept = { }, complete = { }, turnin = { }, steps = { } }
++    local kinds = { "accept", "acceptone", "complete", "startwork", "turnin" }
++    for index, step in ipairs(guide) do
++        local row = { id = step.id, index = index, actions = { } }
++        scan.steps[#scan.steps + 1] = row
++        for _, group in ipairs(step) do
++            for _, task in ipairs(group) do
++                for _, field in ipairs(kinds) do
++                    local value = task[field]
++                    if (value) then
++                        local ids = type(value) == "table" and value or { value }
++                        local kind = (field == "acceptone" and "accept")
++                            or (field == "startwork" and "complete") or field
++                        for _, questID in ipairs(ids) do
++                            if (type(questID) == "number" and questID > 0) then
++                                local optionalOK, optional = pcall(task.taskType.IsOptional, task.taskType, task)
++                                scan[kind][questID] = true
++                                row.actions[#row.actions + 1] = {
++                                    questID = questID, kind = kind,
++                                    active = relaxConditions(step, group, task),
++                                    completed = relaxCompleted(step, group, task),
++                                    optional = not optionalOK or optional == true or group.optional == true,
++                                    alternatives = field == "acceptone" and ids or nil,
++                                }
++                            end
++                        end
++                    end
++                end
++            end
++        end
++        if (checkpoint) then checkpoint() end
++    end
++    return scan
++end
+diff --git a/addon/Journey/services/ButtonGeneration.lua b/addon/Journey/services/ButtonGeneration.lua
+index 525ef97..c181846 100644
+--- a/addon/Journey/services/ButtonGeneration.lua
++++ b/addon/Journey/services/ButtonGeneration.lua
+@@ -17,9 +17,10 @@ local function addAll(tbl, src)
+     end
+ end
+ 
+-function ButtonGenerationService.GenerateButtons(guide)
++function ButtonGenerationService.GenerateButtons(guide, relaxCheckpoint)
+     local questInfos = guide.quests
+     for _, step in ipairs(guide) do
++        if (relaxCheckpoint) then relaxCheckpoint() end -- Relax local guides: async scan.
+         for _, taskGroup in ipairs(step) do
+             local npcsFound
+             for _, task in ipairs(taskGroup) do
+diff --git a/addon/Journey/services/Guide.lua b/addon/Journey/services/Guide.lua
+index d09406a..873c183 100644
+--- a/addon/Journey/services/Guide.lua
++++ b/addon/Journey/services/Guide.lua
+@@ -31,19 +31,37 @@ function GuideService.Init()
+     guideCache = { }
+ end
+ 
+-function GuideService.GetGuide(guideID)
++-- Relax local guides: invalidate only our separate, unsigned namespace.
++function GuideService.InvalidateRelaxLocalGuide(guideID)
++    if (guideCache and type(guideID) == "string" and guideID:match("^RQP_")) then
++        guideCache[guideID] = nil
++    end
++end
++
++function GuideService.GetGuide(guideID, relaxCheckpoint)
++    -- Relax local guides: catalog admission below is unchanged for catalog IDs.
++    local localGuide = Brand.GetRelaxLocalGuide and Brand.GetRelaxLocalGuide(guideID)
++    if (not localGuide) then
+     if (GuideModules.IsExpired()) then return nil end
+     if (CatalogService.CheckCompatibility()) then return nil end
++    end -- Relax local guides
+     local guide = guideCache[guideID]
+     if (not guide) then
+         GuideModules.Reload()
++        -- Relax local guides: feed the same normalization, never the signed loader.
++        local guideInfo
++        if (localGuide) then
++            guideInfo = localGuide.info
++            guide = localGuide.buildFn()
++            if (type(guide) ~= "table" or #guide == 0) then return nil end
++        else
+         if (not guideInfoLookup) then
+             guideInfoLookup = { }
+             for _, guideInfo in ipairs(CatalogService.GetGuideInfos()) do
+                 guideInfoLookup[guideInfo.guideID] = guideInfo
+             end
+         end
+-        local guideInfo = guideInfoLookup[guideID]
++        guideInfo = guideInfoLookup[guideID]
+         if (not guideInfo) then
+             guideID = "B" .. string.sub(guideID,2)
+             guideInfo = guideInfoLookup[guideID]
+@@ -81,11 +99,13 @@ function GuideService.GetGuide(guideID)
+             end
+             return nil
+         end
++        end -- Relax local guides: shared normalization starts here.
+         guide.info = guideInfo
+         assert(guide.info, ("GuideInfo is not present: %s"):format(guideID))
+         guide.id = guideID
+         guide.quests = guide.quests or { }
+         for _, step in ipairs(guide) do
++            if (relaxCheckpoint) then relaxCheckpoint() end -- Relax local guides: async scan.
+             if (step.quests) then
+                 for questID, questInfo in pairs(step.quests) do
+                     guide.quests[questID] = questInfo
+@@ -158,6 +178,7 @@ function GuideService.GetGuide(guideID)
+         end
+         local repeatingGroups = { }
+         for _, step in ipairs(guide) do
++            if (relaxCheckpoint) then relaxCheckpoint() end -- Relax local guides: async scan.
+             for i = #step, 1, -1 do
+                 local taskGroup = step[i]
+                 if (type(taskGroup) == "table" and taskGroup.repeatuntil) then
+@@ -188,6 +209,7 @@ function GuideService.GetGuide(guideID)
+             end
+         end
+         for _, step in ipairs(guide) do
++            if (relaxCheckpoint) then relaxCheckpoint() end -- Relax local guides: async scan.
+             for _, taskGroup in ipairs(step) do
+                 for taskIdx = #taskGroup, 1, -1 do
+                     local task = taskGroup[taskIdx]
+@@ -250,10 +272,13 @@ function GuideService.GetGuide(guideID)
+                 end
+             end
+         end
+-        LocationsInitService.InitGuide(guide)
+-        ButtonGenerationService.GenerateButtons(guide)
++        LocationsInitService.InitGuide(guide, relaxCheckpoint)
++        if (relaxCheckpoint) then relaxCheckpoint() end -- Relax local guides: async scan.
++        ButtonGenerationService.GenerateButtons(guide, relaxCheckpoint)
++        if (relaxCheckpoint) then relaxCheckpoint() end -- Relax local guides: async scan.
+         guide.stepLUT = { }
+         for stepIdx, step in ipairs(guide) do
++            if (relaxCheckpoint) then relaxCheckpoint() end -- Relax local guides: async scan.
+             step.idx = stepIdx
+             guide.stepLUT[step.id] = step
+             for taskGroupIdx, taskGroup in ipairs(step) do
+diff --git a/addon/Journey/services/LocationsInit.lua b/addon/Journey/services/LocationsInit.lua
+index e222e06..88e7f5d 100644
+--- a/addon/Journey/services/LocationsInit.lua
++++ b/addon/Journey/services/LocationsInit.lua
+@@ -56,8 +56,9 @@ local function remap(map)
+     return MoPMapAliases[map] or map
+ end
+ 
+-function LocationsInitService.InitGuide(guide)
++function LocationsInitService.InitGuide(guide, relaxCheckpoint)
+     for _, step in ipairs(guide) do
++        if (relaxCheckpoint) then relaxCheckpoint() end -- Relax local guides: async scan.
+         step.locations = step.locations or { }
+         for taskGroupIdx, taskGroup in ipairs(step) do
+             taskGroup.idx = taskGroupIdx

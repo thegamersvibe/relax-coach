@@ -1,0 +1,21 @@
+## Interface: 16001
+## Title: Relax Quest Planner
+## Notes: Dungeon quest routes, prerequisites and a guide picker. Runtime data only.
+## Author: TheGamersVibe
+## Version: 0.1.0-test
+## SavedVariablesPerCharacter: RelaxQuestPlannerDB
+## OptionalDeps: QuestieDB, Questie, ForeverDungeonJournal, DungeonGuideForever, Journey
+
+Init.lua
+Core/Data.lua
+Core/Player.lua
+Core/Engine.lua
+Core/Learn.lua
+Journey/Bridge.lua
+Journey/Picker.lua
+UI/Common.lua
+UI/Steps.lua
+UI/Window.lua
+UI/Picker.lua
+UI/Guides.lua
+UI/Controller.lua
