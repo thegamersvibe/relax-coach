@@ -35,6 +35,7 @@ local function actionable(s, P, route)
   if s.kind == "accept" then
     for _, q in ipairs(s.needs or {}) do
       local ok = done(q, P) or (s.activeNeeds and s.activeNeeds[q] and inlog(q, P))
+      if s.parentActive and s.parentActive[q] then ok = inlog(q, P) and not done(q, P) end
       if not ok then return false end
     end
     -- Current engine routes carry their gate results from the async build.
@@ -56,7 +57,9 @@ function UI.BlockingReason(s, P)
   if s.kind == "accept" then
     for _, q in ipairs(s.needs or {}) do
       local active = s.activeNeeds and s.activeNeeds[q]
-      if not (done(q, P) or (active and inlog(q, P))) then
+      local ok = done(q, P) or (active and inlog(q, P))
+      if s.parentActive and s.parentActive[q] then ok = inlog(q, P) and not done(q, P) end
+      if not ok then
         local rec = RQP.Data and RQP.Data.Quest and RQP.Data.Quest(q)
         return "Needs: " .. ((rec and rec.name) or ("quest " .. tostring(q))) .. (active and " (pick up)" or " (turn in)")
       end
@@ -91,14 +94,24 @@ function UI.PickStep(route, P)
   if RQP.IsSecret(map) then map = nil end
   local zone = GetRealZoneText and GetRealZoneText()
   if RQP.IsSecret(zone) then zone = nil end
+  -- Location preference cannot undo the engine's child-accept -> parent-turnin
+  -- ordering. Keep parents active until every unskipped child has been accepted.
+  local keepActive = {}
+  for _, s in ipairs(route.steps or {}) do
+    if s.kind == "accept" and not stepDone(s, P) then
+      for q, required in pairs(s.parentActive or {}) do if required then keepActive[q] = true end end
+    end
+  end
   local firstHere, firstAct, firstUndone, left = nil, nil, nil, 0
   for i, s in ipairs(route.steps or {}) do
     if not stepDone(s, P) then
       left = left + 1
-      firstUndone = firstUndone or i
-      if actionable(s, P, route) then
-        firstAct = firstAct or i
-        if (map and s.map == map) or (zone and s.zone == zone) then firstHere = firstHere or i end
+      if not (s.kind == "turnin" and keepActive[s.q]) then
+        firstUndone = firstUndone or i
+        if actionable(s, P, route) then
+          firstAct = firstAct or i
+          if (map and s.map == map) or (zone and s.zone == zone) then firstHere = firstHere or i end
+        end
       end
     end
   end

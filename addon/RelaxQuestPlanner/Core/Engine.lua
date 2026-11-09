@@ -351,9 +351,15 @@ local function resolve(q,p,g,plan,stack,issues)
 end
 
 local function dependencies(q,p,g,planned)
-    local needs,active={},{}
+    local needs,active,parentActive={},{},{}
     -- An observed active quest is already accepted: do not invent missing gates.
-    if p.log[q] then return {},active end
+    if p.log[q] then return {},active,parentActive end
+    local r=D.Quest(q)
+    -- Unlike startingWith, this constraint survives while the parent is in the
+    -- log and must still be enforced if it is turned in after this plan is built.
+    if r.parent and not refuted(q,r.parent) then
+        needs[r.parent],active[r.parent],parentActive[r.parent]=true,true,true
+    end
     for _,w in ipairs(gates(q,p,p.done,p.log,60,g)) do
         if type(w)=="table" then
             local k,v=w[1],w[2]
@@ -374,7 +380,7 @@ local function dependencies(q,p,g,planned)
                 end
             elseif k=="prereqAny" then
                 for _,id in ipairs(v) do if planned[id] and id~=q then needs[id]=true; break end end
-            elseif k=="parentActive" or k=="startingWith" then
+            elseif k=="startingWith" then
                 if planned[v] and v~=q then needs[v]=true; active[v]=true end
             end
         end
@@ -387,10 +393,10 @@ local function dependencies(q,p,g,planned)
     for _,id in ipairs(D.Quest(q).bcs) do
         if planned[id] and not p.done[id] and id~=q then needs[id]=true end
     end
-    return D.Keys(needs),active
+    return D.Keys(needs),active,parentActive
 end
-local function step(kind,r,p,floor,needs,active)
-    local s={kind=kind,q=r.id,name=r.name,needs=needs,activeNeeds=active,
+local function step(kind,r,p,floor,needs,active,parentActive)
+    local s={kind=kind,q=r.id,name=r.name,needs=needs,activeNeeds=active,parentActive=parentActive,
         below=r.qLevel<floor,levelOK=r.reqLevel<=p.level,source=r.source or "QuestieDB",
         confidence=r.source=="QuestieDB" and "db" or "addon",level=r.qLevel,reqLevel=r.reqLevel}
     if RQP.Learn and next(RQP.Learn.Observed(r.id)) then s.confidence="observed" end
@@ -424,9 +430,9 @@ local function actions(route,p,g,targets)
     route.availability={}
     local nodes,byQuest,blocked,metadata={},{},{},{}
     for index,q in ipairs(route.plan) do
-        local r=D.Quest(q); local needs,active=dependencies(q,p,g,planned)
+        local r=D.Quest(q); local needs,active,parentActive=dependencies(q,p,g,planned)
         route.availability[q]=state(q,p,p.done,p.log,p.level,g)
-        metadata[q]={needs=needs,active=active,index=index}
+        metadata[q]={needs=needs,active=active,parentActive=parentActive,index=index}
         if r.reqLevel>p.level then blocked[q]=true end
         tick()
     end
@@ -444,7 +450,7 @@ local function actions(route,p,g,targets)
     local isPrerequisite={}
     for _,q in ipairs(route.plan) do for _,id in ipairs(metadata[q].needs) do isPrerequisite[id]=true end end
     local function node(kind,r,m,priority)
-        local s=step(kind,r,p,route.floor,m.needs,m.active)
+        local s=step(kind,r,p,route.floor,m.needs,m.active,m.parentActive)
         local n={step=s,deps={},priority=priority,index=m.index,key=kind..":"..r.id}
         nodes[#nodes+1]=n; byQuest[r.id]=byQuest[r.id] or {}; byQuest[r.id][kind]=n
         return n
@@ -452,7 +458,7 @@ local function actions(route,p,g,targets)
     for _,q in ipairs(route.plan) do
         local r,m=D.Quest(q),metadata[q]
         if blocked[q] then
-            local s=step("accept",r,p,route.floor,m.needs,m.active)
+            local s=step("accept",r,p,route.floor,m.needs,m.active,m.parentActive)
             if s.levelOK then s.note=(s.note or "").."; prerequisite is level-locked" end
             route.later[#route.later+1]=s
         else
@@ -475,9 +481,12 @@ local function actions(route,p,g,targets)
         if n.step.kind=="accept" then
             for _,id in ipairs(n.step.needs) do
                 local parent=byQuest[id]
-                local required=parent and (n.step.activeNeeds[id] and parent.accept or parent.turnin)
+                local required
+                if parent then
+                    if n.step.activeNeeds[id] then required=parent.accept else required=parent.turnin end
+                end
                 if required then n.deps[required.key]=true end
-                if parent and parent.turnin and D.Quest(n.step.q).parent==id then
+                if parent and parent.turnin and n.step.parentActive[id] then
                     -- parentActive means still in the log at child acceptance.
                     parent.turnin.deps[n.key]=true
                 end

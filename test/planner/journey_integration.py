@@ -180,6 +180,21 @@ class JourneyIntegration(unittest.TestCase):
         self.assertFalse(result[0])
         self.assertIn('Journey', result[1])
 
+    def test_parent_active_condition_excludes_turned_in_but_starting_with_does_not(self):
+        lua, env = runtime()
+        load_rqp(lua, 'Bridge.lua')
+        bridge = lua.globals().RelaxQuestPlanner.Journey
+        for parent_active in (True, False):
+            route = table(lua, {'title': 'Dependency test', 'steps': [
+                {'q': 2, 'kind': 'accept', 'needs': [1], 'activeNeeds': {1: True},
+                 'parentActive': {1: parent_active}}]})
+            step = bridge.ToGuide(route)[1]
+            for status in range(4):
+                lua.globals().STATES[1] = status
+                self.assertEqual(bool(env.CheckCondition(step)),
+                                 status in ((1, 2) if parent_active else (1, 2, 3)),
+                                 (parent_active, status, step.condition))
+
     def test_location_and_button_normalization_share_async_checkpoints(self):
         lua, env = runtime()
         lua.globals().CHECKPOINTS = 0

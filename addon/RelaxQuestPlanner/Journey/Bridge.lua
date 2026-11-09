@@ -44,6 +44,9 @@ function Journey.ToGuide(route)
                 if not need then return nil, "Invalid prerequisite quest ID" end
                 if action.activeNeeds and action.activeNeeds[dependency] then
                     condition = condition .. string.format(" and QUEST[%d] >= ACCEPTED", math.floor(need))
+                    if action.parentActive and action.parentActive[dependency] then
+                        condition = condition .. string.format(" and QUEST[%d] < TURNEDIN", math.floor(need))
+                    end
                 else
                     condition = condition .. string.format(" and QUEST[%d] >= TURNEDIN", math.floor(need))
                 end
