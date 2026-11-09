@@ -1,0 +1,49 @@
+name: Include my addon
+description: Propose an independent addon for evaluation; this is not permission to bundle it.
+title: "[Addon proposal] "
+body:
+  - type: markdown
+    attributes:
+      value: The updater currently accepts fixed addon roots. A new root needs a separately reviewed migration; do not copy it into the pack yet.
+  - type: textarea
+    id: source
+    attributes:
+      label: Source, version and license
+      description: Repository URL, exact revision/version, license and proof of redistribution rights.
+    validations:
+      required: true
+  - type: textarea
+    id: ownership
+    attributes:
+      label: Maintainer and update ownership
+      description: Who fixes bugs, tests compatibility, tracks upstream updates and handles removal?
+    validations:
+      required: true
+  - type: textarea
+    id: integration
+    attributes:
+      label: Folder names, dependencies and SavedVariables
+      description: List exact roots/save names, dependencies and potential collisions.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Behavior, defaults and privacy
+      description: Enabled/muted defaults, triggers/cooldowns, performance, external calls and data sharing.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Native Forever compatibility evidence
+      description: Actual client/build, test steps/results and known limitations; do not substitute Retail tests.
+    validations:
+      required: true
+  - type: textarea
+    id: lifecycle
+    attributes:
+      label: Installation, update, removal and rollback
+      description: Save preservation and old/new desktop-updater compatibility; identify any required migration.
+    validations:
+      required: true

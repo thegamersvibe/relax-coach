@@ -1,0 +1,2 @@
+# Lua harness dependency; product source and tests remain unchanged.
+lupa==2.8
