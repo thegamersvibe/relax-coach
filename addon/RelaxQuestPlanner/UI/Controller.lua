@@ -60,16 +60,7 @@ function UI.Plan(show, force)
     if not rendered then planFailed(err); return end
     UI.notice = UI.RouteIssues(route)
     UI.UpdateStatus()
-    -- Journey is the step tracker: hand a freshly chosen route over once.
-    if UI.autoJourneyPending and RQP.GetDB().autoJourney ~= false and #(route.steps or {}) > 0
-      and RQP.Journey and RQP.Journey.LoadRoute and _G.RelaxJourneyAPI
-      and not (InCombatLockdown and InCombatLockdown()) then
-      UI.autoJourneyPending = nil
-      pcall(RQP.Journey.LoadRoute, route)
-    elseif not UI.journeyRestoreChecked then
-      UI.journeyRestoreChecked = true
-      UI.RestoreJourney(route)
-    end
+    UI.HandoffJourney(route)
     if UI.replanPending then
       UI.replanPending = nil
       RQP.After(0, function() if generation == routeGeneration then UI.Plan(false) end end)
@@ -82,16 +73,54 @@ function UI.Plan(show, force)
   else planFailed(err) end
 end
 
+-- Replace only our active/last session guide, never a different player choice.
+-- RegisterLocalGuide invalidates Journey's normalized RQP_ROUTE cache on reload.
+function UI.SyncJourney(route)
+  UI.journeySyncPending = nil
+  local api = _G.RelaxJourneyAPI
+  if not (route and api and api.GetActiveGuide and RQP.Journey and RQP.Journey.LoadRoute) then return false end
+  local ok, _, last = pcall(api.GetActiveGuide)
+  if not ok or last ~= "RQP_ROUTE" then return false end
+  if InCombatLockdown and InCombatLockdown() then UI.journeySyncPending = true; return true end
+  local loaded, result = pcall(RQP.Journey.LoadRoute, route)
+  return loaded and result == true
+end
+
+function UI.HandoffJourney(route)
+  if UI.autoJourneyPending and RQP.GetDB().autoJourney ~= false and #(route.steps or {}) > 0
+    and RQP.Journey and RQP.Journey.LoadRoute and _G.RelaxJourneyAPI then
+    if InCombatLockdown and InCombatLockdown() then UI.journeySyncPending = true; return end
+    UI.autoJourneyPending, UI.journeySyncPending = nil, nil
+    UI.journeyRestoreChecked = true
+    pcall(RQP.Journey.LoadRoute, route)
+  elseif UI.SyncJourney(route) then
+    UI.journeyRestoreChecked = true
+  elseif not UI.journeyRestoreChecked then
+    UI.journeyRestoreChecked = true
+    UI.RestoreJourney(route)
+  end
+end
+
+function UI.RetryJourney()
+  if UI.journeySyncPending and UI.route then
+    UI.journeySyncPending = nil
+    UI.HandoffJourney(UI.route)
+  end
+end
+
 -- Journey forgets the session route on reload. Put it back only when Journey has
 -- nothing loaded or its last guide was our route; never replace a guide the player chose.
 function UI.RestoreJourney(route)
   local api = _G.RelaxJourneyAPI
   if RQP.GetDB().autoJourney == false or not (api and api.GetActiveGuide and RQP.Journey and RQP.Journey.LoadRoute) then return false end
-  if InCombatLockdown and InCombatLockdown() then UI.journeyRestoreChecked = nil; return false end
   if #(route.steps or {}) == 0 then return false end
   local ok, loaded, last = pcall(api.GetActiveGuide)
   if not ok then return false end
-  if loaded and last ~= "RQP_ROUTE" then return false end
+  if (loaded or last) and last ~= "RQP_ROUTE" then return false end
+  if InCombatLockdown and InCombatLockdown() then
+    UI.journeyRestoreChecked, UI.journeySyncPending = nil, true
+    return false
+  end
   return (pcall(RQP.Journey.LoadRoute, route))
 end
 
@@ -199,7 +228,8 @@ SlashCmdList.RELAXQUESTPLANNER = RQP.Safe(function(message)
   elseif command == "mode" then UI.SetMode(arg:lower())
   elseif command == "skip" then UI.SkipCurrent()
   elseif command == "unskip" then
-    RQP.GetDB().skipped = nil; RQP.Print("Skipped quests restored."); if UI.route then UI.RenderRoute(RQP.Player.Snapshot()) end
+    RQP.GetDB().skipped = nil; RQP.Print("Skipped quests restored.")
+    if UI.route then UI.RenderRoute(RQP.Player.Snapshot()); UI.SyncJourney(UI.route) end
   elseif command == "autopin" then
     local db = RQP.GetDB(); db.autoPin = db.autoPin == false
     RQP.Print("Automatic map pin " .. (db.autoPin and "on" or "off") .. ".")

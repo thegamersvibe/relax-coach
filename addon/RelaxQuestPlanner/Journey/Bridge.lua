@@ -78,7 +78,29 @@ function Journey.ToGuide(route)
     return guide
 end
 
+local function questFlag(name, q)
+    local fn = C_QuestLog and C_QuestLog[name]
+    local value = fn and fn(q)
+    return not (issecretvalue and issecretvalue(value)) and value == true
+end
+
+local function firstUndone(guide)
+    for _, step in ipairs(guide) do
+        local action = step[1][2]
+        if not action then return step.id end -- Always-passing end step.
+        local q = action.accept or action.complete or action.turnin
+        local done = questFlag("IsQuestFlaggedCompleted", q)
+        if action.accept then done = done or questFlag("IsOnQuest", q)
+        elseif action.complete then
+            done = done or (questFlag("IsOnQuest", q) and
+                (questFlag("ReadyForTurnIn", q) or questFlag("IsComplete", q)))
+        end
+        if not done then return step.id end
+    end
+end
+
 function Journey.LoadRoute(route)
+    if InCombatLockdown and InCombatLockdown() then return false, "Open the route after combat" end
     local api = _G.RelaxJourneyAPI
     if not api or not api.RegisterLocalGuide or not api.Goto then
         return false, "Relax Journey is not installed or needs its local-guide bridge update"
@@ -91,7 +113,7 @@ function Journey.LoadRoute(route)
         { description = route.title or "Relax quest route" },
         function() return Journey.ToGuide(route) end)
     if not registered then return false, reason end
-    local ok, result, failure = pcall(api.Goto, guideID, guide[1].id)
+    local ok, result, failure = pcall(api.Goto, guideID, firstUndone(guide))
     if not ok then
         _G.RelaxQuestPlannerDB = _G.RelaxQuestPlannerDB or {}
         _G.RelaxQuestPlannerDB.lastError = tostring(result)

@@ -89,6 +89,10 @@ local function onEvent(_, event, ...)
     if RQP.UI.Initialize then RQP.UI.Initialize() end
     return
   end
+  if event == "PLAYER_REGEN_ENABLED" then
+    if RQP.UI.RetryJourney then RQP.UI.RetryJourney() end
+    return
+  end
   if event == "QUEST_ACCEPTED" then
     -- Forever builds expose questID alone or logIndex, questID.
     local qid
@@ -103,7 +107,7 @@ end
 
 for _, event in ipairs({ "ADDON_LOADED", "PLAYER_LOGIN", "QUEST_ACCEPTED", "QUEST_TURNED_IN",
   "QUEST_REMOVED", "QUEST_LOG_UPDATE", "ZONE_CHANGED", "ZONE_CHANGED_INDOORS", "ZONE_CHANGED_NEW_AREA",
-  "PLAYER_LEVEL_UP", "PLAYER_ENTERING_WORLD" }) do
+  "PLAYER_LEVEL_UP", "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED" }) do
   events:RegisterEvent(event)
 end
 events:SetScript("OnEvent", RQP.Safe(onEvent))

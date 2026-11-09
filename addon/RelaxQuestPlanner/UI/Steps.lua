@@ -83,6 +83,7 @@ function UI.SkipCurrent()
   db.skipped[s.q] = true
   RQP.Print("Skipped " .. (s.name or tostring(s.q)) .. " for this character. /rqp unskip to restore all.")
   UI.RenderRoute(RQP.Player.Snapshot())
+  if UI.SyncJourney then UI.SyncJourney(UI.route) end
 end
 
 function UI.PickStep(route, P)

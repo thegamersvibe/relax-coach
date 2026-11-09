@@ -157,6 +157,34 @@ def runtime() -> tuple[Any, Any]:
     return lua, env
 
 
+def planner_runtime():
+    """Real Journey state/services plus planner UI; only game and route builder mocked."""
+    from ui_shell_test import WOW, ENGINE
+    lua, env = runtime()
+    lua.execute((JOURNEY / 'State.lua').read_text(), 'Journey', lua.globals().FACADE)
+    lua.execute("""
+        select(2,...).SetupGlobalFacade()
+        SavedVariables={}; SavedVariablesPerCharacter={bookmarks={}}; PLAYER_FACTION='ALLIANCE'
+    """, 'Journey', lua.globals().FACADE)
+    lua.execute('SAVED_MAP=C_Map')
+    lua.execute(WOW)
+    lua.execute('''
+        for k,v in pairs(SAVED_MAP) do C_Map[k]=v end
+        setmetatable(STATES,{__index=function(_,q)
+            if STATE.done[q] then return 3 end
+            if STATE.log[q] then return STATE.ready[q] and 2 or 1 end
+            return 0
+        end})
+    ''')
+    lua.execute(ENGINE)
+    lua.execute((RQP.parent / 'Init.lua').read_text())
+    load_rqp(lua, 'Bridge.lua')
+    for name in ('Common', 'Steps', 'Window', 'Picker', 'Guides', 'Controller'):
+        lua.execute((RQP.parent / 'UI' / (name + '.lua')).read_text())
+    lua.execute("FIRE('ADDON_LOADED','RelaxQuestPlanner'); FIRE('PLAYER_LOGIN'); DRAIN()")
+    return lua, env
+
+
 def load_rqp(lua, name):
     path = RQP / name
     assert path.is_file(), f'{name} must exist'
