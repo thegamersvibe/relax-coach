@@ -554,7 +554,7 @@ class UIShellTests(unittest.TestCase):
         lua = client()
         lua.execute(r'''
           QuestDB={Get=function(q,key)
-            local row={name="Quest "..q,requiredLevel=1,questLevel=30}
+            local row={name="Quest "..q,requiredLevel=1,questLevel=30,parentQuest=q==1 and TEST_PARENT or nil}
             return row[key]
           end,Exists=function(q) return q>=1 and q<=6000 end,
           GetAllIds=function() local ids={} for i=1,6000 do ids[i]=i end return ids end}
@@ -581,6 +581,12 @@ class UIShellTests(unittest.TestCase):
           assert(scans==0 and reads==0, "changed refresh must schedule, not build synchronously")
           DRAIN(500)
           assert(U.route.level==31 and scans>0, "changed state rebuilds asynchronously")
+          TEST_PARENT=2; STATE.done[2]=true
+          RelaxQuestPlanner.Data.Reset(); U.Refresh(true); DRAIN(500)
+          assert(U.note:GetText():find('Needs: Quest 2'), 'exercise the blocked-step renderer too')
+          reads,scans=0,0
+          for i=1,5 do FIRE('QUEST_LOG_UPDATE'); DRAIN(500) end
+          assert(scans==0 and reads==0, 'blocked refresh: '..scans..' scans, '..reads..' quest reads')
           assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
         ''')
 

@@ -53,15 +53,20 @@ local function actionable(s, P, route)
 end
 
 -- First missing prerequisite of an accept step, for a readable "Needs:" line.
-function UI.BlockingReason(s, P)
+function UI.BlockingReason(s, P, route)
   if s.kind == "accept" then
     for _, q in ipairs(s.needs or {}) do
       local active = s.activeNeeds and s.activeNeeds[q]
       local ok = done(q, P) or (active and inlog(q, P))
       if s.parentActive and s.parentActive[q] then ok = inlog(q, P) and not done(q, P) end
       if not ok then
-        local rec = RQP.Data and RQP.Data.Quest and RQP.Data.Quest(q)
-        return "Needs: " .. ((rec and rec.name) or ("quest " .. tostring(q))) .. (active and " (pick up)" or " (turn in)")
+        local name
+        if route and route.questNames then name = route.questNames[q]
+        else
+          local rec = RQP.Data and RQP.Data.Quest and RQP.Data.Quest(q)
+          name = rec and rec.name
+        end
+        return "Needs: " .. (name or ("quest " .. tostring(q))) .. (active and " (pick up)" or " (turn in)")
       end
     end
     local lvl = RQP.Number(s.level) or RQP.Number(s.reqLevel)
@@ -169,7 +174,7 @@ function UI.RenderRoute(P)
     local reason = note ~= "" and note or "optional quest / reward"
     note = "|cffffa500Your choice|r - below " .. (floor and ("level " .. tostring(math.floor(floor))) or "the level floor") .. "; " .. reason
   end
-  if not canDo then note = "|cffff7070" .. (UI.BlockingReason(s, P or RQP.Player.Snapshot()) or "Waiting") .. "|r  " .. note end
+  if not canDo then note = "|cffff7070" .. (UI.BlockingReason(s, P or RQP.Player.Snapshot(), route) or "Waiting") .. "|r  " .. note end
   UI.note:SetText(note)
   -- Move the map pin along with the route unless the player turned it off.
   if RQP.GetDB().autoPin ~= false and canDo and UI.lastPinned ~= s then
