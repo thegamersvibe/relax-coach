@@ -12,6 +12,18 @@ class EngineTests(unittest.TestCase):
     def setUpClass(cls):
         cls.h = Harness()
 
+    def test_dungeon_list_is_forever_only(self):
+        h = Harness()
+        names = [h.rqp.Data.Dungeons()[i].name for i in range(1, len(h.rqp.Data.Dungeons()) + 1)]
+        for bad in ("Utgarde Keep", "Karazhan", "Molten Core", "Onyxia's Lair", "Zul'Gurub", "Naxxramas",
+                    "Icecrown Citadel", "Warsong Gulch", "Deeprun Tram", "The Black Morass", "Scarlet Halls"):
+            self.assertNotIn(bad, names)
+        for good in ("Gnomeregan", "The Deadmines", "The Drowned City", "The Hall of Thanes", "Scarlet Monastery",
+                     "Blackrock Spire", "Dire Maul", "Stratholme", "Sunken Temple", "The Stockade"):
+            self.assertIn(good, names)
+        self.assertNotIn("Ragefire Chasm", names)            # Alliance test character
+        self.assertEqual(len(names), len(set(names)))         # wings collapsed, no duplicates
+
     def test_player_snapshot(self):
         h = self.h
         self.assertIsNotNone(h.rqp.Player, "Player snapshot is not implemented")

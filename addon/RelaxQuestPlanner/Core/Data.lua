@@ -203,6 +203,44 @@ function D.Object(id) return entity("Object",id,objects,{"spawns","zoneID","ques
 function D.Item(id) return entity("Item",id,items,{"npcDrops","objectDrops","itemDrops","vendors","questRewards","startQuest"}) end
 
 local battleground={['Warsong Gulch']=true,['Arathi Basin']=true,['Alterac Valley']=true}
+-- Forever 1-60 five-player dungeons only (no raids, battlegrounds or later-expansion instances).
+-- name = shown in the picker; aliases = names used by QuestieDB / FDJ / Dungeon Questie; faction = entry restriction.
+local FOREVER_DUNGEONS={
+    {name="Ragefire Chasm",faction="Horde"},
+    {name="Wailing Caverns"},
+    {name="The Deadmines",aliases={"Deadmines"}},
+    {name="Shadowfang Keep"},
+    {name="The Hall of Thanes",aliases={"Hall of Thanes"}},
+    {name="Blackfathom Deeps"},
+    {name="The Stockade",faction="Alliance",aliases={"Stormwind Stockade"}},
+    {name="Ruins of Lordaeron"},
+    {name="Gnomeregan"},
+    {name="Razorfen Kraul"},
+    {name="Excavation Site: Wetlands"},
+    {name="City of Dalaran"},
+    {name="Scarlet Monastery",aliases={"Scarlet Monastery: Graveyard","Scarlet Monastery: Library","Scarlet Monastery: Armory","Scarlet Monastery: Cathedral"}},
+    {name="The Drowned City",aliases={"Drowned City"}},
+    {name="Razorfen Downs"},
+    {name="Uldaman"},
+    {name="Krol'dok Stronghold",aliases={"Krol'Dok","Krol'dok"}},
+    {name="Zul'Farrak"},
+    {name="Maraudon"},
+    {name="Sunken Temple",aliases={"The Temple of Atal'Hakkar","Temple of Atal'Hakkar"}},
+    {name="Alcaz Prison"},
+    {name="Blackrock Depths"},
+    {name="Blackrock Spire",aliases={"Lower Blackrock Spire","Upper Blackrock Spire"}},
+    {name="Blackmaw Hold"},
+    {name="Dire Maul",aliases={"Dire Maul: East","Dire Maul: West","Dire Maul: North"}},
+    {name="Scholomance"},
+    {name="Stratholme",aliases={"Stratholme: Living","Stratholme: Undead"}},
+    {name="The Shaper's Terrace",aliases={"Shaper's Terrace"}},
+}
+local canonicalOf={}
+for _,d in ipairs(FOREVER_DUNGEONS) do
+    canonicalOf[d.name]=d
+    for _,a in ipairs(d.aliases or {}) do canonicalOf[a]=d end
+end
+D.FOREVER_DUNGEONS=FOREVER_DUNGEONS
 local function zones()
     if dungeons then return end
     D.Ready(); local byName,byArea={},{}
@@ -230,8 +268,22 @@ local function zones()
         if fn then local ok,res=pcall(fn); if ok then map=res else errorText(res) end
         else errorText(err) end
     end
-    areaMap=tbl(map); dungeonByArea=byArea
-    local list={}; for _,name in ipairs(keys(byName)) do list[#list+1]=byName[name] end
+    areaMap=tbl(map)
+    -- Collapse every source name onto the Forever allowlist; drop anything not in Forever.
+    local canonArea={}
+    for area,name in pairs(byArea) do local c=canonicalOf[name]; if c then canonArea[area]=c.name end end
+    dungeonByArea=canonArea
+    local myFaction=UnitFactionGroup and UnitFactionGroup("player")
+    local list={}
+    for _,d in ipairs(FOREVER_DUNGEONS) do
+        if not d.faction or not myFaction or d.faction==myFaction then
+            local entry={name=d.name,areaIds={},faction=d.faction}
+            for srcName,src in pairs(byName) do
+                if canonicalOf[srcName]==d then for _,a in ipairs(src.areaIds) do entry.areaIds[#entry.areaIds+1]=a end end
+            end
+            list[#list+1]=entry
+        end
+    end
     dungeons=list
 end
 function D.Dungeons() zones(); return dungeons end
