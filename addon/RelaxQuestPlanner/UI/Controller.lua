@@ -154,11 +154,25 @@ function UI.InstallLinkHooks()
   end
 end
 
+-- QUEST_LOG_UPDATE fires every few seconds for objective ticks and party changes.
+-- Rebuild routes/counts only when something that affects them actually changed.
+function UI.QuestFingerprint(P)
+  local done, log = 0, {}
+  for _ in pairs(P.done or {}) do done = done + 1 end
+  for q in pairs(P.log or {}) do log[#log + 1] = tostring(q) .. ((P.ready and P.ready[q]) and "r" or "") end
+  table.sort(log)
+  return table.concat({tostring(P.level), RQP.GetDB().mode, tostring(done), table.concat(log, ",")}, "|")
+end
+
 function UI.Refresh(force)
   if not UI.frame then return end
   UI.modeButton:SetText(MODE_LABELS[RQP.GetDB().mode])
   UI.UpdateStatus()
-  if UI.route then UI.RenderRoute(RQP.Player.Snapshot()) end
+  local P = RQP.Player.Snapshot()
+  if UI.route then UI.RenderRoute(P) end
+  local fp = UI.QuestFingerprint(P)
+  if not force and fp == UI.lastFingerprint then return end
+  UI.lastFingerprint = fp
   if RQP.GetDB().selection then UI.Plan(false, force) end
   if UI.RefreshCounts then UI.RefreshCounts() end
   if UI.guidePicker and UI.guidePicker:IsShown() then UI.PickGuide() end

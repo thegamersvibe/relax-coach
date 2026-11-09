@@ -73,7 +73,8 @@ function UI.RefreshCounts()
       row = UI.Row(UI.dungeonChild, 336, 0, -(i - 1) * 28, function() end)
       UI.dungeonRows[i] = row
     end
-    row:SetText(label(name, "|cff8899aacounting...|r"))
+    -- Keep the previous result visible while recounting; only new rows say counting.
+    if not row.counted then row:SetText(label(name, "|cff8899aacounting...|r")) end
     row:SetAlpha(far(name) and 0.55 or 1)
     UI.Tooltip(row, name .. "\nCounting...", "ANCHOR_LEFT")
     row:SetScript("OnClick", RQP.Safe(function() UI.SelectDungeon(name) end))
@@ -118,6 +119,7 @@ function UI.RefreshCounts()
         end
       end
       UI.dungeonCounts[name] = count
+      row.counted = true
       UI.dungeonSplit = UI.dungeonSplit or {}
       UI.dungeonSplit[name] = {new = fresh, log = active}
       local parts = {}

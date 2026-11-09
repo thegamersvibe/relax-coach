@@ -333,6 +333,7 @@ class UIShellTests(unittest.TestCase):
         lua.execute(r'''
           SlashCmdList.RELAXQUESTPLANNER("dungeon Alpha Keep"); DRAIN()
           local before=#BUILD_CALLS
+          STATE.done[12]=true  -- a real turn-in changes quest state
           FIRE("QUEST_ACCEPTED",4,12); FIRE("QUEST_TURNED_IN",12,500,0)
           assert(#LEARN_CALLS==2, "forward accept and turn-in observations")
           assert(LEARN_CALLS[1].kind=="accept" and LEARN_CALLS[1].q==12 and LEARN_CALLS[1].npc==901)
@@ -345,7 +346,7 @@ class UIShellTests(unittest.TestCase):
           STATE.guid=SECRET; FIRE("QUEST_ACCEPTED",14); assert(LEARN_CALLS[4].npc==nil)
           FIRE("QUEST_ACCEPTED",SECRET); assert(#LEARN_CALLS==4)
           RelaxQuestPlanner.Learn.Record=function() error("learning sentinel") end
-          before=#BUILD_CALLS; FIRE("QUEST_TURNED_IN",12); DRAIN()
+          before=#BUILD_CALLS; STATE.done[77]=true; FIRE("QUEST_TURNED_IN",77); DRAIN()
           assert(RelaxQuestPlannerDB.lastError:find("learning sentinel"))
           assert(#BUILD_CALLS==before+1, "an observation error must not stop refresh")
         ''')
@@ -507,6 +508,21 @@ class UIShellTests(unittest.TestCase):
           assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
         ''')
 
+    def test_quest_log_ticks_do_not_recount(self):
+        lua = client()
+        lua.execute(r'''
+          SlashCmdList.RELAXQUESTPLANNER("dungeon"); DRAIN(80)
+          local U=RelaxQuestPlanner.UI
+          local before=#BUILD_CALLS
+          for i=1,5 do FIRE("QUEST_LOG_UPDATE"); DRAIN(80) end
+          assert(#BUILD_CALLS==before, "objective ticks must not rebuild counts: "..(#BUILD_CALLS-before))
+          assert(not U.dungeonRows[1]:GetText():find("counting"))
+          STATE.log[12]=true; FIRE("QUEST_ACCEPTED",1,12); DRAIN(80)
+          assert(#BUILD_CALLS>before, "a real quest change recounts")
+          assert(not U.dungeonRows[1]:GetText():find("counting"), "old count stays visible while recounting")
+          assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
+        ''')
+
     def test_failed_async_count_is_unknown_not_zero(self):
         lua = client()
         lua.execute(r'''
@@ -578,7 +594,7 @@ class UIShellTests(unittest.TestCase):
         lua.execute(r'''
           SlashCmdList.RELAXQUESTPLANNER("dungeon Alpha Keep"); DRAIN()
           assert(RelaxQuestPlanner.UI.route.title=="Alpha Keep")
-          FIRE("QUEST_REMOVED",123); DRAIN()
+          STATE.done[123]=true; FIRE("QUEST_REMOVED",123); DRAIN()
           assert(#BUILD_CALLS==2)
           RelaxQuestPlanner.After(0,function() error("fallback timer sentinel") end); DRAIN()
           assert(RelaxQuestPlannerDB.lastError:find("fallback timer sentinel"))
