@@ -2,7 +2,7 @@
 ## Title: Relax Quest Planner
 ## Notes: Dungeon quest routes, prerequisites and a guide picker. Runtime data only.
 ## Author: TheGamersVibe
-## Version: 0.1.0-test
+## Version: 0.1.2-test
 ## SavedVariablesPerCharacter: RelaxQuestPlannerDB
 ## OptionalDeps: QuestieDB, Questie, ForeverDungeonJournal, DungeonGuideForever, Journey
 

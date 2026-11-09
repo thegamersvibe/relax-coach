@@ -292,6 +292,26 @@ class UIShellTests(unittest.TestCase):
           assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
         ''')
 
+    def test_bare_mode_cycles_and_tester_help_matches_commands(self):
+        lua = client()
+        lua.execute(r'''
+          SlashCmdList.RELAXQUESTPLANNER("goal 4321"); DRAIN()
+          for _,mode in ipairs({'strict','all','game'}) do
+            SlashCmdList.RELAXQUESTPLANNER("mode"); DRAIN()
+            assert(RelaxQuestPlannerDB.mode==mode and BUILD_CALLS[#BUILD_CALLS].mode==mode,
+              'bare /rqp mode must cycle the level mode')
+          end
+          SlashCmdList.RELAXQUESTPLANNER("help")
+          local help=table.concat(OUT,"\n")
+          assert(help:find("mode [strict|game|all]",1,true))
+          assert(help:find("shows the top 3 guides; click one to jump to your first undone step",1,true))
+        ''')
+        readme = (ADDON / 'README.md').read_text()
+        for expected in ('0.1.2-test', 'Relax Coach v1.4.5', 'Journey',
+                         '/rqp mode [strict|game|all]', '/rqp guide',
+                         'shows the top 3 guides; click one to jump to your first undone step'):
+            self.assertIn(expected, readme)
+
     def test_dungeon_picker_counts_async_scrolls_and_selects(self):
         lua = client('for i=1,14 do DUNGEONS[#DUNGEONS+1]={name="Tower "..i,areaIds={i+2}} end')
         lua.execute(r'''
@@ -677,7 +697,8 @@ class UIShellTests(unittest.TestCase):
         self.assertEqual(metadata["Interface"], "16001")
         self.assertEqual(metadata["Title"], "Relax Quest Planner")
         self.assertEqual(metadata["Author"], "TheGamersVibe")
-        self.assertEqual(metadata["Version"], "0.1.0-test")
+        self.assertEqual(metadata["Version"], "0.1.2-test")
+        self.assertEqual(client().eval('RelaxQuestPlanner.version'), metadata["Version"])
         self.assertEqual(metadata["SavedVariablesPerCharacter"], "RelaxQuestPlannerDB")
         self.assertEqual(metadata["OptionalDeps"].split(", "), [
             "QuestieDB", "Questie", "ForeverDungeonJournal", "DungeonGuideForever", "Journey"])

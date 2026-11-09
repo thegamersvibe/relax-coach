@@ -230,7 +230,9 @@ function UI.Refresh(force)
 end
 
 local function help()
-  RQP.Print("/rqp dungeon <name> | guide | goal <questID> | mode <strict|game|all> | map | skip | unskip | autopin | autojourney | hide | show | error")
+  RQP.Print("/rqp dungeon <name> | guide | goal <questID> | mode [strict|game|all] | map | skip | unskip | autopin | autojourney | hide | show | error")
+  RQP.Print("/rqp mode cycles the level filter when no argument is given.")
+  RQP.Print("/rqp guide shows the top 3 guides; click one to jump to your first undone step.")
 end
 
 SLASH_RELAXQUESTPLANNER1 = "/rqp"
@@ -244,7 +246,8 @@ SlashCmdList.RELAXQUESTPLANNER = RQP.Safe(function(message)
   elseif command == "map" then UI.SetWaypoint()
   elseif command == "goal" then UI.SelectGoal(arg)
   elseif command == "guide" then UI.PickGuide()
-  elseif command == "mode" then UI.SetMode(arg:lower())
+  elseif command == "mode" then
+    if arg == "" then UI.CycleMode() else UI.SetMode(arg:lower()) end
   elseif command == "skip" then UI.SkipCurrent()
   elseif command == "unskip" then
     RQP.GetDB().skipped = nil; RQP.Print("Skipped quests restored.")
