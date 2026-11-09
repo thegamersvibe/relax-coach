@@ -16,7 +16,10 @@ function UI.UpdateStatus()
   end
   if UI.busy then pieces[#pieces + 1] = "Planning..."
   elseif UI.notice then pieces[#pieces + 1] = UI.notice end
-  UI.status:SetText(table.concat(pieces, " | "))
+  local text = table.concat(pieces, " | ")
+  UI.status:SetText(text)
+  -- Only reserve room for the status line when there is something to say.
+  if UI.frame and UI.frame.SetHeight then UI.frame:SetHeight(text ~= "" and 300 or 272) end
   if UI.UpdateJourney then UI.UpdateJourney() end
 end
 
