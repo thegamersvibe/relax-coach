@@ -55,6 +55,33 @@ class JourneyIntegration(unittest.TestCase):
         self.assertEqual(env.GuideNavigationService.GetGuide().id, 'A_TEST')
         self.assertIsNone(lua.globals().RelaxQuestPlannerDB.lastError)
 
+    def test_late_route_callback_preserves_newer_manual_guide_choice(self):
+        for active_route in (False, True):
+            with self.subTest(active_route=active_route):
+                lua, env = planner_runtime()
+                if active_route:
+                    lua.execute("SlashCmdList.RELAXQUESTPLANNER('dungeon Alpha Keep'); DRAIN()")
+                lua.execute("HOLD=true; SlashCmdList.RELAXQUESTPLANNER('dungeon Beta Hall')")
+                self.assertTrue(lua.globals().RelaxJourneyAPI.Goto('A_TEST', 'one'))
+                lua.execute('PENDING[#PENDING].cb(PENDING[#PENDING].route)')
+                self.assertEqual(env.GuideNavigationService.GetGuide().id, 'A_TEST')
+                self.assertEqual(lua.globals().RelaxQuestPlanner.UI.route.title, 'Beta Hall')
+                self.assertIsNone(lua.globals().RelaxQuestPlannerDB.lastError)
+        # Choosing a route intentionally supersedes an unchanged prior guide.
+        lua, env = planner_runtime()
+        self.assertTrue(lua.globals().RelaxJourneyAPI.Goto('A_TEST', 'one'))
+        lua.execute("HOLD=true; SlashCmdList.RELAXQUESTPLANNER('dungeon Alpha Keep')")
+        lua.execute('PENDING[#PENDING].cb(PENDING[#PENDING].route)')
+        self.assertEqual(env.GuideNavigationService.GetGuide().id, 'RQP_ROUTE')
+
+    def test_combat_delayed_auto_handoff_rechecks_manual_choice(self):
+        lua, env = planner_runtime()
+        lua.execute("STATE.combat=true; SlashCmdList.RELAXQUESTPLANNER('dungeon Alpha Keep'); DRAIN()")
+        self.assertIsNone(env.GuideNavigationService.GetGuide())
+        self.assertTrue(lua.globals().RelaxJourneyAPI.Goto('A_TEST', 'one'))
+        lua.execute("STATE.combat=false; FIRE('PLAYER_REGEN_ENABLED'); DRAIN()")
+        self.assertEqual(env.GuideNavigationService.GetGuide().id, 'A_TEST')
+
     def test_signed_admission_bytes_preserved(self):
         # Fingerprints of this repository's pre-patch source, not content data.
         hashes = {

@@ -2,6 +2,13 @@ local RQP = RelaxQuestPlanner
 local UI = RQP.UI
 local routeGeneration = 0
 
+local function journeyChoice()
+  local api = _G.RelaxJourneyAPI
+  if not (api and api.GetActiveGuide) then return nil end
+  local ok, loaded, last = pcall(api.GetActiveGuide)
+  if ok then return {loaded=loaded, last=last} end
+end
+
 function UI.UpdateStatus()
   if not UI.status then return end
   local pieces = {}
@@ -87,6 +94,18 @@ function UI.SyncJourney(route)
 end
 
 function UI.HandoffJourney(route)
+  local pending = UI.autoJourneyPending
+  if pending then
+    local current = journeyChoice()
+    local unchanged = current and current.loaded == pending.loaded and current.last == pending.last
+    local oursOrEmpty = current and (current.last == "RQP_ROUTE" or (not current.loaded and not current.last))
+    if not unchanged and not oursOrEmpty then
+      -- A newer manual navigation wins, including while waiting for combat to end.
+      UI.autoJourneyPending, UI.journeySyncPending = nil, nil
+      UI.journeyRestoreChecked = true
+      return
+    end
+  end
   if UI.autoJourneyPending and RQP.GetDB().autoJourney ~= false and #(route.steps or {}) > 0
     and RQP.Journey and RQP.Journey.LoadRoute and _G.RelaxJourneyAPI then
     if InCombatLockdown and InCombatLockdown() then UI.journeySyncPending = true; return end
@@ -129,7 +148,7 @@ function UI.SelectDungeon(name)
   for _, dungeon in ipairs(RQP.Data.Dungeons() or {}) do
     if dungeon.name:lower() == wanted then
       RQP.GetDB().selection = {kind="dungeon", name=dungeon.name}
-      UI.route, UI.current, UI.autoJourneyPending = nil, nil, true
+      UI.route, UI.current, UI.autoJourneyPending = nil, nil, journeyChoice()
       if UI.picker then UI.picker:Hide() end
       if UI.guidePicker then UI.guidePicker:Hide() end
       UI.Plan(true)
@@ -151,7 +170,7 @@ function UI.SelectGoal(text)
   local id = UI.ParseQuestID(text)
   if not id then RQP.Print("Use /rqp goal <questID>, or focus the quest box and shift-click a quest link."); return false end
   RQP.GetDB().selection = {kind="goal", q=id}
-  UI.route, UI.current, UI.autoJourneyPending = nil, nil, true
+  UI.route, UI.current, UI.autoJourneyPending = nil, nil, journeyChoice()
   UI.goalBox:SetText(tostring(id))
   if UI.picker then UI.picker:Hide() end
   if UI.guidePicker then UI.guidePicker:Hide() end
