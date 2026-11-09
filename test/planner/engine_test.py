@@ -1,4 +1,5 @@
 """Lua 5.1 real-data acceptance suite (private fixtures are never vendored)."""
+import pathlib as _p, sys as _s; _s.path.insert(0, str(_p.Path(__file__).resolve().parent))
 import unittest
 from engine_harness import AVAILABLE, Harness, MiniHarness, PRIVATE, array, to_lua
 

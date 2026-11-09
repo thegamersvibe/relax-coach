@@ -1,4 +1,5 @@
 """Run: uv run -q --with lupa python -m unittest discover -s test/planner -p 'journey_*.py' -v"""
+import pathlib as _p, sys as _s; _s.path.insert(0, str(_p.Path(__file__).resolve().parent))
 import hashlib
 import unittest
 from journey_harness import runtime, load_rqp, table, JOURNEY

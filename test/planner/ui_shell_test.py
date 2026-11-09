@@ -110,6 +110,8 @@ function methods:SetFontObject(f) self.fontObject=f end
 function methods:SetTextInsets() end
 function methods:HookScript(name,fn) local old=self.scripts[name]; self.scripts[name]=function(...) if old then old(...) end; return fn(...) end end
 function methods:GetWidth() return self.width or 0 end
+function methods:GetRight() return nil end
+function methods:SetAlpha(a) self.alpha=a end
 CreateFrame=newFrame
 UIParent=newFrame("Frame","UIParent")
 GameTooltip=newFrame("GameTooltip","GameTooltip")
@@ -272,7 +274,7 @@ class UIShellTests(unittest.TestCase):
           assert(U.title:GetText():find("Goal 4321"))
           SlashCmdList.RELAXQUESTPLANNER("mode strict"); DRAIN()
           assert(RelaxQuestPlannerDB.mode=="strict" and BUILD_CALLS[#BUILD_CALLS].mode=="strict")
-          assert(U.modeButton:GetText():find("Strict %-5"))
+          assert(U.modeButton:GetText():find("Strict %-5") and U.modeButton:GetText():find("Levels"))
           U.modeButton:Click(); DRAIN()
           assert(RelaxQuestPlannerDB.mode=="all" and BUILD_CALLS[#BUILD_CALLS].mode=="all")
           U.modeButton:Click(); DRAIN(); assert(RelaxQuestPlannerDB.mode=="game")
@@ -354,7 +356,7 @@ class UIShellTests(unittest.TestCase):
           local U=RelaxQuestPlanner.UI
           local point,relative,relativePoint,x,y=U.frame:GetPoint()
           assert(point=="TOPLEFT" and x==83.5 and y==-94.5, "restore saved anchor")
-          assert(not U.frame:IsShown() and U.modeButton:GetText()=="Show all")
+          assert(not U.frame:IsShown() and U.modeButton:GetText()=="Levels: Show all")
           SlashCmdList.RELAXQUESTPLANNER("show")
           U.frame.scripts.OnDragStart(U.frame); assert(U.frame.moving)
           U.frame:SetPoint("BOTTOM",UIParent,"BOTTOM",112.5,93.5)
@@ -368,7 +370,7 @@ class UIShellTests(unittest.TestCase):
           assert(not U.frame:IsShown() and not U.picker:IsShown())
           SlashCmdList.RELAXQUESTPLANNER("show"); U.goalBox:SetFocus()
           U.goalBox.scripts.OnEscapePressed(U.goalBox)
-          assert(not U.frame:IsShown() and not U.goalBox:HasFocus())
+          assert(U.frame:IsShown() and not U.goalBox:HasFocus(), "Esc in the quest box only leaves the box")
           assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
         ''')
 
@@ -463,6 +465,25 @@ class UIShellTests(unittest.TestCase):
           assert(text:find("No usable quest data addons"))
         ''')
 
+    def test_ux_pass_skip_blocking_levels_and_autopin(self):
+        lua = client()
+        lua.execute(r'''
+          SlashCmdList.RELAXQUESTPLANNER("dungeon alpha keep"); DRAIN()
+          local U=RelaxQuestPlanner.UI
+          assert(U.title:GetText():find("quests? left"), "title counts quests, not steps")
+          local first=U.current.q
+          assert(WP and WP.map, "map pin follows the route automatically")
+          U.skipButton:Click(); DRAIN()
+          assert(RelaxQuestPlannerDB.skipped[first] and (not U.current or U.current.q~=first), "skip moves past the step")
+          SlashCmdList.RELAXQUESTPLANNER("unskip"); assert(RelaxQuestPlannerDB.skipped==nil)
+          SlashCmdList.RELAXQUESTPLANNER("autopin"); assert(RelaxQuestPlannerDB.autoPin==false)
+          local r=U.BlockingReason({kind="accept",q=5,needs={77}},{done={},log={},level=30})
+          assert(r and r:find("Needs:") and r:find("turn in"), r)
+          r=U.BlockingReason({kind="accept",q=5,needs={77},activeNeeds={[77]=true}},{done={},log={},level=30})
+          assert(r:find("pick up"), r)
+          assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
+        ''')
+
     def test_failed_async_count_is_unknown_not_zero(self):
         lua = client()
         lua.execute(r'''
@@ -470,7 +491,7 @@ class UIShellTests(unittest.TestCase):
           SlashCmdList.RELAXQUESTPLANNER("dungeon"); DRAIN()
           local U=RelaxQuestPlanner.UI
           assert(U.dungeonCounts["Alpha Keep"]==nil, "a failed count is not zero quests")
-          assert(U.dungeonRows[1]:GetText():find("unavailable"))
+          assert(U.dungeonRows[1]:GetText():find("no data"))
           assert(U.dungeonCounts["Beta Hall"]==3, "continue after one failed dungeon")
         ''')
 

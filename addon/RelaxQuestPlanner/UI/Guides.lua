@@ -29,7 +29,7 @@ local function buildGuides()
   if UI.guidePicker then return end
   local f = UI.Frame("RelaxQuestPlannerGuidePicker", 470, 328)
   UI.guidePicker = f
-  UI.Movable(f, "guidePosition")
+  UI.Movable(f, "guidePositionUnused")
   f:SetFrameStrata("DIALOG")
   UI.Header(f, "Pick my guide", 380)
   UI.CloseButton(f, function() f:Hide() end)
@@ -55,6 +55,7 @@ function UI.PickGuide()
   UI.Show()
   if UI.picker then UI.picker:Hide() end
   buildGuides()
+  UI.Dock(UI.guidePicker)
   UI.guidePicker:Show()
   scanGeneration = scanGeneration + 1
   local generation = scanGeneration
@@ -87,6 +88,6 @@ function UI.PickGuide()
   end))
   if not ok then
     RQP.GetDB().lastError = tostring(started)
-    UI.guideStatus:SetText("Guide scan failed; details in RelaxQuestPlannerDB.lastError")
+    UI.guideStatus:SetText("Guide scan failed - type /rqp error")
   elseif started == false then UI.guideStatus:SetText(err or "Guide scan unavailable.") end
 end

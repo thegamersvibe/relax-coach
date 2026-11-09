@@ -1,4 +1,5 @@
 """Synthetic picker acceptance tests, exercising patched real Journey code."""
+import pathlib as _p, sys as _s; _s.path.insert(0, str(_p.Path(__file__).resolve().parent))
 import unittest
 from journey_harness import runtime, load_rqp, table, drain
 

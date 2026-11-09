@@ -25,8 +25,12 @@ function Journey.ToGuide(route)
         return nil, "A route with steps is required"
     end
     local guide = {}
+    local db = _G.RelaxQuestPlannerDB
+    local skip = type(db) == "table" and type(db.skipped) == "table" and db.skipped or {}
     for index, action in ipairs(route.steps) do
         local q = id(action.q)
+        if q and skip[q] then q = nil; action = nil end
+        if action then
         local kind = action.kind
         if not q or (kind ~= "accept" and kind ~= "complete" and kind ~= "turnin") then
             return nil, "Invalid route quest action at step " .. tostring(index)
@@ -63,6 +67,7 @@ function Journey.ToGuide(route)
                 label = text(action.who or action.name) } }
         end
         guide[#guide + 1] = step
+        end
     end
     -- Journey requires a passing last step even when every quest is turned in
     -- or all remaining actions are gated; do not fake a quest completion.

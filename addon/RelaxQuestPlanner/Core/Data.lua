@@ -206,34 +206,34 @@ local battleground={['Warsong Gulch']=true,['Arathi Basin']=true,['Alterac Valle
 -- Forever 1-60 five-player dungeons only (no raids, battlegrounds or later-expansion instances).
 -- name = shown in the picker; aliases = names used by QuestieDB / FDJ / Dungeon Questie; faction = entry restriction.
 local FOREVER_DUNGEONS={
-    {name="Ragefire Chasm",faction="Horde"},
-    {name="Wailing Caverns"},
-    {name="The Deadmines",aliases={"Deadmines"}},
-    {name="Shadowfang Keep"},
-    {name="The Hall of Thanes",aliases={"Hall of Thanes"}},
-    {name="Blackfathom Deeps"},
-    {name="The Stockade",faction="Alliance",aliases={"Stormwind Stockade"}},
-    {name="Ruins of Lordaeron"},
-    {name="Gnomeregan"},
-    {name="Razorfen Kraul"},
-    {name="Excavation Site: Wetlands"},
-    {name="City of Dalaran"},
-    {name="Scarlet Monastery",aliases={"Scarlet Monastery: Graveyard","Scarlet Monastery: Library","Scarlet Monastery: Armory","Scarlet Monastery: Cathedral"}},
-    {name="The Drowned City",aliases={"Drowned City"}},
-    {name="Razorfen Downs"},
-    {name="Uldaman"},
-    {name="Krol'dok Stronghold",aliases={"Krol'Dok","Krol'dok"}},
-    {name="Zul'Farrak"},
-    {name="Maraudon"},
-    {name="Sunken Temple",aliases={"The Temple of Atal'Hakkar","Temple of Atal'Hakkar"}},
-    {name="Alcaz Prison"},
-    {name="Blackrock Depths"},
-    {name="Blackrock Spire",aliases={"Lower Blackrock Spire","Upper Blackrock Spire"}},
-    {name="Blackmaw Hold"},
-    {name="Dire Maul",aliases={"Dire Maul: East","Dire Maul: West","Dire Maul: North"}},
-    {name="Scholomance"},
-    {name="Stratholme",aliases={"Stratholme: Living","Stratholme: Undead"}},
-    {name="The Shaper's Terrace",aliases={"Shaper's Terrace"}},
+    {name="Ragefire Chasm",minLevel=13,maxLevel=18,faction="Horde"},
+    {name="Wailing Caverns",minLevel=15,maxLevel=24},
+    {name="The Deadmines",minLevel=17,maxLevel=26,aliases={"Deadmines"}},
+    {name="Shadowfang Keep",minLevel=22,maxLevel=30},
+    {name="The Hall of Thanes",minLevel=13,maxLevel=20,aliases={"Hall of Thanes"}},
+    {name="Blackfathom Deeps",minLevel=24,maxLevel=32},
+    {name="The Stockade",minLevel=24,maxLevel=32,faction="Alliance",aliases={"Stormwind Stockade"}},
+    {name="Ruins of Lordaeron",minLevel=15,maxLevel=22},
+    {name="Gnomeregan",minLevel=29,maxLevel=38},
+    {name="Razorfen Kraul",minLevel=29,maxLevel=38},
+    {name="Excavation Site: Wetlands",minLevel=26,maxLevel=33},
+    {name="City of Dalaran",minLevel=28,maxLevel=33},
+    {name="Scarlet Monastery",minLevel=30,maxLevel=45,aliases={"Scarlet Monastery: Graveyard","Scarlet Monastery: Library","Scarlet Monastery: Armory","Scarlet Monastery: Cathedral"}},
+    {name="The Drowned City",minLevel=35,maxLevel=40,aliases={"Drowned City"}},
+    {name="Razorfen Downs",minLevel=37,maxLevel=46},
+    {name="Uldaman",minLevel=38,maxLevel=48},
+    {name="Krol'dok Stronghold",minLevel=40,maxLevel=45,aliases={"Krol'Dok","Krol'dok"}},
+    {name="Zul'Farrak",minLevel=43,maxLevel=50},
+    {name="Maraudon",minLevel=45,maxLevel=52},
+    {name="Sunken Temple",minLevel=49,maxLevel=56,aliases={"The Temple of Atal'Hakkar","Temple of Atal'Hakkar"}},
+    {name="Alcaz Prison",minLevel=48,maxLevel=53},
+    {name="Blackrock Depths",minLevel=52,maxLevel=60},
+    {name="Blackrock Spire",minLevel=55,maxLevel=60,aliases={"Lower Blackrock Spire","Upper Blackrock Spire"}},
+    {name="Blackmaw Hold",minLevel=55,maxLevel=60},
+    {name="Dire Maul",minLevel=55,maxLevel=60,aliases={"Dire Maul: East","Dire Maul: West","Dire Maul: North"}},
+    {name="Scholomance",minLevel=58,maxLevel=60},
+    {name="Stratholme",minLevel=58,maxLevel=60,aliases={"Stratholme: Living","Stratholme: Undead"}},
+    {name="The Shaper's Terrace",minLevel=58,maxLevel=60,aliases={"Shaper's Terrace"}},
 }
 local canonicalOf={}
 for _,d in ipairs(FOREVER_DUNGEONS) do
@@ -277,7 +277,7 @@ local function zones()
     local list={}
     for _,d in ipairs(FOREVER_DUNGEONS) do
         if not d.faction or not myFaction or d.faction==myFaction then
-            local entry={name=d.name,areaIds={},faction=d.faction}
+            local entry={name=d.name,areaIds={},faction=d.faction,minLevel=d.minLevel,maxLevel=d.maxLevel}
             for srcName,src in pairs(byName) do
                 if canonicalOf[srcName]==d then for _,a in ipairs(src.areaIds) do entry.areaIds[#entry.areaIds+1]=a end end
             end

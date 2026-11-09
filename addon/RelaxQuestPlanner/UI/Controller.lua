@@ -23,7 +23,7 @@ end
 local function planFailed(err)
   UI.busy, UI.routeJob = false, nil
   RQP.GetDB().lastError = RQP.IsSecret(err) and "Restricted error" or tostring(err)
-  UI.notice = "Planning failed; details in RelaxQuestPlannerDB.lastError"
+  UI.notice = "Planning failed - type /rqp error"
   if not UI.route then UI.line1:SetText("Unable to build a route.") end
   UI.UpdateStatus()
 end
@@ -57,6 +57,13 @@ function UI.Plan(show, force)
     if not rendered then planFailed(err); return end
     UI.notice = UI.RouteIssues(route)
     UI.UpdateStatus()
+    -- Journey is the step tracker: hand a freshly chosen route over once.
+    if UI.autoJourneyPending and RQP.GetDB().autoJourney ~= false and #(route.steps or {}) > 0
+      and RQP.Journey and RQP.Journey.LoadRoute and _G.RelaxJourneyAPI
+      and not (InCombatLockdown and InCombatLockdown()) then
+      UI.autoJourneyPending = nil
+      pcall(RQP.Journey.LoadRoute, route)
+    end
     if UI.replanPending then
       UI.replanPending = nil
       RQP.After(0, function() if generation == routeGeneration then UI.Plan(false) end end)
@@ -74,7 +81,7 @@ function UI.SelectDungeon(name)
   for _, dungeon in ipairs(RQP.Data.Dungeons() or {}) do
     if dungeon.name:lower() == wanted then
       RQP.GetDB().selection = {kind="dungeon", name=dungeon.name}
-      UI.route, UI.current = nil, nil
+      UI.route, UI.current, UI.autoJourneyPending = nil, nil, true
       if UI.picker then UI.picker:Hide() end
       if UI.guidePicker then UI.guidePicker:Hide() end
       UI.Plan(true)
@@ -96,7 +103,7 @@ function UI.SelectGoal(text)
   local id = UI.ParseQuestID(text)
   if not id then RQP.Print("Use /rqp goal <questID>, or focus the quest box and shift-click a quest link."); return false end
   RQP.GetDB().selection = {kind="goal", q=id}
-  UI.route, UI.current = nil, nil
+  UI.route, UI.current, UI.autoJourneyPending = nil, nil, true
   UI.goalBox:SetText(tostring(id))
   if UI.picker then UI.picker:Hide() end
   if UI.guidePicker then UI.guidePicker:Hide() end
@@ -104,7 +111,7 @@ function UI.SelectGoal(text)
   return true
 end
 
-local MODE_LABELS = {strict="Strict -5", game="Game", all="Show all"}
+local MODE_LABELS = {strict="Levels: Strict -5", game="Levels: Game", all="Levels: Show all"}
 function UI.SetMode(mode)
   if not MODE_LABELS[mode] then RQP.Print("Mode must be strict, game, or all."); return end
   RQP.GetDB().mode = mode
@@ -142,7 +149,7 @@ function UI.Refresh(force)
 end
 
 local function help()
-  RQP.Print("/rqp dungeon <name> | guide | goal <questID> | mode <strict|game|all> | map | hide | show | error | help")
+  RQP.Print("/rqp dungeon <name> | guide | goal <questID> | mode <strict|game|all> | map | skip | unskip | autopin | autojourney | hide | show | error")
 end
 
 SLASH_RELAXQUESTPLANNER1 = "/rqp"
@@ -157,6 +164,15 @@ SlashCmdList.RELAXQUESTPLANNER = RQP.Safe(function(message)
   elseif command == "goal" then UI.SelectGoal(arg)
   elseif command == "guide" then UI.PickGuide()
   elseif command == "mode" then UI.SetMode(arg:lower())
+  elseif command == "skip" then UI.SkipCurrent()
+  elseif command == "unskip" then
+    RQP.GetDB().skipped = nil; RQP.Print("Skipped quests restored."); if UI.route then UI.RenderRoute(RQP.Player.Snapshot()) end
+  elseif command == "autopin" then
+    local db = RQP.GetDB(); db.autoPin = db.autoPin == false
+    RQP.Print("Automatic map pin " .. (db.autoPin and "on" or "off") .. ".")
+  elseif command == "autojourney" then
+    local db = RQP.GetDB(); db.autoJourney = db.autoJourney == false
+    RQP.Print("Open new routes in Journey " .. (db.autoJourney and "on" or "off") .. ".")
   elseif command == "error" then
     local db = RQP.GetDB()
     RQP.Print(db.lastError and ("Last error: " .. tostring(db.lastError)) or "No errors recorded.")

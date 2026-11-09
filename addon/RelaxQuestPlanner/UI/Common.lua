@@ -155,6 +155,20 @@ function UI.Tooltip(frame, text)
   end))
 end
 
+-- Side windows dock to the main window instead of stacking on top of it.
+function UI.Dock(child)
+  if not (child and UI.frame) then return end
+  child:ClearAllPoints()
+  local right = UI.frame.GetRight and UI.frame:GetRight()
+  local screen = UIParent and UIParent.GetWidth and UIParent:GetWidth()
+  local w = child.GetWidth and child:GetWidth() or 0
+  if right and screen and right + w + 6 > screen then
+    child:SetPoint("TOPRIGHT", UI.frame, "TOPLEFT", -6, 0)
+  else
+    child:SetPoint("TOPLEFT", UI.frame, "TOPRIGHT", 6, 0)
+  end
+end
+
 function UI.Show()
   if not UI.frame then UI.BuildWindow() end
   RQP.GetDB().hidden = nil

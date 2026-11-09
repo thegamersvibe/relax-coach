@@ -20,8 +20,13 @@ end
 local function ready(q, P)
   return questFlag("ReadyForTurnIn", q, P.ready and P.ready[q]) or questFlag("IsComplete", q)
 end
+local function skipped(s)
+  local sk = RQP.GetDB().skipped
+  return type(sk) == "table" and s.q and sk[s.q] == true
+end
+UI.IsSkipped = skipped
 local function stepDone(s, P)
-  if done(s.q, P) then return true end
+  if done(s.q, P) or skipped(s) then return true end
   if s.kind == "accept" then return inlog(s.q, P) end
   if s.kind == "complete" then return inlog(s.q, P) and ready(s.q, P) end
   return false
@@ -41,6 +46,40 @@ local function actionable(s, P)
   if s.kind == "complete" then return inlog(s.q, P) end
   if s.kind == "turnin" then return inlog(s.q, P) and ready(s.q, P) end
   return false
+end
+
+-- First missing prerequisite of an accept step, for a readable "Needs:" line.
+function UI.BlockingReason(s, P)
+  if s.kind == "accept" then
+    for _, q in ipairs(s.needs or {}) do
+      local active = s.activeNeeds and s.activeNeeds[q]
+      if not (done(q, P) or (active and inlog(q, P))) then
+        local rec = RQP.Data and RQP.Data.Quest and RQP.Data.Quest(q)
+        return "Needs: " .. ((rec and rec.name) or ("quest " .. tostring(q))) .. (active and " (pick up)" or " (turn in)")
+      end
+    end
+    local lvl = RQP.Number(s.level) or RQP.Number(s.reqLevel)
+    if lvl and P.level and P.level < lvl then return "Needs level " .. tostring(math.floor(lvl)) end
+    return "Not offered yet"
+  elseif s.kind == "complete" then return "Pick up the quest first"
+  elseif s.kind == "turnin" then return "Finish the objectives first" end
+end
+
+function UI.QuestsLeft(route, P)
+  local seen, n = {}, 0
+  for _, s in ipairs(route.steps or {}) do
+    if s.q and not seen[s.q] and not stepDone(s, P) then seen[s.q] = true; n = n + 1 end
+  end
+  return n
+end
+
+function UI.SkipCurrent()
+  local s = UI.current
+  if not (s and s.q) then RQP.Print("No step to skip."); return end
+  local db = RQP.GetDB(); db.skipped = type(db.skipped) == "table" and db.skipped or {}
+  db.skipped[s.q] = true
+  RQP.Print("Skipped " .. (s.name or tostring(s.q)) .. " for this character. /rqp unskip to restore all.")
+  UI.RenderRoute(RQP.Player.Snapshot())
 end
 
 function UI.PickStep(route, P)
@@ -87,12 +126,14 @@ function UI.RenderRoute(P)
   if not route then return end
   local index, left, canDo = UI.PickStep(route, P or RQP.Player.Snapshot())
   UI.current = index and route.steps[index]
-  UI.title:SetText((route.title or "Quest route") .. "  (" .. tostring(left) .. " steps left)")
+  local qleft = UI.QuestsLeft(route, P or RQP.Player.Snapshot())
+  UI.title:SetText((route.title or "Quest route") .. "  (" .. tostring(qleft) .. (qleft == 1 and " quest left)" or " quests left)"))
   if not UI.current then
     UI.line1:SetText(#(route.steps or {}) == 0 and "No available route steps." or "|cff33ff99All done.|r")
     UI.line2:SetText("")
     UI.tags:SetText("")
-    UI.note:SetText(#(route.later or {}) > 0 and "Other quests are listed for later; change the level mode to reconsider them." or "")
+    UI.note:SetText(#(route.later or {}) > 0 and "More quests unlock at higher level, or switch Levels to Show all." or "")
+    UI.lastPinned = nil
     return
   end
   local s = UI.current
@@ -111,23 +152,29 @@ function UI.RenderRoute(P)
     local reason = note ~= "" and note or "optional quest / reward"
     note = "|cffffa500Your choice|r - below " .. (floor and ("level " .. tostring(math.floor(floor))) or "the level floor") .. "; " .. reason
   end
-  if not canDo then note = "Waiting for prerequisites / quest progress. " .. note end
+  if not canDo then note = "|cffff7070" .. (UI.BlockingReason(s, P or RQP.Player.Snapshot()) or "Waiting") .. "|r  " .. note end
   UI.note:SetText(note)
+  -- Move the map pin along with the route unless the player turned it off.
+  if RQP.GetDB().autoPin ~= false and canDo and UI.lastPinned ~= s then
+    UI.lastPinned = s
+    UI.SetWaypoint(true)
+  end
 end
 
-function UI.SetWaypoint()
+function UI.SetWaypoint(quiet)
+  quiet = quiet == true
   local s = UI.current
   local map, x, y = s and RQP.Number(s.map), s and RQP.Number(s.x), s and RQP.Number(s.y)
   if not (map and x and y) or x < 0 or x > 100 or y < 0 or y > 100 then
-    RQP.Print("No map pin for this step.")
+    if not quiet then RQP.Print("No map pin for this step.") end
     return
   end
   if not (C_Map and C_Map.SetUserWaypoint and UiMapPoint and UiMapPoint.CreateFromCoordinates) then
-    RQP.Print("Map waypoints are unavailable on this client.")
+    if not quiet then RQP.Print("Map waypoints are unavailable on this client.") end
     return
   end
   local point = UiMapPoint.CreateFromCoordinates(map, x / 100, y / 100)
   C_Map.SetUserWaypoint(point)
   if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
-  RQP.Print(("%s %.1f, %.1f (map pin set)"):format(s.zone or "", x, y))
+  if not quiet then RQP.Print(("%s %.1f, %.1f (map pin set)"):format(s.zone or "", x, y)) end
 end

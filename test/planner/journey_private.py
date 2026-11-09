@@ -2,6 +2,7 @@
 RQP_PRIVATE_DATA points at quest-db-sources; RQP_PICKER_REFERENCE points at the
 private research prototype.py. No decoded data, keys or account tags are saved.
 """
+import pathlib as _p, sys as _s; _s.path.insert(0, str(_p.Path(__file__).resolve().parent))
 import importlib.util
 import json
 import os
