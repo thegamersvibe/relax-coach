@@ -35,6 +35,11 @@ jobs:
         run: python -I -B test/reactions_test.py
       - name: Required CI gate regression tests
         run: python -I -B .github/tests/test_check_results.py
+      - name: Relax Quest Planner tests (private-data suites skip on CI)
+        run: |
+          for t in ui_shell_test bridge_skip_test journey_integration journey_picker engine_test journey_private; do
+            python -I -B test/planner/$t.py
+          done
 
   desktop-go:
     name: Desktop Go and UI

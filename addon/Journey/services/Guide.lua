@@ -31,19 +31,37 @@ function GuideService.Init()
     guideCache = { }
 end
 
-function GuideService.GetGuide(guideID)
+-- Relax local guides: invalidate only our separate, unsigned namespace.
+function GuideService.InvalidateRelaxLocalGuide(guideID)
+    if (guideCache and type(guideID) == "string" and guideID:match("^RQP_")) then
+        guideCache[guideID] = nil
+    end
+end
+
+function GuideService.GetGuide(guideID, relaxCheckpoint)
+    -- Relax local guides: catalog admission below is unchanged for catalog IDs.
+    local localGuide = Brand.GetRelaxLocalGuide and Brand.GetRelaxLocalGuide(guideID)
+    if (not localGuide) then
     if (GuideModules.IsExpired()) then return nil end
     if (CatalogService.CheckCompatibility()) then return nil end
+    end -- Relax local guides
     local guide = guideCache[guideID]
     if (not guide) then
         GuideModules.Reload()
+        -- Relax local guides: feed the same normalization, never the signed loader.
+        local guideInfo
+        if (localGuide) then
+            guideInfo = localGuide.info
+            guide = localGuide.buildFn()
+            if (type(guide) ~= "table" or #guide == 0) then return nil end
+        else
         if (not guideInfoLookup) then
             guideInfoLookup = { }
             for _, guideInfo in ipairs(CatalogService.GetGuideInfos()) do
                 guideInfoLookup[guideInfo.guideID] = guideInfo
             end
         end
-        local guideInfo = guideInfoLookup[guideID]
+        guideInfo = guideInfoLookup[guideID]
         if (not guideInfo) then
             guideID = "B" .. string.sub(guideID,2)
             guideInfo = guideInfoLookup[guideID]
@@ -81,11 +99,13 @@ function GuideService.GetGuide(guideID)
             end
             return nil
         end
+        end -- Relax local guides: shared normalization starts here.
         guide.info = guideInfo
         assert(guide.info, ("GuideInfo is not present: %s"):format(guideID))
         guide.id = guideID
         guide.quests = guide.quests or { }
         for _, step in ipairs(guide) do
+            if (relaxCheckpoint) then relaxCheckpoint() end -- Relax local guides: async scan.
             if (step.quests) then
                 for questID, questInfo in pairs(step.quests) do
                     guide.quests[questID] = questInfo
@@ -158,6 +178,7 @@ function GuideService.GetGuide(guideID)
         end
         local repeatingGroups = { }
         for _, step in ipairs(guide) do
+            if (relaxCheckpoint) then relaxCheckpoint() end -- Relax local guides: async scan.
             for i = #step, 1, -1 do
                 local taskGroup = step[i]
                 if (type(taskGroup) == "table" and taskGroup.repeatuntil) then
@@ -188,6 +209,7 @@ function GuideService.GetGuide(guideID)
             end
         end
         for _, step in ipairs(guide) do
+            if (relaxCheckpoint) then relaxCheckpoint() end -- Relax local guides: async scan.
             for _, taskGroup in ipairs(step) do
                 for taskIdx = #taskGroup, 1, -1 do
                     local task = taskGroup[taskIdx]
@@ -250,10 +272,13 @@ function GuideService.GetGuide(guideID)
                 end
             end
         end
-        LocationsInitService.InitGuide(guide)
-        ButtonGenerationService.GenerateButtons(guide)
+        LocationsInitService.InitGuide(guide, relaxCheckpoint)
+        if (relaxCheckpoint) then relaxCheckpoint() end -- Relax local guides: async scan.
+        ButtonGenerationService.GenerateButtons(guide, relaxCheckpoint)
+        if (relaxCheckpoint) then relaxCheckpoint() end -- Relax local guides: async scan.
         guide.stepLUT = { }
         for stepIdx, step in ipairs(guide) do
+            if (relaxCheckpoint) then relaxCheckpoint() end -- Relax local guides: async scan.
             step.idx = stepIdx
             guide.stepLUT[step.id] = step
             for taskGroupIdx, taskGroup in ipairs(step) do

@@ -56,8 +56,9 @@ local function remap(map)
     return MoPMapAliases[map] or map
 end
 
-function LocationsInitService.InitGuide(guide)
+function LocationsInitService.InitGuide(guide, relaxCheckpoint)
     for _, step in ipairs(guide) do
+        if (relaxCheckpoint) then relaxCheckpoint() end -- Relax local guides: async scan.
         step.locations = step.locations or { }
         for taskGroupIdx, taskGroup in ipairs(step) do
             taskGroup.idx = taskGroupIdx

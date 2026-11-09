@@ -17,9 +17,10 @@ local function addAll(tbl, src)
     end
 end
 
-function ButtonGenerationService.GenerateButtons(guide)
+function ButtonGenerationService.GenerateButtons(guide, relaxCheckpoint)
     local questInfos = guide.quests
     for _, step in ipairs(guide) do
+        if (relaxCheckpoint) then relaxCheckpoint() end -- Relax local guides: async scan.
         for _, taskGroup in ipairs(step) do
             local npcsFound
             for _, task in ipairs(taskGroup) do

@@ -22,6 +22,7 @@
 	<Script file="ui/HeaderTitle.lua" />
 	<Script file="ui/HeaderStep.lua" />
 	<Script file="ui/HeaderSettingsButton.lua" />
+	<Script file="ui/HeaderPlannerButton.lua" /> <!-- Relax local guides -->
 	<Script file="ui/HeaderNextButton.lua" />
 	<Script file="ui/HeaderBackButton.lua" />
 	<Script file="ui/MinimapButton.lua" />
