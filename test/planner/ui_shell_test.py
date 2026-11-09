@@ -302,7 +302,7 @@ class UIShellTests(unittest.TestCase):
           assert(#BUILD_CALLS<=1, "never build all dungeon counts synchronously")
           DRAIN(80)
           assert(U.dungeonCounts["Alpha Keep"]==3, "count unique quests, not route steps")
-          assert(U.dungeonRows[1]:GetText():find("3 quests"))
+          assert(U.dungeonRows[1]:GetText():find("3 new"))
           U.dungeonScroll.scripts.OnMouseWheel(U.dungeonScroll,-3)
           assert(U.dungeonScroll:GetVerticalScroll()>0)
           U.dungeonRows[2]:Click(); DRAIN()
@@ -481,6 +481,29 @@ class UIShellTests(unittest.TestCase):
           assert(r and r:find("Needs:") and r:find("turn in"), r)
           r=U.BlockingReason({kind="accept",q=5,needs={77},activeNeeds={[77]=true}},{done={},log={},level=30})
           assert(r:find("pick up"), r)
+          assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
+        ''')
+
+    def test_picker_splits_new_and_in_log_and_restores_journey(self):
+        lua = client()
+        lua.execute(r'''
+          STATE.log[12]=true
+          SlashCmdList.RELAXQUESTPLANNER("dungeon"); DRAIN(80)
+          local U=RelaxQuestPlanner.UI
+          local txt=U.dungeonRows[1]:GetText()
+          assert(txt:find("2 new") and txt:find("1 in log"), txt)
+          local rt={title="Alpha Keep",steps={{kind="accept",q=11,name="X"}}}
+          assert(U.dungeonSplit["Alpha Keep"].log==1)
+          -- restore: Journey empty -> load; player guide loaded -> leave it
+          local loads=0
+          RelaxQuestPlanner.Journey=RelaxQuestPlanner.Journey or {}
+          RelaxQuestPlanner.Journey.LoadRoute=function() loads=loads+1; return true end
+          RelaxJourneyAPI={GetActiveGuide=function() return false, nil end}
+          assert(U.RestoreJourney(rt) and loads==1)
+          RelaxJourneyAPI={GetActiveGuide=function() return true, "A30A_FVR" end}
+          assert(not U.RestoreJourney(rt) and loads==1, "never replace the player's guide")
+          RelaxJourneyAPI={GetActiveGuide=function() return true, "RQP_ROUTE" end}
+          assert(U.RestoreJourney(rt) and loads==2)
           assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
         ''')
 

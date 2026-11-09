@@ -140,13 +140,13 @@ function UI.CloseButton(frame, fn)
   return b
 end
 
-function UI.Tooltip(frame, text)
+function UI.Tooltip(frame, text, anchor)
   -- Disabled buttons still need to explain unavailable optional dependencies.
   if frame.EnableMouseMotion then frame:EnableMouseMotion(true) end
   frame:SetScript("OnEnter", RQP.Safe(function(self)
     if self.label then self.hovered = true; paint(self) end
     if not GameTooltip then return end
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetOwner(self, anchor or "ANCHOR_RIGHT")
     GameTooltip:SetText(type(text) == "function" and text() or text)
     GameTooltip:Show()
   end))

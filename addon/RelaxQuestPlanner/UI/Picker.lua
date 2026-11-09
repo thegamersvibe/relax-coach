@@ -31,7 +31,7 @@ local function buildPicker()
   scroll:SetScript("OnMouseWheel", RQP.Safe(function(self, delta)
     self:SetVerticalScroll(math.max(0, math.min(self:GetVerticalScrollRange(), self:GetVerticalScroll() - delta * 28)))
   end))
-  local foot = UI.Text(f, "GameFontHighlightSmall", 12, -316, 365, 25); foot:SetText("Counts are unique remaining route quests, including prerequisites."); foot:SetTextColor(unpack(UI.THEME.muted))
+  local foot = UI.Text(f, "GameFontHighlightSmall", 12, -316, 365, 25); foot:SetText("|cffffd100new|r = to pick up (incl. prerequisites)   |cff33a3ffin log|r = already taken"); foot:SetTextColor(unpack(UI.THEME.muted))
   f:SetScript("OnHide", RQP.Safe(UI.CancelCounts))
 end
 
@@ -75,7 +75,7 @@ function UI.RefreshCounts()
     end
     row:SetText(label(name, "|cff8899aacounting...|r"))
     row:SetAlpha(far(name) and 0.55 or 1)
-    UI.Tooltip(row, name .. "\nUnique remaining route quests for this character and level mode, including prerequisites.")
+    UI.Tooltip(row, name .. "\nCounting...", "ANCHOR_LEFT")
     row:SetScript("OnClick", RQP.Safe(function() UI.SelectDungeon(name) end))
     row:Show()
   end
@@ -107,16 +107,29 @@ function UI.RefreshCounts()
         RQP.After(0, nextDungeon)
         return
       end
-      local count, ids = 0, {}
+      local count, ids, fresh, active, freshNames, activeNames = 0, {}, 0, 0, {}, {}
       for _, step in ipairs(route.steps) do
-        if step.q and not ids[step.q] and not (player.done and player.done[step.q]) then
-          ids[step.q] = true
+        local q = step.q
+        if q and not ids[q] and not (player.done and player.done[q]) and not (UI.IsSkipped and UI.IsSkipped(step)) then
+          ids[q] = true
           count = count + 1
+          if player.log and player.log[q] then active = active + 1; activeNames[#activeNames + 1] = step.name or tostring(q)
+          else fresh = fresh + 1; freshNames[#freshNames + 1] = step.name or tostring(q) end
         end
       end
       UI.dungeonCounts[name] = count
-      row:SetText(label(name, (count == 0 and "|cff8899aa0 quests|r" or ("|cffffd100" .. count .. (count == 1 and " quest" or " quests") .. "|r"))))
-      if count == 0 then row:SetAlpha(0.55) end
+      UI.dungeonSplit = UI.dungeonSplit or {}
+      UI.dungeonSplit[name] = {new = fresh, log = active}
+      local parts = {}
+      if fresh > 0 then parts[#parts + 1] = "|cffffd100" .. fresh .. " new|r" end
+      if active > 0 then parts[#parts + 1] = "|cff33a3ff" .. active .. " in log|r" end
+      row:SetText(label(name, count == 0 and "|cff8899aanothing left|r" or table.concat(parts, " |cff8899aa·|r ")))
+      local tip = {name}
+      if fresh > 0 then tip[#tip + 1] = "|cffffd100To pick up:|r " .. table.concat(freshNames, ", ") end
+      if active > 0 then tip[#tip + 1] = "|cff33a3ffIn your log:|r " .. table.concat(activeNames, ", ") end
+      if count == 0 then tip[#tip + 1] = "Nothing left at this level mode." end
+      UI.Tooltip(row, table.concat(tip, "\n"), "ANCHOR_LEFT")
+      if count == 0 then row:SetAlpha(0.55) else row:SetAlpha(1) end
       -- Even a synchronous optional provider cannot recurse through every dungeon.
       RQP.After(0, nextDungeon)
     end))

@@ -102,6 +102,13 @@ function relaxAPI.Goto(guideID, stepID)
     return true
 end
 
+-- Relax local guides: read-only view of the loaded guide and the last one the player chose.
+function relaxAPI.GetActiveGuide()
+    local ok, guide = pcall(GuideNavigationService.GetGuide)
+    local last = State and State.GetLastGuide and State.GetLastGuide() or nil
+    return (ok and guide ~= nil) or false, last
+end
+
 -- Relax local guides: read-only catalog preview, never redirects signed loads.
 function relaxAPI.ListCatalogGuides()
     local result = { }

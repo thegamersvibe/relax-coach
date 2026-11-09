@@ -63,6 +63,9 @@ function UI.Plan(show, force)
       and not (InCombatLockdown and InCombatLockdown()) then
       UI.autoJourneyPending = nil
       pcall(RQP.Journey.LoadRoute, route)
+    elseif not UI.journeyRestoreChecked then
+      UI.journeyRestoreChecked = true
+      UI.RestoreJourney(route)
     end
     if UI.replanPending then
       UI.replanPending = nil
@@ -74,6 +77,19 @@ function UI.Plan(show, force)
   local ok, err = pcall(builder, target, player, {mode=RQP.GetDB().mode}, callback)
   if ok then UI.routeJob = UI.busy and err or nil
   else planFailed(err) end
+end
+
+-- Journey forgets the session route on reload. Put it back only when Journey has
+-- nothing loaded or its last guide was our route; never replace a guide the player chose.
+function UI.RestoreJourney(route)
+  local api = _G.RelaxJourneyAPI
+  if RQP.GetDB().autoJourney == false or not (api and api.GetActiveGuide and RQP.Journey and RQP.Journey.LoadRoute) then return false end
+  if InCombatLockdown and InCombatLockdown() then UI.journeyRestoreChecked = nil; return false end
+  if #(route.steps or {}) == 0 then return false end
+  local ok, loaded, last = pcall(api.GetActiveGuide)
+  if not ok then return false end
+  if loaded and last ~= "RQP_ROUTE" then return false end
+  return (pcall(RQP.Journey.LoadRoute, route))
 end
 
 function UI.SelectDungeon(name)
