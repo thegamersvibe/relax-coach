@@ -30,7 +30,10 @@ const rc = Object.freeze({
   checkApp: () => call('checkApp'),
   applyApp: version => call('applyApp',version),
   appReady: () => call('appReady'),
-  openExternal: url => call('openExternal',url)
+  openExternal: url => call('openExternal',url),
+  extraList: () => call('extraList'),
+  checkExtra: id => call('checkExtra',id),
+  applyExtra: (id,version) => call('applyExtra',id+'@'+version)
 });
 let offer = null, appOffer = null, busy = false, refreshing = false, restarting = false;
 let healthPending = false, healthSent = false;
@@ -72,6 +75,73 @@ function updateButtons() {
   $('check-update').disabled = busy || disabled;
   $('apply-update').disabled = busy || disabled || !offer || !offer.Available;
   for (const id of ['browse-folder','use-folder','game-path']) $(id).disabled = busy;
+  for (const b of document.querySelectorAll('#extra-list button')) {
+    const o = extraOffers[b.dataset.id];
+    b.disabled = busy || disabled || (b.dataset.role === 'apply' && !(o && o.Available));
+  }
+}
+const extraOffers = {};
+function extraRow(item) {
+  let row = document.getElementById('extra-'+item.ID);
+  if (!row) {
+    row = document.createElement('div');
+    row.id = 'extra-'+item.ID; row.className = 'extra';
+    const h = document.createElement('h4'); h.className = 'extra-name';
+    const p = document.createElement('p'); p.className = 'subtle extra-blurb';
+    const dl = document.createElement('dl'); dl.className = 'versions';
+    for (const [k,label] of [['installed','Installed'],['offered','Offered']]) {
+      const d = document.createElement('div'); const dt = document.createElement('dt'); dt.textContent = label;
+      const dd = document.createElement('dd'); dd.className = 'extra-'+k; d.append(dt,dd); dl.append(d);
+    }
+    const actions = document.createElement('div'); actions.className = 'actions';
+    const check = document.createElement('button'); check.className = 'secondary'; check.textContent = 'Check';
+    check.dataset.id = item.ID; check.dataset.role = 'check';
+    const apply = document.createElement('button'); apply.className = 'primary'; apply.textContent = 'Install';
+    apply.dataset.id = item.ID; apply.dataset.role = 'apply';
+    actions.append(check, apply);
+    const status = document.createElement('p'); status.className = 'status extra-status'; status.setAttribute('role','status');
+    row.append(h,p,dl,actions,status);
+    $('extra-list').append(row);
+    check.addEventListener('click',()=>checkExtra(item.ID));
+    apply.addEventListener('click',()=>applyExtra(item.ID));
+  }
+  row.querySelector('.extra-name').textContent = item.Name;
+  row.querySelector('.extra-blurb').textContent = item.Blurb || '';
+  row.querySelector('.extra-installed').textContent = item.InstalledVersion === '0.0.0' ? 'Not installed' : item.InstalledVersion;
+  const o = extraOffers[item.ID];
+  row.querySelector('.extra-offered').textContent = o ? (o.Available ? o.Version : 'None') : 'Not checked';
+  row.querySelector('[data-role=apply]').textContent = item.InstalledVersion === '0.0.0' ? 'Install' : 'Update';
+  return row;
+}
+async function loadExtras() {
+  try { for (const item of await rc.extraList()) extraRow(item); }
+  catch(err) { $('extra-list').textContent = 'Could not read installed addons: '+err.message; }
+  updateButtons();
+}
+async function checkExtra(id) {
+  if (busy) return;
+  busy = true; delete extraOffers[id]; updateButtons();
+  const row = document.getElementById('extra-'+id);
+  row.querySelector('.extra-status').textContent = 'Checking the latest stable GitHub release…';
+  try {
+    const o = await rc.checkExtra(id);
+    extraOffers[id] = o;
+    extraRow(o);
+    row.querySelector('.extra-status').textContent = (o.Status || '') + (o.Available ? ' Close WoW, then click '+(o.Install?'Install':'Update')+'.' : ' No files changed.');
+  } catch(err) { row.querySelector('.extra-status').textContent = 'Check failed: '+err.message; }
+  finally { busy = false; updateButtons(); }
+}
+async function applyExtra(id) {
+  const o = extraOffers[id];
+  if (busy || !o || !o.Available) return;
+  busy = true; updateButtons();
+  const row = document.getElementById('extra-'+id);
+  row.querySelector('.extra-status').textContent = 'Downloading, verifying and installing…';
+  try {
+    const result = await rc.applyExtra(id, o.Version);
+    row.querySelector('.extra-status').textContent = result.message + (result.backupPath ? '\nBackup: '+result.backupPath : '');
+  } catch(err) { row.querySelector('.extra-status').textContent = 'Install failed: '+err.message+' Check again before retrying.'; }
+  finally { delete extraOffers[id]; busy = false; await loadExtras(); }
 }
 function displayAccount(result) {
   const select = $('account-select');
@@ -134,6 +204,8 @@ function displayReport(result,folderChanged = false) {
     $('release-link').hidden = true;
     $('release-notes').textContent = 'Check for updates for this game folder.';
     $('update-status').textContent = 'Game folder changed. Check again before updating.';
+    for (const k of Object.keys(extraOffers)) delete extraOffers[k];
+    if ($('extra-list').children.length) loadExtras();
     updateButtons();
   }
   updateButtons();
@@ -154,7 +226,7 @@ async function refresh(manual = false) {
   finally { refreshing = false; updateButtons(); }
 }
 $('nav-report').addEventListener('click',()=>show('report'));
-$('nav-update').addEventListener('click',()=>show('update'));
+$('nav-update').addEventListener('click',()=>{ show('update'); if (!busy) loadExtras(); });
 $('refresh').addEventListener('click',()=>refresh(true));
 async function changeFolder(select) {
   if (busy) return;

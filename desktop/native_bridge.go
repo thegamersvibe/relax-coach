@@ -19,6 +19,8 @@ type nativeServices struct {
 	check    func(context.Context, string) (AddonReleaseInfo, error)
 	apply    func(context.Context, string, AddonReleaseInfo) (AddonUpdateResult, error)
 	choose   func(context.Context) (string, error)
+	checkExtra func(context.Context, string, string) (ExtraAddonInfo, error)
+	applyExtra func(context.Context, string, ExtraAddonInfo) (AddonUpdateResult, error)
 	open     func(string) error
 }
 
@@ -35,6 +37,7 @@ type nativeBridge struct {
 	closed, busy, disabled                                            bool
 	release                                                           *AddonReleaseInfo
 	checkedGame, checkedVersion                                       string
+	extra                                                             map[string]nativeExtraState
 }
 
 type nativeReport struct {
@@ -99,6 +102,12 @@ func newNativeBridge(a *App, disabled bool, s nativeServices) *nativeBridge {
 	if s.apply == nil {
 		s.apply = ApplyAddonRelease
 	}
+	if s.checkExtra == nil {
+		s.checkExtra = CheckExtraAddon
+	}
+	if s.applyExtra == nil {
+		s.applyExtra = ApplyExtraAddon
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &nativeBridge{app: a, services: s, ctx: ctx, cancel: cancel, disabled: disabled}
 }
@@ -129,11 +138,11 @@ func (b *nativeBridge) Call(method string, args []json.RawMessage) (any, error) 
 	}
 	var arg string
 	switch method {
-	case "setGame", "selectAccount", "applyAddon", "applyApp", "openExternal":
+	case "setGame", "selectAccount", "applyAddon", "applyApp", "openExternal", "checkExtra", "applyExtra":
 		if len(args) != 1 || json.Unmarshal(args[0], &arg) != nil || len(arg) > 4096 || strings.IndexByte(arg, 0) >= 0 {
 			return nil, errors.New("expected one text argument")
 		}
-	case "reportRefresh", "chooseGame", "checkAddon", "checkApp", "appReady":
+	case "reportRefresh", "chooseGame", "checkAddon", "checkApp", "appReady", "extraList":
 		if len(args) != 0 {
 			return nil, errors.New("this method takes no arguments")
 		}
@@ -169,6 +178,12 @@ func (b *nativeBridge) Call(method string, args []json.RawMessage) (any, error) 
 		return b.check()
 	case "applyAddon":
 		return b.apply(arg)
+	case "extraList":
+		return b.extraList()
+	case "checkExtra":
+		return b.checkExtra(arg)
+	case "applyExtra":
+		return b.applyExtra(arg)
 	case "openExternal":
 		if err := validateExternalURL(arg); err != nil {
 			return nil, err
@@ -239,6 +254,7 @@ func (b *nativeBridge) setGame(input string) (nativeReport, error) {
 		return nativeReport{}, err
 	}
 	b.release = nil
+	b.extra = nil
 	b.app.setGame(game)
 	return b.reportLocked()
 }

@@ -223,7 +223,7 @@ func addonRedirect(req *http.Request, via []*http.Request) error {
 	}
 	original := via[0].URL
 	if original.Host == "api.github.com" {
-		if v.String() != addonLatestURL {
+		if v.String() != addonLatestURL && !extraLatestURL(v.String()) {
 			return errors.New("refusing a redirect outside the release API")
 		}
 		return nil
