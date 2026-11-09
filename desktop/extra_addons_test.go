@@ -94,6 +94,22 @@ func extraGame(t *testing.T) string {
 	return game
 }
 
+func TestExtraAddonMissingReleaseIsStatusNotError(t *testing.T) {
+	s := extraRelease(t, "0.1.3", extraGoodZip(t, "0.1.3"))
+	u := newExtraUpdater(t, s)
+	srv := httptest.NewTLSServer(http.NotFoundHandler())
+	t.Cleanup(srv.Close)
+	server, _ := url.Parse(srv.URL)
+	u.client.Transport = addonTestTransport{server: server, base: srv.Client().Transport}
+	info, err := u.checkExtra(context.Background(), "forevermaps", "0.0.0")
+	if err != nil {
+		t.Fatalf("404 on releases/latest must not be an error, got %v", err)
+	}
+	if info.Status != "No stable Forever Maps release is published." || info.AssetURL != "" {
+		t.Fatalf("unexpected info for missing release: %+v", info)
+	}
+}
+
 func TestExtraAddonFreshInstallAndUpdate(t *testing.T) {
 	game := extraGame(t)
 	a, _ := extraAddonByID("forevermaps")

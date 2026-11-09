@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -151,6 +152,12 @@ func (u *addonUpdater) checkExtra(ctx context.Context, id, current string) (Extr
 		return info, errors.New("invalid installed version")
 	}
 	b, err := u.fetch(ctx, a.latestURL(), 1<<20, a.Name+" release information")
+	var httpErr *addonHTTPError
+	if errors.As(err, &httpErr) && httpErr.status == http.StatusNotFound {
+		// GitHub answers releases/latest with 404 when no stable release exists.
+		info.Status = "No stable " + a.Name + " release is published."
+		return info, nil
+	}
 	if err != nil {
 		return info, err
 	}
