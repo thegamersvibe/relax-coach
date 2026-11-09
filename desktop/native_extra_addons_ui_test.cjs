@@ -61,3 +61,12 @@ test('More addons: failed install consumes the offer and shows the reason',async
  assert.equal($('extra-forevermaps').querySelector('[data-role=apply]').disabled,true);
  assert.equal($('extra-forevermaps').querySelector('[data-role=check]').disabled,false);
 });
+test('More addons: a folder that is not the addon shows Unrecognized, not Install',async t=>{
+ const {$}=await setup(t,{extraList:()=>[{ID:'rankup',Name:'RankUp',Blurb:'',InstalledVersion:'0.0.0',Problem:'the RankUp folder does not contain RankUp'},{ID:'forevermaps',Name:'Forever Maps',Blurb:'',InstalledVersion:'0.0.0'}]});
+ $('nav-update').click();await settle();
+ const rank=$('extra-rankup');
+ assert.equal(rank.querySelector('.extra-installed').textContent,'Unrecognized');
+ assert.match(rank.querySelector('.extra-status').textContent,/will not be replaced/);
+ assert.ok(rank.querySelector('[data-role=apply]').disabled,'no install offered');
+ assert.equal($('extra-forevermaps').querySelector('.extra-installed').textContent,'Not installed');
+});

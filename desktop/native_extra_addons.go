@@ -11,6 +11,7 @@ import (
 // addon id (and the version it showed); URLs and checksums stay in Go memory.
 type nativeExtraOffer struct {
 	ID, Name, Blurb, InstalledVersion, Version, Notes, HTMLURL, Status string
+	Problem                                                            string
 	Available, Install                                                 bool
 }
 
@@ -54,7 +55,7 @@ func (b *nativeBridge) extraList() ([]nativeExtraOffer, error) {
 		if game != "" {
 			v = InstalledExtraVersion(game, a)
 		}
-		out = append(out, nativeExtraOffer{ID: a.ID, Name: a.Name, Blurb: a.Blurb, InstalledVersion: v})
+		out = append(out, nativeExtraOffer{ID: a.ID, Name: a.Name, Blurb: a.Blurb, InstalledVersion: v, Problem: ExtraInstalledProblem(game, a)})
 	}
 	return out, nil
 }
@@ -73,6 +74,10 @@ func (b *nativeBridge) checkExtra(id string) (nativeExtraOffer, error) {
 	delete(b.extra, id)
 	b.mu.Unlock()
 	current := InstalledExtraVersion(game, a)
+	if p := ExtraInstalledProblem(game, a); p != "" {
+		return nativeExtraOffer{ID: a.ID, Name: a.Name, Blurb: a.Blurb, InstalledVersion: current, Problem: p,
+			Status: "Unrecognized " + a.Folder + " folder: " + p + ". Nothing will be replaced."}, nil
+	}
 	ctx, cancel := context.WithTimeout(b.ctx, 45*time.Second)
 	defer cancel()
 	info, err := b.services.checkExtra(ctx, id, current)
@@ -94,7 +99,8 @@ func (b *nativeBridge) checkExtra(id string) (nativeExtraOffer, error) {
 	if validateExternalURL(link) != nil {
 		link = ""
 	}
-	return nativeExtraOffer{a.ID, a.Name, a.Blurb, current, info.Version, info.Notes, link, info.Status, info.Available, info.Install}, nil
+	return nativeExtraOffer{ID: a.ID, Name: a.Name, Blurb: a.Blurb, InstalledVersion: current, Version: info.Version, Notes: info.Notes,
+		HTMLURL: link, Status: info.Status, Available: info.Available, Install: info.Install}, nil
 }
 
 // arg is "<id>@<version>": the version the user saw and confirmed.

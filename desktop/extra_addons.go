@@ -91,6 +91,18 @@ func InstalledExtraVersion(game string, a extraAddon) string {
 	return state.version.text
 }
 
+// ExtraInstalledProblem is non-empty when an <AddOns>/<Folder> exists but is
+// not that addon (or its TOC can't be read); the UI shows it as unrecognized.
+func ExtraInstalledProblem(game string, a extraAddon) string {
+	if game == "" {
+		return ""
+	}
+	if _, err := extraInstalled(game, a); err != nil {
+		return err.Error()
+	}
+	return ""
+}
+
 func extraTarget(game string, a extraAddon) string {
 	return filepath.Join(filepath.Clean(game), "Interface", "AddOns", a.Folder)
 }
@@ -300,6 +312,11 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 	}
 	lockPath := filepath.Join(backups, ".extra-addon-update.lock")
 	lock, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	if os.IsExist(err) && extraStaleLock(lockPath, backups) {
+		if rerr := os.Remove(lockPath); rerr == nil {
+			lock, err = os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+		}
+	}
 	if os.IsExist(err) {
 		return result, errors.New("another install or an unfinished one holds the lock; close other helpers and check RelaxCoachBackups")
 	}
@@ -368,6 +385,37 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 		result.Message = a.Name + " " + remote.text + " installed. Enable it in the AddOns list if needed, then start WoW."
 	}
 	return result, nil
+}
+
+// extraLockStaleAfter is longer than the whole apply timeout, so a lock this
+// old cannot belong to an install that is still running.
+const extraLockStaleAfter = 15 * time.Minute
+
+// extraStaleLock reports whether a leftover lock (for example after a crash or
+// power loss) can be cleared safely: it is an old regular file and the
+// transaction it names holds no moved-aside previous version. A lock whose
+// transaction still has a "previous" folder is kept, because that folder may be
+// the only copy of the old addon.
+func extraStaleLock(lockPath, backups string) bool {
+	info, err := os.Lstat(lockPath)
+	if err != nil || !info.Mode().IsRegular() || time.Since(info.ModTime()) < extraLockStaleAfter {
+		return false
+	}
+	b, err := addonReadSmallFile(lockPath)
+	if err != nil {
+		return false
+	}
+	transaction := filepath.Clean(strings.TrimSpace(string(b)))
+	if transaction == "." {
+		return true // crashed before the transaction path was written
+	}
+	if filepath.Dir(transaction) != filepath.Clean(backups) {
+		return false
+	}
+	if _, err := os.Lstat(filepath.Join(transaction, "previous")); !os.IsNotExist(err) {
+		return false
+	}
+	return true
 }
 
 // extractExtra writes <stage>/<Folder>/... from a ZIP whose every entry is

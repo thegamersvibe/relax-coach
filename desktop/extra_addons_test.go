@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 const extraTestTOC = "## Interface: 16001\n## Title: Forever Maps\n## Version: %s\n## SavedVariablesPerCharacter: ForeverMapsCharDB\n\nData\\World.lua\nCore.lua\n"
@@ -277,5 +278,83 @@ func TestExtraAddonBridge(t *testing.T) {
 	}
 	if _, err := b.Call("checkExtra", raw("journey")); err == nil {
 		t.Fatal("unknown addon accepted")
+	}
+}
+
+func TestExtraAddonUnrecognizedFolderIsReported(t *testing.T) {
+	game := extraGame(t)
+	a, _ := extraAddonByID("forevermaps")
+	if p := ExtraInstalledProblem(game, a); p != "" {
+		t.Fatalf("missing folder reported as problem: %s", p)
+	}
+	foreign := filepath.Join(game, "Interface", "AddOns", "ForeverMaps")
+	os.MkdirAll(foreign, 0755)
+	os.WriteFile(filepath.Join(foreign, "ForeverMaps.toc"), []byte("## Title: Something Else\n## Version: 0.0.1\n"), 0644)
+	if p := ExtraInstalledProblem(game, a); !strings.Contains(p, "does not contain Forever Maps") {
+		t.Fatalf("foreign folder not reported: %q", p)
+	}
+	ap := &App{}
+	ap.setGame(game)
+	checked := false
+	b := newNativeBridge(ap, false, nativeServices{
+		checkExtra: func(context.Context, string, string) (ExtraAddonInfo, error) {
+			checked = true
+			return ExtraAddonInfo{}, nil
+		},
+	})
+	defer b.Close()
+	list, err := b.Call("extraList", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, o := range list.([]nativeExtraOffer) {
+		if (o.ID == "forevermaps") != (o.Problem != "") {
+			t.Fatalf("problem flag wrong: %+v", o)
+		}
+	}
+	j, _ := json.Marshal("forevermaps")
+	got, err := b.Call("checkExtra", []json.RawMessage{j})
+	if err != nil || checked || got.(nativeExtraOffer).Available || !strings.HasPrefix(got.(nativeExtraOffer).Status, "Unrecognized ForeverMaps folder") {
+		t.Fatalf("check on foreign folder: %+v %v checked=%v", got, err, checked)
+	}
+}
+
+func TestExtraAddonStaleLockRecovery(t *testing.T) {
+	game := extraGame(t)
+	a, _ := extraAddonByID("forevermaps")
+	backups := filepath.Join(game, "RelaxCoachBackups")
+	os.MkdirAll(backups, 0700)
+	lock := filepath.Join(backups, ".extra-addon-update.lock")
+	old := time.Now().Add(-time.Hour)
+	u := newExtraUpdater(t, extraRelease(t, "0.1.3", extraGoodZip(t, "0.1.3")))
+
+	// A fresh lock blocks: another install may be running.
+	os.WriteFile(lock, nil, 0600)
+	info, _ := u.checkExtra(context.Background(), "forevermaps", "0.0.0")
+	if _, err := u.applyExtra(context.Background(), game, info); err == nil || !strings.Contains(err.Error(), "holds the lock") {
+		t.Fatalf("fresh lock did not block: %v", err)
+	}
+	// An old lock whose transaction still holds a moved-aside version is kept.
+	tx := filepath.Join(backups, "ForeverMaps-crashed")
+	os.MkdirAll(filepath.Join(tx, "previous"), 0755)
+	os.WriteFile(lock, []byte(tx+"\n"), 0600)
+	os.Chtimes(lock, old, old)
+	if _, err := u.applyExtra(context.Background(), game, info); err == nil {
+		t.Fatal("cleared a lock that guards a moved-aside previous version")
+	}
+	if _, err := os.Stat(filepath.Join(tx, "previous")); err != nil {
+		t.Fatal("previous version evidence removed")
+	}
+	// An old lock with nothing moved aside (crash during download/extract) is cleared.
+	os.RemoveAll(filepath.Join(tx, "previous"))
+	os.Chtimes(lock, old, old)
+	if _, err := u.applyExtra(context.Background(), game, info); err != nil {
+		t.Fatalf("stale lock not recovered: %v", err)
+	}
+	if v := InstalledExtraVersion(game, a); v != "0.1.3" {
+		t.Fatalf("installed %s", v)
+	}
+	if _, err := os.Stat(lock); !os.IsNotExist(err) {
+		t.Fatal("lock left behind")
 	}
 }

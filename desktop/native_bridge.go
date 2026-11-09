@@ -13,15 +13,15 @@ import (
 )
 
 type nativeServices struct {
-	checkApp func(context.Context, string) (AppReleaseInfo, error)
-	applyApp func(context.Context, AppReleaseInfo) (AppUpdateResult, error)
-	ready    func(context.Context) error
-	check    func(context.Context, string) (AddonReleaseInfo, error)
-	apply    func(context.Context, string, AddonReleaseInfo) (AddonUpdateResult, error)
-	choose   func(context.Context) (string, error)
+	checkApp   func(context.Context, string) (AppReleaseInfo, error)
+	applyApp   func(context.Context, AppReleaseInfo) (AppUpdateResult, error)
+	ready      func(context.Context) error
+	check      func(context.Context, string) (AddonReleaseInfo, error)
+	apply      func(context.Context, string, AddonReleaseInfo) (AddonUpdateResult, error)
+	choose     func(context.Context) (string, error)
 	checkExtra func(context.Context, string, string) (ExtraAddonInfo, error)
 	applyExtra func(context.Context, string, ExtraAddonInfo) (AddonUpdateResult, error)
-	open     func(string) error
+	open       func(string) error
 }
 
 type nativeBridge struct {

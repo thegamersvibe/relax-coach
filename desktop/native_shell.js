@@ -107,7 +107,9 @@ function extraRow(item) {
   }
   row.querySelector('.extra-name').textContent = item.Name;
   row.querySelector('.extra-blurb').textContent = item.Blurb || '';
-  row.querySelector('.extra-installed').textContent = item.InstalledVersion === '0.0.0' ? 'Not installed' : item.InstalledVersion;
+  row.dataset.problem = item.Problem ? '1' : '';
+  row.querySelector('.extra-installed').textContent = item.Problem ? 'Unrecognized' : (item.InstalledVersion === '0.0.0' ? 'Not installed' : item.InstalledVersion);
+  if (item.Problem && !extraOffers[item.ID]) row.querySelector('.extra-status').textContent = 'A '+item.Name+' folder exists but is not '+item.Name+' ('+item.Problem+'). It will not be replaced.';
   const o = extraOffers[item.ID];
   row.querySelector('.extra-offered').textContent = o ? (o.Available ? o.Version : 'None') : 'Not checked';
   row.querySelector('[data-role=apply]').textContent = item.InstalledVersion === '0.0.0' ? 'Install' : 'Update';
