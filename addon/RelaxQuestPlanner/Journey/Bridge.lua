@@ -119,7 +119,7 @@ function Journey.LoadRoute(route)
     local ok, result, failure = pcall(api.Goto, guideID, firstUndone(guide))
     if not ok then
         _G.RelaxQuestPlannerDB = _G.RelaxQuestPlannerDB or {}
-        _G.RelaxQuestPlannerDB.lastError = tostring(result)
+        if RQP.SetError then RQP.SetError(result) else _G.RelaxQuestPlannerDB.lastError = tostring(result) end
         return false, tostring(result)
     end
     if not result then return false, failure end

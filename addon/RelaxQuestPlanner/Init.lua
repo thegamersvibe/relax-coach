@@ -21,12 +21,20 @@ function RQP.Number(value)
   if number and number == number and number ~= math.huge and number ~= -math.huge then return number end
 end
 
+-- One place records errors, stamped so an old error is never reported as current.
+function RQP.SetError(err)
+  local db = RQP.GetDB()
+  db.lastError = RQP.IsSecret(err) and "Restricted error" or tostring(err)
+  db.lastErrorVersion = RQP.version
+  db.lastErrorTime = time and time() or nil
+end
+
 -- Guard script hooks, events, timers and async callbacks alike.
 function RQP.Safe(fn)
   return function(...)
     local ok, a, b = pcall(fn, ...)
     if not ok then
-      RQP.GetDB().lastError = RQP.IsSecret(a) and "Restricted error" or tostring(a)
+      RQP.SetError(a)
       return nil
     end
     return a, b
@@ -82,7 +90,13 @@ local safeRecord = RQP.Safe(record)
 
 local function onEvent(_, event, ...)
   if event == "ADDON_LOADED" then
-    if (...) == "RelaxQuestPlanner" then RQP.GetDB() end
+    if (...) == "RelaxQuestPlanner" then
+      local db = RQP.GetDB()
+      -- Errors from an older build were fixed by the update; don't keep reporting them.
+      if db.lastError and db.lastErrorVersion ~= RQP.version then
+        db.lastError, db.lastErrorVersion, db.lastErrorTime = nil, nil, nil
+      end
+    end
     return
   end
   if event == "PLAYER_LOGIN" then

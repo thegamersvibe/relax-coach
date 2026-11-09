@@ -32,7 +32,7 @@ end
 
 local function planFailed(err)
   UI.busy, UI.routeJob = false, nil
-  RQP.GetDB().lastError = RQP.IsSecret(err) and "Restricted error" or tostring(err)
+  RQP.SetError(err)
   UI.notice = "Planning failed - type /rqp error"
   if not UI.route then UI.line1:SetText("Unable to build a route.") end
   UI.UpdateStatus()
@@ -183,6 +183,8 @@ function UI.SetMode(mode)
   if not MODE_LABELS[mode] then RQP.Print("Mode must be strict, game, or all."); return end
   RQP.GetDB().mode = mode
   UI.modeButton:SetText(MODE_LABELS[mode])
+  local explain = {strict = "nothing more than 5 levels below you", game = "grey quests hidden", all = "every quest shown"}
+  RQP.Print(MODE_LABELS[mode] .. " - " .. explain[mode] .. ".")
   UI.Refresh(true)
 end
 function UI.CycleMode()
@@ -230,7 +232,7 @@ function UI.Refresh(force)
 end
 
 local function help()
-  RQP.Print("/rqp dungeon <name> | guide | goal <questID> | mode [strict|game|all] | map | skip | unskip | autopin | autojourney | hide | show | error")
+  RQP.Print("/rqp dungeon <name> | guide | goal <questID> | mode [strict|game|all] | map | skip | unskip | autopin | autojourney | hide | show | error [clear]")
   RQP.Print("/rqp mode cycles the level filter when no argument is given.")
   RQP.Print("/rqp guide shows the top 3 guides; click one to jump to your first undone step.")
 end
@@ -260,6 +262,19 @@ SlashCmdList.RELAXQUESTPLANNER = RQP.Safe(function(message)
     RQP.Print("Open new routes in Journey " .. (db.autoJourney and "on" or "off") .. ".")
   elseif command == "error" then
     local db = RQP.GetDB()
-    RQP.Print(db.lastError and ("Last error: " .. tostring(db.lastError)) or "No errors recorded.")
+    if arg:lower() == "clear" then
+      db.lastError, db.lastErrorVersion, db.lastErrorTime = nil, nil, nil
+      RQP.Print("Error log cleared.")
+    elseif db.lastError then
+      local when = ""
+      if db.lastErrorTime and time then
+        local mins = math.floor((time() - db.lastErrorTime) / 60)
+        when = mins < 1 and " (just now" or (" (" .. mins .. " min ago")
+        when = when .. ", v" .. tostring(db.lastErrorVersion or "?") .. ")"
+      end
+      RQP.Print("Last error" .. when .. ": " .. tostring(db.lastError) .. "  - /rqp error clear to reset")
+    else
+      RQP.Print("No errors recorded.")
+    end
   else help() end
 end)

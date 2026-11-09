@@ -90,7 +90,7 @@ function UI.PickGuide()
     end
   end))
   if not ok then
-    RQP.GetDB().lastError = tostring(started)
+    RQP.SetError(started)
     UI.guideStatus:SetText("Guide scan failed - type /rqp error")
   elseif started == false then UI.guideStatus:SetText(err or "Guide scan unavailable.") end
 end

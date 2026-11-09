@@ -605,6 +605,23 @@ class UIShellTests(unittest.TestCase):
           assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
         ''')
 
+    def test_stale_errors_cleared_on_update_and_mode_notice(self):
+        lua = client('RelaxQuestPlannerDB={mode="game",lastError="Engine.lua:256: old crash",lastErrorVersion="0.1.0-test"}')
+        lua.execute(r'''
+          assert(RelaxQuestPlannerDB.lastError==nil, "error from an older version must be dropped on load")
+          PRINTED={}
+          local oldPrint=RelaxQuestPlanner.Print
+          RelaxQuestPlanner.Print=function(t) PRINTED[#PRINTED+1]=t end
+          SlashCmdList.RELAXQUESTPLANNER("error"); assert(PRINTED[#PRINTED]:find("No errors"))
+          SlashCmdList.RELAXQUESTPLANNER("mode"); DRAIN()
+          assert(PRINTED[#PRINTED]:find("Levels:") and PRINTED[#PRINTED]:find("5 levels"), PRINTED[#PRINTED])
+          RelaxQuestPlanner.SetError("new problem")
+          assert(RelaxQuestPlannerDB.lastErrorVersion==RelaxQuestPlanner.version)
+          SlashCmdList.RELAXQUESTPLANNER("error"); assert(PRINTED[#PRINTED]:find("new problem") and PRINTED[#PRINTED]:find("clear"))
+          SlashCmdList.RELAXQUESTPLANNER("error clear"); assert(RelaxQuestPlannerDB.lastError==nil)
+          RelaxQuestPlanner.Print=oldPrint
+        ''')
+
     def test_failed_async_count_is_unknown_not_zero(self):
         lua = client()
         lua.execute(r'''

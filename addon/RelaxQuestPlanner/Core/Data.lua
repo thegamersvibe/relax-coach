@@ -37,7 +37,8 @@ local function read(api,id,key)
     return value
 end
 local function errorText(err)
-    RelaxQuestPlannerDB=RelaxQuestPlannerDB or {}; RelaxQuestPlannerDB.lastError=tostring(err)
+    if RelaxQuestPlanner and RelaxQuestPlanner.SetError then RelaxQuestPlanner.SetError(err)
+    else RelaxQuestPlannerDB=RelaxQuestPlannerDB or {}; RelaxQuestPlannerDB.lastError=tostring(err) end
 end
 D.Error = errorText
 

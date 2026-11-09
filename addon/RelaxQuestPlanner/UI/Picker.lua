@@ -137,7 +137,7 @@ function UI.RefreshCounts()
     end))
     if ok then UI.countJob = job
     else
-      RQP.GetDB().lastError = tostring(job)
+      RQP.SetError(job)
       row:SetText(label(name, "|cff8899aano data|r"))
       RQP.After(0, nextDungeon)
     end

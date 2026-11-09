@@ -26,7 +26,7 @@ end
 
 local function recordError(err)
     _G.RelaxQuestPlannerDB = _G.RelaxQuestPlannerDB or {}
-    _G.RelaxQuestPlannerDB.lastError = tostring(err)
+    if RQP.SetError then RQP.SetError(err) else _G.RelaxQuestPlannerDB.lastError = tostring(err) end
 end
 
 local function snapshot()
