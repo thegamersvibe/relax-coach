@@ -142,7 +142,7 @@ function UI.Refresh(force)
 end
 
 local function help()
-  RQP.Print("/rqp dungeon <name> | guide | goal <questID> | mode <strict|game|all> | map | hide | show | help")
+  RQP.Print("/rqp dungeon <name> | guide | goal <questID> | mode <strict|game|all> | map | hide | show | error | help")
 end
 
 SLASH_RELAXQUESTPLANNER1 = "/rqp"
@@ -157,5 +157,8 @@ SlashCmdList.RELAXQUESTPLANNER = RQP.Safe(function(message)
   elseif command == "goal" then UI.SelectGoal(arg)
   elseif command == "guide" then UI.PickGuide()
   elseif command == "mode" then UI.SetMode(arg:lower())
+  elseif command == "error" then
+    local db = RQP.GetDB()
+    RQP.Print(db.lastError and ("Last error: " .. tostring(db.lastError)) or "No errors recorded.")
   else help() end
 end)
