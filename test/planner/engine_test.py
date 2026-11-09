@@ -25,6 +25,15 @@ class EngineTests(unittest.TestCase):
         self.assertNotIn("Ragefire Chasm", names)            # Alliance test character
         self.assertEqual(len(names), len(set(names)))         # wings collapsed, no duplicates
 
+    def test_grey_dungeon_quests_hidden_unless_all(self):
+        h = Harness(); p = h.player()
+        count = lambda r: len(set(r.steps[i].q for i in range(1, len(r.steps) + 1))) if r.steps else 0
+        self.assertEqual(count(h.route("The Deadmines", p)), 0, "level-12-18 quests are grey at level 30")
+        self.assertGreater(count(h.route("The Deadmines", p, mode="all")), 0)
+        stock = h.route("The Stockade", p)
+        self.assertEqual(count(stock), 6, "quests already in the log are kept even if low")
+        self.assertIn("quest log", stock.steps[1].note)
+
     def test_player_snapshot(self):
         h = self.h
         self.assertIsNotNone(h.rqp.Player, "Player snapshot is not implemented")
@@ -85,11 +94,12 @@ class EngineTests(unittest.TestCase):
         for dungeon in DUNGEONS:
             with self.subTest(dungeon=dungeon):
                 expected = build(ref, entities, dungeon)
-                route = h.route(dungeon)
+                # Reference parity is checked without the dungeon-target level filter.
+                route = h.route(dungeon, mode="all")
                 plan = array(route.plan)
                 self.assertEqual(plan, [r["id"] for r in expected["steps"]])
                 self.assertEqual(len(plan), len(set(plan)))
-                self.assertEqual(route.floor, expected["floor"])
+                self.assertEqual(h.route(dungeon).floor, expected["floor"])
                 steps, later = array(route.steps), array(route.later)
                 self.assertEqual({s.q for s in steps} | {s.q for s in later}, set(plan))
                 self.assertEqual({s.q for s in later}, {s["id"] for s in expected["steps"] if not s["levelOK"]})
@@ -232,7 +242,7 @@ class EngineTests(unittest.TestCase):
             actual = {q: h.rqp.Engine.State(q, p)[0] for q in ref.db.q}
             self.assertEqual(actual, {q: ref.state(q) for q in ref.db.q})
             for name in DUNGEONS:
-                route = h.route(name, p)
+                route = h.route(name, p, mode="all")
                 self.assertEqual(array(route.plan), [r["id"] for r in build(ref, entities, name)["steps"]])
                 self.assert_action_dependencies(route, p, h)
             print("runtime-without-DungeonQuestie-global", dict(sorted(Counter(actual.values()).items())))

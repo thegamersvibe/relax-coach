@@ -248,15 +248,19 @@ local function dungeonTargets(name,p,g)
         if dg then for _,q in ipairs(dg.quests) do out[q.id]=q.dungeons or {}; tick() end end
         addonLists=out
     end
+    -- Invalidate() can clear addonLists while this coroutine is yielded.
+    local lists=addonLists or {}
+    local floor=g and g.floor or 0
     local targets={}
     for _,q in ipairs(D.AllQuestIds()) do
         local r=D.Quest(q)
         if not D.Blacklisted(q) then
             local matches=classify(r)[name]
-            for _,dn in ipairs(addonLists[q] or {}) do if dungeonMatch(name,dn) then matches=true end end
+            for _,dn in ipairs(lists[q] or {}) do if dungeonMatch(name,dn) then matches=true end end
             if matches then
                 local st=state(q,p,p.done,p.log,60,g)
-                if not never[st] and st~="done" and st~="unknownGate" then targets[#targets+1]=q end
+                local grey=floor>0 and (r.qLevel or 0)>0 and r.qLevel<floor and not p.log[q]
+                if not never[st] and st~="done" and st~="unknownGate" and not grey then targets[#targets+1]=q end
             end
         end
         tick()
@@ -398,7 +402,7 @@ local function step(kind,r,p,floor,needs,active)
             if kind=="accept" then pin=D.Pin("quest",r.id) end
         else s.note="Location unknown; check your quest log" end
     else
-        s.note="Complete the quest objectives"
+        s.note=p.log[r.id] and "In your quest log - finish the objectives" or "Complete the quest objectives"
     end
     if pin then for k,v in pairs(pin) do s[k]=v end end
     if s.below then
@@ -504,6 +508,7 @@ local function build(title,goal,p,opts)
     if not ok then route.issues[1]={"missingData",reason}; return route end
     if D.Source()~="QuestieDB" then route.issues[#route.issues+1]={"limitedData",reason} end
     local g=graph(p)
+    g.floor=floor
     local targets=goal and {goal} or dungeonTargets(title,p,g)
     local targetSet={}
     for _,q in ipairs(targets) do

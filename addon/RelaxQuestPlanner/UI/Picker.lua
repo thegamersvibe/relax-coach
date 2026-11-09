@@ -92,7 +92,7 @@ function UI.RefreshCounts()
     index = index + 1
     local slot = order[index]
     local name = slot and names[slot]
-    if not name then UI.pickerStatus:SetText("Choose a dungeon. Faded = outside your level range."); return end
+    if not name then UI.pickerStatus:SetText("Choose a dungeon. Faded = out of level range or nothing left."); return end
     local row = UI.dungeonRows[slot]
     local ok, job = pcall(RQP.Engine.BuildPathAsync, name, player, {mode=mode}, RQP.Safe(function(route)
       if token ~= generation then return end
