@@ -136,6 +136,7 @@ end
 function UI.CloseButton(frame, fn)
   local b = UI.Button(frame, "X", 22, frame:GetWidth() - 28, -6, fn)
   b:SetHeight(20)
+  if b.label then b.label:ClearAllPoints(); b.label:SetPoint("CENTER", b, "CENTER", 0, 0); b.label:SetWidth(20) end
   return b
 end
 

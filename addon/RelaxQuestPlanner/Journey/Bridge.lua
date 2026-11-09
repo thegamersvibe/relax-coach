@@ -17,7 +17,8 @@ end
 
 local function text(value)
     -- Route labels are plain text, not Journey expressions or WoW hyperlinks.
-    return tostring(value or ""):gsub("|", "||")
+    local out = tostring(value or ""):gsub("|", "||")
+    return out
 end
 
 function Journey.ToGuide(route)

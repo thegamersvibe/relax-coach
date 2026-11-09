@@ -29,5 +29,12 @@ class BridgeSkip(unittest.TestCase):
         self.assertFalse(any("-2-" in i for i in ids))
         self.assertEqual(ids[-1], "RQP-end")
 
+class BridgeText(unittest.TestCase):
+    def test_labels_have_no_gsub_count(self):
+        L = BridgeSkip().load("{}")
+        txt = L.eval('''(function() local g=RelaxQuestPlanner.Journey.ToGuide({title="T",steps={{q=1,kind="turnin",name="Crime and Punishment",who="Councilman Millstipe",zone="Duskwood"}}})
+          return g[1][1][1].text end)()''')
+        self.assertEqual(txt, "Crime and Punishment — Councilman Millstipe — Duskwood")
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

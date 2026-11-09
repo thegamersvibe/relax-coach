@@ -290,7 +290,10 @@ function D.Dungeons() zones(); return dungeons end
 function D.DungeonForArea(id) zones(); return dungeonByArea[id] end
 function D.ZoneName(id)
     zones(); if dungeonByArea[id] then return dungeonByArea[id] end
-    if id and GetAreaInfo then local ok,name=pcall(GetAreaInfo,id); if ok and name then return name end end
+    if id and C_Map and C_Map.GetAreaInfo then local ok,name=pcall(C_Map.GetAreaInfo,id); if ok and type(name)=="string" and name~="" then return name end end
+    if id and GetAreaInfo then local ok,name=pcall(GetAreaInfo,id); if ok and type(name)=="string" and name~="" then return name end end
+    local ui=id and areaMap and areaMap[id]
+    if ui and C_Map and C_Map.GetMapInfo then local ok,info=pcall(C_Map.GetMapInfo,ui); if ok and type(info)=="table" and info.name then return info.name end end
     return id and tostring(id) or "Unknown"
 end
 function D.Pin(kind,id)
