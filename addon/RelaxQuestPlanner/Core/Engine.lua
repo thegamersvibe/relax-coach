@@ -111,7 +111,8 @@ local function gates(q,p,done,log,level,g)
     if r.untilDone and done[r.untilDone] then return {"expired"} end
     if r.startingWith and not done[r.startingWith] and not log[r.startingWith] and not refuted(q,r.startingWith) then add("startingWith",r.startingWith) end
     if r.disabledBy and log[r.disabledBy] then add("disabledBy",r.disabledBy) end
-    if r.maxLevel and level>r.maxLevel then return {"overLevel"} end
+    -- Lookahead relaxes only the minimum level, never the character's upper cap.
+    if r.maxLevel and p.level>r.maxLevel then return {"overLevel"} end
     if r.reqLevel>level then add("level",r.reqLevel) end
     if nonempty(r.skill) or nonempty(r.ranks) or nonempty(r.spec) then add("profession",firstGate(r.skill,r.ranks)) end
     if nonempty(r.minRep) or nonempty(r.maxRep) then add("reputation",firstGate(r.minRep,r.maxRep)) end

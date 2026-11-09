@@ -353,6 +353,25 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(len(route.steps), 0)
         self.assertGreater(len(route.issues), 0)
 
+    def test_goal_maximum_level_uses_player_not_future_lookahead(self):
+        snap = dict(level=30, race="Dwarf", raceID=3, faction="Alliance",
+                    completed=[], log=[], professions={}, **{"class": "WARRIOR"})
+        h = Harness(snap, dungeon_global=False)
+        p = h.player()
+        self.assertEqual(h.rqp.Engine.State(8167, p)[0], 'available')
+        route = h.route(8167, p, goal=True, mode='all')
+        self.assertGreater(len(route.steps), 0, 'eligible level 30-39 quest must not be evaluated at level 60')
+        self.assert_action_dependencies(route, p, h)
+        p.level = 40
+        expired = h.route(8167, p, goal=True, mode='all')
+        self.assertEqual(len(expired.steps), 0)
+        self.assertIn('overLevel', [issue[1] for issue in array(expired.issues)])
+        # The minimum-level lookahead must still retain future goals as later.
+        h = MiniHarness({1: dict(name='Future', requiredLevel=40, questLevel=40, requiredMaxLevel=50)})
+        later = h.route(1, goal=True, mode='all')
+        self.assertEqual(len(later.steps), 0)
+        self.assertEqual([s.q for s in array(later.later)], [1])
+
     def test_parent_active_metadata_and_ui_order_survive_local_repick(self):
         from ui_shell_test import WOW, ADDON
         def q(name, **kw):
