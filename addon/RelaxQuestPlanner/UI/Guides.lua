@@ -31,13 +31,15 @@ local function buildGuides()
   UI.guidePicker = f
   UI.Movable(f, "guidePosition")
   f:SetFrameStrata("DIALOG")
-  UI.Text(f, "GameFontNormal", 12, -12, 405, 18):SetText("Pick my guide - top matches")
-  UI.Button(f, "X", 24, 432, -7, function() f:Hide() end)
-  UI.guideStatus = UI.Text(f, "GameFontHighlightSmall", 12, -39, 444, 42)
+  UI.Header(f, "Pick my guide", 380)
+  UI.CloseButton(f, function() f:Hide() end)
+  UI.guideStatus = UI.Text(f, "GameFontHighlightSmall", 12, -42, 444, 40)
+  UI.guideStatus:SetTextColor(0.42, 0.78, 1)
   UI.guideRows, UI.guideReasons = {}, {}
   for index = 1, 3 do
-    local row = UI.Button(f, "", 444, 12, -86 - (index - 1) * 74, function() end)
-    local reason = UI.Text(f, "GameFontDisableSmall", 18, -114 - (index - 1) * 74, 432, 38)
+    local row = UI.Row(f, 444, 12, -86 - (index - 1) * 74, function() end)
+    local reason = UI.Text(f, "GameFontHighlightSmall", 18, -114 - (index - 1) * 74, 432, 38)
+    reason:SetTextColor(unpack(UI.THEME.muted))
     UI.guideRows[index], UI.guideReasons[index] = row, reason
     row:Hide()
   end

@@ -45,6 +45,7 @@ end
 function methods:SetSize(w,h) self.width,self.height=w,h end
 function methods:SetWidth(w) self.width=w end
 function methods:SetHeight(h) self.height=h end
+function methods:SetJustifyH() end
 function methods:GetWidth() return self.width or 400 end
 function methods:GetHeight() return self.height or 300 end
 function methods:SetPoint(...) self.point={...} end
@@ -97,6 +98,18 @@ local function newFrame(kind,name,parent,template)
   return f
 end
 function methods:CreateFontString(name,layer,font) return newFrame("FontString",name,self,font) end
+function methods:CreateTexture(name,layer) return newFrame("Texture",name,self) end
+function methods:SetColorTexture(...) self.color={...} end
+function methods:SetTexture(t) self.texture=t end
+function methods:SetBackdrop(b) self.backdrop=b end
+function methods:SetBackdropColor(...) self.bgColor={...} end
+function methods:SetBackdropBorderColor(...) self.borderColor={...} end
+function methods:SetTextColor(...) self.textColor={...} end
+function methods:SetFontString(fs) self.fontString=fs end
+function methods:SetFontObject(f) self.fontObject=f end
+function methods:SetTextInsets() end
+function methods:HookScript(name,fn) local old=self.scripts[name]; self.scripts[name]=function(...) if old then old(...) end; return fn(...) end end
+function methods:GetWidth() return self.width or 0 end
 CreateFrame=newFrame
 UIParent=newFrame("Frame","UIParent")
 GameTooltip=newFrame("GameTooltip","GameTooltip")
@@ -231,8 +244,9 @@ class UIShellTests(unittest.TestCase):
           assert(U.current and U.current.q==12, "pick first actionable step in this zone")
           assert(U.current.kind=="accept")
           assert(U.title:GetText():find("Alpha Keep"))
-          assert(U.tags:GetText():find("%[FDJ%]") and U.tags:GetText():find("%[observed%]"))
-          assert(U.note:GetText():find("your choice") and U.note:GetText():find("unlocks 1"))
+          assert(U.tags:GetText():find("FDJ") and U.tags:GetText():find("observed"))
+          assert(U.note:GetText():find("Your choice") and U.note:GetText():find("unlocks 1"))
+          assert(U.stepStripe and U.stepStripe.color and U.stepStripe.color[1]==1, "accept stripe is gold")
           SlashCmdList.RELAXQUESTPLANNER("map")
           assert(WP.map==101 and WP.x==0.4 and WP.y==0.5 and SUPERTRACK==true)
           STATE.log[12]=true; FIRE("QUEST_ACCEPTED",1,12); DRAIN()

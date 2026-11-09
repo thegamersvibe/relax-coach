@@ -15,9 +15,10 @@ local function buildPicker()
   UI.picker = f
   UI.Movable(f, "pickerPosition")
   f:SetFrameStrata("DIALOG")
-  UI.Text(f, "GameFontNormal", 12, -12, 335, 18):SetText("Dungeon quests")
-  UI.Button(f, "X", 24, 352, -7, function() f:Hide() end)
-  UI.pickerStatus = UI.Text(f, "GameFontHighlightSmall", 12, -38, 360, 30)
+  UI.Header(f, "Dungeon quests", 300)
+  UI.CloseButton(f, function() f:Hide() end)
+  UI.pickerStatus = UI.Text(f, "GameFontHighlightSmall", 12, -42, 360, 30)
+  UI.pickerStatus:SetTextColor(0.42, 0.78, 1)
   local scroll = CreateFrame("ScrollFrame", "RelaxQuestPlannerDungeonScroll", f, "UIPanelScrollFrameTemplate")
   UI.dungeonScroll = scroll
   scroll:SetPoint("TOPLEFT", f, "TOPLEFT", 12, -76)
@@ -30,7 +31,7 @@ local function buildPicker()
   scroll:SetScript("OnMouseWheel", RQP.Safe(function(self, delta)
     self:SetVerticalScroll(math.max(0, math.min(self:GetVerticalScrollRange(), self:GetVerticalScroll() - delta * 28)))
   end))
-  UI.Text(f, "GameFontDisableSmall", 12, -316, 365, 25):SetText("Counts are unique remaining route quests, including prerequisites.")
+  local foot = UI.Text(f, "GameFontHighlightSmall", 12, -316, 365, 25); foot:SetText("Counts are unique remaining route quests, including prerequisites."); foot:SetTextColor(unpack(UI.THEME.muted))
   f:SetScript("OnHide", RQP.Safe(UI.CancelCounts))
 end
 
@@ -51,7 +52,7 @@ function UI.RefreshCounts()
   for i, name in ipairs(names) do
     local row = UI.dungeonRows[i]
     if not row then
-      row = UI.Button(UI.dungeonChild, "", 336, 0, -(i - 1) * 28, function() end)
+      row = UI.Row(UI.dungeonChild, 336, 0, -(i - 1) * 28, function() end)
       UI.dungeonRows[i] = row
     end
     row:SetText(name .. " - counting...")

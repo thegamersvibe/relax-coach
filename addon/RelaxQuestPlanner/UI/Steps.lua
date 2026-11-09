@@ -96,17 +96,20 @@ function UI.RenderRoute(P)
     return
   end
   local s = UI.current
-  UI.line1:SetText((VERB[s.kind] or s.kind or "Quest") .. ": |cffffd100" .. (s.name or tostring(s.q)) .. "|r")
+  local hex = UI.KIND_HEX and UI.KIND_HEX[s.kind] or "ffffff"
+  UI.line1:SetText("|cff" .. hex .. (VERB[s.kind] or s.kind or "Quest") .. "|r  " .. (s.name or tostring(s.q)))
+  local c = UI.THEME and UI.THEME.kind[s.kind]
+  if UI.stepStripe and c then UI.stepStripe:SetColorTexture(c[1], c[2], c[3], 1) end
   local where = s.who and (s.who .. (s.zone and (" - " .. s.zone) or "")) or (s.zone or "")
   local x, y = RQP.Number(s.x), RQP.Number(s.y)
   if x and y then where = where .. (" (%.1f, %.1f)"):format(x, y) end
   UI.line2:SetText(where)
-  UI.tags:SetText("[" .. (s.source or "unknown source") .. "] [" .. (s.confidence or "unverified") .. "]")
+  UI.tags:SetText((s.source or "unknown source") .. "  ·  " .. (s.confidence or "unverified"))
   local note = s.note or ""
   if s.below then
     local floor = RQP.Number(route.floor)
     local reason = note ~= "" and note or "optional quest / reward"
-    note = "your choice - below " .. (floor and ("level " .. tostring(math.floor(floor))) or "the level floor") .. "; " .. reason
+    note = "|cffffa500Your choice|r - below " .. (floor and ("level " .. tostring(math.floor(floor))) or "the level floor") .. "; " .. reason
   end
   if not canDo then note = "Waiting for prerequisites / quest progress. " .. note end
   UI.note:SetText(note)
