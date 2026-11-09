@@ -590,5 +590,50 @@ check(c.gear.slots[5].scoreStatus == 'unknown' and c.gear.slots[5].score is None
       and c.gear.slots[5].gapPct is None, 'an occupied unindexed item never mixes stat weights with pipeline scores')
 check(G.SCORE_CALLS == 0, 'provider preview/stat scorer is not used as a comparable pipeline score')
 
+# 18. Level-up checklist: once per level, never in combat, built from existing findings, can be turned off.
+print('== level-up checklist')
+L, G, FC, c = client({'level': 20, 'unspent': 1, 'combat': False})
+LU = FC.LevelUp
+check(LU.Enabled(LU), 'level-up checklist is on by default')
+check(c.levelUpShown is None and LU.frame is None, 'nothing pops up on a normal login')
+G.FIRE('PLAYER_LEVEL_UP', 20)
+check(c.levelUpShown == 20 and LU.frame is not None and LU.frame.IsShown(LU.frame), 'checklist opens after a level-up')
+rows = [LU.rows[i] for i in range(1, len(LU.rows) + 1)]
+kinds = [r.kind for r in rows]
+print('   rows:', [(r.kind, r.text) for r in rows])
+check(kinds and kinds[0] == 'talent' and 'unspent talent point' in rows[0].text, 'unspent talent point is the first row')
+check(len([k for k in kinds if k == 'gear']) <= 2 and len([k for k in kinds if k in ('train', 'classquest')]) <= 2,
+      'at most 2 training and 2 gear rows')
+check(all(k in ('talent', 'train', 'classquest', 'gear', 'dungeon') for k in kinds), 'only checklist kinds are shown')
+title = LU.frame.title.GetText(LU.frame.title)
+check(title.startswith('Level 20'), f'title names the new level ({title})')
+check(not LU.frame.guide.IsShown(LU.frame.guide), 'Pick my guide is hidden when Quest Planner is not loaded')
+LU.frame.Hide(LU.frame)
+G.FIRE('PLAYER_LEVEL_UP', 20)
+check(not LU.frame.IsShown(LU.frame), 'same level does not pop up twice')
+G.STATE.level = 21; G.STATE.combat = True
+G.FIRE('PLAYER_LEVEL_UP', 21)
+check(not LU.frame.IsShown(LU.frame) and LU.pending, 'in combat: waits instead of popping up')
+G.STATE.combat = False
+G.FIRE('PLAYER_REGEN_ENABLED')
+check(LU.frame.IsShown(LU.frame) and c.levelUpShown == 21 and not LU.pending, 'opens once combat ends')
+LU.frame.Hide(LU.frame)
+L.execute('SlashCmdList.RELAXQUESTPLANNER = function(m) RQP_CALLED = m end')
+G.SlashCmdList.FOREVERCOACH('levelup')
+check(LU.frame.IsShown(LU.frame) and LU.frame.guide.IsShown(LU.frame.guide), '/coach levelup reopens it; guide button shows with Quest Planner')
+LU.frame.guide.scripts.OnClick(LU.frame.guide)
+check(G.RQP_CALLED == 'guide' and not LU.frame.IsShown(LU.frame), 'Pick my guide calls /rqp guide and closes')
+G.SlashCmdList.FOREVERCOACH('levelup off')
+check(not LU.Enabled(LU) and G.ForeverCoachDB.levelUpChecklist is False, '/coach levelup off saves the setting')
+LU.frame.Hide(LU.frame)
+G.STATE.level = 22
+G.FIRE('PLAYER_LEVEL_UP', 22)
+check(not LU.frame.IsShown(LU.frame) and c.levelUpShown == 21, 'turned off: no pop-up on the next level')
+G.SlashCmdList.FOREVERCOACH('levelup on')
+check(LU.Enabled(LU), '/coach levelup on turns it back on')
+L.execute('FC_EMPTY = ForeverCoach.LevelUp:Build({ findings = {} })')
+check(len(G.FC_EMPTY) == 0, 'no findings -> empty checklist (prints "all set" instead of a window)')
+check(c.lastError is None, f'no errors recorded ({c.lastError and c.lastError.err})')
+
 print('ALL OK' if not fails else f'{len(fails)} FAILED')
 sys.exit(1 if fails else 0)
