@@ -1,0 +1,8 @@
+{
+  "name": "relax-coach-ci",
+  "private": true,
+  "description": "Isolated dependencies for the existing offline desktop UI tests",
+  "devDependencies": {
+    "jsdom": "26.1.0"
+  }
+}

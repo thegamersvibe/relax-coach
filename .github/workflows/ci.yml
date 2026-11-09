@@ -1,0 +1,114 @@
+name: Contribution CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# PR code runs only on disposable GitHub-hosted runners, without write access.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coach-lua:
+    name: Coach Lua
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.14'
+      - name: Install pinned Lua harness dependency
+        run: python -m pip install --disable-pip-version-check -r .github/requirements-ci.txt
+      - name: Existing Coach harness
+        run: env -u SV_OUT python -I -B test/harness.py
+      - name: Existing reaction tests
+        run: python -I -B test/reactions_test.py
+      - name: Required CI gate regression tests
+        run: python -I -B .github/tests/test_check_results.py
+
+  desktop-go:
+    name: Desktop Go and UI
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: desktop/go.mod
+          cache: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '26'
+          package-manager-cache: false
+      - name: Existing Go tests with race detection
+        env:
+          NATIVE_HTML_OUT: ${{ runner.temp }}/relax-coach-native.html
+        working-directory: desktop
+        run: go test -race -count=1 ./...
+      - name: Go vet
+        working-directory: desktop
+        run: go vet ./...
+      - name: Install locked UI test dependencies without lifecycle scripts
+        run: npm ci --prefix .github --ignore-scripts
+      - name: Existing offline UI tests
+        env:
+          NODE_PATH: ${{ github.workspace }}/.github/node_modules
+          NATIVE_HTML_OUT: ${{ runner.temp }}/relax-coach-native.html
+        run: node --test desktop/*_ui_test.cjs
+
+  bundle-contract:
+    name: Bundle contract and Windows cross-build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: desktop/go.mod
+          cache: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.14'
+      - name: Cross-compile a private Windows build (never upload or publish)
+        working-directory: desktop
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: '0'
+        run: |
+          mkdir -p ../dist
+          go build -trimpath -ldflags '-H windowsgui' -o ../dist/RelaxCoach.exe .
+      - name: Build a private guild archive (never upload or publish)
+        run: python scripts/build_guild_bundle.py --exe dist/RelaxCoach.exe
+      - name: Existing bundle contract tests
+        run: python -I -B test/test_guild_bundle.py
+
+  required-ci:
+    # Keep this check name stable: the main ruleset requires its GitHub Actions result.
+    name: Required CI
+    if: ${{ always() }}
+    needs: [coach-lua, desktop-go, bundle-contract]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Reject failed, cancelled, skipped or absent upstream jobs
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: python3 -I -B .github/scripts/check_results.py

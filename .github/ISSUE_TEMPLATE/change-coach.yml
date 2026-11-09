@@ -1,0 +1,42 @@
+name: Change Coach
+description: Propose a focused fix or improvement to the existing Coach.
+title: "[Coach] "
+body:
+  - type: markdown
+    attributes:
+      value: Agree scope before a substantial change. Use sanitized evidence, never real saves or credentials.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or opportunity
+      description: What happens today, and who benefits from the change?
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Proposed behavior and defaults
+      description: Describe triggers, sound/visual output, cooldowns and enabled/muted defaults if relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and non-goals
+      description: Name affected components and what must stay unchanged.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification plan
+      description: Tests, actual Forever client/build, Windows companion version, acceptance steps and untested areas.
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: Saves, updater and rollback risks
+      description: Include data/default changes, compatibility and rollback; write none when appropriate.
+    validations:
+      required: true
