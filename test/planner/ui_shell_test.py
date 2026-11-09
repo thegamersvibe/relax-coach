@@ -375,6 +375,27 @@ class UIShellTests(unittest.TestCase):
           assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
         ''')
 
+    def test_guide_picker_requires_live_journey_catalog_api(self):
+        lua = client()
+        lua.execute((ADDON / 'Journey/Picker.lua').read_text())
+        lua.execute(r'''
+          local U=RelaxQuestPlanner.UI
+          RelaxJourneyAPI=nil; U.UpdateJourney()
+          assert(not U.GuideAvailable() and not U.guideButton:IsEnabled(),
+            "loading our picker alone must not enable the Journey button")
+          U.guideButton.scripts.OnEnter(U.guideButton)
+          assert(GameTooltip:GetText():find("Requires") and GameTooltip:GetText():find("Journey"))
+          local api={ListCatalogGuides=function() return {} end, ScanGuideQuests=function() end, Goto=function() end}
+          for _,key in ipairs({'ListCatalogGuides','ScanGuideQuests','Goto'}) do
+            local fn=api[key]; api[key]=nil; RelaxJourneyAPI=api; U.UpdateJourney()
+            assert(not U.guideButton:IsEnabled(), 'missing '..key)
+            api[key]=true; U.UpdateJourney()
+            assert(not U.guideButton:IsEnabled(), 'non-function '..key)
+            api[key]=fn
+          end
+          U.UpdateJourney(); assert(U.guideButton:IsEnabled())
+        ''')
+
     def test_journey_picker_optional_button_top_three_and_route_handoff(self):
         lua = client()
         lua.execute(r'''
@@ -396,7 +417,8 @@ class UIShellTests(unittest.TestCase):
             GotoBest=function(choice) WENT=choice; return true end,
             LoadRoute=function(route) LOADED=route; return true end,
           }
-          RelaxJourneyAPI={RegisterLocalGuide=function() end,Goto=function() end}
+          RelaxJourneyAPI={RegisterLocalGuide=function() end,Goto=function() end,
+            ListCatalogGuides=function() return {} end,ScanGuideQuests=function() end}
           U.Refresh(); assert(U.guideButton:IsEnabled())
           U.guideButton:Click(); DRAIN()
           assert(PICK_CALLS==1 and #U.guideRows==3 and U.guidePicker:IsShown())
@@ -569,7 +591,10 @@ class UIShellTests(unittest.TestCase):
         ''')
 
     def test_mode_change_invalidates_guide_results_and_routes_close_picker(self):
-        lua = client('GUIDE_PENDING={}; RelaxQuestPlanner.Journey={PickGuide=function(cb) GUIDE_PENDING[#GUIDE_PENDING+1]=cb; return true end}')
+        lua = client('''
+            GUIDE_PENDING={}; RelaxQuestPlanner.Journey={PickGuide=function(cb) GUIDE_PENDING[#GUIDE_PENDING+1]=cb; return true end}
+            RelaxJourneyAPI={ListCatalogGuides=function() return {} end,ScanGuideQuests=function() end,Goto=function() end}
+        ''')
         lua.execute(r'''
           SlashCmdList.RELAXQUESTPLANNER("guide")
           SlashCmdList.RELAXQUESTPLANNER("mode strict")
