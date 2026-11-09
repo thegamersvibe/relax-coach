@@ -121,7 +121,7 @@ function UI.HandoffJourney(route)
 end
 
 function UI.RetryJourney()
-  if UI.journeySyncPending and UI.route then
+  if (UI.journeySyncPending or UI.autoJourneyPending) and UI.route then
     UI.journeySyncPending = nil
     UI.HandoffJourney(UI.route)
   end
