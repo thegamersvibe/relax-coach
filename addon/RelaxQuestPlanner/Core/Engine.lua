@@ -210,14 +210,15 @@ local function singleSourceZone(sources,includeVendors)
 end
 local function norm(s) return s:lower():gsub("the ",""):gsub("'",""):gsub("stormwind ",""):gsub(":",""):match("^%s*(.-)%s*$") end
 local function dungeonMatch(a,b)
-    local x,y=norm(a),norm(b)
+    local x,y=norm(D.CanonicalDungeon(a)),norm(D.CanonicalDungeon(b))
     return x~="" and y~="" and (x:find(y,1,true)~=nil or y:find(x,1,true)~=nil)
 end
 local classifications,addonLists={},nil
 local function classify(r)
     if classifications[r.id] then return classifications[r.id] end
     local out={}
-    local function add(z) local name=D.DungeonForArea(z); if name then out[name]=true end end
+    local function addName(name) if name then out[D.CanonicalDungeon(name)]=true end end
+    local function add(z) addName(D.DungeonForArea(z)) end
     for _,s in ipairs(starters(r)) do
         if s.kind=="item" then add(singleSourceZone(s.sources,false)) else add(s.zone) end
     end
@@ -237,15 +238,20 @@ local function classify(r)
         end
     end
     add(r.zone)
-    if r.fdj and r.fdj.dungeon then out[r.fdj.dungeon]=true end
+    if r.fdj then addName(r.fdj.dungeon) end
     classifications[r.id]=out; return out
 end
 local oldInvalidate=E.Invalidate
 function E.Invalidate() oldInvalidate(); classifications={}; addonLists=nil end
 local function dungeonTargets(name,p,g)
+    name=D.CanonicalDungeon(name)
     if not addonLists then
         local out={}; local dg=D.DungeonQuestie()
-        if dg then for _,q in ipairs(dg.quests) do out[q.id]=q.dungeons or {}; tick() end end
+        if dg then for _,q in ipairs(dg.quests) do
+            out[q.id]={}
+            for _,dn in ipairs(q.dungeons or {}) do table.insert(out[q.id],D.CanonicalDungeon(dn)) end
+            tick()
+        end end
         addonLists=out
     end
     -- Invalidate() can clear addonLists while this coroutine is yielded.

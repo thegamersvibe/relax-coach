@@ -140,6 +140,27 @@ class EngineTests(unittest.TestCase):
         for q in ref.db.q:
             self.assertEqual(set(array(h.rqp.Engine.Unlocks(q, p))), set(unlocks(ref, q)), q)
 
+    def test_fdj_only_routes_use_canonical_picker_names(self):
+        snap = dict(level=60, race="Dwarf", raceID=3, faction="Alliance",
+                    completed=[], log=[], professions={}, **{"class": "WARRIOR"})
+        h = Harness(snap, qdb=False, dungeon_global=False)
+        p = h.player()
+        for name in ("The Hall of Thanes", "Dire Maul", "Scarlet Monastery",
+                     "Stratholme", "Blackrock Spire"):
+            with self.subTest(dungeon=name):
+                route = h.route(name, p, mode="all")
+                self.assertGreater(len(route.steps), 0, name)
+                if name == "The Hall of Thanes":
+                    self.assertIn(96394, array(route.plan))
+        # This FDJ source has only Horde quests here; never invent Alliance ones.
+        self.assertEqual(len(h.route("The Shaper's Terrace", p, mode="all").steps), 0)
+        horde = Harness(dict(snap, faction="Horde", race="Tauren", raceID=6),
+                        qdb=False, dungeon_global=False)
+        self.assertGreater(len(horde.route("The Shaper's Terrace", mode="all").steps), 0)
+        for dungeon in array(h.rqp.Data.FOREVER_DUNGEONS):
+            for alias in array(dungeon.aliases) if dungeon.aliases else []:
+                self.assertEqual(h.rqp.Data.CanonicalDungeon(alias), dungeon.name)
+
     def test_synthetic_characters_and_fdj_fallback(self):
         cases = [("Horde", "Tauren", 6, "DRUID", 20, "Wailing Caverns"),
                  ("Alliance", "Skyborne", 95, "HUNTER", 10, "The Deadmines")]
