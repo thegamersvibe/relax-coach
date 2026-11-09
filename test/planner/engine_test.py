@@ -140,6 +140,27 @@ class EngineTests(unittest.TestCase):
         for q in ref.db.q:
             self.assertEqual(set(array(h.rqp.Engine.Unlocks(q, p))), set(unlocks(ref, q)), q)
 
+    def test_fdj_only_routes_use_canonical_picker_names(self):
+        snap = dict(level=60, race="Dwarf", raceID=3, faction="Alliance",
+                    completed=[], log=[], professions={}, **{"class": "WARRIOR"})
+        h = Harness(snap, qdb=False, dungeon_global=False)
+        p = h.player()
+        for name in ("The Hall of Thanes", "Dire Maul", "Scarlet Monastery",
+                     "Stratholme", "Blackrock Spire"):
+            with self.subTest(dungeon=name):
+                route = h.route(name, p, mode="all")
+                self.assertGreater(len(route.steps), 0, name)
+                if name == "The Hall of Thanes":
+                    self.assertIn(96394, array(route.plan))
+        # This FDJ source has only Horde quests here; never invent Alliance ones.
+        self.assertEqual(len(h.route("The Shaper's Terrace", p, mode="all").steps), 0)
+        horde = Harness(dict(snap, faction="Horde", race="Tauren", raceID=6),
+                        qdb=False, dungeon_global=False)
+        self.assertGreater(len(horde.route("The Shaper's Terrace", mode="all").steps), 0)
+        for dungeon in array(h.rqp.Data.FOREVER_DUNGEONS):
+            for alias in array(dungeon.aliases) if dungeon.aliases else []:
+                self.assertEqual(h.rqp.Data.CanonicalDungeon(alias), dungeon.name)
+
     def test_synthetic_characters_and_fdj_fallback(self):
         cases = [("Horde", "Tauren", 6, "DRUID", 20, "Wailing Caverns"),
                  ("Alliance", "Skyborne", 95, "HUNTER", 10, "The Deadmines")]
@@ -331,6 +352,67 @@ class EngineTests(unittest.TestCase):
         route = h.route(1, goal=True)
         self.assertEqual(len(route.steps), 0)
         self.assertGreater(len(route.issues), 0)
+
+    def test_goal_maximum_level_uses_player_not_future_lookahead(self):
+        snap = dict(level=30, race="Dwarf", raceID=3, faction="Alliance",
+                    completed=[], log=[], professions={}, **{"class": "WARRIOR"})
+        h = Harness(snap, dungeon_global=False)
+        p = h.player()
+        self.assertEqual(h.rqp.Engine.State(8167, p)[0], 'available')
+        route = h.route(8167, p, goal=True, mode='all')
+        self.assertGreater(len(route.steps), 0, 'eligible level 30-39 quest must not be evaluated at level 60')
+        self.assert_action_dependencies(route, p, h)
+        p.level = 40
+        expired = h.route(8167, p, goal=True, mode='all')
+        self.assertEqual(len(expired.steps), 0)
+        self.assertIn('overLevel', [issue[1] for issue in array(expired.issues)])
+        # The minimum-level lookahead must still retain future goals as later.
+        h = MiniHarness({1: dict(name='Future', requiredLevel=40, questLevel=40, requiredMaxLevel=50)})
+        later = h.route(1, goal=True, mode='all')
+        self.assertEqual(len(later.steps), 0)
+        self.assertEqual([s.q for s in array(later.later)], [1])
+
+    def test_parent_active_metadata_and_ui_order_survive_local_repick(self):
+        from ui_shell_test import WOW, ADDON
+        def q(name, **kw):
+            return dict(name=name, requiredLevel=1, questLevel=10, **kw)
+        h = MiniHarness({1: q('Parent'), 2: q('Child', parentQuest=1, startedBy={3: [100]}),
+                         3: q('Starting with', availableStartingWith=1),
+                         4: q('Both', preQuestGroup=[1, 2])})
+        p = h.player()
+        route = h.route(2, p, goal=True)
+        h.g.ORDER_ROUTE, h.g.ORDER_PLAYER = route, p
+        h.lua.execute(WOW)
+        h.lua.execute((ADDON / 'Init.lua').read_text())
+        h.lua.execute((ADDON / 'UI/Steps.lua').read_text())
+        h.lua.execute('''
+            STATE.log[1]=true; STATE.ready[1]=true
+            ORDER_PLAYER.log[1]=true; ORDER_PLAYER.ready[1]=true
+            for _,s in ipairs(ORDER_ROUTE.steps) do s.zone=s.q==1 and 'Home' or 'Away' end
+            local U=RelaxQuestPlanner.UI
+            local i=U.PickStep(ORDER_ROUTE,ORDER_PLAYER)
+            assert(ORDER_ROUTE.steps[i].q==2 and ORDER_ROUTE.steps[i].kind=='accept',
+                'never turn in the local parent before accepting its pending child')
+            RelaxQuestPlannerDB.skipped={[2]=true}
+            i=U.PickStep(ORDER_ROUTE,ORDER_PLAYER)
+            assert(ORDER_ROUTE.steps[i].q==1 and ORDER_ROUTE.steps[i].kind=='turnin')
+            RelaxQuestPlannerDB.skipped=nil; STATE.log[2]=true; ORDER_PLAYER.log[2]=true
+            i=U.PickStep(ORDER_ROUTE,ORDER_PLAYER)
+            assert(ORDER_ROUTE.steps[i].q==1 and ORDER_ROUTE.steps[i].kind=='turnin')
+        ''')
+        p.log[2] = None
+        rebuilt = h.route(2, p, goal=True)
+        child = next(s for s in array(rebuilt.steps) if s.q == 2 and s.kind == 'accept')
+        self.assertTrue(child.parentActive[1], 'retain an already-active parent constraint after replan')
+        self.assertIn(1, array(child.needs))
+        both = h.route(4, p, goal=True)
+        order = [(s.q, s.kind) for s in array(both.steps)]
+        self.assertLess(order.index((2, 'accept')), order.index((1, 'turnin')))
+        self.assertNotIn('actionCycle', [issue[1] for issue in array(both.issues)])
+        p.log[1] = None
+        starting = next(s for s in array(h.route(3, p, goal=True).steps) if s.q == 3 and s.kind == 'accept')
+        self.assertTrue(starting.activeNeeds[1])
+        self.assertFalse(starting.parentActive and starting.parentActive[1], 'startingWith also permits a turned-in parent')
 
     def test_slow_provider_reads_are_time_sliced(self):
         h = Harness()

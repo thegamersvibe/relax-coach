@@ -2,7 +2,7 @@
 RelaxQuestPlanner = RelaxQuestPlanner or {}
 local RQP = RelaxQuestPlanner
 RQP.UI = RQP.UI or {}
-RQP.version = "0.1.0-test"
+RQP.version = "0.1.2-test"
 
 function RQP.GetDB()
   if type(RelaxQuestPlannerDB) ~= "table" then RelaxQuestPlannerDB = {} end
@@ -21,12 +21,20 @@ function RQP.Number(value)
   if number and number == number and number ~= math.huge and number ~= -math.huge then return number end
 end
 
+-- One place records errors, stamped so an old error is never reported as current.
+function RQP.SetError(err)
+  local db = RQP.GetDB()
+  db.lastError = RQP.IsSecret(err) and "Restricted error" or tostring(err)
+  db.lastErrorVersion = RQP.version
+  db.lastErrorTime = time and time() or nil
+end
+
 -- Guard script hooks, events, timers and async callbacks alike.
 function RQP.Safe(fn)
   return function(...)
     local ok, a, b = pcall(fn, ...)
     if not ok then
-      RQP.GetDB().lastError = RQP.IsSecret(a) and "Restricted error" or tostring(a)
+      RQP.SetError(a)
       return nil
     end
     return a, b
@@ -82,11 +90,21 @@ local safeRecord = RQP.Safe(record)
 
 local function onEvent(_, event, ...)
   if event == "ADDON_LOADED" then
-    if (...) == "RelaxQuestPlanner" then RQP.GetDB() end
+    if (...) == "RelaxQuestPlanner" then
+      local db = RQP.GetDB()
+      -- Errors from an older build were fixed by the update; don't keep reporting them.
+      if db.lastError and db.lastErrorVersion ~= RQP.version then
+        db.lastError, db.lastErrorVersion, db.lastErrorTime = nil, nil, nil
+      end
+    end
     return
   end
   if event == "PLAYER_LOGIN" then
     if RQP.UI.Initialize then RQP.UI.Initialize() end
+    return
+  end
+  if event == "PLAYER_REGEN_ENABLED" then
+    if RQP.UI.RetryJourney then RQP.UI.RetryJourney() end
     return
   end
   if event == "QUEST_ACCEPTED" then
@@ -103,7 +121,7 @@ end
 
 for _, event in ipairs({ "ADDON_LOADED", "PLAYER_LOGIN", "QUEST_ACCEPTED", "QUEST_TURNED_IN",
   "QUEST_REMOVED", "QUEST_LOG_UPDATE", "ZONE_CHANGED", "ZONE_CHANGED_INDOORS", "ZONE_CHANGED_NEW_AREA",
-  "PLAYER_LEVEL_UP", "PLAYER_ENTERING_WORLD" }) do
+  "PLAYER_LEVEL_UP", "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED" }) do
   events:RegisterEvent(event)
 end
 events:SetScript("OnEvent", RQP.Safe(onEvent))

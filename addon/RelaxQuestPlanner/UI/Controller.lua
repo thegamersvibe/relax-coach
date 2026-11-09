@@ -2,6 +2,13 @@ local RQP = RelaxQuestPlanner
 local UI = RQP.UI
 local routeGeneration = 0
 
+local function journeyChoice()
+  local api = _G.RelaxJourneyAPI
+  if not (api and api.GetActiveGuide) then return nil end
+  local ok, loaded, last = pcall(api.GetActiveGuide)
+  if ok then return {loaded=loaded, last=last} end
+end
+
 function UI.UpdateStatus()
   if not UI.status then return end
   local pieces = {}
@@ -25,7 +32,7 @@ end
 
 local function planFailed(err)
   UI.busy, UI.routeJob = false, nil
-  RQP.GetDB().lastError = RQP.IsSecret(err) and "Restricted error" or tostring(err)
+  RQP.SetError(err)
   UI.notice = "Planning failed - type /rqp error"
   if not UI.route then UI.line1:SetText("Unable to build a route.") end
   UI.UpdateStatus()
@@ -60,16 +67,7 @@ function UI.Plan(show, force)
     if not rendered then planFailed(err); return end
     UI.notice = UI.RouteIssues(route)
     UI.UpdateStatus()
-    -- Journey is the step tracker: hand a freshly chosen route over once.
-    if UI.autoJourneyPending and RQP.GetDB().autoJourney ~= false and #(route.steps or {}) > 0
-      and RQP.Journey and RQP.Journey.LoadRoute and _G.RelaxJourneyAPI
-      and not (InCombatLockdown and InCombatLockdown()) then
-      UI.autoJourneyPending = nil
-      pcall(RQP.Journey.LoadRoute, route)
-    elseif not UI.journeyRestoreChecked then
-      UI.journeyRestoreChecked = true
-      UI.RestoreJourney(route)
-    end
+    UI.HandoffJourney(route)
     if UI.replanPending then
       UI.replanPending = nil
       RQP.After(0, function() if generation == routeGeneration then UI.Plan(false) end end)
@@ -82,16 +80,66 @@ function UI.Plan(show, force)
   else planFailed(err) end
 end
 
+-- Replace only our active/last session guide, never a different player choice.
+-- RegisterLocalGuide invalidates Journey's normalized RQP_ROUTE cache on reload.
+function UI.SyncJourney(route)
+  UI.journeySyncPending = nil
+  local api = _G.RelaxJourneyAPI
+  if not (route and api and api.GetActiveGuide and RQP.Journey and RQP.Journey.LoadRoute) then return false end
+  local ok, _, last = pcall(api.GetActiveGuide)
+  if not ok or last ~= "RQP_ROUTE" then return false end
+  if InCombatLockdown and InCombatLockdown() then UI.journeySyncPending = true; return true end
+  local loaded, result = pcall(RQP.Journey.LoadRoute, route)
+  return loaded and result == true
+end
+
+function UI.HandoffJourney(route)
+  local pending = UI.autoJourneyPending
+  if pending then
+    local current = journeyChoice()
+    local unchanged = current and current.loaded == pending.loaded and current.last == pending.last
+    local oursOrEmpty = current and (current.last == "RQP_ROUTE" or (not current.loaded and not current.last))
+    if not unchanged and not oursOrEmpty then
+      -- A newer manual navigation wins, including while waiting for combat to end.
+      UI.autoJourneyPending, UI.journeySyncPending = nil, nil
+      UI.journeyRestoreChecked = true
+      return
+    end
+  end
+  if UI.autoJourneyPending and RQP.GetDB().autoJourney ~= false and #(route.steps or {}) > 0
+    and RQP.Journey and RQP.Journey.LoadRoute and _G.RelaxJourneyAPI then
+    if InCombatLockdown and InCombatLockdown() then UI.journeySyncPending = true; return end
+    UI.autoJourneyPending, UI.journeySyncPending = nil, nil
+    UI.journeyRestoreChecked = true
+    pcall(RQP.Journey.LoadRoute, route)
+  elseif UI.SyncJourney(route) then
+    UI.journeyRestoreChecked = true
+  elseif not UI.journeyRestoreChecked then
+    UI.journeyRestoreChecked = true
+    UI.RestoreJourney(route)
+  end
+end
+
+function UI.RetryJourney()
+  if (UI.journeySyncPending or UI.autoJourneyPending) and UI.route then
+    UI.journeySyncPending = nil
+    UI.HandoffJourney(UI.route)
+  end
+end
+
 -- Journey forgets the session route on reload. Put it back only when Journey has
 -- nothing loaded or its last guide was our route; never replace a guide the player chose.
 function UI.RestoreJourney(route)
   local api = _G.RelaxJourneyAPI
   if RQP.GetDB().autoJourney == false or not (api and api.GetActiveGuide and RQP.Journey and RQP.Journey.LoadRoute) then return false end
-  if InCombatLockdown and InCombatLockdown() then UI.journeyRestoreChecked = nil; return false end
   if #(route.steps or {}) == 0 then return false end
   local ok, loaded, last = pcall(api.GetActiveGuide)
   if not ok then return false end
-  if loaded and last ~= "RQP_ROUTE" then return false end
+  if (loaded or last) and last ~= "RQP_ROUTE" then return false end
+  if InCombatLockdown and InCombatLockdown() then
+    UI.journeyRestoreChecked, UI.journeySyncPending = nil, true
+    return false
+  end
   return (pcall(RQP.Journey.LoadRoute, route))
 end
 
@@ -100,7 +148,7 @@ function UI.SelectDungeon(name)
   for _, dungeon in ipairs(RQP.Data.Dungeons() or {}) do
     if dungeon.name:lower() == wanted then
       RQP.GetDB().selection = {kind="dungeon", name=dungeon.name}
-      UI.route, UI.current, UI.autoJourneyPending = nil, nil, true
+      UI.route, UI.current, UI.autoJourneyPending = nil, nil, journeyChoice()
       if UI.picker then UI.picker:Hide() end
       if UI.guidePicker then UI.guidePicker:Hide() end
       UI.Plan(true)
@@ -122,7 +170,7 @@ function UI.SelectGoal(text)
   local id = UI.ParseQuestID(text)
   if not id then RQP.Print("Use /rqp goal <questID>, or focus the quest box and shift-click a quest link."); return false end
   RQP.GetDB().selection = {kind="goal", q=id}
-  UI.route, UI.current, UI.autoJourneyPending = nil, nil, true
+  UI.route, UI.current, UI.autoJourneyPending = nil, nil, journeyChoice()
   UI.goalBox:SetText(tostring(id))
   if UI.picker then UI.picker:Hide() end
   if UI.guidePicker then UI.guidePicker:Hide() end
@@ -135,6 +183,8 @@ function UI.SetMode(mode)
   if not MODE_LABELS[mode] then RQP.Print("Mode must be strict, game, or all."); return end
   RQP.GetDB().mode = mode
   UI.modeButton:SetText(MODE_LABELS[mode])
+  local explain = {strict = "nothing more than 5 levels below you", game = "grey quests hidden", all = "every quest shown"}
+  RQP.Print(MODE_LABELS[mode] .. " - " .. explain[mode] .. ".")
   UI.Refresh(true)
 end
 function UI.CycleMode()
@@ -172,8 +222,8 @@ function UI.Refresh(force)
   UI.modeButton:SetText(MODE_LABELS[RQP.GetDB().mode])
   UI.UpdateStatus()
   local P = RQP.Player.Snapshot()
-  if UI.route then UI.RenderRoute(P) end
   local fp = UI.QuestFingerprint(P)
+  if UI.route then UI.RenderRoute(P) end
   if not force and fp == UI.lastFingerprint then return end
   UI.lastFingerprint = fp
   if RQP.GetDB().selection then UI.Plan(false, force) end
@@ -182,7 +232,9 @@ function UI.Refresh(force)
 end
 
 local function help()
-  RQP.Print("/rqp dungeon <name> | guide | goal <questID> | mode <strict|game|all> | map | skip | unskip | autopin | autojourney | hide | show | error")
+  RQP.Print("/rqp dungeon <name> | guide | goal <questID> | mode [strict|game|all] | map | skip | unskip | autopin | autojourney | hide | show | error [clear]")
+  RQP.Print("/rqp mode cycles the level filter when no argument is given.")
+  RQP.Print("/rqp guide shows the top 3 guides; click one to jump to your first undone step.")
 end
 
 SLASH_RELAXQUESTPLANNER1 = "/rqp"
@@ -196,10 +248,12 @@ SlashCmdList.RELAXQUESTPLANNER = RQP.Safe(function(message)
   elseif command == "map" then UI.SetWaypoint()
   elseif command == "goal" then UI.SelectGoal(arg)
   elseif command == "guide" then UI.PickGuide()
-  elseif command == "mode" then UI.SetMode(arg:lower())
+  elseif command == "mode" then
+    if arg == "" then UI.CycleMode() else UI.SetMode(arg:lower()) end
   elseif command == "skip" then UI.SkipCurrent()
   elseif command == "unskip" then
-    RQP.GetDB().skipped = nil; RQP.Print("Skipped quests restored."); if UI.route then UI.RenderRoute(RQP.Player.Snapshot()) end
+    RQP.GetDB().skipped = nil; RQP.Print("Skipped quests restored.")
+    if UI.route then UI.RenderRoute(RQP.Player.Snapshot()); UI.SyncJourney(UI.route) end
   elseif command == "autopin" then
     local db = RQP.GetDB(); db.autoPin = db.autoPin == false
     RQP.Print("Automatic map pin " .. (db.autoPin and "on" or "off") .. ".")
@@ -208,6 +262,19 @@ SlashCmdList.RELAXQUESTPLANNER = RQP.Safe(function(message)
     RQP.Print("Open new routes in Journey " .. (db.autoJourney and "on" or "off") .. ".")
   elseif command == "error" then
     local db = RQP.GetDB()
-    RQP.Print(db.lastError and ("Last error: " .. tostring(db.lastError)) or "No errors recorded.")
+    if arg:lower() == "clear" then
+      db.lastError, db.lastErrorVersion, db.lastErrorTime = nil, nil, nil
+      RQP.Print("Error log cleared.")
+    elseif db.lastError then
+      local when = ""
+      if db.lastErrorTime and time then
+        local mins = math.floor((time() - db.lastErrorTime) / 60)
+        when = mins < 1 and " (just now" or (" (" .. mins .. " min ago")
+        when = when .. ", v" .. tostring(db.lastErrorVersion or "?") .. ")"
+      end
+      RQP.Print("Last error" .. when .. ": " .. tostring(db.lastError) .. "  - /rqp error clear to reset")
+    else
+      RQP.Print("No errors recorded.")
+    end
   else help() end
 end)
