@@ -508,6 +508,40 @@ class UIShellTests(unittest.TestCase):
           assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
         ''')
 
+    def test_real_engine_refresh_never_enumerates_or_reads_quests(self):
+        lua = client()
+        lua.execute(r'''
+          QuestDB={Get=function(q,key)
+            local row={name="Quest "..q,requiredLevel=1,questLevel=30}
+            return row[key]
+          end,Exists=function(q) return q>=1 and q<=6000 end,
+          GetAllIds=function() local ids={} for i=1,6000 do ids[i]=i end return ids end}
+          LibQuestieDB={Quest=QuestDB,RequireContract=function() return true end}
+          RelaxQuestPlanner.Learn=nil
+        ''')
+        for name in ('Data', 'Engine'):
+            lua.execute((ADDON / 'Core' / (name + '.lua')).read_text())
+        lua.execute(r'''
+          SlashCmdList.RELAXQUESTPLANNER("goal 1"); DRAIN(500)
+          local U=RelaxQuestPlanner.UI
+          assert(U.route and #U.route.steps>0)
+          local reads,scans=0,0
+          local quest,ids=RelaxQuestPlanner.Data.Quest,RelaxQuestPlanner.Data.AllQuestIds
+          RelaxQuestPlanner.Data.Quest=function(...) reads=reads+1; return quest(...) end
+          RelaxQuestPlanner.Data.AllQuestIds=function(...) scans=scans+1; return ids(...) end
+          -- Rendering after warmup, unchanged events and even a changed snapshot
+          -- must not move graph work out of the async planner into the event handler.
+          U.Refresh(); DRAIN(500)
+          reads,scans=0,0
+          for i=1,5 do FIRE("QUEST_LOG_UPDATE"); DRAIN(500) end
+          assert(scans==0 and reads==0, "unchanged refresh: "..scans.." scans, "..reads.." quest reads")
+          STATE.level=31; U.Refresh()
+          assert(scans==0 and reads==0, "changed refresh must schedule, not build synchronously")
+          DRAIN(500)
+          assert(U.route.level==31 and scans>0, "changed state rebuilds asynchronously")
+          assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
+        ''')
+
     def test_quest_log_ticks_do_not_recount(self):
         lua = client()
         lua.execute(r'''

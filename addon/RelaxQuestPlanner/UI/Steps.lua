@@ -31,12 +31,15 @@ local function stepDone(s, P)
   if s.kind == "complete" then return inlog(s.q, P) and ready(s.q, P) end
   return false
 end
-local function actionable(s, P)
+local function actionable(s, P, route)
   if s.kind == "accept" then
     for _, q in ipairs(s.needs or {}) do
       local ok = done(q, P) or (s.activeNeeds and s.activeNeeds[q] and inlog(q, P))
       if not ok then return false end
     end
+    -- Current engine routes carry their gate results from the async build.
+    -- Keep the legacy path for callers supplying hand-authored route tables.
+    if route and route.availability then return route.availability[s.q] == "available" end
     if RQP.Engine and RQP.Engine.State then
       local state = RQP.Engine.State(s.q, P, {mode=RQP.GetDB().mode})
       return state == "available"
@@ -92,7 +95,7 @@ function UI.PickStep(route, P)
     if not stepDone(s, P) then
       left = left + 1
       firstUndone = firstUndone or i
-      if actionable(s, P) then
+      if actionable(s, P, route) then
         firstAct = firstAct or i
         if (map and s.map == map) or (zone and s.zone == zone) then firstHere = firstHere or i end
       end

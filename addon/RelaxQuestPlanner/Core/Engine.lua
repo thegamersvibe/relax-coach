@@ -414,9 +414,12 @@ local function step(kind,r,p,floor,needs,active)
 end
 local function actions(route,p,g,targets)
     local planned=planSet(route.plan,{})
+    -- Evaluate acceptance during the async build, never while repainting the UI.
+    route.availability={}
     local nodes,byQuest,blocked,metadata={},{},{},{}
     for index,q in ipairs(route.plan) do
         local r=D.Quest(q); local needs,active=dependencies(q,p,g,planned)
+        route.availability[q]=state(q,p,p.done,p.log,p.level,g)
         metadata[q]={needs=needs,active=active,index=index}
         if r.reqLevel>p.level then blocked[q]=true end
         tick()

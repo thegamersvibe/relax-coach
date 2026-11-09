@@ -172,8 +172,8 @@ function UI.Refresh(force)
   UI.modeButton:SetText(MODE_LABELS[RQP.GetDB().mode])
   UI.UpdateStatus()
   local P = RQP.Player.Snapshot()
-  if UI.route then UI.RenderRoute(P) end
   local fp = UI.QuestFingerprint(P)
+  if UI.route then UI.RenderRoute(P) end
   if not force and fp == UI.lastFingerprint then return end
   UI.lastFingerprint = fp
   if RQP.GetDB().selection then UI.Plan(false, force) end
