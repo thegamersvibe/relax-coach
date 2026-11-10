@@ -223,7 +223,7 @@ func addonRedirect(req *http.Request, via []*http.Request) error {
 	}
 	original := via[0].URL
 	if original.Host == "api.github.com" {
-		if v.String() != addonLatestURL {
+		if v.String() != addonLatestURL && !extraLatestURL(v.String()) {
 			return errors.New("refusing a redirect outside the release API")
 		}
 		return nil
@@ -237,6 +237,17 @@ func addonRedirect(req *http.Request, via []*http.Request) error {
 		}
 	}
 	return errors.New("refusing a redirect outside trusted GitHub release-asset hosts")
+}
+
+// addonHTTPError keeps the status code so callers can treat a missing
+// release (404) differently from a transient failure.
+type addonHTTPError struct {
+	status  int
+	purpose string
+}
+
+func (e *addonHTTPError) Error() string {
+	return fmt.Sprintf("GitHub %s request failed (HTTP %d); try again later. Reports remain usable offline", e.purpose, e.status)
 }
 
 func (u *addonUpdater) fetch(ctx context.Context, raw string, limit int64, purpose string) ([]byte, error) {
@@ -259,7 +270,7 @@ func (u *addonUpdater) fetch(ctx context.Context, raw string, limit int64, purpo
 		return nil, errors.New("GitHub rate limit reached; try again later. Reports remain usable offline")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GitHub %s request failed (HTTP %d); try again later. Reports remain usable offline", purpose, resp.StatusCode)
+		return nil, &addonHTTPError{status: resp.StatusCode, purpose: purpose}
 	}
 	if resp.ContentLength > limit {
 		return nil, fmt.Errorf("%s exceeds the download size limit", purpose)
