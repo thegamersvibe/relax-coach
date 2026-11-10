@@ -14,11 +14,12 @@ FC.safe = safe
 
 -- Forever hides some values from addons ("secret values"); never do math or comparisons on one.
 local function num(v)
-    if v == nil or (issecretvalue and issecretvalue(v)) or type(v) ~= "number" then return nil end
+    -- Ask issecretvalue first: even `v == nil` is a comparison on a possibly secret value.
+    if (issecretvalue and issecretvalue(v)) or type(v) ~= "number" then return nil end
     return v
 end
 local function plain(v)
-    if v == nil or (issecretvalue and issecretvalue(v)) then return nil end
+    if issecretvalue and issecretvalue(v) then return nil end
     return v
 end
 FC.num, FC.plain = num, plain
