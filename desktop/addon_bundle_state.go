@@ -38,7 +38,8 @@ func InstalledBundleState(game string) AddonBundleState {
 	game = filepath.Clean(game)
 	present := map[string]bool{}
 	for _, root := range all {
-		if _, err := os.Lstat(filepath.Join(game, filepath.FromSlash(root))); err == nil {
+		// Only a real folder counts; a file or a link there is not an install.
+		if st, err := os.Lstat(filepath.Join(game, filepath.FromSlash(root))); err == nil && st.IsDir() {
 			present[root] = true
 		}
 	}

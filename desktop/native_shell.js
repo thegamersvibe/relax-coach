@@ -222,6 +222,7 @@ function displayReport(result,folderChanged = false) {
     $('release-link').hidden = true;
     $('release-notes').textContent = 'Check again for this game folder.';
     $('setup-offered').textContent = 'Not checked';
+    autoChecked.clear(); // a folder chosen again gets a fresh lookup
     bundleStatus('Game folder changed. Check again before installing or updating.');
     for (const k of Object.keys(extraOffers)) delete extraOffers[k];
     if ($('extra-list').children.length) loadExtras();
@@ -387,8 +388,8 @@ $('setup-install').addEventListener('click',applyBundle);
 function chooseInitialView(result) {
   if (initialViewChosen) return;
   initialViewChosen = true;
-  if (userNavigated) return;
-  if (!result.Game || (result.Bundle ? result.Bundle.install === true : result.InstalledVersion === '0.0.0')) { show('setup'); maybeAutoCheck(); }
+  if (!userNavigated && (!result.Game || (result.Bundle ? result.Bundle.install === true : result.InstalledVersion === '0.0.0'))) show('setup');
+  maybeAutoCheck(); // also when the player opened Get started before this first report
 }
 // On Get started only, look up the latest release once per folder so Install
 // shows the version it will install. This reads release information; nothing

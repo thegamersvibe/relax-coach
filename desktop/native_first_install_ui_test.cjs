@@ -136,3 +136,24 @@ test('updates disabled: Get started never looks up a release',async t=>{
   assert.equal(count('checkAddon'),0);
   assert.equal($('setup-install').disabled,true);
 });
+
+test('returning to an earlier folder looks the release up again',async t=>{
+  let state=report('C:\\A','0.0.0',none);
+  const {$,count}=await setup(t,{reportRefresh:()=>state,setGame:g=>(state=report(g,'0.0.0',none)),
+    checkAddon:()=>({Version:'1.5.1',Available:true,Install:true,InstalledVersion:'0.0.0',Bundle:none})});
+  const change=async g=>{$('game-path').value=g;const W=$('game-form').ownerDocument.defaultView;$('game-form').dispatchEvent(new W.Event('submit',{bubbles:true,cancelable:true}));await settle();await settle();};
+  assert.equal($('setup-install').disabled,false);
+  await change('C:\\B');assert.equal($('setup-install').disabled,false);
+  await change('C:\\A');
+  assert.equal(count('checkAddon'),3);
+  assert.equal($('setup-install').disabled,false,'A has an offer again');
+});
+
+test('opening Get started before the first report still looks the release up',async t=>{
+  let release;const first=new Promise(r=>{release=r;});
+  const {$,count}=await setup(t,{reportRefresh:()=>first,checkAddon:()=>({Version:'1.5.1',Available:true,Install:true,InstalledVersion:'0.0.0',Bundle:none})});
+  $('nav-setup').click();
+  release(report('C:\\A','0.0.0',none));await settle();await settle();
+  assert.equal(count('checkAddon'),1);
+  assert.equal($('setup-install').disabled,false);
+});

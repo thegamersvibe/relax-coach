@@ -341,17 +341,25 @@ func (u *addonUpdater) installTrees(ctx context.Context, game string, release Ad
 			missing = append([]string{p}, missing...)
 		}
 		for _, parent := range missing {
-			if err := checkTransaction(); err != nil {
-				return result, err
+			err := checkTransaction()
+			if err == nil {
+				err = addonMkdir(parent, 0755)
 			}
-			if err := os.Mkdir(parent, 0755); err != nil {
-				return result, err
+			if err == nil {
+				ancestors[parent], err = addonDirectoryIdentity(parent)
+				createdParents = append(createdParents, parent)
 			}
-			ancestors[parent], err = addonDirectoryIdentity(parent)
 			if err != nil {
+				// Nothing was moved yet: remove only the parents this install
+				// created, innermost first, while the transaction still holds.
+				for i := len(createdParents) - 1; i >= 0; i-- {
+					if checkTransaction() != nil || os.Remove(createdParents[i]) != nil {
+						break
+					}
+					ancestors[createdParents[i]] = nil
+				}
 				return result, err
 			}
-			createdParents = append(createdParents, parent)
 		}
 	}
 	rollback := func(cause error) (AddonUpdateResult, error) {

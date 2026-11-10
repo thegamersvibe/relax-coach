@@ -387,9 +387,9 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 			return result, fmt.Errorf("the game addon folder changed during download; nothing was changed: %s", p)
 		}
 	}
-	createdDirs, err := addonCreateDirs(missingDirs)
+	createdDirs, err := addonCreateDirs(missingDirs, ancestors)
 	if err != nil {
-		addonRemoveCreated(createdDirs)
+		addonRemoveCreated(createdDirs, ancestors)
 		return result, fmt.Errorf("could not create the game addon folder; nothing was changed: %w", err)
 	}
 	target := extraTarget(game, a)
@@ -406,7 +406,7 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 				return result, fmt.Errorf("install failed and the old version could not be put back; it is kept at %s: %w", backup, errors.Join(err, rerr))
 			}
 		}
-		addonRemoveCreated(createdDirs)
+		addonRemoveCreated(createdDirs, ancestors)
 		return result, fmt.Errorf("install failed; the previous version was restored: %w", err)
 	}
 	committed = true
