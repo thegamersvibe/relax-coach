@@ -46,7 +46,7 @@ function A:Run(c)
     if type(unspent) == "number" and unspent > 0 and lvl >= 10 then
         local fix = "Open talents (N) and spend them"
         if plan and plan.next then fix = "Next per guide: " .. plan.next.name .. " (" .. tostring(plan.source) .. ")" end
-        add(F, 80 + math.min(unspent, 4) * 4, "Build", unspent .. " unspent talent point" .. (unspent > 1 and "s" or ""), fix)
+        add(F, 80 + math.min(unspent, 4) * 4, "Build", unspent .. " unspent talent point" .. (unspent > 1 and "s" or ""), fix, { kind = "talent" })
     elseif plan and plan.next and plan.detailed then
         add(F, 35, "Build", "Talents differ from the guide at level " .. plan.next.level, "Guide wants " .. plan.next.name .. " (" .. tostring(plan.source) .. "). Respec only if it's cheap.")
     end
@@ -71,7 +71,7 @@ function A:Run(c)
                     missedTrainer[#missedTrainer + 1] = { name = m.name, imp = base }
                     trainerTop = math.max(trainerTop, base)
                 else
-                    add(F, base + math.min(lvl - m.level, 4) * 2, "Build", m.name .. " not learned (class quest, available since " .. m.level .. ")", m.how)
+                    add(F, base + math.min(lvl - m.level, 4) * 2, "Build", m.name .. " not learned (class quest, available since " .. m.level .. ")", m.how, { kind = "classquest" })
                 end
             end
         end
@@ -83,16 +83,16 @@ function A:Run(c)
         local more = #missedTrainer > 5 and (" +" .. (#missedTrainer - 5) .. " more") or ""
         add(F, math.min(trainerTop, 85) + math.min(#missedTrainer, 5), "Build",
             #missedTrainer .. " class skill" .. (#missedTrainer > 1 and "s" or "") .. " not learned: " .. table.concat(names, ", ") .. more,
-            "Visit your class trainer")
+            "Visit your class trainer", { kind = "train" })
     end
 
     -- Build: trainer (class trainers only; cleared by TRAINER_UPDATE/CLOSED after buying)
     local tr = c.trainer
     if tr and (tr.available or 0) > 0 and tr.level == lvl then
         local names = (tr.names and #tr.names > 0) and (": " .. table.concat(tr.names, ", ")) or ""
-        add(F, 55, "Build", tr.available .. " skill(s) left to train at your last trainer visit" .. names, "Train when you're next in town")
+        add(F, 55, "Build", tr.available .. " skill(s) left to train at your last trainer visit" .. names, "Train when you're next in town", { kind = "train" })
     elseif lvl >= 4 and lvl % 2 == 0 and (not tr or (tr.level or 0) < lvl) then
-        add(F, 30, "Next", "New spell ranks at level " .. lvl, "Train when you're next in town; no special trip needed")
+        add(F, 30, "Next", "New spell ranks at level " .. lvl, "Train when you're next in town; no special trip needed", { kind = "train" })
     end
 
     -- Gear
@@ -107,7 +107,7 @@ function A:Run(c)
         -- owned upgrades first: free and instant
         for i, o in ipairs(gear.owned or {}) do
             if i > 3 then break end
-            add(F, 88, "Gear", "Upgrade in your bags: " .. tostring(o.name) .. " for " .. tostring(o.label), "Equip it (about +" .. o.gain .. "% for that slot)", { where = "in your bags" })
+            add(F, 88, "Gear", "Upgrade in your bags: " .. tostring(o.name) .. " for " .. tostring(o.label), "Equip it (about +" .. o.gain .. "% for that slot)", { where = "in your bags", kind = "gear" })
         end
         local ownedSlot = {}
         for _, o in ipairs(gear.owned or {}) do ownedSlot[o.inv] = true end
@@ -120,10 +120,10 @@ function A:Run(c)
                 if b.notes and #b.notes > 0 then how = how .. " (" .. table.concat(b.notes, "; ") .. ")" end
                 local early = lvl < 10 and e.jewelry
                 if e.scoreStatus == "empty" and lvl >= 5 and not early then
-                    add(F, 30 + 40 * w, "Gear", "Empty " .. e.label .. " slot", how, { where = b.where })
+                    add(F, 30 + 40 * w, "Gear", "Empty " .. e.label .. " slot", how, { where = b.where, kind = "gear" })
                 elseif e.scoreStatus ~= "empty" and e.scoreStatus ~= "unknown" and gap and gap >= (T.gearUpgradePct or 12) then
                     add(F, (25 + math.min(gap, 60) / 2) * (0.5 + w / 2) + 10 * w, "Gear", e.label .. ": " .. b.name .. " is " .. gap .. "% better", how,
-                        { where = b.where, estimate = e.scoreStatus == "estimated" or nil })
+                        { where = b.where, estimate = e.scoreStatus == "estimated" or nil, kind = "gear" })
                 end
             end
         end
@@ -145,7 +145,7 @@ function A:Run(c)
         local missing = 0
         for _, q in ipairs(d.quests) do if not q.inLog and not q.tooLow then missing = missing + 1 end end
         if missing > 0 then
-            add(F, 32, "Next", d.name .. " (" .. tostring(d.level) .. ") fits your level", missing .. " quest(s) to pick up first; see the report's Dungeons section", { where = d.location })
+            add(F, 32, "Next", d.name .. " (" .. tostring(d.level) .. ") fits your level", missing .. " quest(s) to pick up first; see the report's Dungeons section", { where = d.location, kind = "dungeon" })
         end
     end
 

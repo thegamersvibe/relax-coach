@@ -79,6 +79,132 @@ function UI:Toggle()
     self.frame:Show(); self:Update()
 end
 
+-- Relax Coach: level-up checklist. Right after you level, one small window lists what to do now:
+-- talent point, training, best gear upgrade and the next dungeon/guide. Built from the findings
+-- Audit already computes (tagged with `kind`), so it adds no extra scanning. Once per level, never
+-- in combat, and /coach levelup off turns it off.
+local L = {}
+FC.LevelUp = L
+
+local MAX_TRAIN, MAX_GEAR = 2, 2
+
+local function db() ForeverCoachDB = ForeverCoachDB or {}; return ForeverCoachDB end
+function L:Enabled() return db().levelUpChecklist ~= false end -- on by default
+function L:SetEnabled(on) db().levelUpChecklist = on and true or false end
+
+local function inCombat()
+    return UnitAffectingCombat and FC.plain(FC.safe(UnitAffectingCombat, "player")) == true
+end
+
+-- Pure: findings -> checklist rows { kind, text, fix, where }
+function L:Build(c)
+    local rows, train, gear = {}, 0, 0
+    local talent, dungeon
+    for _, f in ipairs(c.findings or {}) do
+        if f.kind == "talent" and not talent then
+            talent = f
+        elseif (f.kind == "train" or f.kind == "classquest") and train < MAX_TRAIN then
+            train = train + 1; rows[#rows + 1] = f
+        elseif f.kind == "gear" and gear < MAX_GEAR then
+            gear = gear + 1; rows[#rows + 1] = f
+        elseif f.kind == "dungeon" and not dungeon then
+            dungeon = f
+        end
+    end
+    local out = {}
+    if talent then out[#out + 1] = talent end
+    for _, f in ipairs(rows) do if f.kind ~= "gear" then out[#out + 1] = f end end
+    for _, f in ipairs(rows) do if f.kind == "gear" then out[#out + 1] = f end end
+    if dungeon then out[#out + 1] = dungeon end
+    return out
+end
+
+local LABEL = { talent = "Talent", train = "Train", classquest = "Class quest", gear = "Gear", dungeon = "Next" }
+local COLOR = { talent = "ffd54f", train = "ffd54f", classquest = "ffd54f", gear = "81c784", dungeon = "b0bec5" }
+
+function L:Text(rows)
+    local out = {}
+    for _, f in ipairs(rows) do
+        local s = string.format("|cff%s%s|r  %s", COLOR[f.kind] or "ffffff", LABEL[f.kind] or "", f.text)
+        if f.where then s = s .. "  |cff8899aa[" .. f.where .. "]|r" end
+        if f.fix and f.fix ~= "" then s = s .. "\n      |cffaaaaaa" .. f.fix .. "|r" end
+        out[#out + 1] = s
+    end
+    return table.concat(out, "\n\n")
+end
+
+local function plannerAvailable()
+    return type(SlashCmdList) == "table" and type(SlashCmdList.RELAXQUESTPLANNER) == "function"
+end
+
+function L:Frame()
+    if self.frame then return self.frame end
+    local f = CreateFrame("Frame", "ForeverCoachLevelUpFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
+    f:SetSize(420, 260); f:SetPoint("TOP", 0, -140); f:SetFrameStrata("DIALOG")
+    f:SetMovable(true); f:EnableMouse(true); f:RegisterForDrag("LeftButton")
+    f:SetScript("OnDragStart", f.StartMoving); f:SetScript("OnDragStop", f.StopMovingOrSizing)
+    if f.SetBackdrop then
+        f:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 14,
+            insets = { left = 3, right = 3, top = 3, bottom = 3 } })
+        f:SetBackdropColor(0.05, 0.06, 0.08, 0.94)
+    end
+    f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge"); f.title:SetPoint("TOPLEFT", 14, -12)
+    local close = CreateFrame("Button", nil, f, "UIPanelCloseButton"); close:SetPoint("TOPRIGHT", -2, -2)
+    f.text = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    f.text:SetPoint("TOPLEFT", 14, -40); f.text:SetWidth(392); f.text:SetJustifyH("LEFT"); f.text:SetSpacing(3)
+    local function button(label, x, onClick)
+        local b = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        b:SetSize(120, 22); b:SetPoint("BOTTOMLEFT", x, 12); b:SetText(label)
+        b:SetScript("OnClick", function() local ok, err = pcall(onClick); if not ok then FC:Char().lastError = { where = "levelup:" .. label, err = tostring(err), time = time(), version = FC.VERSION } end end)
+        return b
+    end
+    f.coach = button("Open Coach", 14, function() f:Hide(); if FC.UI and not (FC.UI.frame and FC.UI.frame:IsShown()) then FC.UI:Toggle() end end)
+    f.guide = button("Pick my guide", 146, function() f:Hide(); SlashCmdList.RELAXQUESTPLANNER("guide") end)
+    f.ok = button("Got it", 278, function() f:Hide() end)
+    f:Hide()
+    tinsert(UISpecialFrames, "ForeverCoachLevelUpFrame")
+    self.frame = f
+    return f
+end
+
+-- Show the checklist for the current level. force=true ignores the once-per-level/off checks (slash command).
+function L:Show(force)
+    local c = FC:Char()
+    local lvl = c.snapshot and c.snapshot.level
+    if not lvl then return false end
+    if not force then
+        if not self:Enabled() or c.levelUpShown == lvl then return false end
+        if inCombat() then self.pending = true; return false end
+    end
+    self.pending = nil
+    c.levelUpShown = lvl
+    local rows = self:Build(c)
+    if #rows == 0 then
+        FC:Print("Level " .. lvl .. ": all set, nothing to do right now.")
+        return false
+    end
+    local f = self:Frame()
+    f.title:SetText("Level " .. lvl .. "! Do these now")
+    f.text:SetText(self:Text(rows))
+    if plannerAvailable() then f.guide:Show() else f.guide:Hide() end
+    f:SetHeight(math.max(160, (f.text:GetStringHeight() or 0) + 90))
+    f:Show()
+    self.rows = rows
+    return true
+end
+
+-- Called by Core after the post-level-up refresh.
+function L:OnLevelRefresh() return self:Show(false) end
+
+local ev = CreateFrame("Frame")
+ev:RegisterEvent("PLAYER_REGEN_ENABLED")
+ev:SetScript("OnEvent", function()
+    if L.pending then
+        local ok, err = pcall(L.Show, L, false)
+        if not ok then FC:Char().lastError = { where = "levelup", err = tostring(err), time = time(), version = FC.VERSION } end
+    end
+end)
+
 SLASH_FOREVERCOACH1 = "/coach"
 SlashCmdList.FOREVERCOACH = function(msg)
     msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
@@ -120,8 +246,18 @@ SlashCmdList.FOREVERCOACH = function(msg)
             return
         end
         FC:Print("fun extras: " .. (FC.Reactions:Enabled() and "on" or "off"))
+    elseif cmd == "levelup" then
+        if arg == "on" or arg == "off" then
+            FC.LevelUp:SetEnabled(arg == "on")
+            FC:Print("level-up checklist: " .. arg)
+        elseif arg == "" or arg == "show" then
+            FC:Refresh("levelup-show")
+            FC.LevelUp:Show(true)
+        else
+            FC:Print("usage: /coach levelup [show|on|off]")
+        end
     elseif cmd == "help" then
-        FC:Print("/coach (window), /coach top (top 3 in chat), /coach spec <id|auto>, /coach macros, /coach fun <on|off|status>")
+        FC:Print("/coach (window), /coach top (top 3 in chat), /coach spec <id|auto>, /coach macros, /coach fun <on|off|status>, /coach levelup [show|on|off]")
     else
         UI:Toggle()
     end

@@ -34,6 +34,26 @@ function Frame:SetAlpha(v) self.alpha = v end
 function Frame:Show() self.shown = true end
 function Frame:Hide() self.shown = false end
 function Frame:IsShown() return self.shown end
+-- window methods used by the level-up checklist (Coach UI), not by Fun Mode itself
+function Frame:SetMovable(v) self.movable = v end
+function Frame:RegisterForDrag(...) end
+function Frame:StartMoving() end
+function Frame:StopMovingOrSizing() end
+function Frame:SetHeight(h) self.height = h end
+function Frame:SetText(v) self.label = v end
+function Frame:CreateFontString()
+  local fs = {}
+  function fs:SetPoint(...) end
+  function fs:SetWidth(v) end
+  function fs:SetJustifyH(v) end
+  function fs:SetSpacing(v) end
+  function fs:SetText(v) self.text = v end
+  function fs:GetText() return self.text end
+  function fs:GetStringHeight() return 12 end
+  return fs
+end
+UISpecialFrames = UISpecialFrames or {}
+tinsert = tinsert or table.insert
 function Frame:CreateTexture()
   local t = {}
   function t:SetTexture(v) self.path = v end
