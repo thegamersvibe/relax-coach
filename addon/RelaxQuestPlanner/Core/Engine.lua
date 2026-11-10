@@ -31,11 +31,17 @@ end
 local function baseReaches(a,b,seen)
     if seen[b] then return false end; seen[b]=true
     local r=D.Quest(b); if not r then return false end
-    for _,list in ipairs({r.grp,r.single}) do for _,id in ipairs(list) do
+    -- Two plain loops instead of a temporary {grp,single} table per visited quest.
+    for _,id in ipairs(r.grp) do
         local x=math.abs(id)
         if x==a or baseReaches(a,x,seen) then return true end
         tick()
-    end end
+    end
+    for _,id in ipairs(r.single) do
+        local x=math.abs(id)
+        if x==a or baseReaches(a,x,seen) then return true end
+        tick()
+    end
     return false
 end
 local function graph(p)
@@ -61,7 +67,8 @@ local function graph(p)
     end
     for _,q in ipairs(D.AllQuestIds()) do
         local r=D.Quest(q)
-        for _,list in ipairs({r.grp,r.single}) do for _,x in ipairs(list) do edge(math.abs(x),q) end end
+        for _,x in ipairs(r.grp) do edge(math.abs(x),q) end
+        for _,x in ipairs(r.single) do edge(math.abs(x),q) end
         if r.startingWith then edge(r.startingWith,q) end
         if r.parent then edge(r.parent,q) end
         if r.next then g.leads[r.next]=g.leads[r.next] or {}; table.insert(g.leads[r.next],q) end
@@ -122,12 +129,12 @@ local function gates(q,p,done,log,level,g)
     if #missing>0 then add("prereqExtra",missing) end
     return why
 end
+local SOFT_GATES={profession=true,reputation=true,spell=true}
 local function state(q,p,done,log,level,g)
     local why=gates(q,p,done,log,level,g)
     if #why==0 then return "available",why end
     if type(why[1])=="string" then return why[1],why end
-    local soft={profession=true,reputation=true,spell=true}
-    for _,w in ipairs(why) do if not soft[w[1]] then return "blocked",why end end
+    for _,w in ipairs(why) do if not SOFT_GATES[w[1]] then return "blocked",why end end
     return "unknownGate",why
 end
 function E.State(q,p,opts)
