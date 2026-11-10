@@ -52,18 +52,20 @@ function FC:Char()
 end
 
 -- true / false / nil (nil = the client gave no usable answer)
+local function knownBy(f, id)
+    if type(f) ~= "function" then return nil end
+    local ok, r = pcall(f, id)
+    if not ok then return nil end
+    return plain(r)
+end
 function FC:KnowsSpell(id)
-    local answered = false
-    for _, f in ipairs({ IsPlayerSpell or false, IsSpellKnown or false, (C_SpellBook and C_SpellBook.IsSpellKnown) or false,
-        (C_SpellBook and C_SpellBook.IsSpellKnownOrInSpellBook) or false }) do
-        if type(f) == "function" then
-            local ok, r = pcall(f, id)
-            if ok then r = plain(r) end
-            if ok and r == true then return true end
-            if ok and r == false then answered = true end
-        end
-    end
-    if answered then return false end
+    -- Same API order as before, without building a table of functions per call.
+    local book = C_SpellBook
+    local a = knownBy(IsPlayerSpell, id); if a == true then return true end
+    local b = knownBy(IsSpellKnown, id); if b == true then return true end
+    local c = knownBy(book and book.IsSpellKnown, id); if c == true then return true end
+    local d = knownBy(book and book.IsSpellKnownOrInSpellBook, id); if d == true then return true end
+    if a == false or b == false or c == false or d == false then return false end
     return nil
 end
 
