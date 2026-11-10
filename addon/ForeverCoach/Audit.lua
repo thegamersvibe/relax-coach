@@ -8,7 +8,7 @@ FC.Audit = A
 local function clamp(x) return math.max(1, math.min(100, math.floor(x + 0.5))) end
 local function add(list, impact, area, text, fix, extra)
     local f = { impact = clamp(impact), area = area, text = text, fix = fix, order = #list }
-    for k, v in pairs(extra or {}) do f[k] = v end
+    if extra then for k, v in pairs(extra) do f[k] = v end end
     list[#list + 1] = f
 end
 
