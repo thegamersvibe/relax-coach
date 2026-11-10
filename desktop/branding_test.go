@@ -107,7 +107,7 @@ func TestReportRelaxBranding(t *testing.T) {
 			for _, want := range []string{
 				"<title>Relax Coach</title>", "<h1>Relax Coach</h1>",
 				"Diagnostic report", "Relax Coach · private bundle",
-				"Update Addon delivers ForeverCoach, Journey and guide content together", "Settings and saves are preserved",
+				"Update Addon delivers ForeverCoach, Journey and guide content together (from 1.5.0 also Relax Quest Planner)", "Settings and saves are preserved",
 				"TheGamersVibe", "ForeverCoach.lua", "WoW Forever leveling report",
 				`action="/setgame"`, `fetch('/refresh',{method:'POST'})`,
 				`src="/logo.png"`, "app " + Version,
