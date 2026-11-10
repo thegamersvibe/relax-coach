@@ -31,12 +31,16 @@ local function stepDone(s, P)
   if s.kind == "complete" then return inlog(s.q, P) and ready(s.q, P) end
   return false
 end
-local function actionable(s, P)
+local function actionable(s, P, route)
   if s.kind == "accept" then
     for _, q in ipairs(s.needs or {}) do
       local ok = done(q, P) or (s.activeNeeds and s.activeNeeds[q] and inlog(q, P))
+      if s.parentActive and s.parentActive[q] then ok = inlog(q, P) and not done(q, P) end
       if not ok then return false end
     end
+    -- Current engine routes carry their gate results from the async build.
+    -- Keep the legacy path for callers supplying hand-authored route tables.
+    if route and route.availability then return route.availability[s.q] == "available" end
     if RQP.Engine and RQP.Engine.State then
       local state = RQP.Engine.State(s.q, P, {mode=RQP.GetDB().mode})
       return state == "available"
@@ -49,13 +53,20 @@ local function actionable(s, P)
 end
 
 -- First missing prerequisite of an accept step, for a readable "Needs:" line.
-function UI.BlockingReason(s, P)
+function UI.BlockingReason(s, P, route)
   if s.kind == "accept" then
     for _, q in ipairs(s.needs or {}) do
       local active = s.activeNeeds and s.activeNeeds[q]
-      if not (done(q, P) or (active and inlog(q, P))) then
-        local rec = RQP.Data and RQP.Data.Quest and RQP.Data.Quest(q)
-        return "Needs: " .. ((rec and rec.name) or ("quest " .. tostring(q))) .. (active and " (pick up)" or " (turn in)")
+      local ok = done(q, P) or (active and inlog(q, P))
+      if s.parentActive and s.parentActive[q] then ok = inlog(q, P) and not done(q, P) end
+      if not ok then
+        local name
+        if route and route.questNames then name = route.questNames[q]
+        else
+          local rec = RQP.Data and RQP.Data.Quest and RQP.Data.Quest(q)
+          name = rec and rec.name
+        end
+        return "Needs: " .. (name or ("quest " .. tostring(q))) .. (active and " (pick up)" or " (turn in)")
       end
     end
     local lvl = RQP.Number(s.level) or RQP.Number(s.reqLevel)
@@ -80,6 +91,7 @@ function UI.SkipCurrent()
   db.skipped[s.q] = true
   RQP.Print("Skipped " .. (s.name or tostring(s.q)) .. " for this character. /rqp unskip to restore all.")
   UI.RenderRoute(RQP.Player.Snapshot())
+  if UI.SyncJourney then UI.SyncJourney(UI.route) end
 end
 
 function UI.PickStep(route, P)
@@ -87,14 +99,24 @@ function UI.PickStep(route, P)
   if RQP.IsSecret(map) then map = nil end
   local zone = GetRealZoneText and GetRealZoneText()
   if RQP.IsSecret(zone) then zone = nil end
+  -- Location preference cannot undo the engine's child-accept -> parent-turnin
+  -- ordering. Keep parents active until every unskipped child has been accepted.
+  local keepActive = {}
+  for _, s in ipairs(route.steps or {}) do
+    if s.kind == "accept" and not stepDone(s, P) then
+      for q, required in pairs(s.parentActive or {}) do if required then keepActive[q] = true end end
+    end
+  end
   local firstHere, firstAct, firstUndone, left = nil, nil, nil, 0
   for i, s in ipairs(route.steps or {}) do
     if not stepDone(s, P) then
       left = left + 1
-      firstUndone = firstUndone or i
-      if actionable(s, P) then
-        firstAct = firstAct or i
-        if (map and s.map == map) or (zone and s.zone == zone) then firstHere = firstHere or i end
+      if not (s.kind == "turnin" and keepActive[s.q]) then
+        firstUndone = firstUndone or i
+        if actionable(s, P, route) then
+          firstAct = firstAct or i
+          if (map and s.map == map) or (zone and s.zone == zone) then firstHere = firstHere or i end
+        end
       end
     end
   end
@@ -152,7 +174,7 @@ function UI.RenderRoute(P)
     local reason = note ~= "" and note or "optional quest / reward"
     note = "|cffffa500Your choice|r - below " .. (floor and ("level " .. tostring(math.floor(floor))) or "the level floor") .. "; " .. reason
   end
-  if not canDo then note = "|cffff7070" .. (UI.BlockingReason(s, P or RQP.Player.Snapshot()) or "Waiting") .. "|r  " .. note end
+  if not canDo then note = "|cffff7070" .. (UI.BlockingReason(s, P or RQP.Player.Snapshot(), route) or "Waiting") .. "|r  " .. note end
   UI.note:SetText(note)
   -- Move the map pin along with the route unless the player turned it off.
   if RQP.GetDB().autoPin ~= false and canDo and UI.lastPinned ~= s then

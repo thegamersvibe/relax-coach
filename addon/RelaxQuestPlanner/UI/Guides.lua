@@ -3,7 +3,10 @@ local UI = RQP.UI
 local scanGeneration = 0
 
 function UI.GuideAvailable()
+  local api = _G.RelaxJourneyAPI
   return RQP.Journey and type(RQP.Journey.PickGuide) == "function"
+    and api and type(api.ListCatalogGuides) == "function"
+    and type(api.ScanGuideQuests) == "function" and type(api.Goto) == "function"
 end
 
 function UI.UpdateJourney()
@@ -87,7 +90,7 @@ function UI.PickGuide()
     end
   end))
   if not ok then
-    RQP.GetDB().lastError = tostring(started)
+    RQP.SetError(started)
     UI.guideStatus:SetText("Guide scan failed - type /rqp error")
   elseif started == false then UI.guideStatus:SetText(err or "Guide scan unavailable.") end
 end

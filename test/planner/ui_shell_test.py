@@ -292,6 +292,26 @@ class UIShellTests(unittest.TestCase):
           assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
         ''')
 
+    def test_bare_mode_cycles_and_tester_help_matches_commands(self):
+        lua = client()
+        lua.execute(r'''
+          SlashCmdList.RELAXQUESTPLANNER("goal 4321"); DRAIN()
+          for _,mode in ipairs({'strict','all','game'}) do
+            SlashCmdList.RELAXQUESTPLANNER("mode"); DRAIN()
+            assert(RelaxQuestPlannerDB.mode==mode and BUILD_CALLS[#BUILD_CALLS].mode==mode,
+              'bare /rqp mode must cycle the level mode')
+          end
+          SlashCmdList.RELAXQUESTPLANNER("help")
+          local help=table.concat(OUT,"\n")
+          assert(help:find("mode [strict|game|all]",1,true))
+          assert(help:find("shows the top 3 guides; click one to jump to your first undone step",1,true))
+        ''')
+        readme = (ADDON / 'README.md').read_text()
+        for expected in ('0.1.2-test', 'Relax Coach v1.4.5', 'Journey',
+                         '/rqp mode [strict|game|all]', '/rqp guide',
+                         'shows the top 3 guides; click one to jump to your first undone step'):
+            self.assertIn(expected, readme)
+
     def test_dungeon_picker_counts_async_scrolls_and_selects(self):
         lua = client('for i=1,14 do DUNGEONS[#DUNGEONS+1]={name="Tower "..i,areaIds={i+2}} end')
         lua.execute(r'''
@@ -375,6 +395,27 @@ class UIShellTests(unittest.TestCase):
           assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
         ''')
 
+    def test_guide_picker_requires_live_journey_catalog_api(self):
+        lua = client()
+        lua.execute((ADDON / 'Journey/Picker.lua').read_text())
+        lua.execute(r'''
+          local U=RelaxQuestPlanner.UI
+          RelaxJourneyAPI=nil; U.UpdateJourney()
+          assert(not U.GuideAvailable() and not U.guideButton:IsEnabled(),
+            "loading our picker alone must not enable the Journey button")
+          U.guideButton.scripts.OnEnter(U.guideButton)
+          assert(GameTooltip:GetText():find("Requires") and GameTooltip:GetText():find("Journey"))
+          local api={ListCatalogGuides=function() return {} end, ScanGuideQuests=function() end, Goto=function() end}
+          for _,key in ipairs({'ListCatalogGuides','ScanGuideQuests','Goto'}) do
+            local fn=api[key]; api[key]=nil; RelaxJourneyAPI=api; U.UpdateJourney()
+            assert(not U.guideButton:IsEnabled(), 'missing '..key)
+            api[key]=true; U.UpdateJourney()
+            assert(not U.guideButton:IsEnabled(), 'non-function '..key)
+            api[key]=fn
+          end
+          U.UpdateJourney(); assert(U.guideButton:IsEnabled())
+        ''')
+
     def test_journey_picker_optional_button_top_three_and_route_handoff(self):
         lua = client()
         lua.execute(r'''
@@ -396,7 +437,8 @@ class UIShellTests(unittest.TestCase):
             GotoBest=function(choice) WENT=choice; return true end,
             LoadRoute=function(route) LOADED=route; return true end,
           }
-          RelaxJourneyAPI={RegisterLocalGuide=function() end,Goto=function() end}
+          RelaxJourneyAPI={RegisterLocalGuide=function() end,Goto=function() end,
+            ListCatalogGuides=function() return {} end,ScanGuideQuests=function() end}
           U.Refresh(); assert(U.guideButton:IsEnabled())
           U.guideButton:Click(); DRAIN()
           assert(PICK_CALLS==1 and #U.guideRows==3 and U.guidePicker:IsShown())
@@ -508,6 +550,46 @@ class UIShellTests(unittest.TestCase):
           assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
         ''')
 
+    def test_real_engine_refresh_never_enumerates_or_reads_quests(self):
+        lua = client()
+        lua.execute(r'''
+          QuestDB={Get=function(q,key)
+            local row={name="Quest "..q,requiredLevel=1,questLevel=30,parentQuest=q==1 and TEST_PARENT or nil}
+            return row[key]
+          end,Exists=function(q) return q>=1 and q<=6000 end,
+          GetAllIds=function() local ids={} for i=1,6000 do ids[i]=i end return ids end}
+          LibQuestieDB={Quest=QuestDB,RequireContract=function() return true end}
+          RelaxQuestPlanner.Learn=nil
+        ''')
+        for name in ('Data', 'Engine'):
+            lua.execute((ADDON / 'Core' / (name + '.lua')).read_text())
+        lua.execute(r'''
+          SlashCmdList.RELAXQUESTPLANNER("goal 1"); DRAIN(500)
+          local U=RelaxQuestPlanner.UI
+          assert(U.route and #U.route.steps>0)
+          local reads,scans=0,0
+          local quest,ids=RelaxQuestPlanner.Data.Quest,RelaxQuestPlanner.Data.AllQuestIds
+          RelaxQuestPlanner.Data.Quest=function(...) reads=reads+1; return quest(...) end
+          RelaxQuestPlanner.Data.AllQuestIds=function(...) scans=scans+1; return ids(...) end
+          -- Rendering after warmup, unchanged events and even a changed snapshot
+          -- must not move graph work out of the async planner into the event handler.
+          U.Refresh(); DRAIN(500)
+          reads,scans=0,0
+          for i=1,5 do FIRE("QUEST_LOG_UPDATE"); DRAIN(500) end
+          assert(scans==0 and reads==0, "unchanged refresh: "..scans.." scans, "..reads.." quest reads")
+          STATE.level=31; U.Refresh()
+          assert(scans==0 and reads==0, "changed refresh must schedule, not build synchronously")
+          DRAIN(500)
+          assert(U.route.level==31 and scans>0, "changed state rebuilds asynchronously")
+          TEST_PARENT=2; STATE.done[2]=true
+          RelaxQuestPlanner.Data.Reset(); U.Refresh(true); DRAIN(500)
+          assert(U.note:GetText():find('Needs: Quest 2'), 'exercise the blocked-step renderer too')
+          reads,scans=0,0
+          for i=1,5 do FIRE('QUEST_LOG_UPDATE'); DRAIN(500) end
+          assert(scans==0 and reads==0, 'blocked refresh: '..scans..' scans, '..reads..' quest reads')
+          assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
+        ''')
+
     def test_quest_log_ticks_do_not_recount(self):
         lua = client()
         lua.execute(r'''
@@ -523,6 +605,23 @@ class UIShellTests(unittest.TestCase):
           assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
         ''')
 
+    def test_stale_errors_cleared_on_update_and_mode_notice(self):
+        lua = client('RelaxQuestPlannerDB={mode="game",lastError="Engine.lua:256: old crash",lastErrorVersion="0.1.0-test"}')
+        lua.execute(r'''
+          assert(RelaxQuestPlannerDB.lastError==nil, "error from an older version must be dropped on load")
+          PRINTED={}
+          local oldPrint=RelaxQuestPlanner.Print
+          RelaxQuestPlanner.Print=function(t) PRINTED[#PRINTED+1]=t end
+          SlashCmdList.RELAXQUESTPLANNER("error"); assert(PRINTED[#PRINTED]:find("No errors"))
+          SlashCmdList.RELAXQUESTPLANNER("mode"); DRAIN()
+          assert(PRINTED[#PRINTED]:find("Levels:") and PRINTED[#PRINTED]:find("5 levels"), PRINTED[#PRINTED])
+          RelaxQuestPlanner.SetError("new problem")
+          assert(RelaxQuestPlannerDB.lastErrorVersion==RelaxQuestPlanner.version)
+          SlashCmdList.RELAXQUESTPLANNER("error"); assert(PRINTED[#PRINTED]:find("new problem") and PRINTED[#PRINTED]:find("clear"))
+          SlashCmdList.RELAXQUESTPLANNER("error clear"); assert(RelaxQuestPlannerDB.lastError==nil)
+          RelaxQuestPlanner.Print=oldPrint
+        ''')
+
     def test_failed_async_count_is_unknown_not_zero(self):
         lua = client()
         lua.execute(r'''
@@ -535,7 +634,10 @@ class UIShellTests(unittest.TestCase):
         ''')
 
     def test_mode_change_invalidates_guide_results_and_routes_close_picker(self):
-        lua = client('GUIDE_PENDING={}; RelaxQuestPlanner.Journey={PickGuide=function(cb) GUIDE_PENDING[#GUIDE_PENDING+1]=cb; return true end}')
+        lua = client('''
+            GUIDE_PENDING={}; RelaxQuestPlanner.Journey={PickGuide=function(cb) GUIDE_PENDING[#GUIDE_PENDING+1]=cb; return true end}
+            RelaxJourneyAPI={ListCatalogGuides=function() return {} end,ScanGuideQuests=function() end,Goto=function() end}
+        ''')
         lua.execute(r'''
           SlashCmdList.RELAXQUESTPLANNER("guide")
           SlashCmdList.RELAXQUESTPLANNER("mode strict")
@@ -618,7 +720,8 @@ class UIShellTests(unittest.TestCase):
         self.assertEqual(metadata["Interface"], "16001")
         self.assertEqual(metadata["Title"], "Relax Quest Planner")
         self.assertEqual(metadata["Author"], "TheGamersVibe")
-        self.assertEqual(metadata["Version"], "0.1.0-test")
+        self.assertEqual(metadata["Version"], "0.1.2-test")
+        self.assertEqual(client().eval('RelaxQuestPlanner.version'), metadata["Version"])
         self.assertEqual(metadata["SavedVariablesPerCharacter"], "RelaxQuestPlannerDB")
         self.assertEqual(metadata["OptionalDeps"].split(", "), [
             "QuestieDB", "Questie", "ForeverDungeonJournal", "DungeonGuideForever", "Journey"])

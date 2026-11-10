@@ -111,7 +111,8 @@ local function gates(q,p,done,log,level,g)
     if r.untilDone and done[r.untilDone] then return {"expired"} end
     if r.startingWith and not done[r.startingWith] and not log[r.startingWith] and not refuted(q,r.startingWith) then add("startingWith",r.startingWith) end
     if r.disabledBy and log[r.disabledBy] then add("disabledBy",r.disabledBy) end
-    if r.maxLevel and level>r.maxLevel then return {"overLevel"} end
+    -- Lookahead relaxes only the minimum level, never the character's upper cap.
+    if r.maxLevel and p.level>r.maxLevel then return {"overLevel"} end
     if r.reqLevel>level then add("level",r.reqLevel) end
     if nonempty(r.skill) or nonempty(r.ranks) or nonempty(r.spec) then add("profession",firstGate(r.skill,r.ranks)) end
     if nonempty(r.minRep) or nonempty(r.maxRep) then add("reputation",firstGate(r.minRep,r.maxRep)) end
@@ -210,14 +211,15 @@ local function singleSourceZone(sources,includeVendors)
 end
 local function norm(s) return s:lower():gsub("the ",""):gsub("'",""):gsub("stormwind ",""):gsub(":",""):match("^%s*(.-)%s*$") end
 local function dungeonMatch(a,b)
-    local x,y=norm(a),norm(b)
+    local x,y=norm(D.CanonicalDungeon(a)),norm(D.CanonicalDungeon(b))
     return x~="" and y~="" and (x:find(y,1,true)~=nil or y:find(x,1,true)~=nil)
 end
 local classifications,addonLists={},nil
 local function classify(r)
     if classifications[r.id] then return classifications[r.id] end
     local out={}
-    local function add(z) local name=D.DungeonForArea(z); if name then out[name]=true end end
+    local function addName(name) if name then out[D.CanonicalDungeon(name)]=true end end
+    local function add(z) addName(D.DungeonForArea(z)) end
     for _,s in ipairs(starters(r)) do
         if s.kind=="item" then add(singleSourceZone(s.sources,false)) else add(s.zone) end
     end
@@ -237,15 +239,20 @@ local function classify(r)
         end
     end
     add(r.zone)
-    if r.fdj and r.fdj.dungeon then out[r.fdj.dungeon]=true end
+    if r.fdj then addName(r.fdj.dungeon) end
     classifications[r.id]=out; return out
 end
 local oldInvalidate=E.Invalidate
 function E.Invalidate() oldInvalidate(); classifications={}; addonLists=nil end
 local function dungeonTargets(name,p,g)
+    name=D.CanonicalDungeon(name)
     if not addonLists then
         local out={}; local dg=D.DungeonQuestie()
-        if dg then for _,q in ipairs(dg.quests) do out[q.id]=q.dungeons or {}; tick() end end
+        if dg then for _,q in ipairs(dg.quests) do
+            out[q.id]={}
+            for _,dn in ipairs(q.dungeons or {}) do table.insert(out[q.id],D.CanonicalDungeon(dn)) end
+            tick()
+        end end
         addonLists=out
     end
     -- Invalidate() can clear addonLists while this coroutine is yielded.
@@ -345,9 +352,15 @@ local function resolve(q,p,g,plan,stack,issues)
 end
 
 local function dependencies(q,p,g,planned)
-    local needs,active={},{}
+    local needs,active,parentActive={},{},{}
     -- An observed active quest is already accepted: do not invent missing gates.
-    if p.log[q] then return {},active end
+    if p.log[q] then return {},active,parentActive end
+    local r=D.Quest(q)
+    -- Unlike startingWith, this constraint survives while the parent is in the
+    -- log and must still be enforced if it is turned in after this plan is built.
+    if r.parent and not refuted(q,r.parent) then
+        needs[r.parent],active[r.parent],parentActive[r.parent]=true,true,true
+    end
     for _,w in ipairs(gates(q,p,p.done,p.log,60,g)) do
         if type(w)=="table" then
             local k,v=w[1],w[2]
@@ -368,7 +381,7 @@ local function dependencies(q,p,g,planned)
                 end
             elseif k=="prereqAny" then
                 for _,id in ipairs(v) do if planned[id] and id~=q then needs[id]=true; break end end
-            elseif k=="parentActive" or k=="startingWith" then
+            elseif k=="startingWith" then
                 if planned[v] and v~=q then needs[v]=true; active[v]=true end
             end
         end
@@ -381,10 +394,10 @@ local function dependencies(q,p,g,planned)
     for _,id in ipairs(D.Quest(q).bcs) do
         if planned[id] and not p.done[id] and id~=q then needs[id]=true end
     end
-    return D.Keys(needs),active
+    return D.Keys(needs),active,parentActive
 end
-local function step(kind,r,p,floor,needs,active)
-    local s={kind=kind,q=r.id,name=r.name,needs=needs,activeNeeds=active,
+local function step(kind,r,p,floor,needs,active,parentActive)
+    local s={kind=kind,q=r.id,name=r.name,needs=needs,activeNeeds=active,parentActive=parentActive,
         below=r.qLevel<floor,levelOK=r.reqLevel<=p.level,source=r.source or "QuestieDB",
         confidence=r.source=="QuestieDB" and "db" or "addon",level=r.qLevel,reqLevel=r.reqLevel}
     if RQP.Learn and next(RQP.Learn.Observed(r.id)) then s.confidence="observed" end
@@ -414,10 +427,19 @@ local function step(kind,r,p,floor,needs,active)
 end
 local function actions(route,p,g,targets)
     local planned=planSet(route.plan,{})
+    -- Evaluate acceptance during the async build, never while repainting the UI.
+    route.availability,route.questNames={},{}
     local nodes,byQuest,blocked,metadata={},{},{},{}
     for index,q in ipairs(route.plan) do
-        local r=D.Quest(q); local needs,active=dependencies(q,p,g,planned)
-        metadata[q]={needs=needs,active=active,index=index}
+        local r=D.Quest(q); local needs,active,parentActive=dependencies(q,p,g,planned)
+        route.availability[q]=state(q,p,p.done,p.log,p.level,g)
+        route.questNames[q]=r.name
+        for _,id in ipairs(needs) do
+            local parent=D.Quest(id)
+            route.questNames[id]=parent and parent.name
+            tick()
+        end
+        metadata[q]={needs=needs,active=active,parentActive=parentActive,index=index}
         if r.reqLevel>p.level then blocked[q]=true end
         tick()
     end
@@ -435,7 +457,7 @@ local function actions(route,p,g,targets)
     local isPrerequisite={}
     for _,q in ipairs(route.plan) do for _,id in ipairs(metadata[q].needs) do isPrerequisite[id]=true end end
     local function node(kind,r,m,priority)
-        local s=step(kind,r,p,route.floor,m.needs,m.active)
+        local s=step(kind,r,p,route.floor,m.needs,m.active,m.parentActive)
         local n={step=s,deps={},priority=priority,index=m.index,key=kind..":"..r.id}
         nodes[#nodes+1]=n; byQuest[r.id]=byQuest[r.id] or {}; byQuest[r.id][kind]=n
         return n
@@ -443,7 +465,7 @@ local function actions(route,p,g,targets)
     for _,q in ipairs(route.plan) do
         local r,m=D.Quest(q),metadata[q]
         if blocked[q] then
-            local s=step("accept",r,p,route.floor,m.needs,m.active)
+            local s=step("accept",r,p,route.floor,m.needs,m.active,m.parentActive)
             if s.levelOK then s.note=(s.note or "").."; prerequisite is level-locked" end
             route.later[#route.later+1]=s
         else
@@ -466,9 +488,12 @@ local function actions(route,p,g,targets)
         if n.step.kind=="accept" then
             for _,id in ipairs(n.step.needs) do
                 local parent=byQuest[id]
-                local required=parent and (n.step.activeNeeds[id] and parent.accept or parent.turnin)
+                local required
+                if parent then
+                    if n.step.activeNeeds[id] then required=parent.accept else required=parent.turnin end
+                end
                 if required then n.deps[required.key]=true end
-                if parent and parent.turnin and D.Quest(n.step.q).parent==id then
+                if parent and parent.turnin and n.step.parentActive[id] then
                     -- parentActive means still in the log at child acceptance.
                     parent.turnin.deps[n.key]=true
                 end

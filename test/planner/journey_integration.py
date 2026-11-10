@@ -2,10 +2,96 @@
 import pathlib as _p, sys as _s; _s.path.insert(0, str(_p.Path(__file__).resolve().parent))
 import hashlib
 import unittest
-from journey_harness import runtime, load_rqp, table, JOURNEY
+from journey_harness import runtime, planner_runtime, load_rqp, table, JOURNEY
 
 
 class JourneyIntegration(unittest.TestCase):
+    def test_route_replans_replace_journeys_cached_guide_every_time(self):
+        lua, env = planner_runtime()
+        lua.execute("SlashCmdList.RELAXQUESTPLANNER('dungeon Alpha Keep'); DRAIN()")
+        for level in (31, 32):
+            lua.execute('''
+                local level=...
+                ROUTES['Alpha Keep']={title='Level '..level,steps={
+                    {q=level,kind='accept',name='New',needs={}}},issues={},later={}}
+                STATE.level=level; RelaxQuestPlanner.UI.Refresh(); DRAIN()
+            ''', level)
+            self.assertEqual(env.GuideNavigationService.GetGuide().info.description, f'Level {level}')
+            self.assertEqual(env.GuideNavigationService.GetStep().id, f'0001-{level}-accept')
+        self.assertIsNone(lua.globals().RelaxQuestPlannerDB.lastError)
+
+    def test_skip_unskip_reload_and_start_at_first_undone_step(self):
+        lua, env = planner_runtime()
+        lua.execute("STATE.map=102; STATE.zone='Away'; SlashCmdList.RELAXQUESTPLANNER('dungeon Alpha Keep'); DRAIN()")
+        def ids():
+            guide = env.GuideNavigationService.GetGuide()
+            return [guide[i].id for i in range(1, len(guide) + 1)]
+        self.assertIn('0001-11-accept', ids())
+        lua.execute("SlashCmdList.RELAXQUESTPLANNER('skip')")
+        self.assertNotIn('0001-11-accept', ids())
+        self.assertEqual(env.GuideNavigationService.GetStep().id, '0002-12-accept')
+        lua.execute("SlashCmdList.RELAXQUESTPLANNER('unskip')")
+        self.assertIn('0001-11-accept', ids())
+        self.assertEqual(env.GuideNavigationService.GetStep().id, '0001-11-accept')
+        lua.execute('''
+            STATE.done[11]=true; STATE.log[12]=true
+            RelaxQuestPlanner.UI.OpenInJourney()
+        ''')
+        self.assertEqual(env.GuideNavigationService.GetStep().id, '0003-12-complete')
+        self.assertIsNone(lua.globals().RelaxQuestPlannerDB.lastError)
+
+    def test_route_sync_defers_in_combat_and_respects_other_guides(self):
+        lua, env = planner_runtime()
+        lua.execute("STATE.map=102; STATE.zone='Away'; SlashCmdList.RELAXQUESTPLANNER('dungeon Alpha Keep'); DRAIN()")
+        lua.execute("STATE.combat=true; SlashCmdList.RELAXQUESTPLANNER('skip')")
+        self.assertEqual(env.GuideNavigationService.GetStep().id, '0001-11-accept')
+        lua.execute("STATE.combat=false; FIRE('PLAYER_REGEN_ENABLED'); DRAIN()")
+        self.assertEqual(env.GuideNavigationService.GetStep().id, '0002-12-accept')
+        lua.execute("STATE.combat=true; SlashCmdList.RELAXQUESTPLANNER('unskip')")
+        self.assertTrue(lua.globals().RelaxJourneyAPI.Goto('A_TEST', 'one'))
+        lua.execute("STATE.combat=false; FIRE('PLAYER_REGEN_ENABLED'); DRAIN()")
+        self.assertEqual(env.GuideNavigationService.GetGuide().id, 'A_TEST')
+        lua.execute("SlashCmdList.RELAXQUESTPLANNER('skip'); STATE.level=32; RelaxQuestPlanner.UI.Refresh(); DRAIN()")
+        self.assertEqual(env.GuideNavigationService.GetGuide().id, 'A_TEST')
+        self.assertIsNone(lua.globals().RelaxQuestPlannerDB.lastError)
+
+    def test_skip_during_initial_combat_handoff_keeps_retry_pending(self):
+        lua, env = planner_runtime()
+        lua.execute("STATE.combat=true; SlashCmdList.RELAXQUESTPLANNER('dungeon Alpha Keep'); DRAIN()")
+        self.assertIsNone(env.GuideNavigationService.GetGuide())
+        lua.execute("SlashCmdList.RELAXQUESTPLANNER('skip'); STATE.combat=false; FIRE('PLAYER_REGEN_ENABLED'); DRAIN()")
+        guide = env.GuideNavigationService.GetGuide()
+        self.assertIsNotNone(guide, 'a skip must not cancel the pending initial handoff')
+        self.assertEqual(guide.id, 'RQP_ROUTE')
+        self.assertFalse(any('-12-' in guide[i].id for i in range(1, len(guide) + 1)))
+
+    def test_late_route_callback_preserves_newer_manual_guide_choice(self):
+        for active_route in (False, True):
+            with self.subTest(active_route=active_route):
+                lua, env = planner_runtime()
+                if active_route:
+                    lua.execute("SlashCmdList.RELAXQUESTPLANNER('dungeon Alpha Keep'); DRAIN()")
+                lua.execute("HOLD=true; SlashCmdList.RELAXQUESTPLANNER('dungeon Beta Hall')")
+                self.assertTrue(lua.globals().RelaxJourneyAPI.Goto('A_TEST', 'one'))
+                lua.execute('PENDING[#PENDING].cb(PENDING[#PENDING].route)')
+                self.assertEqual(env.GuideNavigationService.GetGuide().id, 'A_TEST')
+                self.assertEqual(lua.globals().RelaxQuestPlanner.UI.route.title, 'Beta Hall')
+                self.assertIsNone(lua.globals().RelaxQuestPlannerDB.lastError)
+        # Choosing a route intentionally supersedes an unchanged prior guide.
+        lua, env = planner_runtime()
+        self.assertTrue(lua.globals().RelaxJourneyAPI.Goto('A_TEST', 'one'))
+        lua.execute("HOLD=true; SlashCmdList.RELAXQUESTPLANNER('dungeon Alpha Keep')")
+        lua.execute('PENDING[#PENDING].cb(PENDING[#PENDING].route)')
+        self.assertEqual(env.GuideNavigationService.GetGuide().id, 'RQP_ROUTE')
+
+    def test_combat_delayed_auto_handoff_rechecks_manual_choice(self):
+        lua, env = planner_runtime()
+        lua.execute("STATE.combat=true; SlashCmdList.RELAXQUESTPLANNER('dungeon Alpha Keep'); DRAIN()")
+        self.assertIsNone(env.GuideNavigationService.GetGuide())
+        self.assertTrue(lua.globals().RelaxJourneyAPI.Goto('A_TEST', 'one'))
+        lua.execute("STATE.combat=false; FIRE('PLAYER_REGEN_ENABLED'); DRAIN()")
+        self.assertEqual(env.GuideNavigationService.GetGuide().id, 'A_TEST')
+
     def test_signed_admission_bytes_preserved(self):
         # Fingerprints of this repository's pre-patch source, not content data.
         hashes = {
@@ -103,6 +189,21 @@ class JourneyIntegration(unittest.TestCase):
         result = journey.LoadRoute(route)
         self.assertFalse(result[0])
         self.assertIn('Journey', result[1])
+
+    def test_parent_active_condition_excludes_turned_in_but_starting_with_does_not(self):
+        lua, env = runtime()
+        load_rqp(lua, 'Bridge.lua')
+        bridge = lua.globals().RelaxQuestPlanner.Journey
+        for parent_active in (True, False):
+            route = table(lua, {'title': 'Dependency test', 'steps': [
+                {'q': 2, 'kind': 'accept', 'needs': [1], 'activeNeeds': {1: True},
+                 'parentActive': {1: parent_active}}]})
+            step = bridge.ToGuide(route)[1]
+            for status in range(4):
+                lua.globals().STATES[1] = status
+                self.assertEqual(bool(env.CheckCondition(step)),
+                                 status in ((1, 2) if parent_active else (1, 2, 3)),
+                                 (parent_active, status, step.condition))
 
     def test_location_and_button_normalization_share_async_checkpoints(self):
         lua, env = runtime()
