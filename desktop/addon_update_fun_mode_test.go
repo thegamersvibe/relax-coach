@@ -27,6 +27,9 @@ func funModeEntries(version string) []addonZipEntry {
 	for _, name := range funModeFixtureFiles {
 		entries = append(entries, addonZipEntry{guildFixtureRoots[0] + "/" + name, "fixture " + name + "\x00\xff\r\n", 0644})
 	}
+	if addonBundleRelease(version) {
+		entries = append(entries, plannerFixtureEntries()...)
+	}
 	return entries
 }
 
@@ -34,6 +37,9 @@ func funModeZip(t *testing.T, entries []addonZipEntry, version string) []byte {
 	t.Helper()
 	manifest := guildManifest(entries)
 	manifest["version"] = version
+	if addonBundleRelease(version) {
+		manifest["plannerVersion"] = plannerFixtureVersion
+	}
 	return guildZip(t, entries, manifest)
 }
 

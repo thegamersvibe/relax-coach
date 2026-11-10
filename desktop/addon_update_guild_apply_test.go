@@ -59,7 +59,7 @@ func guildInfo() AddonReleaseInfo {
 	return guildInfoForVersion("1.4.2")
 }
 func guildInfoForVersion(version string) AddonReleaseInfo {
-	name := "RelaxCoach-Guild-" + version + ".zip"
+	name := addonAssetName(version)
 	prefix := addonReleasePrefix + "download/v" + version + "/"
 	return AddonReleaseInfo{Version: version, Available: true, AssetName: name, AssetURL: prefix + name, ChecksumURL: prefix + "SHA256SUMS.txt"}
 }
@@ -91,7 +91,7 @@ func guildGame(t *testing.T) string {
 	return game
 }
 func guildRuntime(name string) bool {
-	for _, root := range guildFixtureRoots {
+	for _, root := range append(append([]string{}, guildFixtureRoots...), addonPlannerRoot) {
 		if strings.HasPrefix(name, root+"/") {
 			return true
 		}

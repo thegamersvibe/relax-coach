@@ -4,24 +4,29 @@ Test addon for **WoW Forever** (Interface 16001). It plans dungeon quest chains
 and individual quest goals without accepting, completing or turning in quests
 for you. In-game validation is still required; offline tests are not a client pass.
 
-## Install the test patch
+## Install
 
-The patch zip requires the **Relax Coach v1.4.5 guild install's Journey**; it is
-not a standalone Journey installation and does not include replacement guide
-content. Use the guild Journey build, not an unrelated upstream installation.
+From **Relax Coach v1.5.0**, Relax Quest Planner ships inside the combined Relax
+Coach bundle (`RelaxCoach-Bundle-<version>.zip`) together with Coach, Relax
+Journey and the guide content. It is no longer a separate patch zip and needs no
+Journey files merged by hand.
 
-1. Close WoW. Back up any existing `RelaxQuestPlanner` folder and the Journey
-   files the patch replaces, outside the game folder.
-2. Copy `RelaxQuestPlanner` into your Forever client's `Interface/AddOns/`.
-   Its `.toc` must be directly inside `Interface/AddOns/RelaxQuestPlanner/`.
-   If the patch includes Journey files, merge those files into the existing
-   `Interface/AddOns/Journey/`; do not replace the full folder with a partial patch.
-3. Leave `Interface/Content`, unrelated addons and `WTF`/SavedVariables alone.
-4. Enable Relax Quest Planner and Journey at character selection. Enable
-   **QuestieDB** for full data; **ForeverDungeonJournal** provides a limited
-   fallback. No third-party quest database is bundled with this addon.
-5. Log in and type `/rqp`. New routes open in Journey by default. If Journey or
-   its integration is missing, route planning still works; guide picking is disabled.
+- **Windows app:** use **Check App Update → Update App** first if the app is older
+  than 1.5.0, then close WoW and use **Check for updates → Update Addon**. An
+  existing `Interface/AddOns/RelaxQuestPlanner` folder (for example an earlier
+  test patch you copied in) is moved into the update's backup in
+  `RelaxCoachBackups`, not deleted.
+- **Manual install:** close WoW and merge the bundle's `Interface` folder into the
+  game folder, or run the bundle's `Install-RelaxCoach.ps1`, which also backs up
+  an existing planner folder. Its `.toc` must be directly inside
+  `Interface/AddOns/RelaxQuestPlanner/`.
+
+Leave `WTF`/SavedVariables and unrelated addons alone. Enable Relax Quest Planner
+and Journey at character selection. Enable **QuestieDB** for full data;
+**ForeverDungeonJournal** provides a limited fallback. No third-party quest
+database is bundled with this addon. Log in and type `/rqp`. New routes open in
+Journey by default. If Journey or its integration is missing, route planning
+still works; guide picking is disabled.
 
 ## Commands
 
@@ -48,5 +53,6 @@ in combat wait until combat ends.
 For a bug report, include the addon version, actual Forever client/build, level,
 faction, chosen dungeon/quest and mode, reproduction steps, and `/rqp error`
 output. Avoid sharing account identifiers, full saves or private guide content.
-To roll back, close WoW, remove this test addon and restore only the Journey files
-backed up above; retain your saved variables and other addons.
+To roll back, close WoW and restore the previous folders from the update backup
+in `RelaxCoachBackups` (or use the bundle's `Restore-RelaxCoach.ps1` after a scripted
+install); retain your saved variables and other addons.

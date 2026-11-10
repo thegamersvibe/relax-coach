@@ -22,6 +22,18 @@ const addonReleasePrefix = "https://github.com/thegamersvibe/relax-coach/release
 const addonMinimumVersion = "1.4.0"
 const addonGuildMinimumVersion = "1.4.2"
 
+// From 1.5.0 the combined bundle also carries Relax Quest Planner. Apps before
+// 1.5.0 refuse that folder (their install scope is fixed), so the bundle has a
+// new asset name: an older app then reports an app-only release and asks for
+// Update App first, before anything is downloaded.
+const addonBundleMinimumVersion = "1.5.0"
+
+func addonBundleRelease(version string) bool {
+	v, err := parseAddonVersion(version)
+	minimum, _ := parseAddonVersion(addonBundleMinimumVersion)
+	return err == nil && !minimum.newerThan(v)
+}
+
 func addonGuildRelease(version string) bool {
 	v, err := parseAddonVersion(version)
 	minimum, _ := parseAddonVersion(addonGuildMinimumVersion)
@@ -29,6 +41,9 @@ func addonGuildRelease(version string) bool {
 }
 
 func addonAssetName(version string) string {
+	if addonBundleRelease(version) {
+		return "RelaxCoach-Bundle-" + version + ".zip"
+	}
 	if addonGuildRelease(version) {
 		return "RelaxCoach-Guild-" + version + ".zip"
 	}

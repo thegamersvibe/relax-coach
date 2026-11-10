@@ -307,7 +307,7 @@ class UIShellTests(unittest.TestCase):
           assert(help:find("shows the top 3 guides; click one to jump to your first undone step",1,true))
         ''')
         readme = (ADDON / 'README.md').read_text()
-        for expected in ('0.1.2-test', 'Relax Coach v1.4.5', 'Journey',
+        for expected in ('0.1.2-test', 'Relax Coach v1.5.0', 'RelaxCoach-Bundle-', 'Journey',
                          '/rqp mode [strict|game|all]', '/rqp guide',
                          'shows the top 3 guides; click one to jump to your first undone step'):
             self.assertIn(expected, readme)

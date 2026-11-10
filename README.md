@@ -43,6 +43,7 @@ This is an **in-place replacement**, not a second side-by-side Journey install. 
 - `Interface\AddOns\ForeverCoach`
 - `Interface\AddOns\Journey`
 - `Interface\Content\Journey-Content`
+- `Interface\AddOns\RelaxQuestPlanner` (bundles from 1.5.0; an existing planner folder, such as a manually installed test patch, is backed up first)
 
 It **does not overwrite or delete `WTF`**. The technical addon IDs, `ForeverCoachDB`, `Journey_Account` and `Journey_Character` remain unchanged so existing saves can be reused. Save preservation is verified; compatibility with every newer/older upstream Journey save format is not guaranteed.
 
@@ -52,7 +53,7 @@ Use the included `Restore-RelaxCoach.ps1 -Backup <backup-folder>` with WoW close
 
 - **Update App** (app v1.4.1+): check explicitly, then confirm the update. It verifies the executable checksum, restarts only Relax Coach, and supports backup/rollback. WoW can stay running; addons, guides and saves are untouched.
 - **One-time bootstrap from an older app:** close only Relax Coach and replace its `RelaxCoach.exe` with the latest release asset. Subsequent app releases can use **Update App**.
-- **Update Addon** (app v1.4.3+ for current bundles): installs **Coach + Relax Journey + the bundled guide content together**. It verifies the release ZIP and manifest, stages all three fixed directories, retains backups and rolls back a failed transaction. Close WoW first. Unrelated addons, `WTF`, settings and the running app are unchanged. The bundled EXE and scripts are not executed by this action.
+- **Update Addon** (app v1.4.3+ for current bundles): installs **Coach + Relax Journey + the bundled guide content together**. It verifies the release ZIP and manifest, stages all three fixed directories, retains backups and rolls back a failed transaction. From **1.5.0** the bundle is named `RelaxCoach-Bundle-<version>.zip` and also installs **Relax Quest Planner** as a fourth folder; apps older than 1.5.0 report it as an app-only release, so use **Update App** first. Close WoW first. Unrelated addons, `WTF`, settings and the running app are unchanged. The bundled EXE and scripts are not executed by this action.
 - **More addons** (RankUp, Forever Maps): optional addons from their own GitHub repositories (`buiden/RankUp`, `buiden/ForeverMaps`). Each has its own **Check** and **Install/Update** button on the Updates page. It installs only that addon's folder from its latest stable release, verifies the release `SHA256SUMS.txt`, checks the archive and TOC title/version, refuses reinstalls/downgrades and folders it can't identify, and backs up the previous version in `RelaxCoachBackups`. Close WoW first. A release must contain `<Folder>-<version>.zip` (one top-level `RankUp/` or `ForeverMaps/` folder) and `SHA256SUMS.txt`.
 - **The addons remain independent:** updating them together does not make either one a required dependency of the other.
 - **Future guide pushes:** publish a tested new guild release and increment its Coach/package version, even for guide-only changes. The updater consumes release assets, not raw Git pushes. Missing required assets are reported as unavailable—not as proof that your content is current.

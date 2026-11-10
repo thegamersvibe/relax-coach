@@ -31,7 +31,7 @@ $seen=@{}
 foreach($row in $manifest.files) {
   $rel=[string]$row.path
   if ([IO.Path]::IsPathRooted($rel) -or $rel.Contains('\') -or $rel.Contains(':') -or ($rel.Split('/') -contains '..') -or ($rel.Split('/') -contains '.') -or $seen.ContainsKey($rel)) { throw "Unsafe/duplicate manifest path: $rel" }
-  if ($rel -notmatch '^(Interface/(AddOns/(ForeverCoach|Journey)/|Content/Journey-Content/)|RelaxCoach\.exe$|README\.md$|LICENSE-Coach$|Install-RelaxCoach\.ps1$|Restore-RelaxCoach\.ps1$)') { throw "Unexpected payload path: $rel" }
+  if ($rel -notmatch '^(Interface/(AddOns/(ForeverCoach|Journey|RelaxQuestPlanner)/|Content/Journey-Content/)|RelaxCoach\.exe$|README\.md$|LICENSE-Coach$|Install-RelaxCoach\.ps1$|Restore-RelaxCoach\.ps1$)') { throw "Unexpected payload path: $rel" }
   $seen[$rel]=$true
   $p=Join-Path $SourceRoot $rel
   if (!(Test-Path -LiteralPath $p -PathType Leaf) -or (Get-Sha $p) -ne $row.sha256) { throw "Payload checksum mismatch: $rel" }
@@ -39,6 +39,9 @@ foreach($row in $manifest.files) {
 $actual=@(Get-ChildItem -LiteralPath $SourceRoot -File -Recurse | Where-Object { $_.FullName -ne (Join-Path $SourceRoot 'manifest.json') })
 if($actual.Count -ne $seen.Count) { throw 'Payload contains missing or unlisted files.' }
 foreach($mandatory in @('RelaxCoach.exe','Restore-RelaxCoach.ps1','Interface/AddOns/ForeverCoach/ForeverCoach.toc','Interface/AddOns/Journey/Journey.toc')) { if(!$seen.ContainsKey($mandatory)) { throw "Missing required payload: $mandatory" } }
+# Bundles from 1.5.0 also carry Relax Quest Planner; an existing (for example manually installed) planner is backed up like the other folders.
+$planner=@($seen.Keys | Where-Object { $_.StartsWith('Interface/AddOns/RelaxQuestPlanner/') }).Count -gt 0
+if($planner -and !$seen.ContainsKey('Interface/AddOns/RelaxQuestPlanner/RelaxQuestPlanner.toc')) { throw 'Missing required payload: Interface/AddOns/RelaxQuestPlanner/RelaxQuestPlanner.toc' }
 if($ExpectedBaseline) {
   $baseline=Get-Content -LiteralPath $ExpectedBaseline -Raw | ConvertFrom-Json
   foreach($row in $baseline.files) {
@@ -54,6 +57,10 @@ $slots=@(
   [ordered]@{target=(Join-Path $DesktopRoot 'Relax Coach.lnk');source='';kind='file';action='shortcut'},
   [ordered]@{target=(Join-Path $DesktopRoot 'Forever Coach.lnk');source='';kind='file';action='remove'}
 )
+if($planner) {
+  $plannerSlot=[ordered]@{target=(Join-Path $Game 'Interface\AddOns\RelaxQuestPlanner');source='Interface\AddOns\RelaxQuestPlanner';kind='directory';action='replace'}
+  $slots=@($slots[0..2]) + @($plannerSlot) + @($slots[3..($slots.Count-1)])
+}
 foreach($s in $slots) {
   foreach($protected in @($SourceRoot,$BackupRoot)) {
     if($protected -eq $s.target -or $protected.StartsWith($s.target+'\',[StringComparison]::OrdinalIgnoreCase) -or $s.target.StartsWith($protected+'\',[StringComparison]::OrdinalIgnoreCase)) { throw 'Backup/source overlaps an installation target.' }

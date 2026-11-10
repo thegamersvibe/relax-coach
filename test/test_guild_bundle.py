@@ -1,6 +1,6 @@
 """Contract for the combined guild download; never include player saves."""
 from pathlib import Path
-import hashlib,json,shutil,subprocess,sys,tempfile,unittest,zipfile
+import hashlib,json,re,shutil,subprocess,sys,tempfile,unittest,zipfile
 ROOT=Path(__file__).resolve().parents[1]
 
 class GuildBuilderExeTests(unittest.TestCase):
@@ -91,6 +91,47 @@ class GuildBuilderExeTests(unittest.TestCase):
         self.assertIn('Unexpected addon file:',result.stderr)
         self.assertFalse(self.standalone.exists())
 
+    def add_planner(self,title='Relax Quest Planner',version='0.1.2-test'):
+        files={'addon/RelaxQuestPlanner/RelaxQuestPlanner.toc':'## Title: '+title+'\r\n## Version: '+version+'\r\nInit.lua\r\n',
+               'addon/RelaxQuestPlanner/Init.lua':'-- synthetic planner\n','addon/RelaxQuestPlanner/Media/relax-icon.tga':'tga'}
+        for name,text in files.items():
+            p=self.root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(text,newline='')
+        return files
+
+    def test_150_bundle_packs_planner_under_new_asset_name(self):
+        files=self.add_planner()
+        (self.root/'addon/ForeverCoach/ForeverCoach.toc').write_text('## Title: Relax Coach\n## Version: 1.5.0\n')
+        result=self.run_builder(self.exe,'1.5.0')
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertFalse((self.root/'dist/RelaxCoach-Guild-1.5.0.zip').exists())
+        archive=self.root/'dist/RelaxCoach-Bundle-1.5.0.zip'
+        with zipfile.ZipFile(archive) as z:
+            manifest=json.loads(z.read('manifest.json'))
+            self.assertEqual(manifest['plannerVersion'],'0.1.2-test')
+            rows={r['path'] for r in manifest['files']}
+            self.assertEqual(rows,set(z.namelist())-{'manifest.json'})
+            for name,text in files.items():
+                path='Interface/AddOns/'+name[len('addon/'):]
+                self.assertEqual(z.read(path),text.encode())
+        sums={line.split('  ',1)[1] for line in (self.root/'dist/SHA256SUMS.txt').read_text().splitlines()}
+        self.assertEqual(sums,{'RelaxCoach.exe','RelaxCoach-Bundle-1.5.0.zip'})
+
+    def test_planner_identity_is_checked(self):
+        self.add_planner(title='Something Else')
+        (self.root/'addon/ForeverCoach/ForeverCoach.toc').write_text('## Title: Relax Coach\n## Version: 1.5.0\n')
+        result=self.run_builder(self.exe,'1.5.0')
+        self.assertNotEqual(result.returncode,0)
+        self.assertIn('Unexpected addon identity',result.stderr)
+        self.assertFalse(self.standalone.exists())
+
+    def test_pre_150_guild_never_packs_planner(self):
+        self.add_planner()
+        result=self.run_builder(self.exe)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        with zipfile.ZipFile(self.root/'dist/RelaxCoach-Guild-1.4.0.zip') as z:
+            self.assertFalse(any('RelaxQuestPlanner' in n for n in z.namelist()))
+            self.assertNotIn('plannerVersion',json.loads(z.read('manifest.json')))
+
     def test_manifest_declares_current_journey_and_guides(self):
         result=self.run_builder(self.exe)
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
@@ -158,7 +199,10 @@ class GuildBundleTests(unittest.TestCase):
         for line in result.splitlines():self.assertTrue(line.endswith(': text: unset'),line)
 
     def test_combined_archive_preserves_runtime_and_excludes_saves(self):
-        path=ROOT/'dist/RelaxCoach-Guild-1.4.5.zip'
+        version=re.search(r'^## Version: (\S+)',(ROOT/'addon/ForeverCoach/ForeverCoach.toc').read_text(),re.M).group(1)
+        bundle=tuple(map(int,version.split('.')))>=(1,5,0)
+        folders=('ForeverCoach','Journey','RelaxQuestPlanner') if bundle else ('ForeverCoach','Journey')
+        path=ROOT/'dist'/(('RelaxCoach-Bundle-' if bundle else 'RelaxCoach-Guild-')+version+'.zip')
         self.assertTrue(path.is_file(),'combined guild archive is missing')
         with zipfile.ZipFile(path) as z:
             names=z.namelist()
@@ -174,7 +218,10 @@ class GuildBundleTests(unittest.TestCase):
                 self.assertFalse(name.startswith('/') or '\\' in name or ':' in name,name)
             manifest=json.loads(z.read('manifest.json'))
             self.assertEqual(manifest['kind'],'guild-combined')
-            self.assertEqual(manifest['version'],'1.4.5')
+            self.assertEqual(manifest['version'],version)
+            self.assertEqual('plannerVersion' in manifest,bundle)
+            if bundle:self.assertIn('Interface/AddOns/RelaxQuestPlanner/RelaxQuestPlanner.toc',names)
+            else:self.assertFalse(any(n.startswith('Interface/AddOns/RelaxQuestPlanner/') for n in names))
             self.assertEqual(manifest['journeyVersion'],'4.00.04')
             self.assertEqual(manifest['contentVersion'],'4.00.06')
             self.assertEqual({r['path'] for r in manifest['files']},set(names)-{'manifest.json'})
@@ -182,7 +229,7 @@ class GuildBundleTests(unittest.TestCase):
                 raw=z.read(row['path'])
                 self.assertEqual(hashlib.sha256(raw).hexdigest(),row['sha256'],row['path'])
                 self.assertEqual(len(raw),row['bytes'])
-            for folder in ('ForeverCoach','Journey'):
+            for folder in folders:
                 for source in (ROOT/'addon'/folder).rglob('*'):
                     if source.is_file():self.assertEqual(z.read('Interface/AddOns/'+str(source.relative_to(ROOT/'addon')).replace('\\','/')),source.read_bytes())
             for source in (ROOT/'content').rglob('*'):
