@@ -86,13 +86,16 @@ local fieldMap={name="name",reqLevel="requiredLevel",qLevel="questLevel",races="
     maxRep="requiredMaxRep",spell="requiredSpell",startedBy="startedBy",finishedBy="finishedBy",
     objectives="objectives",children="childQuests",inGroupWith="inGroupWith"}
 local relationLists={"grp","single","excl","bcs","children","inGroupWith"}
+local tableFields={"startedBy","finishedBy","objectives"}
+local gateFields={"skill","ranks","minRep","maxRep"}
+local zeroIsAbsent={"next","parent","bcFor","untilDone","startingWith","disabledBy","maxLevel","spec","spell"}
 local function normalize(r,id)
     r.id=id; r.name=r.name or ("quest "..tostring(id))
     for _,k in ipairs(relationLists) do r[k]=copyList(r[k],id) end
-    for _,k in ipairs({"startedBy","finishedBy","objectives"}) do r[k]=tbl(r[k]) end
-    for _,k in ipairs({"skill","ranks","minRep","maxRep"}) do if r[k]==nil then r[k]={} end end
+    for _,k in ipairs(tableFields) do r[k]=tbl(r[k]) end
+    for _,k in ipairs(gateFields) do if r[k]==nil then r[k]={} end end
     -- QuestieDB normalizes absent numerics to 0. Lua treats 0 as true.
-    for _,k in ipairs({"next","parent","bcFor","untilDone","startingWith","disabledBy","maxLevel","spec","spell"}) do
+    for _,k in ipairs(zeroIsAbsent) do
         if not present(r[k]) then r[k]=nil end
     end
     r.reqLevel=r.reqLevel or 0; r.qLevel=r.qLevel or 0
