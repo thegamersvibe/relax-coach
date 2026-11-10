@@ -110,6 +110,8 @@ local function actionable(action, P, opts, cache)
     return false
 end
 
+local fitByDelta = { [-5]=0.2, [-4]=0.4, [-3]=0.6, [-2]=0.8, [-1]=0.9,
+    [0]=1, [1]=1, [2]=0.8, [3]=0.6, [4]=0.4 }
 local function rankGuide(info, scan, P, opts, cache, unlockCache, checkpoint)
     local range = band(info, P, opts)
     if not range then return nil end
@@ -160,8 +162,7 @@ local function rankGuide(info, scan, P, opts, cache, unlockCache, checkpoint)
     local distance = math.max(range.low - P.level, 0, P.level - range.high)
     local fit = math.max(0, 1 - distance / 6)
     local workFit, leveled = 0, 0
-    local fitByDelta = { [-5]=0.2, [-4]=0.4, [-3]=0.6, [-2]=0.8, [-1]=0.9,
-        [0]=1, [1]=1, [2]=0.8, [3]=0.6, [4]=0.4 }
+
     for q in pairs(usable) do
         local level = cache[q].level
         if level then
