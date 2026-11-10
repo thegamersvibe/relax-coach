@@ -72,7 +72,7 @@ function S:Start()
 end
 
 function S:PollProcs()
-    if not cur then return end
+    if not cur or next(procs) == nil then return end -- nothing tracked: skip the 5x/second client reads
     local inCombat = plain(UnitAffectingCombat("player")) == true
     local t = now()
     for _, w in pairs(procs) do
@@ -86,7 +86,7 @@ function S:PollProcs()
 end
 
 function S:Cast(spellID)
-    if not cur or not spellID then return end
+    if not cur or not spellID or next(procs) == nil then return end
     local name = FC:SpellName(spellID)
     local w = name and procs[name]
     if w and w.open then w.used = w.used + 1; w.open = nil end
