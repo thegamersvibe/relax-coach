@@ -276,13 +276,22 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 	}
 	game = filepath.Clean(game)
 	addons := filepath.Join(game, "Interface", "AddOns")
-	if err := addonPlainDirectory(addons); err != nil {
+	// A fresh client may not have Interface\AddOns yet: those folders are
+	// created right before the swap, after verification, and removed again if
+	// the install fails.
+	missingDirs, err := addonMissingDirs(game, addons)
+	if err != nil {
 		return result, fmt.Errorf("invalid game addon folder: %w", err)
 	}
-	// Capture AddOns and every parent now; they are re-checked right before
-	// the swap so a folder replaced by a link during the download can't
-	// redirect the install outside the game folder (also for fresh installs).
-	ancestors, err := extraAncestors(addons)
+	existing := addons
+	if len(missingDirs) > 0 {
+		existing = filepath.Dir(missingDirs[0])
+	}
+	// Capture AddOns (or its deepest existing parent) and every parent now;
+	// they are re-checked right before the swap so a folder replaced by a link
+	// during the download can't redirect the install outside the game folder
+	// (also for fresh installs).
+	ancestors, err := extraAncestors(existing)
 	if err != nil {
 		return result, fmt.Errorf("invalid game addon folder: %w", err)
 	}
@@ -373,6 +382,16 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 	if err := addonCheckAncestors(ancestors); err != nil {
 		return result, fmt.Errorf("the game addon folder changed during download; nothing was changed: %w", err)
 	}
+	for _, p := range missingDirs {
+		if _, err := os.Lstat(p); !os.IsNotExist(err) {
+			return result, fmt.Errorf("the game addon folder changed during download; nothing was changed: %s", p)
+		}
+	}
+	createdDirs, err := addonCreateDirs(missingDirs)
+	if err != nil {
+		addonRemoveCreated(createdDirs)
+		return result, fmt.Errorf("could not create the game addon folder; nothing was changed: %w", err)
+	}
 	target := extraTarget(game, a)
 	backup := filepath.Join(transaction, "previous")
 	if before.exists {
@@ -387,6 +406,7 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 				return result, fmt.Errorf("install failed and the old version could not be put back; it is kept at %s: %w", backup, errors.Join(err, rerr))
 			}
 		}
+		addonRemoveCreated(createdDirs)
 		return result, fmt.Errorf("install failed; the previous version was restored: %w", err)
 	}
 	committed = true

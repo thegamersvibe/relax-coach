@@ -106,7 +106,7 @@ func (u *addonUpdater) requireStopped(ctx context.Context) error {
 		return fmt.Errorf("could not verify that WoW is closed; addon update refused: %w", err)
 	}
 	if running {
-		return errors.New("close World of Warcraft before updating the addon")
+		return errors.New("close World of Warcraft before installing or updating addons")
 	}
 	return ctx.Err()
 }
@@ -217,7 +217,10 @@ func (u *addonUpdater) apply(ctx context.Context, game string, release AddonRele
 	}
 	game = filepath.Clean(game)
 	addons := filepath.Join(game, "Interface", "AddOns")
-	if err := addonPlainDirectory(addons); err != nil {
+	// A fresh client may not have Interface\AddOns yet. The transaction creates
+	// the missing folders only after every downloaded byte is verified, and
+	// removes them again on rollback.
+	if _, err := addonMissingDirs(game, addons); err != nil {
 		return result, fmt.Errorf("invalid game addon folder: %w", err)
 	}
 	target := filepath.Join(addons, "ForeverCoach")

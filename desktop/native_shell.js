@@ -33,8 +33,16 @@ const rc = Object.freeze({
   openExternal: url => call('openExternal',url),
   extraList: () => call('extraList'),
   checkExtra: id => call('checkExtra',id),
-  applyExtra: (id,version) => call('applyExtra',id+'@'+version)
+  applyExtra: (id,version) => call('applyExtra',id+'@'+version),
+  appPlacement: () => call('appPlacement'),
+  installAppCopy: () => call('installAppCopy')
 });
+// One vocabulary for every addon (Relax Coach bundle and More addons):
+// Install when the addon is not there yet, otherwise Update.
+const verb = install => install ? 'Install' : 'Update';
+const closeThen = install => ' Close WoW, then click '+verb(install)+'.';
+const progressText = 'Downloading, verifying and installing… Do not force-close the application.';
+const failText = (install,err) => verb(install)+' failed: '+err.message+' Check again before retrying.';
 let offer = null, appOffer = null, busy = false, refreshing = false, restarting = false;
 let healthPending = false, healthSent = false;
 // Two animation frames follow a successful Go report RPC and DOM rendering.
@@ -57,10 +65,13 @@ let renderedReport = {
   Account: $('report-body').dataset.account
 };
 function message(text) { $('global-status').textContent = text; }
+let userNavigated = false, initialViewChosen = false, placementDismissed = false;
+const autoChecked = new Set();
 function show(view) {
+  $('setup-view').hidden = view !== 'setup';
   $('report-view').hidden = view !== 'report';
   $('update-view').hidden = view !== 'update';
-  for (const name of ['report','update']) {
+  for (const name of ['setup','report','update']) {
     $('nav-'+name).classList.toggle('active',name === view);
     if (name === view) $('nav-'+name).setAttribute('aria-current','page');
     else $('nav-'+name).removeAttribute('aria-current');
@@ -74,7 +85,10 @@ function updateButtons() {
   $('apply-app-update').disabled = busy || disabled || !appOffer || !appOffer.Available;
   $('check-update').disabled = busy || disabled;
   $('apply-update').disabled = busy || disabled || !offer || !offer.Available;
-  for (const id of ['browse-folder','use-folder','game-path']) $(id).disabled = busy;
+  $('setup-install').disabled = busy || disabled || !offer || !offer.Available;
+  $('app-copy').disabled = busy;
+  for (const id of ['browse-folder','use-folder','game-path','setup-browse']) $(id).disabled = busy;
+  renderBundleLabels();
   for (const b of document.querySelectorAll('#extra-list button')) {
     const o = extraOffers[b.dataset.id];
     b.disabled = busy || disabled || (b.dataset.role === 'apply' && !(o && o.Available));
@@ -129,7 +143,7 @@ async function checkExtra(id) {
     const o = await rc.checkExtra(id);
     extraOffers[id] = o;
     extraRow(o);
-    row.querySelector('.extra-status').textContent = (o.Status || '') + (o.Available ? ' Close WoW, then click '+(o.Install?'Install':'Update')+'.' : ' No files changed.');
+    row.querySelector('.extra-status').textContent = (o.Status || '') + (o.Available ? closeThen(o.Install) : ' No files changed.');
   } catch(err) { row.querySelector('.extra-status').textContent = 'Check failed: '+err.message; }
   finally { busy = false; updateButtons(); }
 }
@@ -138,11 +152,11 @@ async function applyExtra(id) {
   if (busy || !o || !o.Available) return;
   busy = true; updateButtons();
   const row = document.getElementById('extra-'+id);
-  row.querySelector('.extra-status').textContent = 'Downloading, verifying and installing…';
+  row.querySelector('.extra-status').textContent = progressText;
   try {
     const result = await rc.applyExtra(id, o.Version);
     row.querySelector('.extra-status').textContent = result.message + (result.backupPath ? '\nBackup: '+result.backupPath : '');
-  } catch(err) { row.querySelector('.extra-status').textContent = 'Install failed: '+err.message+' Check again before retrying.'; }
+  } catch(err) { row.querySelector('.extra-status').textContent = failText(o.Install, err); }
   finally { delete extraOffers[id]; busy = false; await loadExtras(); }
 }
 function displayAccount(result) {
@@ -198,14 +212,17 @@ function displayReport(result,folderChanged = false) {
     renderedReport = {HTML:result.HTML,Game:result.Game,Account:result.Account};
   }
   $('installed-version').textContent = result.InstalledVersion === '0.0.0' ? 'Not installed' : result.InstalledVersion;
+  $('setup-installed').textContent = $('installed-version').textContent;
+  $('setup-folder').textContent = result.Game || 'Not chosen yet.';
   $('folder-label').textContent = result.Game;
   if (folderChanged || document.activeElement !== $('game-path')) $('game-path').value = result.Game;
   if (folderChanged) {
     offer = null;
     $('offered-version').textContent = 'Not checked';
     $('release-link').hidden = true;
-    $('release-notes').textContent = 'Check for updates for this game folder.';
-    $('update-status').textContent = 'Game folder changed. Check again before updating.';
+    $('release-notes').textContent = 'Check again for this game folder.';
+    $('setup-offered').textContent = 'Not checked';
+    bundleStatus('Game folder changed. Check again before installing or updating.');
     for (const k of Object.keys(extraOffers)) delete extraOffers[k];
     if ($('extra-list').children.length) loadExtras();
     updateButtons();
@@ -221,14 +238,18 @@ async function refresh(manual = false) {
     const result = await rc.refresh();
     if (generation !== reportGeneration) return;
     displayReport(result);
+    chooseInitialView(result);
     acknowledgeRenderedShell();
     if (manual) message('Report refreshed. The game must save before new data appears.');
   }
   catch (err) { if (generation === reportGeneration) message('Could not refresh the report: '+err.message); }
   finally { refreshing = false; updateButtons(); }
 }
-$('nav-report').addEventListener('click',()=>show('report'));
-$('nav-update').addEventListener('click',()=>{ show('update'); if (!busy) loadExtras(); });
+$('nav-setup').addEventListener('click',()=>{ userNavigated = true; show('setup'); maybeAutoCheck(); });
+$('nav-report').addEventListener('click',()=>{ userNavigated = true; show('report'); });
+$('nav-update').addEventListener('click',()=>{ userNavigated = true; show('update'); if (!busy) loadExtras(); });
+$('setup-report').addEventListener('click',()=>{ userNavigated = true; show('report'); });
+$('setup-more').addEventListener('click',()=>{ userNavigated = true; show('update'); if (!busy) loadExtras(); });
 $('refresh').addEventListener('click',()=>refresh(true));
 async function changeFolder(select) {
   if (busy) return;
@@ -256,6 +277,7 @@ async function changeFolder(select) {
     if (lastReport) displayAccount(lastReport);
     busy = switchingFolder = false;
     updateButtons();
+    maybeAutoCheck();
   }
 }
 $('game-form').addEventListener('submit',event => {
@@ -263,6 +285,7 @@ $('game-form').addEventListener('submit',event => {
   changeFolder(()=>rc.setGame($('game-path').value));
 });
 $('browse-folder').addEventListener('click',()=>changeFolder(rc.chooseGame));
+$('setup-browse').addEventListener('click',()=>changeFolder(rc.chooseGame));
 $('account-select').addEventListener('change',async()=>{
   if (busy) return;
   const id = $('account-select').value;
@@ -293,39 +316,111 @@ $('account-select').addEventListener('change',async()=>{
     }
   }
 });
-$('check-update').addEventListener('click',async()=>{
+// The Relax Coach bundle (Coach, Journey, guide content, Relax Quest Planner).
+// The Updates card and the Get started page share one offer and one flow.
+function bundleInstall() {
+  if (offer) return offer.Install === true;
+  if (lastReport && lastReport.Bundle) return lastReport.Bundle.install === true;
+  return !!lastReport && lastReport.InstalledVersion === '0.0.0';
+}
+function renderBundleLabels() {
+  const v = verb(bundleInstall());
+  $('apply-update').textContent = v;
+  $('setup-install').textContent = v;
+  const b = lastReport && lastReport.Bundle;
+  $('step-folder').classList.toggle('done', !!(lastReport && lastReport.Game));
+  $('step-install').classList.toggle('done', !!(b && b.state === 'installed'));
+}
+// Partial installs: say what is missing and what Install/Update will do.
+function bundleNote(b, available) {
+  if (!b || b.state !== 'partial') return '';
+  const missing = (b.missing || []).join(', '), present = (b.present || []).join(', ');
+  let text = '';
+  if (missing) text += ' Missing folders: '+missing+'.';
+  if (b.install && present) text += ' Already there: '+present+'; '+verb(true)+' moves '+((b.present || []).length > 1 ? 'them' : 'it')+' into RelaxCoachBackups first.';
+  if (missing) text += available ? ' '+verb(b.install)+' puts every folder in place.' : ' The next Relax Coach release puts them back; until then the bundle ZIP fallback in the README restores them.';
+  return text;
+}
+function bundleStatus(text) { $('update-status').textContent = text; $('setup-status').textContent = text; }
+async function checkBundle() {
   if (busy) return;
   busy = true; offer = null; updateButtons();
   $('release-link').hidden = true;
-  $('offered-version').textContent = 'Checking…';
-  $('update-status').textContent = 'Checking the latest stable GitHub release…';
+  $('offered-version').textContent = $('setup-offered').textContent = 'Checking…';
+  bundleStatus('Checking the latest stable GitHub release…');
   try {
     offer = await rc.checkAddon();
+    const install = offer.Install === true;
     $('installed-version').textContent = offer.InstalledVersion === '0.0.0' ? 'Not installed' : offer.InstalledVersion;
-    $('offered-version').textContent = offer.Available ? offer.Version : 'None';
+    $('setup-installed').textContent = $('installed-version').textContent;
+    $('offered-version').textContent = $('setup-offered').textContent = offer.Available ? offer.Version : 'None';
     $('release-name').textContent = offer.Name || 'Release notes';
     $('release-notes').textContent = offer.Notes || 'No release notes provided.';
     $('release-link').href = offer.HTMLURL;
     $('release-link').hidden = !offer.HTMLURL;
-    $('update-status').textContent = offer.Available ? 'Update available. Close WoW, then click Update Addon to verify, back up and install.' : (offer.Notes || 'No compatible new addon update is available.') + ' No files changed.';
+    bundleStatus(offer.Available
+      ? 'Relax Coach '+offer.Version+' is ready to '+(install ? 'install' : 'update')+'.'+closeThen(install)+bundleNote(offer.Bundle,true)
+      : (offer.Notes || 'No compatible new addon update is available.')+' No files changed.'+bundleNote(offer.Bundle,false));
   } catch(err) {
-    $('offered-version').textContent = 'Unavailable';
+    $('offered-version').textContent = $('setup-offered').textContent = 'Unavailable';
     $('release-notes').textContent = 'Release notes unavailable. Check again when online.';
-    $('update-status').textContent = 'Update check failed: '+err.message;
+    bundleStatus('Check failed: '+err.message);
   } finally { busy = false; updateButtons(); }
-});
-$('apply-update').addEventListener('click',async()=>{
+}
+async function applyBundle() {
   if (busy || !offer || !offer.Available) return;
+  const install = offer.Install === true;
   busy = true; updateButtons();
-  $('update-status').textContent = 'Downloading, verifying and installing… Do not force-close the application.';
+  bundleStatus(progressText);
   try {
     // Only confirm the displayed version. URLs/checksums stay in Go memory.
     const result = await rc.applyAddon(offer.Version);
-    $('update-status').textContent = result.message + (result.backupPath ? '\nBackup: '+result.backupPath : '');
+    bundleStatus(result.message + (result.backupPath ? '\nBackup: '+result.backupPath : ''));
     await refresh();
-  } catch(err) { $('update-status').textContent = 'Update failed: '+err.message+' Check for updates before trying again.'; }
+  } catch(err) { bundleStatus(failText(install, err)); }
   finally { offer = null; busy = false; updateButtons(); }
+}
+$('check-update').addEventListener('click',checkBundle);
+$('apply-update').addEventListener('click',applyBundle);
+$('setup-install').addEventListener('click',applyBundle);
+// A new player (no game folder, or Coach not installed) starts on Get started.
+function chooseInitialView(result) {
+  if (initialViewChosen) return;
+  initialViewChosen = true;
+  if (userNavigated) return;
+  if (!result.Game || (result.Bundle ? result.Bundle.install === true : result.InstalledVersion === '0.0.0')) { show('setup'); maybeAutoCheck(); }
+}
+// On Get started only, look up the latest release once per folder so Install
+// shows the version it will install. This reads release information; nothing
+// is downloaded or installed until the player clicks Install.
+function maybeAutoCheck() {
+  if ($('setup-view').hidden || busy || offer || document.body.dataset.updatesDisabled === 'true') return;
+  const game = lastReport && lastReport.Game;
+  if (!game || autoChecked.has(game)) return;
+  autoChecked.add(game);
+  checkBundle();
+}
+// First run: optionally copy the app to its usual folder and add a shortcut.
+function showPlacement(p) {
+  const box = $('app-placement');
+  if (placementDismissed || !p || !['offer','other-copy','copied'].includes(p.State)) { box.hidden = true; return; }
+  box.hidden = false;
+  $('app-placement-text').textContent = p.Message || '';
+  $('app-copy').hidden = p.State !== 'offer';
+  $('app-copy-later').textContent = p.State === 'offer' ? 'Not now' : 'OK';
+}
+async function loadPlacement() {
+  try { showPlacement(await rc.appPlacement()); } catch(err) { $('app-placement').hidden = true; }
+}
+$('app-copy').addEventListener('click',async()=>{
+  if (busy) return;
+  busy = true; updateButtons();
+  $('app-placement-text').textContent = 'Copying Relax Coach and adding the shortcut…';
+  try { showPlacement(await rc.installAppCopy()); }
+  catch(err) { $('app-placement-text').textContent = 'Copy failed: '+err.message; $('app-copy').hidden = true; $('app-copy-later').textContent = 'OK'; }
+  finally { busy = false; updateButtons(); }
 });
+$('app-copy-later').addEventListener('click',()=>{ placementDismissed = true; $('app-placement').hidden = true; });
 $('check-app-update').addEventListener('click',async()=>{
   if (busy || document.body.dataset.updatesDisabled === 'true') return;
   busy = true; appOffer = null; updateButtons();
@@ -385,5 +480,5 @@ document.addEventListener('click',event=>{
 });
 // A convenience refresh, not a heartbeat. No timer can close the native window.
 setInterval(()=>{if (!document.hidden && !busy) refresh();},5000);
-refresh();
+refresh().then(loadPlacement);
 })();

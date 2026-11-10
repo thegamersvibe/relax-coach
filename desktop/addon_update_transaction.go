@@ -325,14 +325,22 @@ func (u *addonUpdater) installTrees(ctx context.Context, game string, release Ad
 		return result, errors.New("installed addon is already this version or newer; refusing to reinstall or downgrade")
 	}
 	if before.exists != now.exists || (before.exists && (!os.SameFile(before.info, now.info) || !bytes.Equal(before.toc, now.toc))) {
-		return result, errors.New("the installed addon changed during download; check for updates again")
+		return result, errors.New("the installed addon changed during download; check again")
 	}
-	// A missing Content parent is valid. Create only the fixed immediate parent,
-	// after all downloaded bytes have passed verification.
+	// A missing Content parent is valid, and so are a fresh client's missing
+	// Interface and Interface\AddOns. Create only those fixed parents inside the
+	// game folder, outermost first, after all downloaded bytes have passed
+	// verification.
 	createdParents := []string{}
 	for _, tree := range trees {
-		parent := filepath.Dir(tree.target)
-		if ancestors[parent] == nil {
+		missing := []string{}
+		for p := filepath.Dir(tree.target); p != game && ancestors[p] == nil; p = filepath.Dir(p) {
+			if _, known := ancestors[p]; !known || filepath.Dir(p) == p {
+				return result, fmt.Errorf("unexpected addon folder: %s", p)
+			}
+			missing = append([]string{p}, missing...)
+		}
+		for _, parent := range missing {
 			if err := checkTransaction(); err != nil {
 				return result, err
 			}
@@ -401,7 +409,8 @@ func (u *addonUpdater) installTrees(ctx context.Context, game string, release Ad
 			}
 		}
 		if len(failures) == 0 {
-			for _, parent := range createdParents {
+			for i := len(createdParents) - 1; i >= 0; i-- {
+				parent := createdParents[i]
 				if e := checkTransaction(); e != nil {
 					failures = append(failures, e)
 					continue
@@ -511,6 +520,17 @@ func (u *addonUpdater) installTrees(ctx context.Context, game string, release Ad
 		result.Message = "Coach, Journey and guide content updated together; every installed file verified. SavedVariables, settings and unrelated addons were not touched. The desktop helper was not updated."
 		if addonBundleRelease(release.Version) {
 			result.Message = "Coach, Journey, Relax Quest Planner and guide content updated together; every installed file verified. SavedVariables, settings and unrelated addons were not touched. The desktop helper was not updated."
+		}
+		if !before.exists {
+			// First install (Coach was not there): same transaction, install wording.
+			result.Message = "Coach, Journey and guide content " + release.Version + " installed; every installed file verified."
+			if addonBundleRelease(release.Version) {
+				result.Message = "Coach, Journey, Relax Quest Planner and guide content " + release.Version + " installed; every installed file verified."
+			}
+			result.Message += " Enable them in the AddOns list if needed, then start WoW. SavedVariables, settings and unrelated addons were not touched."
+			if result.BackupPath != "" {
+				result.Message += " Folders that were already there are kept in the backup."
+			}
 		}
 	}
 	return result, nil
