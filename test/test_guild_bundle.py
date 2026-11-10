@@ -186,8 +186,11 @@ class GuildBundleTests(unittest.TestCase):
     def test_release_inputs_keep_independent_coach_identity_at_144(self):
         toc=(ROOT/'addon/ForeverCoach/ForeverCoach.toc').read_text()
         core=(ROOT/'addon/ForeverCoach/Core.lua').read_text()
-        self.assertIn('## Version: 1.4.5\n',toc)
-        self.assertIn('FC.VERSION = "1.4.5"',core)
+        # Coach TOC, Core.lua and the release scripts' default version must agree.
+        version=re.search(r'^## Version: (\d+\.\d+\.\d+)\n',toc,re.M).group(1)
+        self.assertIn('FC.VERSION = "'+version+'"',core)
+        self.assertIn("default='"+version+"'",(ROOT/'scripts/build_guild_bundle.py').read_text())
+        self.assertIn('V=${1:-'+version+'}',(ROOT/'scripts/release.sh').read_text())
         self.assertIn('## SavedVariables: ForeverCoachDB\n',toc)
         self.assertNotRegex(toc,r'(?mi)^## (?:Dependencies|RequiredDeps):.*Journey')
 

@@ -2,7 +2,7 @@
 
 A leveling coach for **World of Warcraft: Forever**, with a Windows application for reports and addon updates.
 
-This is a **legacy Coach-only archive**, not the current combined guild download. For Coach, Journey and guide content together, use `RelaxCoach-Guild-1.4.5.zip` on [release v1.4.5](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.4.5). A current release need not contain a Coach-only ZIP.
+This is a **legacy Coach-only archive**, not the current combined guild download. For Coach, Journey and guide content together, use `RelaxCoach-Bundle-1.5.0.zip` on [release v1.5.0](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.5.0). A current release need not contain a Coach-only ZIP.
 
 ## Install
 
@@ -46,6 +46,6 @@ The technical source paths remain `addon/ForeverCoach` and `desktop`.
 - `uv run --with lupa python test/harness.py` (also run with provider fixtures)
 - `cd desktop && go vet ./... && go test -race ./...`
 
-The legacy Coach-only asset is `RelaxCoach-<version>.zip`; it is deliberately not published for 1.4.2 and later. Current app addon updates require `RelaxCoach-Guild-<version>.zip`. App-only releases provide just `RelaxCoach.exe` and `SHA256SUMS.txt`; addon and combined guild ZIPs are included only when those packages are being released. The addon updater consumes published stable releases, not raw pushes to `main`; publishing a tested new release makes it available to players. Keep Journey and guide content out of the smaller Coach-only archive. Never include personal SavedVariables in either archive or this repository.
+The legacy Coach-only asset is `RelaxCoach-<version>.zip`; it is deliberately not published for 1.4.2 and later. Current app addon updates require `RelaxCoach-Bundle-<version>.zip` (1.5.0 and later; it adds Relax Quest Planner, so apps before 1.5.0 must use Update App first). Releases 1.4.2 to 1.4.x used `RelaxCoach-Guild-<version>.zip`. App-only releases provide just `RelaxCoach.exe` and `SHA256SUMS.txt`; addon and combined guild ZIPs are included only when those packages are being released. The addon updater consumes published stable releases, not raw pushes to `main`; publishing a tested new release makes it available to players. Keep Journey and guide content out of the smaller Coach-only archive. Never include personal SavedVariables in either archive or this repository.
 
 MIT-licensed Coach code by **TheGamersVibe**. Original upstream projects retain their own authorship and licenses.

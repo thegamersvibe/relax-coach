@@ -44,7 +44,7 @@ func funModeZip(t *testing.T, entries []addonZipEntry, version string) []byte {
 }
 
 func TestGuildFunModeExtractsExactCoachRuntime(t *testing.T) {
-	for _, version := range []string{"1.4.3", "1.4.3+reviewed", "1.4.4", "1.4.5", "1.4.10", "2.0.0"} {
+	for _, version := range []string{"1.4.3", "1.4.3+reviewed", "1.4.4", "1.4.5", "1.5.0", "1.4.10", "2.0.0"} {
 		t.Run(version, func(t *testing.T) {
 			entries := funModeEntries(version)
 			stage := filepath.Join(t.TempDir(), "staged")

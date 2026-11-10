@@ -2,7 +2,7 @@
 ## Title: Relax Coach
 ## Notes: Leveling auditor for WoW Forever: gear by route, talents, training, class quests, dungeons and play habits. /coach
 ## Author: TheGamersVibe
-## Version: 1.4.5
+## Version: 1.5.0
 ## SavedVariables: ForeverCoachDB
 ## OptionalDeps: GearQuestForever, GearQuestForever_WARRIOR, GearQuestForever_PALADIN, GearQuestForever_HUNTER, GearQuestForever_ROGUE, GearQuestForever_PRIEST, GearQuestForever_SHAMAN, GearQuestForever_MAGE, GearQuestForever_WARLOCK, GearQuestForever_DRUID, Journey, ForeverDungeonJournal
 ## IconTexture: Interface\AddOns\ForeverCoach\ForeverCoach
