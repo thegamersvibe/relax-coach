@@ -40,7 +40,8 @@ $actual=@(Get-ChildItem -LiteralPath $SourceRoot -File -Recurse | Where-Object {
 if($actual.Count -ne $seen.Count) { throw 'Payload contains missing or unlisted files.' }
 foreach($mandatory in @('RelaxCoach.exe','Restore-RelaxCoach.ps1','Interface/AddOns/ForeverCoach/ForeverCoach.toc','Interface/AddOns/Journey/Journey.toc')) { if(!$seen.ContainsKey($mandatory)) { throw "Missing required payload: $mandatory" } }
 # Bundles from 1.5.0 also carry Relax Quest Planner; an existing (for example manually installed) planner is backed up like the other folders.
-$planner=@($seen.Keys | Where-Object { $_.StartsWith('Interface/AddOns/RelaxQuestPlanner/') }).Count -gt 0
+# Case-insensitive like the allowlist regex above (and $seen, a default case-insensitive hashtable).
+$planner=@($seen.Keys | Where-Object { $_.StartsWith('Interface/AddOns/RelaxQuestPlanner/',[StringComparison]::OrdinalIgnoreCase) }).Count -gt 0
 if($planner -and !$seen.ContainsKey('Interface/AddOns/RelaxQuestPlanner/RelaxQuestPlanner.toc')) { throw 'Missing required payload: Interface/AddOns/RelaxQuestPlanner/RelaxQuestPlanner.toc' }
 if($ExpectedBaseline) {
   $baseline=Get-Content -LiteralPath $ExpectedBaseline -Raw | ConvertFrom-Json
