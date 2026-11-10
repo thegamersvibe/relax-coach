@@ -279,6 +279,20 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 	if err := addonPlainDirectory(addons); err != nil {
 		return result, fmt.Errorf("invalid game addon folder: %w", err)
 	}
+	// Capture AddOns and every parent now; they are re-checked right before
+	// the swap so a folder replaced by a link during the download can't
+	// redirect the install outside the game folder (also for fresh installs).
+	ancestors, err := extraAncestors(addons)
+	if err != nil {
+		return result, fmt.Errorf("invalid game addon folder: %w", err)
+	}
+	// Finish an earlier install that was interrupted mid-swap before reading
+	// the installed state, so the offer is checked against the real folder.
+	backups := filepath.Join(game, "RelaxCoachBackups")
+	lockPath := filepath.Join(backups, ".extra-addon-update.lock")
+	if addonPlainDirectory(backups) == nil && extraRecoverInterrupted(lockPath, backups, game) {
+		os.Remove(lockPath)
+	}
 	before, err := extraInstalled(game, a)
 	if err != nil {
 		return result, err
@@ -303,14 +317,12 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 		return result, errors.New("SHA256 checksum mismatch; nothing was installed")
 	}
 
-	backups := filepath.Join(game, "RelaxCoachBackups")
 	if err := os.Mkdir(backups, 0700); err != nil && !os.IsExist(err) {
 		return result, err
 	}
 	if err := addonPlainDirectory(backups); err != nil {
 		return result, err
 	}
-	lockPath := filepath.Join(backups, ".extra-addon-update.lock")
 	lock, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 	if os.IsExist(err) && extraStaleLock(lockPath, backups) {
 		if rerr := os.Remove(lockPath); rerr == nil {
@@ -357,6 +369,9 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 	}
 	if now.exists != before.exists || (before.exists && (!os.SameFile(before.info, now.info) || !bytes.Equal(before.toc, now.toc))) {
 		return result, errors.New("the installed addon changed during download; check again")
+	}
+	if err := addonCheckAncestors(ancestors); err != nil {
+		return result, fmt.Errorf("the game addon folder changed during download; nothing was changed: %w", err)
 	}
 	target := extraTarget(game, a)
 	backup := filepath.Join(transaction, "previous")
@@ -416,6 +431,76 @@ func extraStaleLock(lockPath, backups string) bool {
 		return false
 	}
 	return true
+}
+
+// extraAncestors records the identity of dir and each of its parents.
+func extraAncestors(dir string) (map[string]os.FileInfo, error) {
+	ancestors := map[string]os.FileInfo{}
+	for p := dir; ; p = filepath.Dir(p) {
+		info, err := addonDirectoryIdentity(p)
+		if err != nil {
+			return nil, err
+		}
+		if info == nil {
+			return nil, fmt.Errorf("missing update directory: %s", p)
+		}
+		ancestors[p] = info
+		if filepath.Dir(p) == p {
+			return ancestors, nil
+		}
+	}
+}
+
+// extraRecoverInterrupted finishes an install that died mid-swap (crash, power
+// loss, or a failed rollback) so the lock does not block every later install.
+// It only acts on an old lock whose transaction under backups belongs to a
+// known extra addon and still holds the moved-aside "previous" folder:
+//   - target missing: put the identified previous version back in place;
+//   - target present: leave it and the backup alone.
+//
+// Either way the transaction folder is kept, and true means the lock may go.
+func extraRecoverInterrupted(lockPath, backups, game string) bool {
+	info, err := os.Lstat(lockPath)
+	if err != nil || !info.Mode().IsRegular() || time.Since(info.ModTime()) < extraLockStaleAfter {
+		return false
+	}
+	b, err := addonReadSmallFile(lockPath)
+	if err != nil {
+		return false
+	}
+	transaction := filepath.Clean(strings.TrimSpace(string(b)))
+	if transaction == "." || filepath.Dir(transaction) != filepath.Clean(backups) {
+		return false
+	}
+	var a extraAddon
+	found := false
+	for _, e := range extraAddons {
+		if strings.HasPrefix(filepath.Base(transaction), e.Folder+"-") {
+			a, found = e, true
+			break
+		}
+	}
+	if !found {
+		return false
+	}
+	previous := filepath.Join(transaction, "previous")
+	if err := addonPlainDirectory(previous); err != nil {
+		return false
+	}
+	target := extraTarget(game, a)
+	if _, err := os.Lstat(target); err == nil {
+		return true // new or other version in place; backup stays in transaction
+	} else if !os.IsNotExist(err) {
+		return false
+	}
+	toc, err := addonReadSmallFile(filepath.Join(previous, a.Folder+".toc"))
+	if err != nil || extraCheckTitle(toc, a) != nil {
+		return false
+	}
+	if err := addonPlainDirectory(filepath.Dir(target)); err != nil {
+		return false
+	}
+	return os.Rename(previous, target) == nil
 }
 
 // extractExtra writes <stage>/<Folder>/... from a ZIP whose every entry is

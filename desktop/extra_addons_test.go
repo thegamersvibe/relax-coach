@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -45,10 +46,11 @@ func extraGoodZip(t *testing.T, version string) []byte {
 }
 
 type extraServer struct {
-	tag     string
-	payload []byte
-	sums    string
-	assets  []string
+	tag       string
+	payload   []byte
+	sums      string
+	assets    []string
+	onArchive func()
 }
 
 func newExtraUpdater(t *testing.T, s *extraServer) *addonUpdater {
@@ -65,6 +67,9 @@ func newExtraUpdater(t *testing.T, s *extraServer) *addonUpdater {
 		case strings.HasSuffix(r.URL.Path, "/SHA256SUMS.txt"):
 			w.Write([]byte(s.sums))
 		case strings.HasSuffix(r.URL.Path, ".zip"):
+			if s.onArchive != nil {
+				s.onArchive()
+			}
 			w.Write(s.payload)
 		default:
 			http.NotFound(w, r)
@@ -356,5 +361,156 @@ func TestExtraAddonStaleLockRecovery(t *testing.T) {
 	}
 	if _, err := os.Stat(lock); !os.IsNotExist(err) {
 		t.Fatal("lock left behind")
+	}
+}
+
+// interruptedSwap leaves the on-disk state of an update that died after the old
+// folder was moved aside: an old lock naming a transaction with "previous".
+func interruptedSwap(t *testing.T, game string, targetPresent bool) (lock, previous string) {
+	t.Helper()
+	u := newExtraUpdater(t, extraRelease(t, "0.1.0", extraGoodZip(t, "0.1.0")))
+	info, _ := u.checkExtra(context.Background(), "forevermaps", "0.0.0")
+	if _, err := u.applyExtra(context.Background(), game, info); err != nil {
+		t.Fatal(err)
+	}
+	backups := filepath.Join(game, "RelaxCoachBackups")
+	tx := filepath.Join(backups, "ForeverMaps-20261110T000000Z-crash")
+	if err := os.MkdirAll(tx, 0700); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(game, "Interface", "AddOns", "ForeverMaps")
+	previous = filepath.Join(tx, "previous")
+	if err := os.Rename(target, previous); err != nil {
+		t.Fatal(err)
+	}
+	if targetPresent { // crash right after the new folder was moved in
+		os.MkdirAll(target, 0755)
+		os.WriteFile(filepath.Join(target, "ForeverMaps.toc"), []byte(strings.Replace(extraTestTOC, "%s", "0.2.0", 1)), 0644)
+	}
+	lock = filepath.Join(backups, ".extra-addon-update.lock")
+	os.WriteFile(lock, []byte(tx+"\n"), 0600)
+	old := time.Now().Add(-time.Hour)
+	os.Chtimes(lock, old, old)
+	return lock, previous
+}
+
+func TestExtraAddonInterruptedSwapRecovers(t *testing.T) {
+	a, _ := extraAddonByID("forevermaps")
+	t.Run("old-moved", func(t *testing.T) {
+		game := extraGame(t)
+		lock, previous := interruptedSwap(t, game, false)
+		u := newExtraUpdater(t, extraRelease(t, "0.3.0", extraGoodZip(t, "0.3.0")))
+		info, _ := u.checkExtra(context.Background(), "forevermaps", "0.0.0")
+		if _, err := u.applyExtra(context.Background(), game, info); err != nil {
+			t.Fatalf("interrupted swap still blocks: %v", err)
+		}
+		if v := InstalledExtraVersion(game, a); v != "0.3.0" {
+			t.Fatalf("installed %s", v)
+		}
+		if _, err := os.Stat(lock); !os.IsNotExist(err) {
+			t.Fatal("lock left behind")
+		}
+		// The restored 0.1.0 was then updated normally; the new update keeps its own backup.
+		if _, err := os.Stat(previous); !os.IsNotExist(err) {
+			t.Fatalf("restored previous should have moved back to AddOns: %v", err)
+		}
+	})
+	t.Run("old-moved-restore-only", func(t *testing.T) {
+		game := extraGame(t)
+		lock, _ := interruptedSwap(t, game, false)
+		backups := filepath.Join(game, "RelaxCoachBackups")
+		if !extraRecoverInterrupted(lock, backups, game) {
+			t.Fatal("recovery refused")
+		}
+		if v := InstalledExtraVersion(game, a); v != "0.1.0" {
+			t.Fatalf("previous version not put back: %s", v)
+		}
+	})
+	t.Run("new-moved", func(t *testing.T) {
+		game := extraGame(t)
+		lock, previous := interruptedSwap(t, game, true)
+		u := newExtraUpdater(t, extraRelease(t, "0.3.0", extraGoodZip(t, "0.3.0")))
+		info, _ := u.checkExtra(context.Background(), "forevermaps", "0.2.0")
+		if _, err := u.applyExtra(context.Background(), game, info); err != nil {
+			t.Fatalf("interrupted swap still blocks: %v", err)
+		}
+		if b, err := os.ReadFile(filepath.Join(previous, "Core.lua")); err != nil || string(b) != "-- core 0.1.0" {
+			t.Fatalf("backup of the old version lost: %v %q", err, b)
+		}
+		if _, err := os.Stat(lock); !os.IsNotExist(err) {
+			t.Fatal("lock left behind")
+		}
+	})
+	t.Run("fresh-lock-still-blocks", func(t *testing.T) {
+		game := extraGame(t)
+		lock, _ := interruptedSwap(t, game, false)
+		now := time.Now()
+		os.Chtimes(lock, now, now)
+		u := newExtraUpdater(t, extraRelease(t, "0.3.0", extraGoodZip(t, "0.3.0")))
+		info, _ := u.checkExtra(context.Background(), "forevermaps", "0.0.0")
+		if _, err := u.applyExtra(context.Background(), game, info); err == nil || !strings.Contains(err.Error(), "holds the lock") {
+			t.Fatalf("recent lock must keep blocking: %v", err)
+		}
+	})
+}
+
+func TestExtraAddonFailedRollbackRecoversNextRun(t *testing.T) {
+	game := extraGame(t)
+	a, _ := extraAddonByID("forevermaps")
+	u := newExtraUpdater(t, extraRelease(t, "0.1.0", extraGoodZip(t, "0.1.0")))
+	info, _ := u.checkExtra(context.Background(), "forevermaps", "0.0.0")
+	if _, err := u.applyExtra(context.Background(), game, info); err != nil {
+		t.Fatal(err)
+	}
+	u = newExtraUpdater(t, extraRelease(t, "0.2.0", extraGoodZip(t, "0.2.0")))
+	info, _ = u.checkExtra(context.Background(), "forevermaps", "0.1.0")
+	target := filepath.Join(game, "Interface", "AddOns", "ForeverMaps")
+	u.rename = func(from, to string) error {
+		if from == target {
+			return os.Rename(from, to)
+		}
+		return errors.New("injected I/O failure")
+	}
+	if _, err := u.applyExtra(context.Background(), game, info); err == nil || !strings.Contains(err.Error(), "could not be put back") {
+		t.Fatalf("expected failed rollback, got %v", err)
+	}
+	lock := filepath.Join(game, "RelaxCoachBackups", ".extra-addon-update.lock")
+	old := time.Now().Add(-time.Hour)
+	os.Chtimes(lock, old, old)
+	u = newExtraUpdater(t, extraRelease(t, "0.2.0", extraGoodZip(t, "0.2.0")))
+	info, _ = u.checkExtra(context.Background(), "forevermaps", "0.1.0")
+	if _, err := u.applyExtra(context.Background(), game, info); err != nil {
+		t.Fatalf("next run did not recover: %v", err)
+	}
+	if v := InstalledExtraVersion(game, a); v != "0.2.0" {
+		t.Fatalf("installed %s", v)
+	}
+}
+
+func TestExtraAddonFreshInstallRechecksAncestors(t *testing.T) {
+	game := extraGame(t)
+	outside := t.TempDir()
+	if err := os.Mkdir(filepath.Join(outside, "AddOns"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	s := extraRelease(t, "0.1.0", extraGoodZip(t, "0.1.0"))
+	s.onArchive = func() {
+		iface := filepath.Join(game, "Interface")
+		if err := os.Rename(iface, iface+".parked"); err != nil {
+			t.Error(err)
+			return
+		}
+		if err := os.Symlink(outside, iface); err != nil {
+			t.Skip("symlinks unavailable:", err)
+		}
+	}
+	u := newExtraUpdater(t, s)
+	info, _ := u.checkExtra(context.Background(), "forevermaps", "0.0.0")
+	_, err := u.applyExtra(context.Background(), game, info)
+	if err == nil || !strings.Contains(err.Error(), "changed during download") {
+		t.Fatalf("expected ancestor change to abort, got %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(outside, "AddOns", "ForeverMaps")); !os.IsNotExist(err) {
+		t.Fatalf("addon written outside the game folder: %v", err)
 	}
 }
