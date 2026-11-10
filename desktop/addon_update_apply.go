@@ -230,7 +230,7 @@ func (u *addonUpdater) apply(ctx context.Context, game string, release AddonRele
 		return result, errors.New("no newer addon version to install; refusing to reinstall or downgrade")
 	}
 
-	trees, ancestors, err := addonSnapshot(game, addonGuildRelease(release.Version))
+	trees, ancestors, err := addonSnapshot(game, release.Version)
 	if err != nil {
 		return result, err
 	}

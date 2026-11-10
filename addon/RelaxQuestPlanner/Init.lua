@@ -2,7 +2,7 @@
 RelaxQuestPlanner = RelaxQuestPlanner or {}
 local RQP = RelaxQuestPlanner
 RQP.UI = RQP.UI or {}
-RQP.version = "0.1.2-test"
+RQP.version = "0.2.0"
 
 function RQP.GetDB()
   if type(RelaxQuestPlannerDB) ~= "table" then RelaxQuestPlannerDB = {} end

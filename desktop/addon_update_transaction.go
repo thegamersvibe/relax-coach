@@ -65,10 +65,10 @@ type addonTreeSwap struct {
 
 // The existing updater transaction covers either its legacy single tree or the
 // three fixed Guild trees. It never delegates installation to bundled scripts.
-func addonSnapshot(game string, guild bool) ([]*addonTreeSwap, map[string]os.FileInfo, error) {
+func addonSnapshot(game string, version string) ([]*addonTreeSwap, map[string]os.FileInfo, error) {
 	roots := []string{"Interface/AddOns/ForeverCoach"}
-	if guild {
-		roots = addonGuildRoots
+	if addonGuildRelease(version) {
+		roots = addonGuildRootsFor(version)
 	}
 	ancestors := map[string]os.FileInfo{}
 	trees := []*addonTreeSwap{}
@@ -509,6 +509,9 @@ func (u *addonUpdater) installTrees(ctx context.Context, game string, release Ad
 	result.Message = "Addon updated and every installed file verified. Journey and SavedVariables were not touched. The desktop helper was not updated."
 	if guild {
 		result.Message = "Coach, Journey and guide content updated together; every installed file verified. SavedVariables, settings and unrelated addons were not touched. The desktop helper was not updated."
+		if addonBundleRelease(release.Version) {
+			result.Message = "Coach, Journey, Relax Quest Planner and guide content updated together; every installed file verified. SavedVariables, settings and unrelated addons were not touched. The desktop helper was not updated."
+		}
 	}
 	return result, nil
 }

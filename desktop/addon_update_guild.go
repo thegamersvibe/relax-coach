@@ -18,10 +18,21 @@ import (
 
 // Install scope is local policy, never supplied by the manifest.
 var addonGuildRoots = []string{"Interface/AddOns/ForeverCoach", "Interface/AddOns/Journey", "Interface/Content/Journey-Content"}
+
+// addonPlannerRoot joins the bundle from 1.5.0 (see addonBundleRelease).
+const addonPlannerRoot = "Interface/AddOns/RelaxQuestPlanner"
+
+func addonGuildRootsFor(version string) []string {
+	if addonBundleRelease(version) {
+		return append(append([]string{}, addonGuildRoots...), addonPlannerRoot)
+	}
+	return addonGuildRoots
+}
+
 var addonGuildExtras = map[string]bool{"RelaxCoach.exe": true, "README.md": true, "LICENSE-Coach": true, "Install-RelaxCoach.ps1": true, "Restore-RelaxCoach.ps1": true, "manifest.json": true}
 
-func addonGuildRoot(name string) string {
-	for _, root := range addonGuildRoots {
+func addonGuildRoot(name string, roots []string) string {
+	for _, root := range roots {
 		if strings.HasPrefix(name, root+"/") {
 			return root
 		}
@@ -29,20 +40,20 @@ func addonGuildRoot(name string) string {
 	return ""
 }
 
-func addonGuildPath(name string, directory bool, coachFiles map[string]bool) bool {
+func addonGuildPath(name string, directory bool, coachFiles map[string]bool, roots []string) bool {
 	if directory {
-		for _, root := range addonGuildRoots {
+		for _, root := range roots {
 			if name == root || strings.HasPrefix(root, name+"/") || strings.HasPrefix(name, root+"/") {
 				return true
 			}
 		}
 		return false
 	}
-	root := addonGuildRoot(name)
+	root := addonGuildRoot(name, roots)
 	switch root {
 	case addonGuildRoots[0]:
 		return coachFiles[strings.TrimPrefix(name, root+"/")]
-	case addonGuildRoots[1]:
+	case addonGuildRoots[1], addonPlannerRoot:
 		switch strings.ToLower(path.Ext(name)) {
 		case ".lua", ".toc", ".tga", ".blp", ".xml", ".txt", ".md", ".ttf", ".otf", ".html", ".png":
 			return true
@@ -57,6 +68,8 @@ func addonGuildPath(name string, directory bool, coachFiles map[string]bool) boo
 
 func (u *addonUpdater) extractGuild(ctx context.Context, payload []byte, stage, version string) (map[string]addonFileDigest, error) {
 	coachFiles := addonPublicFilesForVersion(version)
+	roots := addonGuildRootsFor(version)
+	planner := len(roots) > len(addonGuildRoots)
 	reader, err := zip.NewReader(bytes.NewReader(payload), int64(len(payload)))
 	if err != nil {
 		return nil, fmt.Errorf("invalid addon ZIP: %w", err)
@@ -100,8 +113,17 @@ func (u *addonUpdater) extractGuild(ctx context.Context, payload []byte, stage, 
 		if kind := f.Mode() & os.ModeType; kind != 0 && kind != os.ModeDir {
 			return nil, fmt.Errorf("archive contains a symlink or special file: %s", f.Name)
 		}
-		if !addonGuildPath(strings.TrimSuffix(f.Name, "/"), f.Mode().IsDir(), coachFiles) {
+		if !addonGuildPath(strings.TrimSuffix(f.Name, "/"), f.Mode().IsDir(), coachFiles, roots) {
 			return nil, fmt.Errorf("archive path is outside the fixed guild allowlist: %s", f.Name)
+		}
+		// One TOC per addon root: WoW would also load flavour TOCs such as
+		// <Folder>_Vanilla.toc, which the identity checks below never read.
+		if !f.Mode().IsDir() && strings.EqualFold(path.Ext(f.Name), ".toc") {
+			for root, toc := range map[string]string{addonGuildRoots[1]: "Journey.toc", addonPlannerRoot: "RelaxQuestPlanner.toc"} {
+				if strings.HasPrefix(f.Name, root+"/") && f.Name != root+"/"+toc {
+					return nil, fmt.Errorf("archive TOC %s refused: only %s is allowed in %s", f.Name, toc, root)
+				}
+			}
 		}
 		if f.Mode().IsDir() {
 			if f.UncompressedSize64 != 0 {
@@ -119,7 +141,11 @@ func (u *addonUpdater) extractGuild(ctx context.Context, payload []byte, stage, 
 			return nil, fmt.Errorf("incomplete addon archive: missing %s", name)
 		}
 	}
-	for _, name := range []string{addonGuildRoots[1] + "/Journey.toc", addonGuildRoots[2] + "/guides.html", "manifest.json"} {
+	required := []string{addonGuildRoots[1] + "/Journey.toc", addonGuildRoots[2] + "/guides.html", "manifest.json"}
+	if planner {
+		required = append(required, addonPlannerRoot+"/RelaxQuestPlanner.toc")
+	}
+	for _, name := range required {
 		if !seen[strings.ToLower(name)] {
 			return nil, fmt.Errorf("incomplete guild archive: missing %s", name)
 		}
@@ -144,7 +170,7 @@ func (u *addonUpdater) extractGuild(ctx context.Context, payload []byte, stage, 
 		h := sha256.New()
 		var out *os.File
 		var dst io.Writer = h
-		if addonGuildRoot(f.Name) != "" {
+		if addonGuildRoot(f.Name, roots) != "" {
 			target := filepath.Join(stage, filepath.FromSlash(f.Name))
 			if err = os.MkdirAll(filepath.Dir(target), 0700); err == nil {
 				out, err = os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
@@ -191,6 +217,7 @@ func (u *addonUpdater) extractGuild(ctx context.Context, payload []byte, stage, 
 		Version        string `json:"version"`
 		JourneyVersion string `json:"journeyVersion"`
 		ContentVersion string `json:"contentVersion"`
+		PlannerVersion string `json:"plannerVersion,omitempty"`
 		Files          []struct {
 			Path   string `json:"path"`
 			SHA256 string `json:"sha256"`
@@ -205,7 +232,7 @@ func (u *addonUpdater) extractGuild(ctx context.Context, payload []byte, stage, 
 	if err := dec.Decode(new(any)); err != io.EOF {
 		return nil, errors.New("trailing guild manifest data")
 	}
-	if m.Project != "Relax Coach" || m.Kind != "guild-combined" || m.Version != version || m.JourneyVersion == "" || m.ContentVersion == "" {
+	if m.Project != "Relax Coach" || m.Kind != "guild-combined" || m.Version != version || m.JourneyVersion == "" || m.ContentVersion == "" || planner != (m.PlannerVersion != "") {
 		return nil, errors.New("incompatible guild manifest identity/version")
 	}
 	if len(m.Files) != len(all) {
@@ -257,5 +284,45 @@ func (u *addonUpdater) extractGuild(ctx context.Context, payload []byte, stage, 
 	if len(loads) == 0 || runtime[addonGuildRoots[2]+"/guides.html"].size == 0 {
 		return nil, errors.New("incomplete Journey runtime or guides.html")
 	}
+	if planner {
+		if err := addonCheckPlannerTOC(stage, runtime, m.PlannerVersion); err != nil {
+			return nil, err
+		}
+	}
 	return runtime, nil
+}
+
+// addonCheckPlannerTOC mirrors the Journey checks: fixed identity and
+// SavedVariables, the manifest's version, no required Coach/Journey dependency
+// and every load file present in the archive.
+func addonCheckPlannerTOC(stage string, runtime map[string]addonFileDigest, version string) error {
+	toc, err := addonReadSmallFile(filepath.Join(stage, filepath.FromSlash(addonPlannerRoot), "RelaxQuestPlanner.toc"))
+	if err != nil {
+		return err
+	}
+	meta, loads, err := addonTOCMetadata(toc)
+	if err != nil {
+		return err
+	}
+	if meta["title"] != "Relax Quest Planner" || meta["version"] != version || meta["savedvariablespercharacter"] != "RelaxQuestPlannerDB" || meta["savedvariables"] != "" {
+		return errors.New("incompatible Relax Quest Planner TOC identity/version/SavedVariables")
+	}
+	for _, key := range []string{"dependencies", "requireddeps", "requireddependencies", "deps", "required-dependencies", "required-deps"} {
+		if strings.TrimSpace(meta[key]) != "" {
+			return errors.New("incompatible Relax Quest Planner TOC: it must not require other addons")
+		}
+	}
+	for _, name := range loads {
+		name = strings.ReplaceAll(name, "\\", "/")
+		if err := addonSafeZipName(name); err != nil {
+			return err
+		}
+		if _, ok := runtime[addonPlannerRoot+"/"+name]; !ok {
+			return fmt.Errorf("missing Relax Quest Planner TOC load file: %s", name)
+		}
+	}
+	if len(loads) == 0 {
+		return errors.New("incomplete Relax Quest Planner runtime")
+	}
+	return nil
 }

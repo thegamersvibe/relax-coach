@@ -16,7 +16,12 @@ import (
 func TestGuildRepositoryRuntimeBytes(t *testing.T) {
 	const version = "1.4.5"
 	entries := []addonZipEntry{}
-	for i, source := range []string{"../addon/ForeverCoach", "../addon/Journey", "../content/Journey-Content"} {
+	sources := []string{"../addon/ForeverCoach", "../addon/Journey", "../content/Journey-Content"}
+	roots := append([]string{}, guildFixtureRoots...)
+	if addonBundleRelease(version) {
+		sources, roots = append(sources, "../addon/RelaxQuestPlanner"), append(roots, addonPlannerRoot)
+	}
+	for i, source := range sources {
 		err := filepath.WalkDir(source, func(p string, d os.DirEntry, err error) error {
 			if err != nil {
 				return err
@@ -39,7 +44,7 @@ func TestGuildRepositoryRuntimeBytes(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			entries = append(entries, addonZipEntry{guildFixtureRoots[i] + "/" + filepath.ToSlash(relative), string(b), 0644})
+			entries = append(entries, addonZipEntry{roots[i] + "/" + filepath.ToSlash(relative), string(b), 0644})
 			return nil
 		})
 		if err != nil {
@@ -52,6 +57,17 @@ func TestGuildRepositoryRuntimeBytes(t *testing.T) {
 	}
 	manifest := guildManifest(entries)
 	manifest["version"] = version
+	if addonBundleRelease(version) {
+		toc, err := os.ReadFile("../addon/RelaxQuestPlanner/RelaxQuestPlanner.toc")
+		if err != nil {
+			t.Fatal(err)
+		}
+		meta, _, err := addonTOCMetadata(toc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		manifest["plannerVersion"] = meta["version"]
+	}
 	payload := guildZip(t, entries, manifest)
 	u := guildUpdaterForVersion(t, payload, version)
 	game := guildGame(t)

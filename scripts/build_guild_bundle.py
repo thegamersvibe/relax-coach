@@ -14,11 +14,20 @@ def main():
     a=ap.parse_args()
     if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+',a.version):raise SystemExit('Invalid version')
     if not a.exe.is_file() or a.exe.read_bytes()[:2]!=b'MZ':raise SystemExit('Provide the verified Windows EXE')
-    for folder,title in [('ForeverCoach','Relax Coach'),('Journey','Relax Journey')]:
+    # From 1.5.0 the bundle also carries Relax Quest Planner under a new asset
+    # name, so apps before 1.5.0 (which refuse that folder) ask for Update App.
+    bundle=tuple(map(int,a.version.split('.')))>=(1,5,0)
+    addons=[('ForeverCoach','Relax Coach'),('Journey','Relax Journey')]+([('RelaxQuestPlanner','Relax Quest Planner')] if bundle else [])
+    for folder,title in addons:
         if '## Title: '+title not in (ROOT/'addon'/folder/(folder+'.toc')).read_text():raise SystemExit('Unexpected addon identity')
+    planner_version=None
+    if bundle:
+        found=re.search(r'^## Version: *(\S+?) *\r?$',(ROOT/'addon/RelaxQuestPlanner/RelaxQuestPlanner.toc').read_text(),re.M)
+        if not found:raise SystemExit('Relax Quest Planner version missing')
+        planner_version=found.group(1)
     if '## Version: '+a.version not in (ROOT/'addon/ForeverCoach/ForeverCoach.toc').read_text():raise SystemExit('Coach version mismatch')
     inputs=[]
-    for folder in ('ForeverCoach','Journey'):
+    for folder,_ in addons:
         for p in sorted((ROOT/'addon'/folder).rglob('*')):
             if p.is_file():inputs.append((p,'Interface/AddOns/'+p.relative_to(ROOT/'addon').as_posix()))
     content=ROOT/'content/Journey-Content'
@@ -34,11 +43,15 @@ def main():
         if any(x.lower() in {'wtf','private','evidence','backups','.git','__pycache__'} for x in parts):raise SystemExit('Private path rejected: '+name)
         if name.startswith('/') or '..' in parts or '\\' in name or ':' in name or name in names:raise SystemExit('Unsafe or duplicate path: '+name)
         if name.startswith('Interface/Content/') and p.suffix!='.html':raise SystemExit('Unexpected guide file: '+name)
+        for root,toc in (('Interface/AddOns/Journey/','Journey.toc'),('Interface/AddOns/RelaxQuestPlanner/','RelaxQuestPlanner.toc')):
+            if name.startswith(root) and name.lower().endswith('.toc') and name!=root+toc:raise SystemExit('Extra addon TOC rejected: '+name)
         reaction_audio=name in REACTION_AUDIO and tuple(map(int,a.version.split('.'))) >= (1,4,3)
         if name.startswith('Interface/AddOns/') and not reaction_audio and p.suffix.lower() not in {'.lua','.toc','.tga','.blp','.xml','.txt','.md','.ttf','.otf','.html','.png'}:raise SystemExit('Unexpected addon file: '+name)
         names.add(name)
     rows=[{'path':name,'sha256':digest(p),'bytes':p.stat().st_size} for p,name in inputs]
-    manifest={'project':'Relax Coach','kind':'guild-combined','version':a.version,'journeyVersion':'4.00.04','contentVersion':'4.00.06','files':rows}
+    manifest={'project':'Relax Coach','kind':'guild-combined','version':a.version,'journeyVersion':'4.00.04','contentVersion':'4.00.06'}
+    if planner_version:manifest['plannerVersion']=planner_version
+    manifest['files']=rows
     dist=ROOT/'dist';dist.mkdir(exist_ok=True)
     standalone=dist/'RelaxCoach.exe'
     # Preserve the validated EXE before removing a previous package.
@@ -49,7 +62,7 @@ def main():
     for p,name in inputs:
         target=pkg/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(p,target)
     (pkg/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
-    archive=dist/f'RelaxCoach-Guild-{a.version}.zip'
+    archive=dist/(f'RelaxCoach-Bundle-{a.version}.zip' if bundle else f'RelaxCoach-Guild-{a.version}.zip')
     with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
         for p in sorted(pkg.rglob('*')):
             if p.is_file():z.write(p,p.relative_to(pkg).as_posix())
