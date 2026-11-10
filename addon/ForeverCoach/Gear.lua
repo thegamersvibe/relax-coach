@@ -42,7 +42,7 @@ function G:SpecOptions(class)
     local GQ = _G.GearQuest
     local ids = {}
     if GQ and GQ.Spec and GQ.Spec.GetOptions then
-        for _, o in ipairs(safe(GQ.Spec.GetOptions, GQ.Spec, class) or {}) do if type(o.id) == "string" then ids[#ids + 1] = o.id end end
+        for _, o in ipairs(safe(GQ.Spec.GetOptions, GQ.Spec, class) or {}) do if type(o) == "table" and type(o.id) == "string" then ids[#ids + 1] = o.id end end
     end
     if #ids == 0 then for _, s in ipairs(TAB_SPEC[class] or {}) do ids[#ids + 1] = s end end
     return ids
