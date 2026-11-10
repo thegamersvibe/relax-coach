@@ -124,6 +124,14 @@ class GuildBuilderExeTests(unittest.TestCase):
         self.assertIn('Unexpected addon identity',result.stderr)
         self.assertFalse(self.standalone.exists())
 
+    def test_extra_planner_toc_is_rejected(self):
+        self.add_planner()
+        (self.root/'addon/RelaxQuestPlanner/RelaxQuestPlanner_Vanilla.toc').write_text('## Title: Relax Quest Planner\n')
+        (self.root/'addon/ForeverCoach/ForeverCoach.toc').write_text('## Title: Relax Coach\n## Version: 1.5.0\n')
+        result=self.run_builder(self.exe,'1.5.0')
+        self.assertNotEqual(result.returncode,0)
+        self.assertIn('Extra addon TOC rejected',result.stderr)
+
     def test_pre_150_guild_never_packs_planner(self):
         self.add_planner()
         result=self.run_builder(self.exe)

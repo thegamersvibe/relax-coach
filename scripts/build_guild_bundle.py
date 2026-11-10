@@ -43,6 +43,8 @@ def main():
         if any(x.lower() in {'wtf','private','evidence','backups','.git','__pycache__'} for x in parts):raise SystemExit('Private path rejected: '+name)
         if name.startswith('/') or '..' in parts or '\\' in name or ':' in name or name in names:raise SystemExit('Unsafe or duplicate path: '+name)
         if name.startswith('Interface/Content/') and p.suffix!='.html':raise SystemExit('Unexpected guide file: '+name)
+        for root,toc in (('Interface/AddOns/Journey/','Journey.toc'),('Interface/AddOns/RelaxQuestPlanner/','RelaxQuestPlanner.toc')):
+            if name.startswith(root) and name.lower().endswith('.toc') and name!=root+toc:raise SystemExit('Extra addon TOC rejected: '+name)
         reaction_audio=name in REACTION_AUDIO and tuple(map(int,a.version.split('.'))) >= (1,4,3)
         if name.startswith('Interface/AddOns/') and not reaction_audio and p.suffix.lower() not in {'.lua','.toc','.tga','.blp','.xml','.txt','.md','.ttf','.otf','.html','.png'}:raise SystemExit('Unexpected addon file: '+name)
         names.add(name)

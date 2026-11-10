@@ -222,6 +222,18 @@ func TestBundlePlannerFailsClosed(t *testing.T) {
 			}
 			return out
 		}},
+		{"second planner TOC", "only RelaxQuestPlanner.toc", func(e []addonZipEntry, m map[string]any) []addonZipEntry {
+			return append(e, addonZipEntry{addonPlannerRoot + "/RelaxQuestPlanner_Vanilla.toc", "## Title: Relax Quest Planner\n## Version: 0.0.1\nInit.lua\n", 0644})
+		}},
+		{"nested planner TOC", "only RelaxQuestPlanner.toc", func(e []addonZipEntry, m map[string]any) []addonZipEntry {
+			return append(e, addonZipEntry{addonPlannerRoot + "/Libs/Other/Other.toc", "## Title: Other\n", 0644})
+		}},
+		{"second Journey TOC", "only Journey.toc", func(e []addonZipEntry, m map[string]any) []addonZipEntry {
+			return append(e, addonZipEntry{"Interface/AddOns/Journey/Journey_Vanilla.toc", "## Title: Relax Journey\n", 0644})
+		}},
+		{"case-variant planner TOC", "only RelaxQuestPlanner.toc", func(e []addonZipEntry, m map[string]any) []addonZipEntry {
+			return append(e, addonZipEntry{addonPlannerRoot + "/RelaxQuestPlanner_TBC.TOC", "## Title: x\n", 0644})
+		}},
 		{"executable in planner folder", "outside the fixed guild allowlist", func(e []addonZipEntry, m map[string]any) []addonZipEntry {
 			return append(e, addonZipEntry{addonPlannerRoot + "/tool.exe", "MZ", 0644})
 		}},

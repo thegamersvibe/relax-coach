@@ -116,6 +116,15 @@ func (u *addonUpdater) extractGuild(ctx context.Context, payload []byte, stage, 
 		if !addonGuildPath(strings.TrimSuffix(f.Name, "/"), f.Mode().IsDir(), coachFiles, roots) {
 			return nil, fmt.Errorf("archive path is outside the fixed guild allowlist: %s", f.Name)
 		}
+		// One TOC per addon root: WoW would also load flavour TOCs such as
+		// <Folder>_Vanilla.toc, which the identity checks below never read.
+		if !f.Mode().IsDir() && strings.EqualFold(path.Ext(f.Name), ".toc") {
+			for root, toc := range map[string]string{addonGuildRoots[1]: "Journey.toc", addonPlannerRoot: "RelaxQuestPlanner.toc"} {
+				if strings.HasPrefix(f.Name, root+"/") && f.Name != root+"/"+toc {
+					return nil, fmt.Errorf("archive TOC %s refused: only %s is allowed in %s", f.Name, toc, root)
+				}
+			}
+		}
 		if f.Mode().IsDir() {
 			if f.UncompressedSize64 != 0 {
 				return nil, errors.New("nonempty archive directory")
