@@ -8,7 +8,7 @@ FC.Audit = A
 local function clamp(x) return math.max(1, math.min(100, math.floor(x + 0.5))) end
 local function add(list, impact, area, text, fix, extra)
     local f = { impact = clamp(impact), area = area, text = text, fix = fix, order = #list }
-    for k, v in pairs(extra or {}) do f[k] = v end
+    if extra then for k, v in pairs(extra) do f[k] = v end end
     list[#list + 1] = f
 end
 
@@ -116,13 +116,15 @@ function A:Run(c)
             if b and not ownedSlot[inv] then
                 local gap = e.gapPct
                 local w = KIND_WEIGHT[b.kind] or 0.5
-                local how = b.name .. " — " .. (b.how ~= "" and b.how or tostring(b.source))
+                -- Gear fills name from an optional fact record; a missing one must not abort the whole audit.
+                local bestName = b.name or ("item " .. tostring(b.id))
+                local how = bestName .. " — " .. (b.how ~= "" and b.how or tostring(b.source))
                 if b.notes and #b.notes > 0 then how = how .. " (" .. table.concat(b.notes, "; ") .. ")" end
                 local early = lvl < 10 and e.jewelry
                 if e.scoreStatus == "empty" and lvl >= 5 and not early then
                     add(F, 30 + 40 * w, "Gear", "Empty " .. e.label .. " slot", how, { where = b.where, kind = "gear" })
                 elseif e.scoreStatus ~= "empty" and e.scoreStatus ~= "unknown" and gap and gap >= (T.gearUpgradePct or 12) then
-                    add(F, (25 + math.min(gap, 60) / 2) * (0.5 + w / 2) + 10 * w, "Gear", e.label .. ": " .. b.name .. " is " .. gap .. "% better", how,
+                    add(F, (25 + math.min(gap, 60) / 2) * (0.5 + w / 2) + 10 * w, "Gear", e.label .. ": " .. bestName .. " is " .. gap .. "% better", how,
                         { where = b.where, estimate = e.scoreStatus == "estimated" or nil, kind = "gear" })
                 end
             end

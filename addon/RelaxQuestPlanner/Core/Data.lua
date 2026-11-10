@@ -86,13 +86,16 @@ local fieldMap={name="name",reqLevel="requiredLevel",qLevel="questLevel",races="
     maxRep="requiredMaxRep",spell="requiredSpell",startedBy="startedBy",finishedBy="finishedBy",
     objectives="objectives",children="childQuests",inGroupWith="inGroupWith"}
 local relationLists={"grp","single","excl","bcs","children","inGroupWith"}
+local tableFields={"startedBy","finishedBy","objectives"}
+local gateFields={"skill","ranks","minRep","maxRep"}
+local zeroIsAbsent={"next","parent","bcFor","untilDone","startingWith","disabledBy","maxLevel","spec","spell"}
 local function normalize(r,id)
     r.id=id; r.name=r.name or ("quest "..tostring(id))
     for _,k in ipairs(relationLists) do r[k]=copyList(r[k],id) end
-    for _,k in ipairs({"startedBy","finishedBy","objectives"}) do r[k]=tbl(r[k]) end
-    for _,k in ipairs({"skill","ranks","minRep","maxRep"}) do if r[k]==nil then r[k]={} end end
+    for _,k in ipairs(tableFields) do r[k]=tbl(r[k]) end
+    for _,k in ipairs(gateFields) do if r[k]==nil then r[k]={} end end
     -- QuestieDB normalizes absent numerics to 0. Lua treats 0 as true.
-    for _,k in ipairs({"next","parent","bcFor","untilDone","startingWith","disabledBy","maxLevel","spec","spell"}) do
+    for _,k in ipairs(zeroIsAbsent) do
         if not present(r[k]) then r[k]=nil end
     end
     r.reqLevel=r.reqLevel or 0; r.qLevel=r.qLevel or 0
@@ -113,6 +116,7 @@ local function loadSupplements()
     D.Ready()
     local out, records, names={},{},{}
     local chains=fdj and tbl(fdj.QUEST_PREREQ_CHAINS) or {}
+    local chainTargets={} -- sorted once; was re-collected and re-sorted for every supplement record
     if fdj then
         for _,dn in ipairs(keys(tbl(fdj.DB))) do
             local dungeon=fdj.DB[dn]
@@ -133,7 +137,8 @@ local function loadSupplements()
             end
             tick()
         end
-        for _,target in ipairs(keys(chains)) do
+        chainTargets=keys(chains)
+        for _,target in ipairs(chainTargets) do
             for _,step in ipairs(tbl(chains[target])) do
                 if type(step)=="table" and step.id and type(step.name)=="string" and not names[step.id] then names[step.id]=step.name end
             end
@@ -150,13 +155,13 @@ local function loadSupplements()
     end
     for _,id in ipairs(keys(records)) do
         local v=records[id]
-        if id>0 and id<1000000 and not (lib and questAPI.Exists(id)) then
+        if id>0 and id<1000000 and not (lib and questAPI.Exists and questAPI.Exists(id)) then
             local masks=D.Enums().factionRaceMasks or {}
             local r=normalize({name=v.name or names[id],reqLevel=v.requires,qLevel=v.level,
                 races=masks[v.faction] or 0,classes=0,grp=v.grp,
                 faction=v.faction,classOnly=v.classOnly,source=v.source,
                 fdj={pickup=v.pickup,turnin=v.turnin,dungeon=v.dungeon},addonDungeons=v.dungeons},id)
-            for _,target in ipairs(keys(chains)) do
+            for _,target in ipairs(chainTargets) do
                 local previous
                 for _,s in ipairs(tbl(chains[target])) do
                     if s.id==id and previous then r.grp={previous}; break end

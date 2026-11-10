@@ -146,9 +146,10 @@ function UI.RenderRoute(P)
   if not UI.frame then return end
   local route = UI.route
   if not route then return end
-  local index, left, canDo = UI.PickStep(route, P or RQP.Player.Snapshot())
+  P = P or RQP.Player.Snapshot() -- one snapshot per render, not up to three
+  local index, left, canDo = UI.PickStep(route, P)
   UI.current = index and route.steps[index]
-  local qleft = UI.QuestsLeft(route, P or RQP.Player.Snapshot())
+  local qleft = UI.QuestsLeft(route, P)
   UI.title:SetText((route.title or "Quest route") .. "  (" .. tostring(qleft) .. (qleft == 1 and " quest left)" or " quests left)"))
   if not UI.current then
     UI.line1:SetText(#(route.steps or {}) == 0 and "No available route steps." or "|cff33ff99All done.|r")
@@ -174,7 +175,7 @@ function UI.RenderRoute(P)
     local reason = note ~= "" and note or "optional quest / reward"
     note = "|cffffa500Your choice|r - below " .. (floor and ("level " .. tostring(math.floor(floor))) or "the level floor") .. "; " .. reason
   end
-  if not canDo then note = "|cffff7070" .. (UI.BlockingReason(s, P or RQP.Player.Snapshot(), route) or "Waiting") .. "|r  " .. note end
+  if not canDo then note = "|cffff7070" .. (UI.BlockingReason(s, P, route) or "Waiting") .. "|r  " .. note end
   UI.note:SetText(note)
   -- Move the map pin along with the route unless the player turned it off.
   if RQP.GetDB().autoPin ~= false and canDo and UI.lastPinned ~= s then

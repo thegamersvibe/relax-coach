@@ -14,11 +14,12 @@ FC.safe = safe
 
 -- Forever hides some values from addons ("secret values"); never do math or comparisons on one.
 local function num(v)
-    if v == nil or (issecretvalue and issecretvalue(v)) or type(v) ~= "number" then return nil end
+    -- Ask issecretvalue first: even `v == nil` is a comparison on a possibly secret value.
+    if (issecretvalue and issecretvalue(v)) or type(v) ~= "number" then return nil end
     return v
 end
 local function plain(v)
-    if v == nil or (issecretvalue and issecretvalue(v)) then return nil end
+    if issecretvalue and issecretvalue(v) then return nil end
     return v
 end
 FC.num, FC.plain = num, plain
@@ -51,18 +52,20 @@ function FC:Char()
 end
 
 -- true / false / nil (nil = the client gave no usable answer)
+local function knownBy(f, id)
+    if type(f) ~= "function" then return nil end
+    local ok, r = pcall(f, id)
+    if not ok then return nil end
+    return plain(r)
+end
 function FC:KnowsSpell(id)
-    local answered = false
-    for _, f in ipairs({ IsPlayerSpell or false, IsSpellKnown or false, (C_SpellBook and C_SpellBook.IsSpellKnown) or false,
-        (C_SpellBook and C_SpellBook.IsSpellKnownOrInSpellBook) or false }) do
-        if type(f) == "function" then
-            local ok, r = pcall(f, id)
-            if ok then r = plain(r) end
-            if ok and r == true then return true end
-            if ok and r == false then answered = true end
-        end
-    end
-    if answered then return false end
+    -- Same API order as before, without building a table of functions per call.
+    local book = C_SpellBook
+    local a = knownBy(IsPlayerSpell, id); if a == true then return true end
+    local b = knownBy(IsSpellKnown, id); if b == true then return true end
+    local c = knownBy(book and book.IsSpellKnown, id); if c == true then return true end
+    local d = knownBy(book and book.IsSpellKnownOrInSpellBook, id); if d == true then return true end
+    if a == false or b == false or c == false or d == false then return false end
     return nil
 end
 
@@ -334,8 +337,8 @@ for _, e in ipairs({ "ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_LEVEL_UP", "PLAYER_
     "QUEST_TURNED_IN", "GET_ITEM_INFO_RECEIVED", "ITEM_DATA_LOAD_RESULT", "PLAYER_ENTERING_WORLD" }) do
     f:RegisterEvent(e)
 end
-f:SetScript("OnEvent", function(_, event, arg1)
-    local ok, err = pcall(function()
+-- One shared handler: no closure is built per event (BAG_UPDATE_DELAYED and friends fire often).
+local function onEvent(event, arg1)
         if event == "ADDON_LOADED" and arg1 == ADDON then
             FC:Char()
         elseif event == "PLAYER_LOGIN" then
@@ -371,6 +374,8 @@ f:SetScript("OnEvent", function(_, event, arg1)
         elseif event ~= "ADDON_LOADED" then
             later(3, "refresh", function() FC:Refresh(event) end)
         end
-    end)
+end
+f:SetScript("OnEvent", function(_, event, arg1)
+    local ok, err = pcall(onEvent, event, arg1)
     if not ok then FC:Char().lastError = { where = event, err = tostring(err), time = time(), version = FC.VERSION } end
 end)
