@@ -1,8 +1,12 @@
-# Relax Quest Planner — 0.1.2-test
+# Relax Quest Planner — 0.2.0
 
-Test addon for **WoW Forever** (Interface 16001). It plans dungeon quest chains
-and individual quest goals without accepting, completing or turning in quests
-for you. In-game validation is still required; offline tests are not a client pass.
+Quest planner for **WoW Forever** (Interface 16001), shipped in the Relax Coach
+bundle from **v1.5.0**. It plans dungeon quest chains and individual quest goals
+without accepting, completing or turning in quests for you.
+
+**Validation status:** version 0.2.0 has passed the offline test suites only. It
+has not been validated in the native Forever client yet; please report anything
+that misbehaves in game.
 
 ## Install
 
@@ -14,7 +18,7 @@ Journey files merged by hand.
 - **Windows app:** use **Check App Update → Update App** first if the app is older
   than 1.5.0, then close WoW and use **Check for updates → Update Addon**. An
   existing `Interface/AddOns/RelaxQuestPlanner` folder (for example an earlier
-  test patch you copied in) is moved into the update's backup in
+  test version you copied in) is moved into the update's backup in
   `RelaxCoachBackups`, not deleted.
 - **Manual install:** close WoW and merge the bundle's `Interface` folder into the
   game folder, or run the bundle's `Install-RelaxCoach.ps1`, which also backs up

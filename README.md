@@ -43,7 +43,7 @@ This is an **in-place replacement**, not a second side-by-side Journey install. 
 - `Interface\AddOns\ForeverCoach`
 - `Interface\AddOns\Journey`
 - `Interface\Content\Journey-Content`
-- `Interface\AddOns\RelaxQuestPlanner` (bundles from 1.5.0; an existing planner folder, such as a manually installed test patch, is backed up first)
+- `Interface\AddOns\RelaxQuestPlanner` (bundles from 1.5.0; an existing planner folder, such as a manually installed test version, is backed up first)
 
 It **does not overwrite or delete `WTF`**. The technical addon IDs, `ForeverCoachDB`, `Journey_Account` and `Journey_Character` remain unchanged so existing saves can be reused. Save preservation is verified; compatibility with every newer/older upstream Journey save format is not guaranteed.
 

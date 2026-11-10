@@ -91,7 +91,7 @@ class GuildBuilderExeTests(unittest.TestCase):
         self.assertIn('Unexpected addon file:',result.stderr)
         self.assertFalse(self.standalone.exists())
 
-    def add_planner(self,title='Relax Quest Planner',version='0.1.2-test'):
+    def add_planner(self,title='Relax Quest Planner',version='0.2.0'):
         files={'addon/RelaxQuestPlanner/RelaxQuestPlanner.toc':'## Title: '+title+'\r\n## Version: '+version+'\r\nInit.lua\r\n',
                'addon/RelaxQuestPlanner/Init.lua':'-- synthetic planner\n','addon/RelaxQuestPlanner/Media/relax-icon.tga':'tga'}
         for name,text in files.items():
@@ -107,7 +107,7 @@ class GuildBuilderExeTests(unittest.TestCase):
         archive=self.root/'dist/RelaxCoach-Bundle-1.5.0.zip'
         with zipfile.ZipFile(archive) as z:
             manifest=json.loads(z.read('manifest.json'))
-            self.assertEqual(manifest['plannerVersion'],'0.1.2-test')
+            self.assertEqual(manifest['plannerVersion'],'0.2.0')
             rows={r['path'] for r in manifest['files']}
             self.assertEqual(rows,set(z.namelist())-{'manifest.json'})
             for name,text in files.items():

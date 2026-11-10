@@ -10,7 +10,7 @@ import (
 )
 
 // Relax Quest Planner joins the combined bundle at 1.5.0.
-const plannerFixtureVersion = "0.1.2-test"
+const plannerFixtureVersion = "0.2.0"
 
 func plannerFixtureEntries() []addonZipEntry {
 	root := addonPlannerRoot + "/"
