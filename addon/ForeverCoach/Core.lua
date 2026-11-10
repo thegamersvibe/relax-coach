@@ -346,7 +346,14 @@ local function onEvent(event, arg1)
             if FC.Session then FC.Session:Start() end
         elseif event == "PLAYER_LEVEL_UP" then
             if FC.Session then FC.Session:LevelUp() end
-            later(2, "refresh", function() FC:Refresh("levelup") end)
+            later(2, "levelup", function()
+                FC:Refresh("levelup")
+                -- the checklist must never break the rest of the level-up handling
+                if FC.LevelUp and FC.LevelUp:Enabled() then
+                    local ok, err = pcall(FC.LevelUp.OnLevelRefresh, FC.LevelUp)
+                    if not ok then FC:Char().lastError = { where = "levelup", err = tostring(err), time = time(), version = FC.VERSION } end
+                end
+            end)
         elseif event == "TRAINER_SHOW" or event == "TRAINER_UPDATE" then
             scanTrainer()
         elseif event == "TRAINER_CLOSED" then
