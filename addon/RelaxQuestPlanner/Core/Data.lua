@@ -116,6 +116,7 @@ local function loadSupplements()
     D.Ready()
     local out, records, names={},{},{}
     local chains=fdj and tbl(fdj.QUEST_PREREQ_CHAINS) or {}
+    local chainTargets={} -- sorted once; was re-collected and re-sorted for every supplement record
     if fdj then
         for _,dn in ipairs(keys(tbl(fdj.DB))) do
             local dungeon=fdj.DB[dn]
@@ -136,7 +137,8 @@ local function loadSupplements()
             end
             tick()
         end
-        for _,target in ipairs(keys(chains)) do
+        chainTargets=keys(chains)
+        for _,target in ipairs(chainTargets) do
             for _,step in ipairs(tbl(chains[target])) do
                 if type(step)=="table" and step.id and type(step.name)=="string" and not names[step.id] then names[step.id]=step.name end
             end
@@ -159,7 +161,7 @@ local function loadSupplements()
                 races=masks[v.faction] or 0,classes=0,grp=v.grp,
                 faction=v.faction,classOnly=v.classOnly,source=v.source,
                 fdj={pickup=v.pickup,turnin=v.turnin,dungeon=v.dungeon},addonDungeons=v.dungeons},id)
-            for _,target in ipairs(keys(chains)) do
+            for _,target in ipairs(chainTargets) do
                 local previous
                 for _,s in ipairs(tbl(chains[target])) do
                     if s.id==id and previous then r.grp={previous}; break end
