@@ -58,7 +58,7 @@ local function knownBy(f, id)
     if not ok then return nil end
     return plain(r)
 end
-function FC:KnowsSpell(id)
+local function knowsSpellID(id)
     -- Same API order as before, without building a table of functions per call.
     local book = C_SpellBook
     local a = knownBy(IsPlayerSpell, id); if a == true then return true end
@@ -67,6 +67,108 @@ function FC:KnowsSpell(id)
     local d = knownBy(book and book.IsSpellKnownOrInSpellBook, id); if d == true then return true end
     if a == false or b == false or c == false or d == false then return false end
     return nil
+end
+
+-- The player's spellbook as { [lower-case name] = highest rank seen (0 = no rank text) }, or
+-- false when the client gives no usable answer. One pass over the book; no protected calls.
+-- A bounded loop: a broken offset can't make it spin.
+local BOOK_LIMIT = 1024
+local function scanSpellBook()
+    local names, count = {}, 0
+    local function add(name, sub)
+        if issecretvalue and (issecretvalue(name) or issecretvalue(sub)) then return end
+        if type(name) ~= "string" or name == "" then return end
+        local key = string.lower(name)
+        local rank = type(sub) == "string" and tonumber(string.match(sub, "(%d+)")) or 0
+        if not names[key] or rank > names[key] then names[key] = rank end
+        count = count + 1
+    end
+    local function last(offset, n)
+        offset, n = num(offset), num(n)
+        if offset and n and offset >= 0 and n >= 0 then return offset + n end
+        return 0
+    end
+    local total = 0
+    if GetNumSpellTabs and GetSpellTabInfo and GetSpellBookItemName then
+        -- Classic / Forever: tabs carry an offset and a count; skip spells not learned yet.
+        local tabs = num(GetNumSpellTabs())
+        if not tabs then return false end
+        for t = 1, math.min(tabs, 32) do
+            local _, _, offset, n = GetSpellTabInfo(t)
+            total = math.max(total, last(offset, n))
+        end
+        local bookType = BOOKTYPE_SPELL or "spell"
+        for i = 1, math.min(total, BOOK_LIMIT) do
+            local kind = GetSpellBookItemInfo and GetSpellBookItemInfo(i, bookType)
+            if kind ~= "FUTURESPELL" then add(GetSpellBookItemName(i, bookType)) end
+        end
+    elseif C_SpellBook and C_SpellBook.GetNumSpellBookSkillLines and C_SpellBook.GetSpellBookSkillLineInfo
+        and C_SpellBook.GetSpellBookItemName then
+        -- Newer clients: the same walk through C_SpellBook.
+        local bank = Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player or 0
+        local future = Enum and Enum.SpellBookItemType and Enum.SpellBookItemType.FutureSpell
+        local lines = num(C_SpellBook.GetNumSpellBookSkillLines())
+        if not lines then return false end
+        for t = 1, math.min(lines, 32) do
+            local info = C_SpellBook.GetSpellBookSkillLineInfo(t)
+            if type(info) == "table" then total = math.max(total, last(info.itemIndexOffset, info.numSpellBookItems)) end
+        end
+        for i = 1, math.min(total, BOOK_LIMIT) do
+            local info = C_SpellBook.GetSpellBookItemInfo and C_SpellBook.GetSpellBookItemInfo(i, bank)
+            if not (future and type(info) == "table" and info.itemType == future) then add(C_SpellBook.GetSpellBookItemName(i, bank)) end
+        end
+    else
+        return false
+    end
+    return count > 0 and names or false
+end
+
+-- fresh = true skips the short cache (a snapshot always reads the current book); a burst of
+-- SPELLS_CHANGED events within a second shares one scan.
+function FC:SpellBook(fresh)
+    local now = GetTime and num(GetTime())
+    if not fresh and self.spellBookCache and now and self.spellBookAt and now - self.spellBookAt < 1 then
+        return self.spellBookCache
+    end
+    local ok, res = pcall(scanSpellBook)
+    if not ok then res = false end
+    self.spellBookCache, self.spellBookAt = res, now
+    return res
+end
+
+-- true / false / nil (nil = the client gave no usable answer).
+-- The ID is asked first. Classic-style clients answer false for the rank-1 ID once a higher rank
+-- replaced it, so a false from the ID is checked by name in the spellbook (book: from
+-- FC:SpellBook, false = no usable book). label is the rules name; "Name (Rank N)" needs rank N.
+-- Forever uses custom IDs for some spells, so the name is the truth when the ID says no.
+local function knowsByName(self, id, book, label)
+    if not book then return nil end
+    local base, need = nil, nil
+    if type(label) == "string" then
+        base, need = string.match(label, "^(.-) %(Rank (%d+)%)$")
+        need = tonumber(need)
+        base = base or label
+    end
+    local names = {}
+    local own = self:SpellName(id)
+    if type(own) == "string" then names[#names + 1] = own end
+    if base then names[#names + 1] = base end
+    if #names == 0 then return nil end
+    local unsure = false
+    for _, name in ipairs(names) do
+        local rank = book[string.lower(name)]
+        if rank then
+            if not need or rank >= need then return true end
+            if rank == 0 then unsure = true end
+        end
+    end
+    if unsure then return nil end
+    return false
+end
+function FC:KnowsSpell(id, book, label)
+    if knowsSpellID(id) == true then return true end
+    if book == nil then book = self:SpellBook() end
+    return knowsByName(self, id, book, label)
 end
 
 function FC:SpellName(id)
@@ -254,10 +356,15 @@ function FC:Snapshot()
         equipped = equipped, equipmentState = equipmentState,
         bags = bags, baginfo = baginfo, zone = self:Zone(), journey = self:Journey(), spells = {},
     }
+    local book -- read once per snapshot, only if a milestone needs it
     for _, m in ipairs(self:Rules().spellMilestones or {}) do
         if m.class == classFile then
             for _, id in ipairs(m.spellIds or { m.spellId }) do
-                local k = self:KnowsSpell(id)
+                local k = knowsSpellID(id)
+                if k ~= true then
+                    if book == nil then book = self:SpellBook(true) end
+                    k = knowsByName(self, id, book, m.name)
+                end
                 if k ~= nil then s.spells[id] = k end
             end
         end

@@ -57,6 +57,33 @@ C_Container = {
   GetContainerItemLink = function(b, s) if b == 0 and STATE.bags[s] then return link(STATE.bags[s]) end end }
 C_Item = { GetItemInfoInstant = function(id) return id, "", "", LOCS[id] end, RequestLoadItemDataByID = function() end }
 function IsPlayerSpell(id) return STATE.known[id] == true end
+-- Spellbook: STATE.book = { {name, rankText, future}, ... }; by default it mirrors STATE.known
+-- (names from SPELLNAMES or the rules). STATE.nobook = true: the client has no usable book.
+BOOKCALLS = 0
+local function ruleName(id)
+  local r = ForeverCoach_Rules or {}
+  for _, list in ipairs({ r.spellMilestones or {}, r.procSpells or {} }) do
+    for _, m in ipairs(list) do
+      for _, sid in ipairs(m.spellIds or { m.spellId }) do if sid == id then return m.name end end
+    end
+  end
+end
+local function bookEntries()
+  if STATE.book then return STATE.book end
+  local e = { { "Attack", "" } } -- every real spellbook has the General tab
+  for id, v in pairs(STATE.known) do
+    local n = v == true and (SPELLNAMES[id] or ruleName(id))
+    if n then
+      local base, rank = string.match(n, "^(.-) %((Rank %d+)%)$")
+      e[#e + 1] = { base or n, rank or "" }
+    end
+  end
+  return e
+end
+function GetNumSpellTabs() if STATE.nobook then return nil end; return 1 end
+function GetSpellTabInfo(t) return "General", "icon", 0, #bookEntries() end
+function GetSpellBookItemName(i) BOOKCALLS = BOOKCALLS + 1; local e = bookEntries()[i]; if e then return e[1], e[2] end end
+function GetSpellBookItemInfo(i) local e = bookEntries()[i]; if e then return e[3] and "FUTURESPELL" or "SPELL", 0 end end
 function UnitAffectingCombat() return STATE.combat end
 function UnitIsDeadOrGhost() return STATE.dead end
 function UnitOnTaxi() return false end
@@ -634,6 +661,57 @@ check(LU.Enabled(LU), '/coach levelup on turns it back on')
 L.execute('FC_EMPTY = ForeverCoach.LevelUp:Build({ findings = {} })')
 check(len(G.FC_EMPTY) == 0, 'no findings -> empty checklist (prints "all set" instead of a window)')
 check(c.lastError is None, f'no errors recorded ({c.lastError and c.lastError.err})')
+
+
+# 14. Superseded spell ranks (Tarek, level 35 Protection warrior): the rank-1 IDs answer false once a
+# higher rank is learned; the spellbook name decides. Unknown stays unknown.
+print('== scenario: level 35 prot warrior with higher spell ranks')
+L, G, FC, c = client({'level': 35, 'unspent': 0, 'known': {71: True, 355: True, 2458: True}}, gq=False)
+L.execute("""STATE.book = { {"Attack",""}, {"Defensive Stance",""}, {"Battle Stance",""}, {"Berserker Stance",""}, {"Taunt",""},
+  {"Sunder Armor","Rank 4"}, {"Revenge","Rank 3"}, {"Overpower","Rank 2"}, {"Shield Bash","Rank 2"},
+  {"Tactical Mastery",""}, {"Shield Block",""}, {"Slam","Rank 2"}, {"Victory Rush",""}, {"Shield Wall",""} }""")
+G.BOOKCALLS = 0
+refresh(FC)
+t = [(f.text or '') for f in findings(c)]
+miss = [x for x in t if 'not learned' in x]
+print('   not learned:', miss)
+for name in ('Sunder Armor', 'Revenge', 'Overpower', 'Shield Bash'):
+    check(not any(name in x for x in miss), f'{name} known at a higher rank is not flagged')
+check(any('Berserker Rage' in x for x in miss), 'Berserker Rage (quest done, not trained) is still flagged')
+check(c.snapshot.spells[7386] is True and c.snapshot.spells[18499] is False, 'snapshot: Sunder known by name, Berserker Rage not known')
+check(G.BOOKCALLS == 14, f'one spellbook pass per snapshot ({G.BOOKCALLS} reads for 14 entries)')
+L.execute('table.insert(STATE.book, {"Berserker Rage", "", true})'); refresh(FC)
+check(any('Berserker Rage' in (f.text or '') and 'not learned' in (f.text or '') for f in findings(c)), 'a spell not learned yet (future) in the book does not count')
+L.execute('STATE.nobook = true'); refresh(FC)
+miss = [(f.text or '') for f in findings(c) if 'not learned' in (f.text or '')]
+check(not any(n in x for x in miss for n in ('Sunder Armor', 'Revenge', 'Overpower', 'Berserker Rage')), f'no usable spellbook: unknown, not missing ({miss})')
+check(c.snapshot.spells[7386] is None, 'no usable spellbook: no answer recorded')
+check(c.lastError is None, f'no internal error ({c.lastError and c.lastError.err})')
+L.execute('STATE.nobook = false; GetSpellBookItemName = function() error("broken client") end'); refresh(FC)
+check(c.lastError is None and c.snapshot.spells[7386] is None, 'a failing spellbook API is caught and means unknown')
+
+print('== scenario: level 14 mage with Frost Nova rank 2')
+L, G, FC, c = client({'class': 'MAGE', 'race': 'Human', 'level': 14, 'unspent': 0, 'talents': [['Arcane', {}], ['Fire', {}], ['Frost', {}]]}, gq=False)
+L.execute("""STATE.book = { {"Attack",""}, {"Fireball","Rank 3"}, {"Frost Nova","Rank 2"}, {"Conjure Water","Rank 2"}, {"Conjure Food","Rank 2"},
+  {"Polymorph",""}, {"Slow Fall",""}, {"Comprehend Scroll",""} }""")
+refresh(FC)
+miss = [(f.text or '') for f in findings(c) if 'not learned' in (f.text or '')]
+print('   not learned:', miss)
+check(not any('Frost Nova' in x or 'Conjure Water' in x for x in miss), 'mage: ranked Frost Nova / Conjure Water known by name')
+check(any('Arcane Explosion' in x for x in miss), 'mage: Arcane Explosion (not in the book) still flagged')
+
+print('== scenario: level 44 rogue, "Shank (Rank 2)" needs rank 2')
+L, G, FC, c = client({'class': 'ROGUE', 'race': 'Human', 'level': 44, 'unspent': 0, 'talents': [['Assassination', {}], ['Combat', {}], ['Subtlety', {}]]}, gq=False)
+ROGUE_BOOK = ''.join('{%s,""}, ' % _json.dumps(m['name']) for m in RULES['spellMilestones'] if m['class'] == 'ROGUE' and m['level'] <= 44 and not m['name'].startswith('Shank'))
+L.execute('STATE.book = { {"Attack",""}, ' + ROGUE_BOOK + '{"Shank","Rank 1"} }'); refresh(FC)
+print('   not learned:', [(f.text or '') for f in findings(c) if 'not learned' in (f.text or '')])
+miss = [(f.text or '') for f in findings(c) if 'not learned' in (f.text or '')]
+check(any('Shank (Rank 2)' in x for x in miss), 'rogue: Shank rank 1 only -> Shank (Rank 2) flagged')
+check(not any(('Shank,' in x or x.endswith('Shank') or ': Shank' in x) and 'Rank 2' not in x for x in miss), 'rogue: base Shank counts as learned')
+L.execute('STATE.book = { {"Attack",""}, ' + ROGUE_BOOK + '{"Shank","Rank 2"} }'); refresh(FC)
+miss = [(f.text or '') for f in findings(c) if 'not learned' in (f.text or '')]
+check(not any('Shank' in x for x in miss), f'rogue: Shank rank 2 -> neither Shank tip ({[x for x in miss if "Shank" in x]})')
+check(c.lastError is None, f'no internal error ({c.lastError and c.lastError.err})')
 
 print('ALL OK' if not fails else f'{len(fails)} FAILED')
 sys.exit(1 if fails else 0)

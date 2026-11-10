@@ -39,11 +39,19 @@ end
 function S:SyncSpells()
     if not cur then return end
     local _, cls = UnitClass("player")
+    local book -- the spellbook is read only when an untracked proc spell's ID says no
     for _, p in ipairs(FC:Rules().procSpells or {}) do
-        if p.class == cls and FC:KnowsSpell(p.spellId) then
+        if p.class == cls then
             local name = FC:SpellName(p.spellId) or p.name
             if not procs[name] then
-                procs[name] = { spell = name, label = p.name, window = p.window or 5, total = 0, used = 0, was = false }
+                local known = FC:KnowsSpell(p.spellId, false) == true -- the ID alone
+                if not known then
+                    if book == nil then book = FC:SpellBook() end
+                    known = FC:KnowsSpell(p.spellId, book, p.name) == true
+                end
+                if known then
+                    procs[name] = { spell = name, label = p.name, window = p.window or 5, total = 0, used = 0, was = false }
+                end
             end
         end
     end
