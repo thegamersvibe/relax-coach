@@ -37,7 +37,8 @@ local function read(api,id,key)
     return value
 end
 local function errorText(err)
-    RelaxQuestPlannerDB=RelaxQuestPlannerDB or {}; RelaxQuestPlannerDB.lastError=tostring(err)
+    if RelaxQuestPlanner and RelaxQuestPlanner.SetError then RelaxQuestPlanner.SetError(err)
+    else RelaxQuestPlannerDB=RelaxQuestPlannerDB or {}; RelaxQuestPlannerDB.lastError=tostring(err) end
 end
 D.Error = errorText
 
@@ -241,6 +242,10 @@ for _,d in ipairs(FOREVER_DUNGEONS) do
     for _,a in ipairs(d.aliases or {}) do canonicalOf[a]=d end
 end
 D.FOREVER_DUNGEONS=FOREVER_DUNGEONS
+function D.CanonicalDungeon(name)
+    local dungeon=canonicalOf[name]
+    return dungeon and dungeon.name or name
+end
 local function zones()
     if dungeons then return end
     D.Ready(); local byName,byArea={},{}
@@ -271,7 +276,7 @@ local function zones()
     areaMap=tbl(map)
     -- Collapse every source name onto the Forever allowlist; drop anything not in Forever.
     local canonArea={}
-    for area,name in pairs(byArea) do local c=canonicalOf[name]; if c then canonArea[area]=c.name end end
+    for area,name in pairs(byArea) do if canonicalOf[name] then canonArea[area]=D.CanonicalDungeon(name) end end
     dungeonByArea=canonArea
     local myFaction=UnitFactionGroup and UnitFactionGroup("player")
     local list={}
