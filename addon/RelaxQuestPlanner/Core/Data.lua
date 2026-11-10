@@ -155,7 +155,7 @@ local function loadSupplements()
     end
     for _,id in ipairs(keys(records)) do
         local v=records[id]
-        if id>0 and id<1000000 and not (lib and questAPI.Exists(id)) then
+        if id>0 and id<1000000 and not (lib and questAPI.Exists and questAPI.Exists(id)) then
             local masks=D.Enums().factionRaceMasks or {}
             local r=normalize({name=v.name or names[id],reqLevel=v.requires,qLevel=v.level,
                 races=masks[v.faction] or 0,classes=0,grp=v.grp,
