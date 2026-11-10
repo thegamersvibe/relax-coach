@@ -337,8 +337,8 @@ for _, e in ipairs({ "ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_LEVEL_UP", "PLAYER_
     "QUEST_TURNED_IN", "GET_ITEM_INFO_RECEIVED", "ITEM_DATA_LOAD_RESULT", "PLAYER_ENTERING_WORLD" }) do
     f:RegisterEvent(e)
 end
-f:SetScript("OnEvent", function(_, event, arg1)
-    local ok, err = pcall(function()
+-- One shared handler: no closure is built per event (BAG_UPDATE_DELAYED and friends fire often).
+local function onEvent(event, arg1)
         if event == "ADDON_LOADED" and arg1 == ADDON then
             FC:Char()
         elseif event == "PLAYER_LOGIN" then
@@ -367,6 +367,8 @@ f:SetScript("OnEvent", function(_, event, arg1)
         elseif event ~= "ADDON_LOADED" then
             later(3, "refresh", function() FC:Refresh(event) end)
         end
-    end)
+end
+f:SetScript("OnEvent", function(_, event, arg1)
+    local ok, err = pcall(onEvent, event, arg1)
     if not ok then FC:Char().lastError = { where = event, err = tostring(err), time = time(), version = FC.VERSION } end
 end)

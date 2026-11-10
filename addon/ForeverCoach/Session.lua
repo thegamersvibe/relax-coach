@@ -172,12 +172,14 @@ local ev = CreateFrame("Frame")
 ev:RegisterEvent("PLAYER_DEAD")
 ev:RegisterEvent("PLAYER_XP_UPDATE")
 ev:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+-- UNIT_SPELLCAST_SUCCEEDED fires for every unit's casts; keep the handler closure-free.
+local function onEvent(e, unit, spellID)
+    if e == "UNIT_SPELLCAST_SUCCEEDED" then
+        if plain(unit) == "player" then S:Cast(num(spellID)) end
+    elseif e == "PLAYER_DEAD" then S:Death()
+    elseif e == "PLAYER_XP_UPDATE" then S:XP() end
+end
 ev:SetScript("OnEvent", function(_, e, unit, _, spellID)
-    local ok, err = pcall(function()
-        if e == "UNIT_SPELLCAST_SUCCEEDED" then
-            if plain(unit) == "player" then S:Cast(num(spellID)) end
-        elseif e == "PLAYER_DEAD" then S:Death()
-        elseif e == "PLAYER_XP_UPDATE" then S:XP() end
-    end)
+    local ok, err = pcall(onEvent, e, unit, spellID)
     if not ok then noteError(e, err) end
 end)
