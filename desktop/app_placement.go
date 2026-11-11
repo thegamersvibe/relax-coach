@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -27,6 +29,8 @@ const (
 //   - "offer": running from elsewhere and no installed copy exists yet.
 //   - "other-copy": running from elsewhere, but an installed copy exists. It is
 //     left alone; the player is pointed at it.
+//   - "blocked": something other than a regular file (a folder, a link) is at
+//     the installed path. Nothing is copied.
 //   - "copied": this run copied the app (the result of installAppCopy).
 //   - "unavailable": the paths could not be determined; nothing is offered.
 type AppPlacement struct {
@@ -62,7 +66,11 @@ func (e appPlacementEnv) placement() AppPlacement {
 		p.State = "installed"
 		return p
 	}
-	if _, err := os.Lstat(target); err == nil {
+	if st, err := os.Lstat(target); err == nil && !st.Mode().IsRegular() {
+		p.State = "blocked"
+		p.Message = "Relax Coach cannot be copied to " + target + ": something else is at that path (a folder or a link). Nothing was changed; move it away to copy the app there."
+		return p
+	} else if err == nil {
 		p.State = "other-copy"
 		p.Message = "Relax Coach is already installed in " + filepath.Dir(target) + ". This copy runs from " + filepath.Dir(p.Running) +
 			". Use the installed copy (desktop shortcut) and its Update App; this copy changes nothing there."
@@ -83,7 +91,8 @@ func (e appPlacementEnv) install() (AppPlacement, error) {
 	p := e.placement()
 	if p.State != "offer" {
 		return p, errors.New("there is nothing to copy: " + map[string]string{"installed": "Relax Coach already runs from its folder",
-			"other-copy": "an installed copy already exists and is not replaced", "unavailable": "the app folder could not be determined"}[p.State])
+			"other-copy": "an installed copy already exists and is not replaced", "unavailable": "the app folder could not be determined",
+			"blocked": "something else is at that path"}[p.State])
 	}
 	dir := filepath.Dir(p.Target)
 	if err := appPlainDirectory(filepath.Dir(dir)); err != nil {
@@ -109,17 +118,7 @@ func (e appPlacementEnv) install() (AppPlacement, error) {
 	if err != nil {
 		return fail(fmt.Errorf("could not read the running app: %w", err))
 	}
-	want := sha256.Sum256(data)
-	if err := appWriteOwned(p.Target, data, func() error {
-		got, err := appReadFile(p.Target, appMaxExecutable)
-		if err != nil {
-			return err
-		}
-		if sum := sha256.Sum256(got); !bytes.Equal(sum[:], want[:]) {
-			return errors.New("the copied app does not match the running app")
-		}
-		return nil
-	}); err != nil {
+	if err := appCopyVerified(p.Target, data); err != nil {
 		return fail(fmt.Errorf("could not copy Relax Coach to %s; nothing was changed: %w", p.Target, err))
 	}
 	p.State = "copied"
@@ -141,4 +140,55 @@ func (e appPlacementEnv) install() (AppPlacement, error) {
 	p.Message = "Relax Coach was copied to " + p.Target + "." + note +
 		" Close this window and start Relax Coach from there next time; you can delete the downloaded file. Your game folder choice is kept."
 	return p, nil
+}
+
+// appCopyWritten is a test seam: called with the path being written once all
+// bytes are on disk and before they are verified and published.
+var appCopyWritten func(path string)
+
+// appCopyVerified writes data to a new temp file next to target (exclusive
+// create, random name), verifies it by SHA256 and only then publishes it under
+// the target name without replacing anything (a hard link fails if the name
+// exists), then removes its own temp name. A crash leaves at most a temp file,
+// never a half-written RelaxCoach.exe; temp files from earlier runs are left
+// alone and never block a later copy.
+func appCopyVerified(target string, data []byte) error {
+	dir := filepath.Dir(target)
+	var random [8]byte
+	if _, err := rand.Read(random[:]); err != nil {
+		return err
+	}
+	temp := filepath.Join(dir, "."+filepath.Base(target)+"."+hex.EncodeToString(random[:])+".tmp")
+	want := sha256.Sum256(data)
+	var owned os.FileInfo
+	err := appWriteOwned(temp, data, func() error {
+		if appCopyWritten != nil {
+			appCopyWritten(temp)
+		}
+		got, err := appReadFile(temp, appMaxExecutable)
+		if err != nil {
+			return err
+		}
+		if sum := sha256.Sum256(got); !bytes.Equal(sum[:], want[:]) {
+			return errors.New("the copied app does not match the running app")
+		}
+		if owned, err = os.Lstat(temp); err != nil {
+			return err
+		}
+		if err := appPlainDirectory(dir); err != nil {
+			return err
+		}
+		if err := os.Link(temp, target); err != nil {
+			if os.IsExist(err) {
+				return errors.New("something appeared at " + target + " meanwhile; it was not replaced")
+			}
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	// The published name stays; drop this run's temp name (same file).
+	return appRemoveOwned(temp, owned)
 }

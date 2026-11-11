@@ -404,7 +404,7 @@ function maybeAutoCheck() {
 // First run: optionally copy the app to its usual folder and add a shortcut.
 function showPlacement(p) {
   const box = $('app-placement');
-  if (placementDismissed || !p || !['offer','other-copy','copied'].includes(p.State)) { box.hidden = true; return; }
+  if (placementDismissed || !p || !['offer','other-copy','blocked','copied'].includes(p.State)) { box.hidden = true; return; }
   box.hidden = false;
   $('app-placement-text').textContent = p.Message || '';
   $('app-copy').hidden = p.State !== 'offer';
