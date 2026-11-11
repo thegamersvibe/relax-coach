@@ -64,7 +64,7 @@ type AddonReleaseInfo struct {
 	// Repair: the same version as the installed Coach, offered only because
 	// the installed bundle is incomplete (a missing folder or an interrupted
 	// install). ApplyAddonRelease re-checks that before installing.
-	Repair bool `json:"repair"`
+	Repair bool `json:"repair,omitempty"`
 	// sameVersion: for a release equal to the installed Coach, the full
 	// release, so the app can offer it as a repair. Never shown to the UI.
 	sameVersion *AddonReleaseInfo
