@@ -9,7 +9,7 @@ import (
 	"unicode/utf16"
 )
 
-func TestAppResourceVersionMatches150(t *testing.T) {
+func TestAppResourceVersionMatches151(t *testing.T) {
 	b, err := os.ReadFile("versioninfo.json")
 	if err != nil {
 		t.Fatal(err)
@@ -24,12 +24,12 @@ func TestAppResourceVersionMatches150(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, v := range []string{Version, meta.StringFileInfo.FileVersion, meta.StringFileInfo.ProductVersion} {
-		if v != "1.5.0" {
+		if v != "1.5.1" {
 			t.Errorf("stale app/resource version %q", v)
 		}
 	}
 	for _, v := range []struct{ Major, Minor, Patch, Build int }{meta.FixedFileInfo.FileVersion, meta.FixedFileInfo.ProductVersion} {
-		if v.Major != 1 || v.Minor != 5 || v.Patch != 0 || v.Build != 0 {
+		if v.Major != 1 || v.Minor != 5 || v.Patch != 1 || v.Build != 0 {
 			t.Errorf("stale fixed version %+v", v)
 		}
 	}
@@ -43,12 +43,12 @@ func TestAppResourceVersionMatches150(t *testing.T) {
 		t.Fatal("compiled resource has no VS_FIXEDFILEINFO")
 	}
 	for _, offset := range []int{8, 16} {
-		if binary.LittleEndian.Uint32(b[at+offset:]) != 0x00010005 || binary.LittleEndian.Uint32(b[at+offset+4:]) != 0x00000000 {
+		if binary.LittleEndian.Uint32(b[at+offset:]) != 0x00010005 || binary.LittleEndian.Uint32(b[at+offset+4:]) != 0x00010000 {
 			t.Error("compiled Windows version resource is stale")
 		}
 	}
 	var encoded bytes.Buffer
-	for _, c := range utf16.Encode([]rune("1.5.0")) {
+	for _, c := range utf16.Encode([]rune("1.5.1")) {
 		binary.Write(&encoded, binary.LittleEndian, c)
 	}
 	if !bytes.Contains(b, encoded.Bytes()) {

@@ -9,15 +9,26 @@ Three **separate WoW Forever addons**, plus a native Windows report app:
 
 ## Download
 
-**[Download release v1.5.0](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.5.0)**:
+**[Download release v1.5.1](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.5.1)**:
 
-- `RelaxCoach-Bundle-1.5.0.zip` — the three independent addons (Coach, Journey, Relax Quest Planner 0.2.0), Journey guide content **4.00.06**, the Windows app and optional installer/restore scripts. From v1.5.0 the combined download has this new name; earlier releases used `RelaxCoach-Guild-<version>.zip`.
+- `RelaxCoach-Bundle-1.5.1.zip` — the three independent addons (Coach, Journey, Relax Quest Planner 0.2.0), Journey guide content **4.00.06**, the Windows app and optional installer/restore scripts. From v1.5.0 the combined download has this new name; earlier releases used `RelaxCoach-Guild-<version>.zip`.
 - `RelaxCoach.exe` — app-only download, for updating the application separately.
 - `SHA256SUMS.txt` — checksums for these release assets.
 
-**On app 1.4.x?** Use **Check App Update → Update App** first, then close WoW and use **Check for updates → Update Addon**. Apps before 1.5.0 cannot install the 1.5.0 bundle and report it as an app-only release until the app is updated. App 1.4.0 needs one manual EXE replacement with Relax Coach closed before it can update itself.
+**On app 1.5.0?** Use **Check App Update → Update App** first (Get started and the repair below come with app 1.5.1), then **Updates → Check → Update**.
 
-There is deliberately no Coach-only `RelaxCoach-1.5.0.zip`: older apps must not report a completed addon update while leaving the guide content behind. The previous app-only v1.4.1 release remains unchanged.
+**On app 1.4.x?** Use **Check App Update → Update App** first, then close WoW and use **Check for updates → Update Addon**. Apps before 1.5.0 cannot install the bundle (from 1.5.0) and report it as an app-only release until the app is updated. App 1.4.0 needs one manual EXE replacement with Relax Coach closed before it can update itself.
+
+There is deliberately no Coach-only `RelaxCoach-1.5.1.zip`: older apps must not report a completed addon update while leaving the guide content behind. The previous app-only v1.4.1 release remains unchanged.
+
+## What's new in v1.5.1
+
+- **First install from the app:** a new player needs only `RelaxCoach.exe`. The app opens on **Get started**: choose the game folder, close WoW, click **Install**. It installs Coach, Journey with its guide content and Relax Quest Planner through the same verified transaction as updates, and creates `Interface\AddOns` if it is missing. The bundle and **More addons** buttons now say **Install** or **Update** depending on what is installed. See *From the app* below.
+- **Optional app copy:** when the app runs from somewhere else (for example Downloads), it offers to copy itself to `%USERPROFILE%\RelaxCoach` and add a **Relax Coach** desktop shortcut. It never replaces an existing copy or shortcut.
+- **Repair at the same version:** if some Relax Coach folders are missing or an install was interrupted (the app closed or the PC lost power), **Check** offers **Install** again for the current release and finishes it; the folders that were there are kept in `RelaxCoachBackups`. A complete install is never reinstalled.
+- **Interrupted installs no longer lock the updater:** a lock left by a crash mid-install is recovered on the next attempt after 15 minutes; folders that were moved aside are put back where they are missing, and nothing is deleted.
+- **Higher spell ranks count as learned (Coach):** a trained higher rank no longer shows "not learned" for the rank-1 spell (for example Sunder Armor on a level 35 warrior), for every class. Confirmed in the Forever client.
+- Relax Quest Planner (`0.2.0`), Relax Journey (`4.00.04`) and the guide content (`4.00.06`) with its signed catalog are unchanged.
 
 ## What's new in v1.5.0
 
@@ -76,7 +87,7 @@ Use the included `Restore-RelaxCoach.ps1 -Backup <backup-folder>` with WoW close
 
 - **Update App** (app v1.4.1+): check explicitly, then confirm the update. It verifies the executable checksum, restarts only Relax Coach, and supports backup/rollback. WoW can stay running; addons, guides and saves are untouched.
 - **One-time bootstrap from an older app:** close only Relax Coach and replace its `RelaxCoach.exe` with the latest release asset. Subsequent app releases can use **Update App**.
-- **Install / Update** for the Relax Coach addons (labelled **Check for updates → Update Addon** before app 1.5.1; app v1.4.3+ for current bundles): installs **Coach + Relax Journey + the bundled guide content together**. The button says **Install** while Coach is not installed in the selected game folder and **Update** afterwards; both use the same transaction. It verifies the release ZIP and manifest, stages the fixed directories, retains backups and rolls back a failed transaction. From **1.5.0** the bundle is named `RelaxCoach-Bundle-<version>.zip` and also installs **Relax Quest Planner** as a fourth folder; apps older than 1.5.0 report it as an app-only release, so use **Update App** first. Close WoW first. Unrelated addons, `WTF`, settings and the running app are unchanged. The bundled EXE and scripts are not executed by this action.
+- **Install / Update** for the Relax Coach addons (labelled **Check for updates → Update Addon** before app 1.5.1; app 1.5.0+ for current bundles): installs **Coach + Relax Journey + the bundled guide content together**. The button says **Install** while Coach is not installed in the selected game folder and **Update** afterwards; both use the same transaction. It verifies the release ZIP and manifest, stages the fixed directories, retains backups and rolls back a failed transaction. From **1.5.0** the bundle is named `RelaxCoach-Bundle-<version>.zip` and also installs **Relax Quest Planner** as a fourth folder; apps older than 1.5.0 report it as an app-only release, so use **Update App** first. Close WoW first. Unrelated addons, `WTF`, settings and the running app are unchanged. The bundled EXE and scripts are not executed by this action.
 - **More addons** (RankUp, Forever Maps): optional addons from their own GitHub repositories (`buiden/RankUp`, `buiden/ForeverMaps`). Each has its own **Check** and **Install / Update** button on the Updates page, with the same wording as the Relax Coach addons. It installs only that addon's folder from its latest stable release, verifies the release `SHA256SUMS.txt`, checks the archive and TOC title/version, refuses reinstalls/downgrades and folders it can't identify, and backs up the previous version in `RelaxCoachBackups`. Close WoW first. A release must contain `<Folder>-<version>.zip` (one top-level `RankUp/` or `ForeverMaps/` folder) and `SHA256SUMS.txt`.
 - **The addons remain independent:** updating them together does not make either one a required dependency of the other.
 - **Future guide pushes:** publish a tested new guild release and increment its Coach/package version, even for guide-only changes. The updater consumes release assets, not raw Git pushes. Missing required assets are reported as unavailable—not as proof that your content is current.
@@ -85,7 +96,7 @@ Use the included `Restore-RelaxCoach.ps1 -Backup <backup-folder>` with WoW close
 ## Coverage and known limits
 
 - Optional installed providers: GearQuest Forever for comparable item scores, ForeverDungeonJournal for dungeon information. Unknown or incomparable gear is shown as unscored, not assigned an invented score.
-- Included Journey code: `4.00.04`; Relax package/Coach version: `1.5.0`; guide-content version: `4.00.06`. The original signed catalog and guide bytes are retained. The content's existing validity date is **18 December 2026**; this release does not remove expiry checks.
+- Included Journey code: `4.00.04`; Relax package/Coach version: `1.5.1`; guide-content version: `4.00.06`. The original signed catalog and guide bytes are retained. The content's existing validity date is **18 December 2026**; this release does not remove expiry checks.
 - This is not a claim of complete coverage for every custom Forever class/spec/item or every leveling route. Some route entries are stubs.
 - An intermittent blank native window occurred during development. The final local candidate passed ten restart/Refresh cycles and a more-than-three-minute minimize/restore test, but the earlier root cause was not conclusively identified. If the window is blank, close and reopen it and report the issue.
 
