@@ -34,6 +34,34 @@ end
 
 function FC:Print(msg) DEFAULT_CHAT_FRAME:AddMessage("|cff4fc3f7Relax Coach|r: " .. tostring(msg)) end
 
+-- CurseForge, Wago/WowUp and Journey's Guide Manager can auto-update the
+-- Journey folder and overwrite Relax Journey. Read-only metadata calls under
+-- pcall (C_AddOns first, then the old globals); warn once per session, and
+-- only when a loaded Journey's Title is not ours.
+local function addonCall(name, ...)
+    local api = C_AddOns and C_AddOns[name]
+    if type(api) == "function" then
+        local ok, v = pcall(api, ...)
+        if ok and v ~= nil then return v end
+    end
+    local legacy = _G[name]
+    if type(legacy) == "function" then
+        local ok, v = pcall(legacy, ...)
+        if ok then return v end
+    end
+end
+
+function FC:CheckJourney()
+    if self.journeyWarned or not addonCall("IsAddOnLoaded", "Journey") then return end
+    local title = addonCall("GetAddOnMetadata", "Journey", "Title")
+    if type(title) ~= "string" then return end
+    title = title:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    if title == "Relax Journey" then return end
+    self.journeyWarned = true
+    self:Print("|cffff8800Journey was replaced by another updater (CurseForge, Wago or Journey Guide Manager).|r"
+        .. " Open the Relax Coach app and click Repair to restore Relax Journey, and turn off auto-update for Journey there or it will happen again.")
+end
+
 function FC:CharKey()
     local name = UnitName("player") or "?"
     local realm = (GetRealmName and GetRealmName()) or "?"
@@ -462,6 +490,7 @@ local function onEvent(event, arg1)
         if event == "ADDON_LOADED" and arg1 == ADDON then
             FC:Char()
         elseif event == "PLAYER_LOGIN" then
+            pcall(FC.CheckJourney, FC)
             later(5, "refresh", function() FC:Refresh("login") end)
             if FC.Session then FC.Session:Start() end
         elseif event == "PLAYER_LEVEL_UP" then

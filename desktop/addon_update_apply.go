@@ -250,5 +250,6 @@ func (u *addonUpdater) apply(ctx context.Context, game string, release AddonRele
 	if err := ctx.Err(); err != nil {
 		return result, err
 	}
+	release.journeyReplaced = InstalledBundleState(game).State == "replaced"
 	return u.installTrees(ctx, game, release, payload, before, trees, ancestors)
 }

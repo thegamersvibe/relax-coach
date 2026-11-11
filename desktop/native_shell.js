@@ -229,6 +229,8 @@ function displayReport(result,folderChanged = false) {
     if ($('extra-list').children.length) loadExtras();
     updateButtons();
   }
+  // Say it before any click: the folder state alone shows the replaced Journey.
+  if (!busy && !offer && result.Bundle && result.Bundle.state === 'replaced') bundleStatus(replacedText+' Click Check, then Repair.');
   updateButtons();
 }
 async function refresh(manual = false) {
@@ -325,8 +327,17 @@ function bundleInstall() {
   if (lastReport && lastReport.Bundle) return lastReport.Bundle.install === true;
   return !!lastReport && lastReport.InstalledVersion === '0.0.0';
 }
+// Journey overwritten by another updater: its own state, text and Repair button.
+const replacedText = 'Journey was replaced by another updater (CurseForge, Wago or Journey Guide Manager). Click Repair to restore Relax Journey, and turn off auto-update for Journey there or it will happen again.';
+function bundleReplaced() {
+  const b = offer ? offer.Bundle : (lastReport && lastReport.Bundle);
+  return !!(b && b.state === 'replaced');
+}
+function bundleVerb() {
+  return bundleReplaced() && (!offer || offer.Repair) ? 'Repair' : verb(bundleInstall());
+}
 function renderBundleLabels() {
-  const v = verb(bundleInstall());
+  const v = bundleVerb();
   $('apply-update').textContent = v;
   $('setup-install').textContent = v;
   const b = lastReport && lastReport.Bundle;
@@ -335,6 +346,7 @@ function renderBundleLabels() {
 }
 // Partial installs: say what is missing and what Install/Update will do.
 function bundleNote(b, available) {
+  if (b && b.state === 'replaced') return ' '+replacedText;
   if (!b || b.state !== 'partial') return '';
   const missing = (b.missing || []).join(', '), present = (b.present || []).join(', ');
   let text = '';
@@ -360,7 +372,9 @@ async function checkBundle() {
     $('release-notes').textContent = offer.Notes || 'No release notes provided.';
     $('release-link').href = offer.HTMLURL;
     $('release-link').hidden = !offer.HTMLURL;
-    bundleStatus(offer.Available
+    bundleStatus(offer.Available && offer.Repair && bundleReplaced()
+      ? replacedText+' WoW can stay open.'
+      : offer.Available
       ? 'Relax Coach '+offer.Version+' is ready to '+(install ? 'install' : 'update')+'.'+clickThen(install)
         +(offer.Repair ? ' This completes an interrupted or incomplete install: every Relax Coach folder is installed again, and the folders there now are kept in RelaxCoachBackups.' : bundleNote(offer.Bundle,true))
       : (offer.Notes || 'No compatible new addon update is available.')+' No files changed.'+bundleNote(offer.Bundle,false));
@@ -372,7 +386,7 @@ async function checkBundle() {
 }
 async function applyBundle() {
   if (busy || !offer || !offer.Available) return;
-  const install = offer.Install === true;
+  const install = offer.Install === true, label = bundleVerb();
   busy = true; updateButtons();
   bundleStatus(progressText);
   try {
@@ -380,7 +394,7 @@ async function applyBundle() {
     const result = await rc.applyAddon(offer.Version);
     bundleStatus(result.message + (result.backupPath ? '\nBackup: '+result.backupPath : ''));
     await refresh();
-  } catch(err) { bundleStatus(failText(install, err)); }
+  } catch(err) { bundleStatus(label === 'Repair' ? 'Repair failed: '+err.message+' Check again before retrying.' : failText(install, err)); }
   finally { offer = null; busy = false; updateButtons(); }
 }
 $('check-update').addEventListener('click',checkBundle);

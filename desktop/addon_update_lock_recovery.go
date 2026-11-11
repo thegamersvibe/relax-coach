@@ -108,8 +108,9 @@ func addonStaleBundleLock(game string) bool {
 }
 
 // addonRepairNeeded: Coach is installed but the bundle is incomplete (a
-// missing or empty folder) or an earlier install was interrupted (stale lock).
+// missing or empty folder), Journey was replaced by another updater, or an
+// earlier install was interrupted (stale lock).
 func addonRepairNeeded(game string) bool {
 	s := InstalledBundleState(game)
-	return (!s.Install && s.State == "partial") || addonStaleBundleLock(game)
+	return (!s.Install && (s.State == "partial" || s.State == "replaced")) || addonStaleBundleLock(game)
 }

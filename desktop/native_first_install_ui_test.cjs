@@ -194,3 +194,35 @@ test('WoW can stay open: ready text, then the /reload or restart advice from the
   }
   assert.equal(/Close WoW first/.test(html),false,'no static close-WoW text left in the shell');
 });
+
+test('Journey replaced by another updater: own text and a Repair button on Updates and Get started',async t=>{
+  const replaced={state:'replaced',install:false,present:['ForeverCoach','Journey','Journey-Content','RelaxQuestPlanner'],missing:[]};
+  const text='Journey was replaced by another updater (CurseForge, Wago or Journey Guide Manager). Click Repair to restore Relax Journey, and turn off auto-update for Journey there or it will happen again.';
+  let state=report('C:\\WoW','1.5.2',replaced);
+  const {$,calls}=await setup(t,{reportRefresh:()=>state,
+    checkAddon:()=>({Version:'1.5.2',Available:true,Install:true,Repair:true,InstalledVersion:'1.5.2',Bundle:replaced}),
+    applyAddon:v=>{state=report('C:\\WoW',v,installed);return {version:v,message:'Relax Journey restored: … kept in the backup, not deleted.',backupPath:'C:\\WoW\\RelaxCoachBackups\\x'}}});
+  await settle();
+  assert.ok($('update-status').textContent.startsWith(text),'shown from the folder state before any click');
+  assert.equal($('setup-status').textContent,$('update-status').textContent,'Get started shows it too');
+  assert.equal($('apply-update').textContent,'Repair');
+  assert.equal($('setup-install').textContent,'Repair');
+  $('check-update').click();await settle();
+  assert.equal($('update-status').textContent,text+' WoW can stay open.');
+  assert.equal($('apply-update').textContent,'Repair');
+  assert.equal($('setup-install').textContent,'Repair');
+  $('setup-install').click();await settle();await settle();
+  assert.deepEqual(calls.find(c=>c.method==='applyAddon').params,['1.5.2']);
+  assert.match($('update-status').textContent,/Relax Journey restored/);
+  assert.equal($('apply-update').textContent,'Update','back to Update once Relax Journey is restored');
+});
+
+test('a newer release over a replaced Journey keeps Update and says why',async t=>{
+  const replaced={state:'replaced',install:false,present:['ForeverCoach','Journey','Journey-Content','RelaxQuestPlanner'],missing:[]};
+  const {$}=await setup(t,{reportRefresh:()=>report('C:\\WoW','1.5.1',replaced),
+    checkAddon:()=>({Version:'1.5.2',Available:true,Install:false,InstalledVersion:'1.5.1',Bundle:replaced})});
+  await settle();
+  $('check-update').click();await settle();
+  assert.equal($('apply-update').textContent,'Update');
+  assert.match($('update-status').textContent,/ready to update\. Click Update\. WoW can stay open\. Journey was replaced by another updater/);
+});

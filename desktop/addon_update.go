@@ -68,6 +68,9 @@ type AddonReleaseInfo struct {
 	// sameVersion: for a release equal to the installed Coach, the full
 	// release, so the app can offer it as a repair. Never shown to the UI.
 	sameVersion *AddonReleaseInfo
+	// journeyReplaced: set by apply when the Journey folder was not Relax
+	// Journey before this install (only changes the result message).
+	journeyReplaced bool
 }
 
 type addonUpdater struct {

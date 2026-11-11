@@ -4,6 +4,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 )
 
 // AddonBundleState describes which Relax Coach bundle folders exist in a game
@@ -14,6 +15,10 @@ import (
 //   - "none": none of the bundle folders exist. The action is Install.
 //   - "installed": ForeverCoach has a readable version and every folder that
 //     bundle version ships is present. The action is Update.
+//   - "replaced": Coach is installed but the Journey folder is not Relax
+//     Journey (its Journey.toc Title is not "Relax Journey"): another updater
+//     (CurseForge, Wago, Journey Guide Manager) overwrote it. The action is
+//     Repair, through the same transaction; the other copy goes to the backup.
 //   - "partial": anything else, e.g. only a normal Journey, or Coach without
 //     Journey-Content. The action is Install when Coach itself is missing or
 //     unreadable, otherwise Update; Missing lists what the next install or
@@ -69,12 +74,35 @@ func InstalledBundleState(game string) AddonBundleState {
 	switch {
 	case len(present) == 0:
 		state.State = "none"
+	case !state.Install && present[addonGuildRoots[1]] && !addonJourneyIsRelax(filepath.Join(game, filepath.FromSlash(addonGuildRoots[1]))):
+		state.State = "replaced"
 	case !state.Install && len(state.MissingFolders) == 0:
 		state.State = "installed"
 	default:
 		state.State = "partial"
 	}
 	return state
+}
+
+// addonJourneyIsRelax: the folder's Journey.toc (any case, as on Windows) has
+// Title "Relax Journey". A missing or unreadable TOC is not ours.
+func addonJourneyIsRelax(dir string) bool {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return false
+	}
+	for _, entry := range entries {
+		if !strings.EqualFold(entry.Name(), "Journey.toc") || !entry.Type().IsRegular() {
+			continue
+		}
+		toc, err := addonReadSmallFile(filepath.Join(dir, entry.Name()))
+		if err != nil {
+			return false
+		}
+		meta, _, err := addonTOCMetadata(toc)
+		return err == nil && meta["title"] == "Relax Journey"
+	}
+	return false
 }
 
 func addonFolderNames(roots []string) []string {
