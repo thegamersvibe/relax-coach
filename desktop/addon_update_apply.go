@@ -106,7 +106,7 @@ func (u *addonUpdater) requireStopped(ctx context.Context) error {
 		return fmt.Errorf("could not verify that WoW is closed; addon update refused: %w", err)
 	}
 	if running {
-		return errors.New("close World of Warcraft before updating the addon")
+		return errors.New("close World of Warcraft before installing or updating addons")
 	}
 	return ctx.Err()
 }
@@ -217,16 +217,31 @@ func (u *addonUpdater) apply(ctx context.Context, game string, release AddonRele
 	}
 	game = filepath.Clean(game)
 	addons := filepath.Join(game, "Interface", "AddOns")
-	if err := addonPlainDirectory(addons); err != nil {
+	// A fresh client may not have Interface\AddOns yet. The transaction creates
+	// the missing folders only after every downloaded byte is verified, and
+	// removes them again on rollback.
+	if _, err := addonMissingDirs(game, addons); err != nil {
 		return result, fmt.Errorf("invalid game addon folder: %w", err)
 	}
+	// Finish an install that was interrupted mid-swap before reading the
+	// installed state, so the offer is checked against the real folders.
+	interrupted := u.addonRecoverStaleLock(game)
 	target := filepath.Join(addons, "ForeverCoach")
 	before, err := addonInstalled(target)
 	if err != nil {
 		return result, err
 	}
 	remote, _ := parseAddonVersion(release.Version)
-	if !remote.newerThan(before.version) {
+	if release.Repair {
+		// Same version again only to complete an incomplete or interrupted
+		// install; never a downgrade, never a plain reinstall.
+		if remote.newerThan(before.version) || before.version.newerThan(remote) {
+			return result, errors.New("the installed Relax Coach version changed; check again")
+		}
+		if !addonGuildRelease(release.Version) || (!interrupted && !addonRepairNeeded(game)) {
+			return result, errors.New("the Relax Coach folders are complete; nothing to repair. Check again")
+		}
+	} else if !remote.newerThan(before.version) {
 		return result, errors.New("no newer addon version to install; refusing to reinstall or downgrade")
 	}
 

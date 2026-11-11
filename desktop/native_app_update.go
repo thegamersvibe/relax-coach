@@ -51,7 +51,7 @@ func (b *nativeBridge) checkApp() (nativeOffer, error) {
 	if validateExternalURL(link) != nil {
 		link = ""
 	}
-	return nativeOffer{r.Version, r.Name, r.Notes, link, current, r.Available}, nil
+	return nativeOffer{Version: r.Version, Name: r.Name, Notes: r.Notes, HTMLURL: link, InstalledVersion: current, Available: r.Available}, nil
 }
 func (b *nativeBridge) applyApp(expected string) (AppUpdateResult, error) {
 	if err := b.startAppUpdate(); err != nil {

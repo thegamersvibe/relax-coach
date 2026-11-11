@@ -276,13 +276,22 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 	}
 	game = filepath.Clean(game)
 	addons := filepath.Join(game, "Interface", "AddOns")
-	if err := addonPlainDirectory(addons); err != nil {
+	// A fresh client may not have Interface\AddOns yet: those folders are
+	// created right before the swap, after verification, and removed again if
+	// the install fails.
+	missingDirs, err := addonMissingDirs(game, addons)
+	if err != nil {
 		return result, fmt.Errorf("invalid game addon folder: %w", err)
 	}
-	// Capture AddOns and every parent now; they are re-checked right before
-	// the swap so a folder replaced by a link during the download can't
-	// redirect the install outside the game folder (also for fresh installs).
-	ancestors, err := extraAncestors(addons)
+	existing := addons
+	if len(missingDirs) > 0 {
+		existing = filepath.Dir(missingDirs[0])
+	}
+	// Capture AddOns (or its deepest existing parent) and every parent now;
+	// they are re-checked right before the swap so a folder replaced by a link
+	// during the download can't redirect the install outside the game folder
+	// (also for fresh installs).
+	ancestors, err := extraAncestors(existing)
 	if err != nil {
 		return result, fmt.Errorf("invalid game addon folder: %w", err)
 	}
@@ -373,11 +382,29 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 	if err := addonCheckAncestors(ancestors); err != nil {
 		return result, fmt.Errorf("the game addon folder changed during download; nothing was changed: %w", err)
 	}
+	for _, p := range missingDirs {
+		if _, err := os.Lstat(p); !os.IsNotExist(err) {
+			return result, fmt.Errorf("the game addon folder changed during download; nothing was changed: %s", p)
+		}
+	}
+	createdDirs, err := addonCreateDirs(missingDirs, ancestors)
+	if err != nil {
+		addonRemoveCreated(createdDirs, ancestors)
+		return result, fmt.Errorf("could not create the game addon folder; nothing was changed: %w", err)
+	}
 	target := extraTarget(game, a)
 	backup := filepath.Join(transaction, "previous")
 	if before.exists {
 		if err := u.rename(target, backup); err != nil {
 			return result, fmt.Errorf("could not move the old version aside; nothing was changed: %w", err)
+		}
+		// The game folder must still be the one checked before; otherwise the
+		// new version would land somewhere else. Moving the old version back
+		// would go through the same changed path, so it stays in the backup
+		// and the lock is kept for recovery.
+		if err := addonCheckAncestors(ancestors); err != nil {
+			keepLock = true
+			return result, fmt.Errorf("the game addon folder changed during the install; nothing new was installed and the previous version is kept at %s: %w", backup, err)
 		}
 	}
 	if err := u.rename(filepath.Join(stage, a.Folder), target); err != nil {
@@ -387,7 +414,14 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 				return result, fmt.Errorf("install failed and the old version could not be put back; it is kept at %s: %w", backup, errors.Join(err, rerr))
 			}
 		}
+		addonRemoveCreated(createdDirs, ancestors)
 		return result, fmt.Errorf("install failed; the previous version was restored: %w", err)
+	}
+	// Published through a changed path (a parent swapped during the rename):
+	// not a success. Keep the transaction, the backup and the lock.
+	if err := addonCheckAncestors(ancestors); err != nil {
+		committed, keepLock = true, true
+		return result, fmt.Errorf("the game addon folder changed while installing; the install is not confirmed and the previous version is kept in %s: %w", transaction, err)
 	}
 	committed = true
 	os.RemoveAll(stage)

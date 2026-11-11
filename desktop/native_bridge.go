@@ -22,6 +22,9 @@ type nativeServices struct {
 	checkExtra func(context.Context, string, string) (ExtraAddonInfo, error)
 	applyExtra func(context.Context, string, ExtraAddonInfo) (AddonUpdateResult, error)
 	open       func(string) error
+	// place describes where this executable runs and how to copy it to the
+	// usual folder (first run). nil: nothing is offered.
+	place func() appPlacementEnv
 }
 
 type nativeBridge struct {
@@ -46,12 +49,18 @@ type nativeReport struct {
 	Account, SVPath, SaveTime, ConfigWarning string
 	Accounts                                 []AccountChoice
 	Stale                                    bool
+	Bundle                                   AddonBundleState
 }
 
 // Deliberately omit the download URL/checksum fields from the UI projection.
 type nativeOffer struct {
 	Version, Name, Notes, HTMLURL, InstalledVersion string
 	Available                                       bool
+	// Install: Coach is not installed (or a repair), so the action is Install.
+	Install bool
+	// Repair: the installed version again, to complete an incomplete install.
+	Repair bool
+	Bundle AddonBundleState
 }
 
 type nativeRequest struct {
@@ -142,7 +151,7 @@ func (b *nativeBridge) Call(method string, args []json.RawMessage) (any, error) 
 		if len(args) != 1 || json.Unmarshal(args[0], &arg) != nil || len(arg) > 4096 || strings.IndexByte(arg, 0) >= 0 {
 			return nil, errors.New("expected one text argument")
 		}
-	case "reportRefresh", "chooseGame", "checkAddon", "checkApp", "appReady", "extraList":
+	case "reportRefresh", "chooseGame", "checkAddon", "checkApp", "appReady", "extraList", "appPlacement", "installAppCopy":
 		if len(args) != 0 {
 			return nil, errors.New("this method takes no arguments")
 		}
@@ -184,6 +193,10 @@ func (b *nativeBridge) Call(method string, args []json.RawMessage) (any, error) 
 		return b.checkExtra(arg)
 	case "applyExtra":
 		return b.applyExtra(arg)
+	case "appPlacement":
+		return b.appPlacement()
+	case "installAppCopy":
+		return b.installAppCopy()
 	case "openExternal":
 		if err := validateExternalURL(arg); err != nil {
 			return nil, err
@@ -219,7 +232,7 @@ func (b *nativeBridge) reportLocked() (nativeReport, error) {
 	return nativeReport{HTML: html, Game: v.Game, InstalledVersion: InstalledCoachVersion(v.Game),
 		AppVersion: Version, AppUpdateStatus: currentAppUpdateStatus(),
 		Account: v.Account, Accounts: v.Accounts, SVPath: v.SVPath, SaveTime: saveTime,
-		Stale: v.Warning != "", ConfigWarning: v.ConfigWarning}, err
+		Stale: v.Warning != "", ConfigWarning: v.ConfigWarning, Bundle: InstalledBundleState(v.Game)}, err
 }
 
 func (b *nativeBridge) selectAccount(id string) (nativeReport, error) {
@@ -295,6 +308,12 @@ func (b *nativeBridge) check() (nativeOffer, error) {
 	if err != nil {
 		return nativeOffer{}, err
 	}
+	// The latest release is the installed one, but the install is incomplete
+	// (a missing folder, or an install interrupted by a crash): offer it again
+	// as Install, through the same verified transaction.
+	if !release.Available && release.sameVersion != nil && addonRepairNeeded(game) {
+		release = *release.sameVersion
+	}
 	if err = ctx.Err(); err != nil {
 		return nativeOffer{}, err
 	}
@@ -311,7 +330,9 @@ func (b *nativeBridge) check() (nativeOffer, error) {
 	if validateExternalURL(link) != nil {
 		link = ""
 	}
-	return nativeOffer{release.Version, release.Name, release.Notes, link, current, release.Available}, nil
+	bundle := InstalledBundleState(game)
+	return nativeOffer{Version: release.Version, Name: release.Name, Notes: release.Notes, HTMLURL: link, InstalledVersion: current,
+		Available: release.Available, Install: current == "0.0.0" || release.Repair, Repair: release.Repair, Bundle: bundle}, nil
 }
 
 func (b *nativeBridge) apply(expected string) (AddonUpdateResult, error) {
@@ -324,7 +345,7 @@ func (b *nativeBridge) apply(expected string) (AddonUpdateResult, error) {
 	r := b.release
 	if r == nil || !r.Available || r.Version != expected || b.checkedGame != game || b.checkedVersion != current {
 		b.mu.Unlock()
-		return AddonUpdateResult{}, errors.New("check for updates again and confirm the offered version")
+		return AddonUpdateResult{}, errors.New("check again and confirm the offered version")
 	}
 	release := *r
 	b.release = nil // A failed install requires a fresh explicit check too.

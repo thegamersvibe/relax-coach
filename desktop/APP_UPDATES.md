@@ -3,9 +3,13 @@
 The native Windows **Updates** page has two independent capabilities:
 
 - **Check App Update → Update App** checks the running app's version, then explicitly downloads, verifies, backs up and restarts Relax Coach. WoW may stay open. No game folder, account selection or Git installation is required.
-- **Check for updates → Update Addon** still updates only the selected game's `Interface/AddOns/ForeverCoach` directory. Close WoW before using that action.
+- **Check → Install / Update** (the Coach, Journey, Relax Quest Planner and guide content card, and the **Get started** page) installs or updates the Relax Coach bundle folders in the selected game folder in one verified transaction. It says **Install** while Coach is not installed there and **Update** afterwards. Close WoW before using that action. Before app 1.5.1 these buttons were labelled **Check for updates → Update Addon**.
 
 Checking does not install anything. The app explains the restart before the Update App click. A failed check or installation requires a fresh check. `-no-update` disables both update capabilities. Closing the window normally cancels work before handoff; do not force-terminate an update once replacement has started.
+
+## First run: copying the app
+
+When `RelaxCoach.exe` runs from anywhere other than `%USERPROFILE%\RelaxCoach\RelaxCoach.exe` (the folder `Install-RelaxCoach.ps1` uses), the app offers, on the player's click only, to copy itself there and add a **Relax Coach** desktop shortcut. The copy is an exclusive create of that exact file, read back and compared by SHA256; the folder must be a plain directory, not a link. An existing installed copy or shortcut is never replaced: the app then points at the installed copy instead. The shortcut is written with the Windows Shell Link COM object (`IShellLinkW` + `IPersistFile`) on the UI thread; no PowerShell, shell or second process runs. If the shortcut cannot be written, the verified copy stays and the message says so. The running app is not relaunched; the player starts the copy from the shortcut next time and may delete the downloaded file. The two RPC methods, `appPlacement()` and `installAppCopy()`, take no arguments; paths come from the running executable, the user profile and the Desktop known folder, never from JavaScript.
 
 ## First manual installation
 
@@ -55,7 +59,7 @@ If the first backup move fails, the worker rechecks the original target, candida
 
 If an intervening file modification, uncertain ownership or sharing error makes recovery unsafe, the updater preserves the backup and lock for manual recovery rather than overwriting the changed file. The Updates page shows the last readable result, including rollback and backup information, on launch/refresh.
 
-The updater does not write game folders, accounts, saves, Journey, guides, configuration or shortcuts. Normal report/config behavior is otherwise unchanged. It does not promise atomic recovery from power loss or disk failure.
+The app updater does not write game folders, accounts, saves, Journey, guides, configuration or shortcuts (the separate first-run copy above writes only the copy and the shortcut). Normal report/config behavior is otherwise unchanged. It does not promise atomic recovery from power loss or disk failure.
 
 ### Manual recovery
 
