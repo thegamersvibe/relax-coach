@@ -223,6 +223,9 @@ func (u *addonUpdater) apply(ctx context.Context, game string, release AddonRele
 	if _, err := addonMissingDirs(game, addons); err != nil {
 		return result, fmt.Errorf("invalid game addon folder: %w", err)
 	}
+	// Finish an install that was interrupted mid-swap before reading the
+	// installed state, so the offer is checked against the real folders.
+	u.addonRecoverStaleLock(game)
 	target := filepath.Join(addons, "ForeverCoach")
 	before, err := addonInstalled(target)
 	if err != nil {
