@@ -44,8 +44,8 @@ func (u *addonUpdater) addonRecoverStaleLock(game string) (stale bool) {
 	// Remove only this very lock (same file, same bytes): another instance may
 	// have cleared it and taken a fresh one meanwhile.
 	removeLock := func() {
-		if addonCheckLock(lockPath, info, string(b)) == nil {
-			os.Remove(lockPath)
+		if addonCheckLock(lockPath, info, string(b)) == nil && os.Remove(lockPath) == nil {
+			addonForgetLock(lockPath)
 		}
 	}
 	if name := strings.TrimSpace(string(b)); name != "" {
@@ -94,7 +94,8 @@ func (u *addonUpdater) addonRecoverStaleLock(game string) (stale bool) {
 }
 
 // addonStaleBundleLock reports a bundle lock left by an interrupted install:
-// an old regular file in a plain RelaxCoachBackups folder.
+// an old regular file in a plain RelaxCoachBackups folder, or the very lock
+// this app process left after a refused rollback (addonAbandonLock).
 func addonStaleBundleLock(game string) bool {
 	if game == "" || !filepath.IsAbs(game) {
 		return false
@@ -103,8 +104,9 @@ func addonStaleBundleLock(game string) bool {
 	if addonPlainDirectory(backups) != nil {
 		return false
 	}
-	info, err := os.Lstat(filepath.Join(backups, ".addon-update.lock"))
-	return err == nil && info.Mode().IsRegular() && time.Since(info.ModTime()) >= addonLockStaleAfter
+	lockPath := filepath.Join(backups, ".addon-update.lock")
+	info, err := os.Lstat(lockPath)
+	return err == nil && info.Mode().IsRegular() && (time.Since(info.ModTime()) >= addonLockStaleAfter || addonAbandonedLock(lockPath))
 }
 
 // addonRepairNeeded: Coach is installed but the bundle is incomplete (a

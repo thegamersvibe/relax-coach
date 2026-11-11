@@ -452,6 +452,18 @@ func (u *addonUpdater) installTrees(ctx context.Context, game string, release Ad
 					originals = append(originals, tree.backup)
 				}
 			}
+			if refusals := append([]error{cause}, failures...); addonInUse(errors.Join(refusals...), running) {
+				// A file in use (WoW) also blocked the way back. Lead with what
+				// to do; the lock may be recovered right away in this session.
+				addonAbandonLock(lockPath, lockIdentity, lockContents)
+				where := "the previous folders are safe in the backup at " + addonShortPath(game, filepath.Join(transaction, "previous"))
+				if len(originals) == 0 {
+					where = "no earlier Relax Coach folders were there; the partial install is kept at " + addonShortPath(game, transaction)
+				}
+				// %v-free: no wrapped cause, so a refused "access denied" is not
+				// reworded as a missing write permission.
+				return AddonUpdateResult{}, fmt.Errorf("Close WoW, then click Check and Repair (or Update). Windows refused to move a file that is in use, so the install could not be fully undone; %s. (%s)", where, addonInUseDetail(running, refusals...))
+			}
 			return AddonUpdateResult{}, fmt.Errorf("addon install failed (%w); automatic rollback failed (%v); recovery location: %s (backup lock cleanup withheld); original backups: %s", cause, errors.Join(failures...), transaction, strings.Join(originals, ", "))
 		}
 		keepTransaction = false
