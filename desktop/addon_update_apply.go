@@ -94,23 +94,6 @@ func addonExpectedChecksum(b []byte, name string) ([32]byte, error) {
 	return sum, nil
 }
 
-func (u *addonUpdater) requireStopped(ctx context.Context) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	if u.running == nil {
-		return errors.New("could not verify that WoW is closed; addon update refused")
-	}
-	running, err := u.running(ctx)
-	if err != nil {
-		return fmt.Errorf("could not verify that WoW is closed; addon update refused: %w", err)
-	}
-	if running {
-		return errors.New("close World of Warcraft before installing or updating addons")
-	}
-	return ctx.Err()
-}
-
 // Reject symlinks/junctions in every ancestor as well as the target. The update
 // paths are fixed; none of them are derived from archive or manifest paths.
 func addonPlainDirectory(p string) error {
@@ -209,7 +192,7 @@ func (u *addonUpdater) apply(ctx context.Context, game string, release AddonRele
 	if err := validateAddonRelease(release); err != nil {
 		return result, err
 	}
-	if err := u.requireStopped(ctx); err != nil {
+	if _, err := u.observeGame(ctx); err != nil {
 		return result, err
 	}
 	if game == "" || !filepath.IsAbs(game) {

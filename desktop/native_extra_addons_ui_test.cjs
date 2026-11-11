@@ -52,12 +52,12 @@ test('More addons: failed install consumes the offer and shows the reason',async
  installed={rankup:'1.0.0',forevermaps:'0.0.0'};
  const {$}=await setup(t,{extraList:list,
   checkExtra:id=>({ID:id,Name:'Forever Maps',InstalledVersion:'0.0.0',Version:'0.1.3',Available:true,Install:true,Status:'ready'}),
-  applyExtra:()=>{throw Error('Close WoW first')}});
+  applyExtra:()=>{throw Error('Close WoW and try again: Windows refused to move a file that is in use. Nothing was changed.')}});
  $('nav-update').click();await settle();
  const maps=$('extra-forevermaps');
  maps.querySelector('[data-role=check]').click();await settle();
  maps.querySelector('[data-role=apply]').click();await settle();await settle();
- assert.match($('extra-forevermaps').querySelector('.extra-status').textContent,/Close WoW first/);
+ assert.match($('extra-forevermaps').querySelector('.extra-status').textContent,/Close WoW and try again: Windows refused to move a file that is in use\. Nothing was changed\./);
  assert.equal($('extra-forevermaps').querySelector('[data-role=apply]').disabled,true);
  assert.equal($('extra-forevermaps').querySelector('[data-role=check]').disabled,false);
 });

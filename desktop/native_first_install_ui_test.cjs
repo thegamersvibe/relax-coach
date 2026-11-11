@@ -45,7 +45,7 @@ test('new player: Get started first, then folder, Install, done',async t=>{
   assert.equal(count('applyAddon'),0,'nothing installed without a click');
   assert.equal($('setup-offered').textContent,'1.5.1');
   assert.equal($('setup-install').disabled,false);
-  assert.match($('setup-status').textContent,/Relax Coach 1\.5\.1 is ready to install\. Close WoW, then click Install\./);
+  assert.match($('setup-status').textContent,/Relax Coach 1\.5\.1 is ready to install\. Click Install\. WoW can stay open\./);
   $('setup-install').click();await settle();await settle();
   assert.deepEqual(calls.find(c=>c.method==='applyAddon').params,['1.5.1']);
   assert.match($('setup-status').textContent,/1\.5\.1 installed/);
@@ -88,9 +88,9 @@ test('bundle and More addons use the same verbs and messages',async t=>{
   const list=[{ID:'rankup',Name:'RankUp',Blurb:'',InstalledVersion:'0.0.0'}];
   const {$}=await setup(t,{reportRefresh:()=>report('C:\\WoW','0.0.0',none),extraList:()=>list,
     checkAddon:()=>({Version:'1.5.1',Available:true,InstalledVersion:'0.0.0',Install:true,Bundle:none}),
-    applyAddon:()=>{throw Error('close World of Warcraft before installing or updating addons')},
+    applyAddon:()=>{throw Error('Close WoW and try again: Windows refused to move a file that is in use. The previous addon folders were restored; nothing was changed.')},
     checkExtra:()=>({ID:'rankup',Name:'RankUp',InstalledVersion:'0.0.0',Version:'1.0.1',Available:true,Install:true,Status:'RankUp 1.0.1 is ready to install.'}),
-    applyExtra:()=>{throw Error('close World of Warcraft before installing or updating addons')}});
+    applyExtra:()=>{throw Error('Close WoW and try again: Windows refused to move a file that is in use. The previous addon folders were restored; nothing was changed.')}});
   await settle();
   $('nav-update').click();await settle();
   const row=$('extra-rankup');
@@ -101,8 +101,8 @@ test('bundle and More addons use the same verbs and messages',async t=>{
   assert.equal(extraReady.replace('RankUp 1.0.1',''),bundleReady.replace('Relax Coach 1.5.1',''),'same ready wording');
   row.querySelector('[data-role=apply]').click();await settle();await settle();
   $('apply-update').click();await settle();await settle();
-  assert.equal($('extra-rankup').querySelector('.extra-status').textContent,$('update-status').textContent,'same WoW-closed failure wording');
-  assert.equal($('update-status').textContent,'Install failed: close World of Warcraft before installing or updating addons Check again before retrying.');
+  assert.equal($('extra-rankup').querySelector('.extra-status').textContent,$('update-status').textContent,'same file-in-use failure wording');
+  assert.equal($('update-status').textContent,'Install failed: Close WoW and try again: Windows refused to move a file that is in use. The previous addon folders were restored; nothing was changed. Check again before retrying.');
 });
 
 test('first run: copying the app is offered, never automatic',async t=>{
@@ -165,8 +165,32 @@ test('an incomplete install at the latest version is offered as Install (repair)
     applyAddon:v=>({version:v,message:'Relax Coach 1.5.0 installed again to complete an interrupted or incomplete install'})});
   $('check-update').click();await settle();
   assert.equal($('apply-update').textContent,'Install');
-  assert.match($('update-status').textContent,/ready to install\. Close WoW, then click Install\. This completes an interrupted or incomplete install/);
+  assert.match($('update-status').textContent,/ready to install\. Click Install\. WoW can stay open\. This completes an interrupted or incomplete install/);
   $('apply-update').click();await settle();await settle();
   assert.deepEqual(calls.find(c=>c.method==='applyAddon').params,['1.5.0']);
   assert.match($('update-status').textContent,/installed again/);
+});
+
+test('WoW can stay open: ready text, then the /reload or restart advice from the install',async t=>{
+  for (const advice of ['Done. Type /reload in game.','Done. Exit WoW completely and start it again (/reload is not enough for new files).']) {
+    const list=[{ID:'rankup',Name:'RankUp',Blurb:'',InstalledVersion:'1.0.0'}];
+    const {$}=await setup(t,{reportRefresh:()=>report('C:\\WoW','1.5.1',installed),extraList:()=>list,
+      checkAddon:()=>({Version:'1.5.2',Available:true,InstalledVersion:'1.5.1',Install:false,Bundle:installed}),
+      applyAddon:v=>({version:v,message:'Coach, Journey, Relax Quest Planner and guide content updated together; every installed file verified. '+advice}),
+      checkExtra:()=>({ID:'rankup',Name:'RankUp',InstalledVersion:'1.0.0',Version:'1.0.1',Available:true,Install:false,Status:'RankUp 1.0.1 is ready to update.'}),
+      applyExtra:()=>({version:'1.0.1',message:'RankUp updated to 1.0.1. The previous version is backed up. '+advice})});
+    await settle();
+    $('nav-update').click();await settle();
+    $('check-update').click();await settle();
+    assert.equal($('update-status').textContent.includes('Close WoW'),false,'no close-WoW request before installing');
+    assert.match($('update-status').textContent,/ready to update\. Click Update\. WoW can stay open\./);
+    const row=$('extra-rankup');
+    row.querySelector('[data-role=check]').click();await settle();
+    assert.match(row.querySelector('.extra-status').textContent,/ready to update\. Click Update\. WoW can stay open\./);
+    $('apply-update').click();await settle();await settle();
+    assert.ok($('update-status').textContent.includes(advice),'bundle shows the advice');
+    row.querySelector('[data-role=apply]').click();await settle();await settle();
+    assert.ok($('extra-rankup').querySelector('.extra-status').textContent.includes(advice),'More addons shows the advice');
+  }
+  assert.equal(/Close WoW first/.test(html),false,'no static close-WoW text left in the shell');
 });

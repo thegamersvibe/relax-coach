@@ -223,15 +223,13 @@ func TestExtraAddonChecksumAndTrust(t *testing.T) {
 	}
 }
 
-func TestExtraAddonRefusesWhileGameRunningAndForeignFolder(t *testing.T) {
+// A running WoW no longer blocks (1.5.2, see addon_game_open_test.go); a
+// folder that is not this addon still does.
+func TestExtraAddonRefusesForeignFolder(t *testing.T) {
 	game := extraGame(t)
 	u := newExtraUpdater(t, extraRelease(t, "0.1.3", extraGoodZip(t, "0.1.3")))
 	info, _ := u.checkExtra(context.Background(), "forevermaps", "0.0.0")
 	u.running = func(context.Context) (bool, error) { return true, nil }
-	if _, err := u.applyExtra(context.Background(), game, info); err == nil {
-		t.Fatal("installed while WoW was running")
-	}
-	u.running = func(context.Context) (bool, error) { return false, nil }
 	foreign := filepath.Join(game, "Interface", "AddOns", "ForeverMaps")
 	os.MkdirAll(foreign, 0755)
 	os.WriteFile(filepath.Join(foreign, "ForeverMaps.toc"), []byte("## Title: Something Else\n## Version: 0.0.1\n"), 0644)

@@ -270,7 +270,7 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 	if err := extraValidateURLs(a, info); err != nil {
 		return result, err
 	}
-	if err := u.requireStopped(ctx); err != nil {
+	if _, err := u.observeGame(ctx); err != nil {
 		return result, err
 	}
 	if game == "" || !filepath.IsAbs(game) {
@@ -370,8 +370,10 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 		return result, err
 	}
 
-	// Last checks right before the swap: WoW still closed, folder unchanged.
-	if err := u.requireStopped(ctx); err != nil {
+	// Last checks right before the swap: folder unchanged. WoW may run; that
+	// only decides the advice and how a refused move reads.
+	running, err := u.observeGame(ctx)
+	if err != nil {
 		return result, err
 	}
 	now, err := extraInstalled(game, a)
@@ -396,8 +398,18 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 	}
 	target := extraTarget(game, a)
 	backup := filepath.Join(transaction, "previous")
+	restart := !before.exists
+	if before.exists {
+		files, err := addonFilesUnder(filepath.Join(stage, a.Folder))
+		if fresh, _ := addonHasNewPaths(target, files); err != nil || fresh {
+			restart = true
+		}
+	}
 	if before.exists {
 		if err := u.rename(target, backup); err != nil {
+			if addonInUse(err, running) {
+				return result, fmt.Errorf("%s Nothing was changed. (%v)", addonCloseWoW, err)
+			}
 			return result, fmt.Errorf("could not move the old version aside; nothing was changed: %w", err)
 		}
 		// The game folder must still be the one checked before; otherwise the
@@ -417,6 +429,9 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 			}
 		}
 		addonRemoveCreated(createdDirs, ancestors)
+		if addonInUse(err, running) {
+			return result, fmt.Errorf("%s Nothing was changed. (%v)", addonCloseWoW, err)
+		}
 		return result, fmt.Errorf("install failed; the previous version was restored: %w", err)
 	}
 	// Published through a changed path (a parent swapped during the rename):
@@ -430,10 +445,10 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 	result = AddonUpdateResult{Version: remote.text, UpdatedFiles: files}
 	if before.exists {
 		result.BackupPath = backup
-		result.Message = a.Name + " updated to " + remote.text + ". The previous version is backed up. /reload or restart WoW to load it."
+		result.Message = a.Name + " updated to " + remote.text + ". The previous version is backed up. " + addonAdvice(restart, running)
 	} else {
 		os.RemoveAll(transaction)
-		result.Message = a.Name + " " + remote.text + " installed. Enable it in the AddOns list if needed, then start WoW."
+		result.Message = a.Name + " " + remote.text + " installed. Enable it in the AddOns list if needed. " + addonAdvice(restart, running)
 	}
 	return result, nil
 }

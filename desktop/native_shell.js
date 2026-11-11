@@ -40,7 +40,8 @@ const rc = Object.freeze({
 // One vocabulary for every addon (Relax Coach bundle and More addons):
 // Install when the addon is not there yet, otherwise Update.
 const verb = install => install ? 'Install' : 'Update';
-const closeThen = install => ' Close WoW, then click '+verb(install)+'.';
+// WoW can stay open (1.5.2); the result says whether /reload is enough.
+const clickThen = install => ' Click '+verb(install)+'. WoW can stay open.';
 const progressText = 'Downloading, verifying and installing… Do not force-close the application.';
 const failText = (install,err) => verb(install)+' failed: '+err.message+' Check again before retrying.';
 let offer = null, appOffer = null, busy = false, refreshing = false, restarting = false;
@@ -143,7 +144,7 @@ async function checkExtra(id) {
     const o = await rc.checkExtra(id);
     extraOffers[id] = o;
     extraRow(o);
-    row.querySelector('.extra-status').textContent = (o.Status || '') + (o.Available ? closeThen(o.Install) : ' No files changed.');
+    row.querySelector('.extra-status').textContent = (o.Status || '') + (o.Available ? clickThen(o.Install) : ' No files changed.');
   } catch(err) { row.querySelector('.extra-status').textContent = 'Check failed: '+err.message; }
   finally { busy = false; updateButtons(); }
 }
@@ -360,7 +361,7 @@ async function checkBundle() {
     $('release-link').href = offer.HTMLURL;
     $('release-link').hidden = !offer.HTMLURL;
     bundleStatus(offer.Available
-      ? 'Relax Coach '+offer.Version+' is ready to '+(install ? 'install' : 'update')+'.'+closeThen(install)
+      ? 'Relax Coach '+offer.Version+' is ready to '+(install ? 'install' : 'update')+'.'+clickThen(install)
         +(offer.Repair ? ' This completes an interrupted or incomplete install: every Relax Coach folder is installed again, and the folders there now are kept in RelaxCoachBackups.' : bundleNote(offer.Bundle,true))
       : (offer.Notes || 'No compatible new addon update is available.')+' No files changed.'+bundleNote(offer.Bundle,false));
   } catch(err) {

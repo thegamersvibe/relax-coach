@@ -307,7 +307,9 @@ func (u *addonUpdater) installTrees(ctx context.Context, game string, release Ad
 			}
 		}
 	}
-	if err := u.requireStopped(ctx); err != nil {
+	// WoW may run: this only decides the advice and how a refused move reads.
+	running, err := u.observeGame(ctx)
+	if err != nil {
 		return result, err
 	}
 	if err := checkTransaction(); err != nil {
@@ -453,7 +455,22 @@ func (u *addonUpdater) installTrees(ctx context.Context, game string, release Ad
 			return AddonUpdateResult{}, fmt.Errorf("addon install failed (%w); automatic rollback failed (%v); recovery location: %s (backup lock cleanup withheld); original backups: %s", cause, errors.Join(failures...), transaction, strings.Join(originals, ", "))
 		}
 		keepTransaction = false
+		if addonInUse(cause, running) {
+			// %v, not %w: an in-use "access denied" must not read as a
+			// missing write permission.
+			return AddonUpdateResult{}, fmt.Errorf("%s The previous addon folders were restored; nothing was changed. (%v)", addonCloseWoW, cause)
+		}
 		return AddonUpdateResult{}, fmt.Errorf("addon install failed; previous addon trees restored: %w", cause)
+	}
+	// Decided from the real file lists before anything moves: a root that is
+	// not there yet or any new file path needs a game restart.
+	restart := false
+	for _, tree := range trees {
+		if tree.original == nil {
+			restart = true
+		} else if fresh, _ := addonHasNewPaths(tree.target, tree.want); fresh {
+			restart = true
+		}
 	}
 	for _, tree := range trees {
 		if err := ctx.Err(); err != nil {
@@ -544,11 +561,12 @@ func (u *addonUpdater) installTrees(ctx context.Context, game string, release Ad
 			if addonBundleRelease(release.Version) {
 				result.Message = "Coach, Journey, Relax Quest Planner and guide content " + release.Version + " installed; every installed file verified."
 			}
-			result.Message += " Enable them in the AddOns list if needed, then start WoW. SavedVariables, settings and unrelated addons were not touched."
+			result.Message += " Enable them in the AddOns list if needed. SavedVariables, settings and unrelated addons were not touched."
 			if result.BackupPath != "" {
 				result.Message += " Folders that were already there are kept in the backup."
 			}
 		}
 	}
+	result.Message += " " + addonAdvice(restart, running)
 	return result, nil
 }
