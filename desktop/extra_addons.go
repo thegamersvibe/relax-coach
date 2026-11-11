@@ -1,6 +1,6 @@
 package main
 
-// Optional companion addons (RankUp, Forever Maps). They are separate products
+// Optional companion addons (RankUp, Forever Maps, AH Profit). They are separate products
 // from separate GitHub repositories, installed and updated one at a time on an
 // explicit click. Each is a single addon folder; nothing else in the game folder,
 // no SavedVariables and no other addon is touched. The same trust rules as the
@@ -35,6 +35,8 @@ var extraAddons = []extraAddon{
 		Blurb: "Keeps your action bars on the highest spell rank you know."},
 	{ID: "forevermaps", Name: "Forever Maps", Repo: "buiden/ForeverMaps", Folder: "ForeverMaps", Title: "Forever Maps",
 		Blurb: "Directions to any place: running, flying and boat routes for your faction."},
+	{ID: "ahprofit", Name: "AH Profit", Repo: "buiden/AHProfit", Folder: "AHProfit", Title: "AH Profit",
+		Blurb: "Vendor price, auction house price and AH profit on every item tooltip."},
 }
 
 func extraAddonByID(id string) (extraAddon, bool) {

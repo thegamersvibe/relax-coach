@@ -261,7 +261,7 @@ func TestExtraAddonBridge(t *testing.T) {
 	defer b.Close()
 	raw := func(s string) []json.RawMessage { j, _ := json.Marshal(s); return []json.RawMessage{j} }
 	list, err := b.Call("extraList", nil)
-	if err != nil || len(list.([]nativeExtraOffer)) != 2 {
+	if err != nil || len(list.([]nativeExtraOffer)) != len(extraAddons) {
 		t.Fatalf("list %v %v", list, err)
 	}
 	if _, err := b.Call("applyExtra", raw("rankup@1.0.1")); err == nil {
@@ -512,5 +512,58 @@ func TestExtraAddonFreshInstallRechecksAncestors(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(outside, "AddOns", "ForeverMaps")); !os.IsNotExist(err) {
 		t.Fatalf("addon written outside the game folder: %v", err)
+	}
+}
+
+func TestExtraAddonAHProfitEntry(t *testing.T) {
+	a, ok := extraAddonByID("ahprofit")
+	if !ok || a.Repo != "buiden/AHProfit" || a.Folder != "AHProfit" || a.Title != "AH Profit" {
+		t.Fatalf("unexpected AH Profit entry: %+v", a)
+	}
+	if !extraLatestURL("https://api.github.com/repos/buiden/AHProfit/releases/latest") {
+		t.Fatal("AH Profit release URL is not trusted")
+	}
+	if a.assetName("0.5.3") != "AHProfit-0.5.3.zip" {
+		t.Fatalf("asset name %q", a.assetName("0.5.3"))
+	}
+	toc := "## Interface: 16001\n## Title: AH Profit\n## Version: 0.5.3\n## SavedVariables: AHProfitDB\n\nData.lua\nCore.lua\n"
+	u := newAddonUpdater()
+	n, err := u.extractExtra(context.Background(), extraZip(t, map[string]string{
+		"AHProfit/AHProfit.toc": toc, "AHProfit/Data.lua": "-- data", "AHProfit/Core.lua": "-- core"}), t.TempDir(), a, "0.5.3")
+	if err != nil || n != 3 {
+		t.Fatalf("AH Profit package refused: %d %v", n, err)
+	}
+	if _, err := u.extractExtra(context.Background(), extraZip(t, map[string]string{
+		"AHProfit/AHProfit.toc": strings.Replace(toc, "AH Profit", "AHProfit", 1), "AHProfit/Data.lua": "", "AHProfit/Core.lua": ""}), t.TempDir(), a, "0.5.3"); err == nil {
+		t.Fatal("accepted a package with the wrong TOC title")
+	}
+}
+
+// Every More addons entry must stay separate from each other and from the
+// folders the Relax Coach bundle manages, so an extra install can never
+// replace or back up a bundle folder.
+func TestExtraAddonFoldersNeverClash(t *testing.T) {
+	bundle := map[string]bool{}
+	for _, root := range addonGuildRootsFor("99.0.0") {
+		bundle[strings.ToLower(filepath.Base(filepath.FromSlash(root)))] = true
+	}
+	for _, f := range []string{"forevercoach", "journey", "relaxquestplanner", "journey-content"} {
+		if !bundle[f] {
+			t.Fatalf("bundle roots no longer include %s; update this test", f)
+		}
+	}
+	ids, folders := map[string]bool{}, map[string]bool{}
+	for _, a := range extraAddons {
+		id, folder := strings.ToLower(a.ID), strings.ToLower(a.Folder)
+		if id == "" || folder == "" || a.Repo == "" || a.Title == "" {
+			t.Fatalf("incomplete extra addon entry %+v", a)
+		}
+		if ids[id] || folders[folder] {
+			t.Fatalf("duplicate extra addon id or folder: %s/%s", a.ID, a.Folder)
+		}
+		ids[id], folders[folder] = true, true
+		if bundle[folder] {
+			t.Fatalf("extra addon %s uses bundle folder %s", a.ID, a.Folder)
+		}
 	}
 }
