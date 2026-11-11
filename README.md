@@ -9,17 +9,23 @@ Three **separate WoW Forever addons**, plus a native Windows report app:
 
 ## Download
 
-**[Download release v1.5.1](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.5.1)**:
+**[Download release v1.5.2](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.5.2)**:
 
-- `RelaxCoach-Bundle-1.5.1.zip` — the three independent addons (Coach, Journey, Relax Quest Planner 0.2.0), Journey guide content **4.00.06**, the Windows app and optional installer/restore scripts. From v1.5.0 the combined download has this new name; earlier releases used `RelaxCoach-Guild-<version>.zip`.
+- `RelaxCoach-Bundle-1.5.2.zip` — the three independent addons (Coach, Journey, Relax Quest Planner 0.2.0), Journey guide content **4.00.08**, the Windows app and optional installer/restore scripts. From v1.5.0 the combined download has this new name; earlier releases used `RelaxCoach-Guild-<version>.zip`.
 - `RelaxCoach.exe` — app-only download, for updating the application separately.
 - `SHA256SUMS.txt` — checksums for these release assets.
 
-**On app 1.5.0?** Use **Check App Update → Update App** first (Get started and the repair below come with app 1.5.1), then **Updates → Check → Update**.
+**On app 1.5.0 or 1.5.1?** Use **Check App Update → Update App** first (installing while WoW is open comes with app 1.5.2; Get started and the repair with 1.5.1), then **Updates → Check → Update**.
 
 **On app 1.4.x?** Use **Check App Update → Update App** first, then close WoW and use **Check for updates → Update Addon**. Apps before 1.5.0 cannot install the bundle (from 1.5.0) and report it as an app-only release until the app is updated. App 1.4.0 needs one manual EXE replacement with Relax Coach closed before it can update itself.
 
-There is deliberately no Coach-only `RelaxCoach-1.5.1.zip`: older apps must not report a completed addon update while leaving the guide content behind. The previous app-only v1.4.1 release remains unchanged.
+There is deliberately no Coach-only `RelaxCoach-1.5.2.zip`: older apps must not report a completed addon update while leaving the guide content behind. The previous app-only v1.4.1 release remains unchanged.
+
+## What's new in v1.5.2
+
+- **Guide content 4.00.08:** 47 of the 201 guide files updated; the catalog now lists 125 guides (was 123). Relax Journey code stays `4.00.04`; the content's validity date is still **18 December 2026**.
+- **WoW can stay open:** Install and Update (Get started, Updates and More addons) no longer ask you to close WoW first. Afterwards the app says **Type /reload in game** when only existing files changed, or **Exit WoW completely and start it again** when a new addon folder or file was added (WoW only finds new files at start). If Windows refuses to replace a file that is in use, the install is rolled back, nothing is changed and the app asks you to close WoW and try again. The ZIP and the PowerShell installer still need WoW closed.
+- Relax Quest Planner (`0.2.0`) is unchanged.
 
 ## What's new in v1.5.1
 
@@ -97,7 +103,7 @@ Use the included `Restore-RelaxCoach.ps1 -Backup <backup-folder>` with WoW close
 ## Coverage and known limits
 
 - Optional installed providers: GearQuest Forever for comparable item scores, ForeverDungeonJournal for dungeon information. Unknown or incomparable gear is shown as unscored, not assigned an invented score.
-- Included Journey code: `4.00.04`; Relax package/Coach version: `1.5.1`; guide-content version: `4.00.06`. The original signed catalog and guide bytes are retained. The content's existing validity date is **18 December 2026**; this release does not remove expiry checks.
+- Included Journey code: `4.00.04`; Relax package/Coach version: `1.5.2`; guide-content version: `4.00.08`. The original signed catalog and guide bytes are retained. The content's existing validity date is **18 December 2026**; this release does not remove expiry checks.
 - This is not a claim of complete coverage for every custom Forever class/spec/item or every leveling route. Some route entries are stubs.
 - An intermittent blank native window occurred during development. The final local candidate passed ten restart/Refresh cycles and a more-than-three-minute minimize/restore test, but the earlier root cause was not conclusively identified. If the window is blank, close and reopen it and report the issue.
 
