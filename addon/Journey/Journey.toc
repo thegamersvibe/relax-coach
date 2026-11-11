@@ -6,7 +6,7 @@
 ## IconTexture: Interface\AddOns\Journey\assets\relax-icon
 ## Version: 4.00.04
 ## X-Relax-Version: 1.4.2
-## X-Guide-Version: 4.00.06
+## X-Guide-Version: 4.00.08
 ## X-Min-Guide-Version: 4.00.00
 ## Notes: Version: 4.00.04
 ## DefaultState: enabled
