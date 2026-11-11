@@ -345,13 +345,18 @@ func (u *addonUpdater) installTrees(ctx context.Context, game string, release Ad
 			if err == nil {
 				err = addonMkdir(parent, 0755)
 			}
+			var info os.FileInfo
 			if err == nil {
-				ancestors[parent], err = addonDirectoryIdentity(parent)
-				createdParents = append(createdParents, parent)
+				// Never adopt a populated folder swapped in after Mkdir.
+				if info, err = addonNewDirIdentity(parent); err == nil {
+					ancestors[parent] = info
+					createdParents = append(createdParents, parent)
+				}
 			}
 			if err != nil {
 				// Nothing was moved yet: remove only the parents this install
-				// created, innermost first, while the transaction still holds.
+				// created, innermost first, while the transaction still holds
+				// (os.Remove never removes a folder that is not empty).
 				for i := len(createdParents) - 1; i >= 0; i-- {
 					if checkTransaction() != nil || os.Remove(createdParents[i]) != nil {
 						break

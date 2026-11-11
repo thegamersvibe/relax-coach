@@ -60,10 +60,7 @@ func addonCreateDirs(dirs []string, ancestors map[string]os.FileInfo) ([]addonCr
 		if err := addonMkdir(p, 0755); err != nil {
 			return created, err
 		}
-		info, err := addonDirectoryIdentity(p)
-		if err == nil && info == nil {
-			err = fmt.Errorf("created folder disappeared: %s", p)
-		}
+		info, err := addonNewDirIdentity(p)
 		if err != nil {
 			return created, err
 		}
@@ -74,6 +71,29 @@ func addonCreateDirs(dirs []string, ancestors map[string]os.FileInfo) ([]addonCr
 		}
 	}
 	return created, nil
+}
+
+// addonNewDirIdentity records the identity of a folder this install has just
+// created. A folder that is not empty is not the one Mkdir made (someone put a
+// populated folder in its place) and is refused, never adopted. An empty
+// folder swapped in within that instant cannot be told apart; it is used, and
+// cleanup still removes it only while it is empty and unchanged.
+func addonNewDirIdentity(p string) (os.FileInfo, error) {
+	info, err := addonDirectoryIdentity(p)
+	if err == nil && info == nil {
+		err = fmt.Errorf("created folder disappeared: %s", p)
+	}
+	if err != nil {
+		return nil, err
+	}
+	entries, err := os.ReadDir(p)
+	if err != nil {
+		return nil, err
+	}
+	if len(entries) > 0 {
+		return nil, fmt.Errorf("a folder this install just created was replaced: %s; nothing was installed", p)
+	}
+	return info, nil
 }
 
 // addonRemoveCreated removes folders this install created, innermost first,

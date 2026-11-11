@@ -398,6 +398,14 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 		if err := u.rename(target, backup); err != nil {
 			return result, fmt.Errorf("could not move the old version aside; nothing was changed: %w", err)
 		}
+		// The game folder must still be the one checked before; otherwise the
+		// new version would land somewhere else. Moving the old version back
+		// would go through the same changed path, so it stays in the backup
+		// and the lock is kept for recovery.
+		if err := addonCheckAncestors(ancestors); err != nil {
+			keepLock = true
+			return result, fmt.Errorf("the game addon folder changed during the install; nothing new was installed and the previous version is kept at %s: %w", backup, err)
+		}
 	}
 	if err := u.rename(filepath.Join(stage, a.Folder), target); err != nil {
 		if before.exists {
@@ -408,6 +416,12 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 		}
 		addonRemoveCreated(createdDirs, ancestors)
 		return result, fmt.Errorf("install failed; the previous version was restored: %w", err)
+	}
+	// Published through a changed path (a parent swapped during the rename):
+	// not a success. Keep the transaction, the backup and the lock.
+	if err := addonCheckAncestors(ancestors); err != nil {
+		committed, keepLock = true, true
+		return result, fmt.Errorf("the game addon folder changed while installing; the install is not confirmed and the previous version is kept in %s: %w", transaction, err)
 	}
 	committed = true
 	os.RemoveAll(stage)
