@@ -2,7 +2,7 @@
 
 A leveling coach for **World of Warcraft: Forever**, with a Windows application for reports and addon updates.
 
-This is a **legacy Coach-only archive**, not the current combined guild download. For Coach, Journey and guide content together, use `RelaxCoach-Bundle-1.5.1.zip` on [release v1.5.1](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.5.1). A current release need not contain a Coach-only ZIP.
+This is a **legacy Coach-only archive**, not the current combined guild download. For Coach, Journey and guide content together, use `RelaxCoach-Bundle-1.5.2.zip` on [release v1.5.2](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.5.2). A current release need not contain a Coach-only ZIP.
 
 ## Install
 
@@ -11,7 +11,8 @@ Download the latest available Coach ZIP from [the releases list](https://github.
 - Copy `ForeverCoach` into your game's `_forever_\Interface\AddOns` folder. It appears in game as **Relax Coach**. The internal folder/save IDs intentionally remain unchanged to retain existing settings.
 - Run **RelaxCoach.exe** for the Windows app. Choose **Coach Report** or **Updates** inside the application window (app 1.5.1 and later also has **Get started**, which installs the current bundle from the app). Microsoft WebView2 Runtime is required; Windows installations commonly already include it.
 - Set the game folder when prompted. Your game may be on any drive.
-- **Upgrade the app first.** App 1.4.1 supports **Update App**; older apps need one manual EXE replacement. The current bundle (`RelaxCoach-Bundle-<version>.zip`, from 1.5.0) needs **app 1.5.0** or later; older apps report it as an app-only release until **Update App** has run. The bundle installs and updates Coach, Journey, Relax Quest Planner and guide content together, with checksum verification, backup and rollback. Close WoW first. Unrelated addons, SavedVariables and the running app are not replaced by this action.
+- **Using CurseForge, Wago/WowUp or Journey Guide Manager?** Remove Journey from its list or turn off its auto-update: it can overwrite Relax Journey. When the Journey folder is not Relax Journey, the app says so (Updates and Get started) and, if Journey is loaded, Coach mentions it once per session in chat. **Repair** installs Relax Journey again and keeps the other copy in `RelaxCoachBackups`; it needs a published Relax Coach release (Check must find one). If you keep the normal Journey on purpose, you can ignore the note.
+- **Upgrade the app first.** App 1.4.1 supports **Update App**; older apps need one manual EXE replacement. The current bundle (`RelaxCoach-Bundle-<version>.zip`, from 1.5.0) needs **app 1.5.0** or later; older apps report it as an app-only release until **Update App** has run. The bundle installs and updates Coach, Journey, Relax Quest Planner and guide content together, with checksum verification, backup and rollback. From app 1.5.2 WoW can stay open; the app then says whether `/reload` is enough or WoW must be restarted (new files), and asks you to close WoW only if a file is in use (usually nothing is changed then; if the way back is blocked as well, the earlier folders stay in `RelaxCoachBackups` and **Repair**/**Update** finishes it after WoW is closed). Older apps and the PowerShell installer need WoW closed. Unrelated addons, SavedVariables and the running app are not replaced by this action.
 
 The Windows executable is unsigned. Follow your usual antivirus review process; do not disable protection globally. The addon works without the Windows app.
 

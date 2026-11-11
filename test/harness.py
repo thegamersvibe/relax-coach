@@ -175,9 +175,10 @@ FDJ_SRC = open(os.path.join(FDJDIR, 'Data', 'Dungeons.lua'), encoding='utf-8').r
 ADDON_SRC = {f: open(os.path.join(ADDON, f + '.lua'), encoding='utf-8').read() for f in FILES}
 
 
-def client(state=None, gq=True, fdj=True, spec_hook=None):
+def client(state=None, gq=True, fdj=True, spec_hook=None, pre=None):
     L = lupa.LuaRuntime(unpack_returned_tuples=True)
     L.execute(MOCK)
+    if pre: L.execute(pre)  # extra client API before the addon loads
     G = L.globals()
     for k, v in (state or {}).items():
         if isinstance(v, dict):
@@ -243,7 +244,7 @@ check(not FC.UI.frame.IsShown(FC.UI.frame), '/coach closes the window')
 G.SlashCmdList.FOREVERCOACH('help')
 check(G.CHAT[len(G.CHAT)].startswith('|cff4fc3f7Relax Coach|r: '), 'chat prefix is Relax Coach')
 check(G.SLASH_FOREVERCOACH1 == '/coach' and '/coach macros' in G.CHAT[len(G.CHAT)], 'slash commands remain /coach')
-check(FC.VERSION == '1.5.1' and G.ForeverCoachDB.addonVersion == '1.5.1', 'addon and saved version are 1.5.1')
+check(FC.VERSION == '1.5.2' and G.ForeverCoachDB.addonVersion == '1.5.2', 'addon and saved version are 1.5.2')
 check(FC.SCHEMA == 1 and G.ForeverCoachDB.schema == 1 and G.RelaxCoachDB is None and G.RelaxCoach is None,
       'SavedVariables, global and schema remain compatible')
 L.execute('''
@@ -750,6 +751,35 @@ check(c.snapshot.spells[6572] is None and c.lastError is None, 'S3: unknown, no 
 L.execute('GetSpellTabInfo = function(t) if t == 1 then return "General", "i", 0, 1 end; return "Warrior", "i", 1, 1 end; GetSpellBookItemName = function(i) if i == 1 then return "Attack", "" end return SECRET end')
 refresh(FC)
 check(not [(f.text or '') for f in findings(c) if 'not learned' in (f.text or '')], 'S3: a slot without a readable name -> no "not learned" warning')
+
+# Journey replaced by another updater (CurseForge, Wago, Journey Guide Manager):
+# one chat warning per session at login; nothing when Journey is ours, absent
+# or disabled, or when the metadata API is missing or throws.
+J_WARN = 'is not Relax Journey'
+def journey_case(pre):
+    L, G, FC, c = client({'level': 20}, gq=False, fdj=False, pre=pre)
+    return L, G, c, [str(m) for m in G.CHAT.values() if J_WARN in str(m)]
+LOADED = 'C_AddOns = C_AddOns or {}; C_AddOns.IsAddOnLoaded = function(n) return n == "Journey" end\n'
+L, G, c, warn = journey_case(LOADED + 'C_AddOns.GetAddOnMetadata = function(n, f) if n == "Journey" and f == "Title" then return "Journey" end end')
+check(len(warn) == 1 and 'Repair' in warn[0] and 'ignore this' in warn[0] and 'was replaced' not in warn[0], f'Journey foreign: one neutral line with Repair and ignore advice ({warn})')
+G.FIRE('PLAYER_LOGIN'); G.FIRE('PLAYER_ENTERING_WORLD')
+check(len([m for m in G.CHAT.values() if J_WARN in str(m)]) == 1, 'Journey foreign: still one warning per session')
+L, G, c, warn = journey_case(LOADED + 'C_AddOns.GetAddOnMetadata = function(n, f) if f == "Title" then return "Relax Journey" end end')
+check(not warn, 'Journey ours: no warning')
+L, G, c, warn = journey_case(LOADED + 'C_AddOns.GetAddOnMetadata = function(n, f) if f == "Title" then return "|cff00ccffRelax Journey|r" end end')
+check(not warn, 'Journey ours with a color code: no warning')
+L, G, c, warn = journey_case('C_AddOns = { IsAddOnLoaded = function() return false end, GetAddOnMetadata = function() return nil end }')
+check(not warn, 'Journey absent: no warning')
+L, G, c, warn = journey_case('C_AddOns = { IsAddOnLoaded = function() return false end, GetAddOnMetadata = function(n, f) return f == "Title" and "Journey" or nil end }')
+check(not warn, 'Journey foreign but disabled (not loaded): no warning')
+L, G, c, warn = journey_case('IsAddOnLoaded = function(n) return n == "Journey" end; GetAddOnMetadata = function(n, f) return f == "Title" and "Journey" or nil end')
+check(len(warn) == 1, 'no C_AddOns: falls back to the global GetAddOnMetadata/IsAddOnLoaded')
+L, G, c, warn = journey_case(LOADED + 'C_AddOns.GetAddOnMetadata = function() error("boom") end; GetAddOnMetadata = function(n, f) return f == "Title" and "Journey" or nil end')
+check(len(warn) == 1, 'C_AddOns.GetAddOnMetadata throws: falls back to the global')
+L, G, c, warn = journey_case(LOADED + 'C_AddOns.GetAddOnMetadata = function() error("boom") end; GetAddOnMetadata = function() error("boom") end')
+check(not warn and c.lastError is None, 'both metadata APIs throw: no warning, no error')
+L, G, c, warn = journey_case('')
+check(not warn and c.lastError is None, 'no addon API at all: no warning, no error')
 
 print('ALL OK' if not fails else f'{len(fails)} FAILED')
 sys.exit(1 if fails else 0)

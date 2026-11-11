@@ -2,7 +2,7 @@
 local ADDON, FC = ...
 FC = FC or {}
 _G.ForeverCoach = FC
-FC.VERSION = "1.5.1"
+FC.VERSION = "1.5.2"
 FC.SCHEMA = 1
 
 local function safe(f, ...)
@@ -33,6 +33,35 @@ function FC:Rules()
 end
 
 function FC:Print(msg) DEFAULT_CHAT_FRAME:AddMessage("|cff4fc3f7Relax Coach|r: " .. tostring(msg)) end
+
+-- CurseForge, Wago/WowUp and Journey's Guide Manager can auto-update the
+-- Journey folder and overwrite Relax Journey; a player may also keep the
+-- normal Journey on purpose. Read-only metadata calls under pcall (C_AddOns
+-- first, then the old globals); one neutral line per session, only when a
+-- loaded Journey's Title is not ours.
+local function addonCall(name, ...)
+    local api = C_AddOns and C_AddOns[name]
+    if type(api) == "function" then
+        local ok, v = pcall(api, ...)
+        if ok and v ~= nil then return v end
+    end
+    local legacy = _G[name]
+    if type(legacy) == "function" then
+        local ok, v = pcall(legacy, ...)
+        if ok then return v end
+    end
+end
+
+function FC:CheckJourney()
+    if self.journeyWarned or not addonCall("IsAddOnLoaded", "Journey") then return end
+    local title = addonCall("GetAddOnMetadata", "Journey", "Title")
+    if type(title) ~= "string" then return end
+    title = title:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    if title == "Relax Journey" then return end
+    self.journeyWarned = true
+    self:Print("|cffff8800The Journey loaded here is not Relax Journey|r (another updater such as CurseForge, Wago or Journey Guide Manager may have replaced it)."
+        .. " To install Relax Journey, open the Relax Coach app and click Repair; if you use the normal Journey on purpose, you can ignore this.")
+end
 
 function FC:CharKey()
     local name = UnitName("player") or "?"
@@ -462,6 +491,7 @@ local function onEvent(event, arg1)
         if event == "ADDON_LOADED" and arg1 == ADDON then
             FC:Char()
         elseif event == "PLAYER_LOGIN" then
+            pcall(FC.CheckJourney, FC)
             later(5, "refresh", function() FC:Refresh("login") end)
             if FC.Session then FC.Session:Start() end
         elseif event == "PLAYER_LEVEL_UP" then

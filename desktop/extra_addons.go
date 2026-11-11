@@ -270,7 +270,7 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 	if err := extraValidateURLs(a, info); err != nil {
 		return result, err
 	}
-	if err := u.requireStopped(ctx); err != nil {
+	if _, err := u.observeGame(ctx); err != nil {
 		return result, err
 	}
 	if game == "" || !filepath.IsAbs(game) {
@@ -302,7 +302,9 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 	backups := filepath.Join(game, "RelaxCoachBackups")
 	lockPath := filepath.Join(backups, ".extra-addon-update.lock")
 	if addonPlainDirectory(backups) == nil && extraRecoverInterrupted(lockPath, backups, game) {
-		os.Remove(lockPath)
+		if os.Remove(lockPath) == nil {
+			addonForgetLock(lockPath)
+		}
 	}
 	before, err := extraInstalled(game, a)
 	if err != nil {
@@ -370,8 +372,10 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 		return result, err
 	}
 
-	// Last checks right before the swap: WoW still closed, folder unchanged.
-	if err := u.requireStopped(ctx); err != nil {
+	// Last checks right before the swap: folder unchanged. WoW may run; that
+	// only decides the advice and how a refused move reads.
+	running, err := u.observeGame(ctx)
+	if err != nil {
 		return result, err
 	}
 	now, err := extraInstalled(game, a)
@@ -396,8 +400,18 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 	}
 	target := extraTarget(game, a)
 	backup := filepath.Join(transaction, "previous")
+	restart := !before.exists
+	if before.exists {
+		files, err := addonFilesUnder(filepath.Join(stage, a.Folder))
+		if fresh, _ := addonHasNewPaths(target, files); err != nil || fresh {
+			restart = true
+		}
+	}
 	if before.exists {
 		if err := u.rename(target, backup); err != nil {
+			if addonInUse(err, running) {
+				return result, fmt.Errorf("%s Nothing was changed. (%v)", addonCloseWoW, err)
+			}
 			return result, fmt.Errorf("could not move the old version aside; nothing was changed: %w", err)
 		}
 		// The game folder must still be the one checked before; otherwise the
@@ -413,10 +427,21 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 		if before.exists {
 			if rerr := u.rename(backup, target); rerr != nil {
 				keepLock = true
+				if addonInUse(errors.Join(err, rerr), running) {
+					// A file in use (WoW) also blocked the way back: lead with
+					// what to do; the lock may be recovered right away.
+					if info, e := lock.Stat(); e == nil {
+						addonAbandonLock(lockPath, info, transaction+"\n")
+					}
+					return result, fmt.Errorf("Close WoW, then click Check and Update. Windows refused to move a file that is in use, so the old version could not be put back yet; it is safe in the backup at %s. (%s)", addonShortPath(game, backup), addonInUseDetail(running, err, rerr))
+				}
 				return result, fmt.Errorf("install failed and the old version could not be put back; it is kept at %s: %w", backup, errors.Join(err, rerr))
 			}
 		}
 		addonRemoveCreated(createdDirs, ancestors)
+		if addonInUse(err, running) {
+			return result, fmt.Errorf("%s Nothing was changed. (%v)", addonCloseWoW, err)
+		}
 		return result, fmt.Errorf("install failed; the previous version was restored: %w", err)
 	}
 	// Published through a changed path (a parent swapped during the rename):
@@ -430,10 +455,10 @@ func (u *addonUpdater) applyExtra(ctx context.Context, game string, info ExtraAd
 	result = AddonUpdateResult{Version: remote.text, UpdatedFiles: files}
 	if before.exists {
 		result.BackupPath = backup
-		result.Message = a.Name + " updated to " + remote.text + ". The previous version is backed up. /reload or restart WoW to load it."
+		result.Message = a.Name + " updated to " + remote.text + ". The previous version is backed up. " + addonAdvice(restart, running)
 	} else {
 		os.RemoveAll(transaction)
-		result.Message = a.Name + " " + remote.text + " installed. Enable it in the AddOns list if needed, then start WoW."
+		result.Message = a.Name + " " + remote.text + " installed. Enable it in the AddOns list if needed. " + addonAdvice(restart, running)
 	}
 	return result, nil
 }
@@ -497,7 +522,8 @@ func extraAncestors(dir string) (map[string]os.FileInfo, error) {
 // Either way the transaction folder is kept, and true means the lock may go.
 func extraRecoverInterrupted(lockPath, backups, game string) bool {
 	info, err := os.Lstat(lockPath)
-	if err != nil || !info.Mode().IsRegular() || time.Since(info.ModTime()) < extraLockStaleAfter {
+	// Old enough, or the very lock this app left after a refused rollback.
+	if err != nil || !info.Mode().IsRegular() || (time.Since(info.ModTime()) < extraLockStaleAfter && !addonAbandonedLock(lockPath)) {
 		return false
 	}
 	b, err := addonReadSmallFile(lockPath)

@@ -40,7 +40,10 @@ func TestAddonTasklistDetectsGameButNotVoiceProxy(t *testing.T) {
 	}
 }
 
-func TestAddonApplyGameRunningFailsClosedAndRechecks(t *testing.T) {
+// From 1.5.2 a running WoW (or unknown detection) no longer blocks: the
+// install goes ahead, detection is still asked before download and right
+// before the swap, and the result says what loads the new files.
+func TestAddonApplyWhileGameRunningInstallsAndAdvises(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
 		runningAt   int
@@ -61,15 +64,21 @@ func TestAddonApplyGameRunningFailsClosedAndRechecks(t *testing.T) {
 				return false, nil
 			}
 			game := addonTestGame(t)
-			before := addonTreeHashes(t, game)
-			if _, err := u.apply(context.Background(), game, addonTestInfo()); err == nil {
-				t.Fatal("installed while game running/detection unknown")
+			res, err := u.apply(context.Background(), game, addonTestInfo())
+			if err != nil {
+				t.Fatalf("refused while game running/detection unknown: %v", err)
 			}
-			if calls != tc.runningAt {
-				t.Fatalf("detection calls = %d; want %d", calls, tc.runningAt)
+			if calls != 2 {
+				t.Fatalf("detection calls = %d; want 2", calls)
 			}
-			if after := addonTreeHashes(t, game); !reflect.DeepEqual(before, after) {
-				t.Fatalf("files changed on refusal: %v", after)
+			// The last check (right before the swap) decides; the fixture
+			// release adds files the test game does not have yet.
+			want := addonAdviceStart
+			if tc.runningAt == 2 {
+				want = addonAdviceRestart
+			}
+			if !strings.HasSuffix(res.Message, want) {
+				t.Fatalf("message %q, want advice %q", res.Message, want)
 			}
 		})
 	}

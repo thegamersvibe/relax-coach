@@ -40,7 +40,8 @@ const rc = Object.freeze({
 // One vocabulary for every addon (Relax Coach bundle and More addons):
 // Install when the addon is not there yet, otherwise Update.
 const verb = install => install ? 'Install' : 'Update';
-const closeThen = install => ' Close WoW, then click '+verb(install)+'.';
+// WoW can stay open (1.5.2); the result says whether /reload is enough.
+const clickThen = install => ' Click '+verb(install)+'. WoW can stay open.';
 const progressText = 'Downloading, verifying and installing… Do not force-close the application.';
 const failText = (install,err) => verb(install)+' failed: '+err.message+' Check again before retrying.';
 let offer = null, appOffer = null, busy = false, refreshing = false, restarting = false;
@@ -143,7 +144,7 @@ async function checkExtra(id) {
     const o = await rc.checkExtra(id);
     extraOffers[id] = o;
     extraRow(o);
-    row.querySelector('.extra-status').textContent = (o.Status || '') + (o.Available ? closeThen(o.Install) : ' No files changed.');
+    row.querySelector('.extra-status').textContent = (o.Status || '') + (o.Available ? clickThen(o.Install) : ' No files changed.');
   } catch(err) { row.querySelector('.extra-status').textContent = 'Check failed: '+err.message; }
   finally { busy = false; updateButtons(); }
 }
@@ -223,10 +224,18 @@ function displayReport(result,folderChanged = false) {
     $('release-notes').textContent = 'Check again for this game folder.';
     $('setup-offered').textContent = 'Not checked';
     autoChecked.clear(); // a folder chosen again gets a fresh lookup
-    bundleStatus('Game folder changed. Check again before installing or updating.');
+    bundleStatus('Game folder changed. Check again before installing or updating.', 'initial');
     for (const k of Object.keys(extraOffers)) delete extraOffers[k];
     if ($('extra-list').children.length) loadExtras();
     updateButtons();
+  }
+  // Say it before any click, from the folder state alone; recomputed on every
+  // refresh, so the line goes away once the folder is Relax Journey again.
+  if (!busy && !offer && result.Bundle && statusKind !== 'result') {
+    const note = result.Bundle.state === 'replaced' ? foreignBeforeCheck()
+      : result.Bundle.journeyUnreadable ? unreadableJourney+' Nothing is offered for it.' : '';
+    if (note) bundleStatus(note, 'note');
+    else if (statusKind === 'note') bundleStatus('', 'initial');
   }
   updateButtons();
 }
@@ -324,8 +333,32 @@ function bundleInstall() {
   if (lastReport && lastReport.Bundle) return lastReport.Bundle.install === true;
   return !!lastReport && lastReport.InstalledVersion === '0.0.0';
 }
+// A Journey that is not Relax Journey: its own state, neutral text (the normal
+// Journey next to Coach is a supported choice) and a Repair button. The text
+// names the action the visible button really offers.
+const foreignJourney = action => 'The Journey installed here is not Relax Journey (another updater such as CurseForge, Wago or Journey Guide Manager may have replaced it). '+action+'; if you use the normal Journey on purpose, you can ignore this.';
+const foreignRepair = foreignJourney('Click Repair to install Relax Journey');
+const foreignUpdate = foreignJourney('Click Update to install Relax Journey with it');
+const foreignNoRelease = foreignJourney('Repair needs a published Relax Coach release, so check again later');
+const unreadableJourney = "Relax Coach couldn't read Journey's TOC (Interface\\AddOns\\Journey\\Journey.toc), so it can't tell whether this is Relax Journey.";
+// Before any Check the Repair button is disabled: point at Check instead.
+const foreignBeforeCheck = () => document.body.dataset.updatesDisabled === 'true'
+  ? foreignJourney('Updates are disabled by -no-update, so Repair is not available here')
+  : foreignJourney('Click Check; when a release is found, Repair installs Relax Journey');
+// What the shared bundle status line shows: the page's initial text, a
+// folder-state note, or the result of an operation (check, install, error).
+// A folder-state note may replace only the initial text or an earlier note,
+// never an operation result or an error.
+let statusKind = 'initial';
+function bundleReplaced() {
+  const b = offer ? offer.Bundle : (lastReport && lastReport.Bundle);
+  return !!(b && b.state === 'replaced');
+}
+function bundleVerb() {
+  return bundleReplaced() && (!offer || offer.Repair) ? 'Repair' : verb(bundleInstall());
+}
 function renderBundleLabels() {
-  const v = verb(bundleInstall());
+  const v = bundleVerb();
   $('apply-update').textContent = v;
   $('setup-install').textContent = v;
   const b = lastReport && lastReport.Bundle;
@@ -334,15 +367,17 @@ function renderBundleLabels() {
 }
 // Partial installs: say what is missing and what Install/Update will do.
 function bundleNote(b, available) {
-  if (!b || b.state !== 'partial') return '';
+  if (b && b.state === 'replaced') return ' '+(available ? foreignUpdate : foreignNoRelease);
+  const unreadable = b && b.journeyUnreadable ? ' '+unreadableJourney+(available ? '' : ' Nothing is offered for it.') : '';
+  if (!b || b.state !== 'partial') return unreadable;
   const missing = (b.missing || []).join(', '), present = (b.present || []).join(', ');
   let text = '';
   if (missing) text += ' Missing folders: '+missing+'.';
   if (b.install && present) text += ' Already there: '+present+'; '+verb(true)+' moves '+((b.present || []).length > 1 ? 'them' : 'it')+' into RelaxCoachBackups first.';
   if (missing) text += available ? ' '+verb(b.install)+' puts every folder in place.' : ' Check again after a moment; if no Install is offered, the bundle ZIP fallback in the README restores them.';
-  return text;
+  return text+unreadable;
 }
-function bundleStatus(text) { $('update-status').textContent = text; $('setup-status').textContent = text; }
+function bundleStatus(text, kind = 'result') { $('update-status').textContent = text; $('setup-status').textContent = text; statusKind = kind; }
 async function checkBundle() {
   if (busy) return;
   busy = true; offer = null; updateButtons();
@@ -359,8 +394,10 @@ async function checkBundle() {
     $('release-notes').textContent = offer.Notes || 'No release notes provided.';
     $('release-link').href = offer.HTMLURL;
     $('release-link').hidden = !offer.HTMLURL;
-    bundleStatus(offer.Available
-      ? 'Relax Coach '+offer.Version+' is ready to '+(install ? 'install' : 'update')+'.'+closeThen(install)
+    bundleStatus(offer.Available && offer.Repair && bundleReplaced()
+      ? foreignRepair+' WoW can stay open.'
+      : offer.Available
+      ? 'Relax Coach '+offer.Version+' is ready to '+(install ? 'install' : 'update')+'.'+clickThen(install)
         +(offer.Repair ? ' This completes an interrupted or incomplete install: every Relax Coach folder is installed again, and the folders there now are kept in RelaxCoachBackups.' : bundleNote(offer.Bundle,true))
       : (offer.Notes || 'No compatible new addon update is available.')+' No files changed.'+bundleNote(offer.Bundle,false));
   } catch(err) {
@@ -371,7 +408,7 @@ async function checkBundle() {
 }
 async function applyBundle() {
   if (busy || !offer || !offer.Available) return;
-  const install = offer.Install === true;
+  const install = offer.Install === true, label = bundleVerb();
   busy = true; updateButtons();
   bundleStatus(progressText);
   try {
@@ -379,7 +416,7 @@ async function applyBundle() {
     const result = await rc.applyAddon(offer.Version);
     bundleStatus(result.message + (result.backupPath ? '\nBackup: '+result.backupPath : ''));
     await refresh();
-  } catch(err) { bundleStatus(failText(install, err)); }
+  } catch(err) { bundleStatus(label === 'Repair' ? 'Repair failed: '+err.message+' Check again before retrying.' : failText(install, err)); }
   finally { offer = null; busy = false; updateButtons(); }
 }
 $('check-update').addEventListener('click',checkBundle);

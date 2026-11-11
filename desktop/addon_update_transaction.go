@@ -307,7 +307,9 @@ func (u *addonUpdater) installTrees(ctx context.Context, game string, release Ad
 			}
 		}
 	}
-	if err := u.requireStopped(ctx); err != nil {
+	// WoW may run: this only decides the advice and how a refused move reads.
+	running, err := u.observeGame(ctx)
+	if err != nil {
 		return result, err
 	}
 	if err := checkTransaction(); err != nil {
@@ -450,10 +452,37 @@ func (u *addonUpdater) installTrees(ctx context.Context, game string, release Ad
 					originals = append(originals, tree.backup)
 				}
 			}
+			if refusals := append([]error{cause}, failures...); addonInUse(errors.Join(refusals...), running) {
+				// A file in use (WoW) also blocked the way back. Lead with what
+				// to do; the lock may be recovered right away in this session.
+				addonAbandonLock(lockPath, lockIdentity, lockContents)
+				where := "the previous folders are safe in the backup at " + addonShortPath(game, filepath.Join(transaction, "previous"))
+				if len(originals) == 0 {
+					where = "no earlier Relax Coach folders were there; the partial install is kept at " + addonShortPath(game, transaction)
+				}
+				// %v-free: no wrapped cause, so a refused "access denied" is not
+				// reworded as a missing write permission.
+				return AddonUpdateResult{}, fmt.Errorf("Close WoW, then click Check and Repair (or Update). Windows refused to move a file that is in use, so the install could not be fully undone; %s. (%s)", where, addonInUseDetail(running, refusals...))
+			}
 			return AddonUpdateResult{}, fmt.Errorf("addon install failed (%w); automatic rollback failed (%v); recovery location: %s (backup lock cleanup withheld); original backups: %s", cause, errors.Join(failures...), transaction, strings.Join(originals, ", "))
 		}
 		keepTransaction = false
+		if addonInUse(cause, running) {
+			// %v, not %w: an in-use "access denied" must not read as a
+			// missing write permission.
+			return AddonUpdateResult{}, fmt.Errorf("%s The previous addon folders were restored; nothing was changed. (%v)", addonCloseWoW, cause)
+		}
 		return AddonUpdateResult{}, fmt.Errorf("addon install failed; previous addon trees restored: %w", cause)
+	}
+	// Decided from the real file lists before anything moves: a root that is
+	// not there yet or any new file path needs a game restart.
+	restart := false
+	for _, tree := range trees {
+		if tree.original == nil {
+			restart = true
+		} else if fresh, _ := addonHasNewPaths(tree.target, tree.want); fresh {
+			restart = true
+		}
 	}
 	for _, tree := range trees {
 		if err := ctx.Err(); err != nil {
@@ -538,17 +567,21 @@ func (u *addonUpdater) installTrees(ctx context.Context, game string, release Ad
 		if release.Repair {
 			result.Message = "Relax Coach " + release.Version + " installed again to complete an interrupted or incomplete install: Coach, Journey, Relax Quest Planner and guide content, every installed file verified. The folders that were there are kept in the backup. SavedVariables, settings and unrelated addons were not touched."
 		}
+		if release.journeyReplaced {
+			result.Message = "Relax Journey installed: Coach, Journey, Relax Quest Planner and guide content " + release.Version + ", every installed file verified. The Journey that was there is kept in the backup, not deleted. If CurseForge, Wago or Journey Guide Manager put it there, remove Journey there or turn off its auto-update, or it can happen again."
+		}
 		if !before.exists {
 			// First install (Coach was not there): same transaction, install wording.
 			result.Message = "Coach, Journey and guide content " + release.Version + " installed; every installed file verified."
 			if addonBundleRelease(release.Version) {
 				result.Message = "Coach, Journey, Relax Quest Planner and guide content " + release.Version + " installed; every installed file verified."
 			}
-			result.Message += " Enable them in the AddOns list if needed, then start WoW. SavedVariables, settings and unrelated addons were not touched."
+			result.Message += " Enable them in the AddOns list if needed. SavedVariables, settings and unrelated addons were not touched."
 			if result.BackupPath != "" {
 				result.Message += " Folders that were already there are kept in the backup."
 			}
 		}
 	}
+	result.Message += " " + addonAdvice(restart, running)
 	return result, nil
 }

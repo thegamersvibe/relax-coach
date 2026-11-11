@@ -1,9 +1,12 @@
 package main
 
 import (
+	"io"
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
+	"strings"
 )
 
 // AddonBundleState describes which Relax Coach bundle folders exist in a game
@@ -14,6 +17,11 @@ import (
 //   - "none": none of the bundle folders exist. The action is Install.
 //   - "installed": ForeverCoach has a readable version and every folder that
 //     bundle version ships is present. The action is Update.
+//   - "replaced": Coach is installed but the Journey folder is not Relax
+//     Journey (no Journey.toc, or its Title is not "Relax Journey"). Another
+//     updater (CurseForge, Wago, Journey Guide Manager) may have replaced it,
+//     or the player keeps the normal Journey on purpose. Repair is offered
+//     through the same transaction; the other copy goes to the backup.
 //   - "partial": anything else, e.g. only a normal Journey, or Coach without
 //     Journey-Content. The action is Install when Coach itself is missing or
 //     unreadable, otherwise Update; Missing lists what the next install or
@@ -26,6 +34,9 @@ type AddonBundleState struct {
 	Install        bool     `json:"install"`
 	PresentFolders []string `json:"present"`
 	MissingFolders []string `json:"missing"`
+	// JourneyUnreadable: Journey.toc could not be read, so it is unknown
+	// whether the Journey folder is Relax Journey (no Repair is offered).
+	JourneyUnreadable bool `json:"journeyUnreadable,omitempty"`
 }
 
 func InstalledBundleState(game string) AddonBundleState {
@@ -66,15 +77,80 @@ func InstalledBundleState(game string) AddonBundleState {
 			state.MissingFolders = append(state.MissingFolders, path.Base(root))
 		}
 	}
+	journeyForeign := false
+	if !state.Install && present[addonGuildRoots[1]] {
+		ours, readable := addonJourneyTitle(filepath.Join(game, filepath.FromSlash(addonGuildRoots[1])))
+		journeyForeign = readable && !ours
+		state.JourneyUnreadable = !readable
+	}
 	switch {
 	case len(present) == 0:
 		state.State = "none"
+	case !state.Install && present[addonGuildRoots[1]] && journeyForeign:
+		state.State = "replaced"
 	case !state.Install && len(state.MissingFolders) == 0:
 		state.State = "installed"
 	default:
 		state.State = "partial"
 	}
 	return state
+}
+
+// addonJourneyTitle reads the folder's Journey.toc (any case, as on Windows)
+// the way WoW reads metadata, tolerantly: a UTF-8 BOM, CRLF/LF/CR line ends,
+// any spacing and key case around "## Title:", and WoW color codes are
+// accepted. Every base Title line must say "Relax Journey" (localized
+// Title-xx lines are ignored). ours=false with readable=true means another
+// Journey (or no TOC / no Title); readable=false means the TOC could not be
+// read (permission, I/O, oversized), which is unknown, not foreign.
+func addonJourneyTitle(dir string) (ours, readable bool) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return false, false
+	}
+	for _, entry := range entries {
+		if !strings.EqualFold(entry.Name(), "Journey.toc") {
+			continue
+		}
+		if !entry.Type().IsRegular() {
+			return false, true
+		}
+		f, err := os.Open(filepath.Join(dir, entry.Name()))
+		if err != nil {
+			return false, false
+		}
+		defer f.Close()
+		toc, err := io.ReadAll(io.LimitReader(f, addonJourneyTOCLimit+1))
+		if err != nil || len(toc) > addonJourneyTOCLimit {
+			return false, false
+		}
+		return addonTOCTitleIsRelax(toc), true
+	}
+	return false, true
+}
+
+const addonJourneyTOCLimit = 1 << 20
+
+var addonColorCode = regexp.MustCompile(`\|c[0-9A-Fa-f]{8}|\|r`)
+
+func addonTOCTitleIsRelax(toc []byte) bool {
+	text := strings.TrimPrefix(string(toc), "\ufeff")
+	titles := 0
+	for _, line := range strings.FieldsFunc(text, func(r rune) bool { return r == '\n' || r == '\r' }) {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "##") {
+			continue
+		}
+		key, value, ok := strings.Cut(strings.TrimPrefix(line, "##"), ":")
+		if !ok || !strings.EqualFold(strings.TrimSpace(key), "Title") {
+			continue
+		}
+		if strings.TrimSpace(addonColorCode.ReplaceAllString(value, "")) != "Relax Journey" {
+			return false
+		}
+		titles++
+	}
+	return titles > 0
 }
 
 func addonFolderNames(roots []string) []string {

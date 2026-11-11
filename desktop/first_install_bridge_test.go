@@ -12,6 +12,8 @@ func TestFirstInstallBridgeLabelsAndState(t *testing.T) {
 		game := freshClient(t)
 		if existing {
 			game = guildGame(t)
+			// An existing Relax install: Journey is Relax Journey (see journey_replaced_test.go).
+			addonPut(t, game, "Interface/AddOns/Journey/Journey.toc", "## Title: Relax Journey\n")
 		}
 		a := &App{}
 		a.setGame(game)

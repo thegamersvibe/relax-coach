@@ -94,14 +94,11 @@ func TestGuildSourceAndAncestorChangesDuringDownload(t *testing.T) {
 }
 
 func TestGuildGameGuardAndInstalledVersion(t *testing.T) {
-	for _, mode := range []string{"running", "started during download", "unknown", "current", "newer", "existing lock"} {
+	// A running WoW is no longer a guard (1.5.2): see addon_game_open_test.go.
+	for _, mode := range []string{"unknown", "current", "newer", "existing lock"} {
 		t.Run(mode, func(t *testing.T) {
 			game := guildGame(t)
 			u := guildUpdater(t, guildZip(t, guildEntries(), nil))
-			calls := 0
-			if mode == "running" || mode == "started during download" {
-				u.running = func(context.Context) (bool, error) { calls++; return mode == "running" || calls == 2, nil }
-			}
 			if mode == "unknown" || mode == "current" || mode == "newer" {
 				version := map[string]string{"unknown": "garbage", "current": "1.4.2", "newer": "1.5.0"}[mode]
 				addonPut(t, game, "Interface/AddOns/ForeverCoach/ForeverCoach.toc", "## Version: "+version+"\n")
