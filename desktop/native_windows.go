@@ -243,7 +243,7 @@ func runNative(app *App, disabled bool) error {
 		w.destroy()
 		return err
 	}
-	w.bridge = newNativeBridge(app, disabled, nativeServices{choose: w.chooseFolder, open: w.openExternal})
+	w.bridge = newNativeBridge(app, disabled, nativeServices{choose: w.chooseFolder, open: w.openExternal, place: w.placementEnv})
 	defer w.bridge.Close()
 	// The native shell is a local string; no listener, browser process launcher or URL.
 	w.chromium.NavigateToString(html)

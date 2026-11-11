@@ -538,3 +538,32 @@ func TestExtraAddonAHProfitEntry(t *testing.T) {
 		t.Fatal("accepted a package with the wrong TOC title")
 	}
 }
+
+// Every More addons entry must stay separate from each other and from the
+// folders the Relax Coach bundle manages, so an extra install can never
+// replace or back up a bundle folder.
+func TestExtraAddonFoldersNeverClash(t *testing.T) {
+	bundle := map[string]bool{}
+	for _, root := range addonGuildRootsFor("99.0.0") {
+		bundle[strings.ToLower(filepath.Base(filepath.FromSlash(root)))] = true
+	}
+	for _, f := range []string{"forevercoach", "journey", "relaxquestplanner", "journey-content"} {
+		if !bundle[f] {
+			t.Fatalf("bundle roots no longer include %s; update this test", f)
+		}
+	}
+	ids, folders := map[string]bool{}, map[string]bool{}
+	for _, a := range extraAddons {
+		id, folder := strings.ToLower(a.ID), strings.ToLower(a.Folder)
+		if id == "" || folder == "" || a.Repo == "" || a.Title == "" {
+			t.Fatalf("incomplete extra addon entry %+v", a)
+		}
+		if ids[id] || folders[folder] {
+			t.Fatalf("duplicate extra addon id or folder: %s/%s", a.ID, a.Folder)
+		}
+		ids[id], folders[folder] = true, true
+		if bundle[folder] {
+			t.Fatalf("extra addon %s uses bundle folder %s", a.ID, a.Folder)
+		}
+	}
+}

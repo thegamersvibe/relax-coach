@@ -61,6 +61,13 @@ type AddonReleaseInfo struct {
 	AssetURL    string `json:"assetUrl"`
 	ChecksumURL string `json:"checksumUrl"`
 	Available   bool   `json:"available"`
+	// Repair: the same version as the installed Coach, offered only because
+	// the installed bundle is incomplete (a missing folder or an interrupted
+	// install). ApplyAddonRelease re-checks that before installing.
+	Repair bool `json:"repair,omitempty"`
+	// sameVersion: for a release equal to the installed Coach, the full
+	// release, so the app can offer it as a repair. Never shown to the UI.
+	sameVersion *AddonReleaseInfo
 }
 
 type addonUpdater struct {
@@ -210,7 +217,13 @@ func (u *addonUpdater) check(ctx context.Context, current string) (AddonReleaseI
 		return AddonReleaseInfo{}, err
 	}
 	if !remote.newerThan(local) {
-		return addonNoUpdate(info, "Your installed version is current or newer and will not be downgraded."), nil
+		none := addonNoUpdate(info, "Your installed version is current or newer and will not be downgraded.")
+		if !local.newerThan(remote) {
+			same := info
+			same.Available, same.Repair = true, true
+			none.sameVersion = &same
+		}
+		return none, nil
 	}
 	info.Available = true
 	return info, nil

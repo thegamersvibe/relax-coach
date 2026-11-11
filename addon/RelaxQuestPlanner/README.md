@@ -16,7 +16,9 @@ Journey and the guide content. It is no longer a separate patch zip and needs no
 Journey files merged by hand.
 
 - **Windows app:** use **Check App Update → Update App** first if the app is older
-  than 1.5.0, then close WoW and use **Check for updates → Update Addon**. An
+  than 1.5.0, then close WoW and use **Updates → Check → Update** (labelled
+  **Check for updates → Update Addon** in app 1.5.0). From app 1.5.1 a new
+  player can also use **Get started → Install** with only `RelaxCoach.exe`. An
   existing `Interface/AddOns/RelaxQuestPlanner` folder (for example an earlier
   test version you copied in) is moved into the update's backup in
   `RelaxCoachBackups`, not deleted.
