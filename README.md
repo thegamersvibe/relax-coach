@@ -43,7 +43,7 @@ Later releases: **Updates → Check → Update**. The optional **More addons** (
 
 ### Fallback: bundle ZIP and PowerShell
 
-Use this with an app older than 1.5.1, without network access in the app, or to restore missing folders by hand.
+Use this with an app older than 1.5.1, without network access in the app, or to restore missing folders by hand. `Install-RelaxCoach.ps1` only works on a client that already has `Interface\AddOns` and `WTF` folders (it stops with "Not a game folder" otherwise), so on a completely fresh client, before the first game start, use the app's **Get started → Install** instead; it creates `Interface\AddOns` itself.
 
 1. Close WoW and extract the bundle ZIP outside the game folder.
 2. For an upgrade, back up the folders listed below outside the game, then remove only those old folders so obsolete files do not remain.

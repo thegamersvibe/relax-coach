@@ -11,7 +11,7 @@ Download the latest available Coach ZIP from [the releases list](https://github.
 - Copy `ForeverCoach` into your game's `_forever_\Interface\AddOns` folder. It appears in game as **Relax Coach**. The internal folder/save IDs intentionally remain unchanged to retain existing settings.
 - Run **RelaxCoach.exe** for the Windows app. Choose **Coach Report** or **Updates** inside the application window (app 1.5.1 and later also has **Get started**, which installs the current bundle from the app). Microsoft WebView2 Runtime is required; Windows installations commonly already include it.
 - Set the game folder when prompted. Your game may be on any drive.
-- **Upgrade the app first.** App 1.4.1 supports **Update App**; older apps need one manual EXE replacement. Current bundles require **app 1.4.3** before **Update Addon**. The combined guild package is used to update Coach, Journey and guide content, with checksum verification, backup and rollback. Close WoW first. Unrelated addons, SavedVariables and the running app are not replaced by this action.
+- **Upgrade the app first.** App 1.4.1 supports **Update App**; older apps need one manual EXE replacement. The current bundle (`RelaxCoach-Bundle-<version>.zip`, from 1.5.0) needs **app 1.5.0** or later; older apps report it as an app-only release until **Update App** has run. The bundle installs and updates Coach, Journey, Relax Quest Planner and guide content together, with checksum verification, backup and rollback. Close WoW first. Unrelated addons, SavedVariables and the running app are not replaced by this action.
 
 The Windows executable is unsigned. Follow your usual antivirus review process; do not disable protection globally. The addon works without the Windows app.
 
