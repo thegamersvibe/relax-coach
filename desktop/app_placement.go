@@ -146,12 +146,18 @@ func (e appPlacementEnv) install() (AppPlacement, error) {
 // bytes are on disk and before they are verified and published.
 var appCopyWritten func(path string)
 
+// appCopyPublished is a test seam: called right after the copy is published
+// under its final name, the last step of appCopyVerified.
+var appCopyPublished func(target string)
+
 // appCopyVerified writes data to a new temp file next to target (exclusive
 // create, random name), verifies it by SHA256 and only then publishes it under
-// the target name without replacing anything (a hard link fails if the name
-// exists), then removes its own temp name. A crash leaves at most a temp file,
-// never a half-written RelaxCoach.exe; temp files from earlier runs are left
-// alone and never block a later copy.
+// the target name with one move that never replaces anything (appMoveNew:
+// MoveFileEx without REPLACE_EXISTING on Windows, rename(RENAME_NOREPLACE) on
+// Linux). Publishing is the last step, so the file never has a second name
+// and any error means nothing was published. A crash leaves at most a temp
+// file, never a half-written RelaxCoach.exe; temp files from earlier runs are
+// left alone and never block a later copy.
 func appCopyVerified(target string, data []byte) error {
 	dir := filepath.Dir(target)
 	var random [8]byte
@@ -160,8 +166,7 @@ func appCopyVerified(target string, data []byte) error {
 	}
 	temp := filepath.Join(dir, "."+filepath.Base(target)+"."+hex.EncodeToString(random[:])+".tmp")
 	want := sha256.Sum256(data)
-	var owned os.FileInfo
-	err := appWriteOwned(temp, data, func() error {
+	return appWriteOwned(temp, data, func() error {
 		if appCopyWritten != nil {
 			appCopyWritten(temp)
 		}
@@ -172,23 +177,18 @@ func appCopyVerified(target string, data []byte) error {
 		if sum := sha256.Sum256(got); !bytes.Equal(sum[:], want[:]) {
 			return errors.New("the copied app does not match the running app")
 		}
-		if owned, err = os.Lstat(temp); err != nil {
-			return err
-		}
 		if err := appPlainDirectory(dir); err != nil {
 			return err
 		}
-		if err := os.Link(temp, target); err != nil {
+		if err := appMoveNew(temp, target); err != nil {
 			if os.IsExist(err) {
 				return errors.New("something appeared at " + target + " meanwhile; it was not replaced")
 			}
 			return err
 		}
+		if appCopyPublished != nil {
+			appCopyPublished(target)
+		}
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-	// The published name stays; drop this run's temp name (same file).
-	return appRemoveOwned(temp, owned)
 }

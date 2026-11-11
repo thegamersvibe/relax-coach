@@ -21,10 +21,4 @@ func appSingleLink(f *os.File) error {
 }
 func appRejectReparse(path string) error    { return nil }
 func appPrivateDirectory(path string) error { return os.Mkdir(path, 0700) }
-func appMoveNew(from, to string) error {
-	// Atomic no-clobber publication for testable non-Windows file transactions.
-	if err := os.Link(from, to); err != nil {
-		return err
-	}
-	return os.Remove(from)
-}
+
