@@ -172,7 +172,7 @@ test('an incomplete install at the latest version is offered as Install (repair)
 });
 
 test('WoW can stay open: ready text, then the /reload or restart advice from the install',async t=>{
-  for (const advice of ['Done. Type /reload in game.','Done. Exit WoW completely and start it again (/reload is not enough for new files).']) {
+  for (const advice of ['Done. Type /reload in game.','Done. Exit WoW completely and start it again so the new files load.']) {
     const list=[{ID:'rankup',Name:'RankUp',Blurb:'',InstalledVersion:'1.0.0'}];
     const {$}=await setup(t,{reportRefresh:()=>report('C:\\WoW','1.5.1',installed),extraList:()=>list,
       checkAddon:()=>({Version:'1.5.2',Available:true,InstalledVersion:'1.5.1',Install:false,Bundle:installed}),
@@ -225,4 +225,9 @@ test('a newer release over a replaced Journey keeps Update and says why',async t
   $('check-update').click();await settle();
   assert.equal($('apply-update').textContent,'Update');
   assert.match($('update-status').textContent,/ready to update\. Click Update\. WoW can stay open\. Journey was replaced by another updater/);
+});
+
+test('no claim that /reload cannot load new files',()=>{
+  assert.equal(/reload is not enough/i.test(html),false);
+  assert.equal(/only load at game start/i.test(html),false);
 });

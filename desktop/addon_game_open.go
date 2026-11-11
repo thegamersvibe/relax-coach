@@ -11,15 +11,18 @@ import (
 // files when it loads them, so the folders can be swapped while it runs; the
 // player is then told what loads the new files:
 //   - every root existed and no new file path came: /reload is enough;
-//   - a new root folder or a new file path: WoW only discovers new files at
-//     start, so it must be restarted.
+//   - a new root folder or a new file path: restart WoW. This is the safe
+//     side, not a known limit: since 9.0.1 /reload is documented to pick up
+//     TOC changes and new files under Interface/AddOns (Warcraft Wiki), but
+//     that is unverified on the Forever client and does not cover the guide
+//     content in Interface/Content.
 // The only case that still asks to close WoW is Windows refusing a move
 // because a file is in use; the transaction is then rolled back as for any
 // other failure.
 
 const (
 	addonAdviceReload  = "Done. Type /reload in game."
-	addonAdviceRestart = "Done. Exit WoW completely and start it again (/reload is not enough for new files)."
+	addonAdviceRestart = "Done. Exit WoW completely and start it again so the new files load."
 	addonAdviceStart   = "Done. Start WoW to load it."
 	addonCloseWoW      = "Close WoW and try again: Windows refused to move a file that is in use."
 )

@@ -14,7 +14,7 @@ import (
 
 const (
 	adviceReload  = "Done. Type /reload in game."
-	adviceRestart = "Done. Exit WoW completely and start it again (/reload is not enough for new files)."
+	adviceRestart = "Done. Exit WoW completely and start it again so the new files load."
 	adviceStart   = "Done. Start WoW to load it."
 	adviceClose   = "Close WoW and try again"
 )
