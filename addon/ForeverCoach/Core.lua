@@ -71,13 +71,15 @@ end
 
 -- The player's spellbook as { [lower-case name] = highest rank seen (0 = no rank text) }, or
 -- false when the client gives no usable answer. One pass over the book; no protected calls.
--- A bounded loop: a broken offset can't make it spin.
+-- A bounded loop: a broken offset can't make it spin. A book that is only partly readable (a
+-- tab whose offset/count is secret or missing, a slot without a readable name) is not used at
+-- all: a spell missing from half a book is unknown, not "not learned".
 local BOOK_LIMIT = 1024
 local function scanSpellBook()
-    local names, count = {}, 0
+    local names, count, partial = {}, 0, false
     local function add(name, sub)
-        if issecretvalue and (issecretvalue(name) or issecretvalue(sub)) then return end
-        if type(name) ~= "string" or name == "" then return end
+        if issecretvalue and (issecretvalue(name) or issecretvalue(sub)) then partial = true; return end
+        if type(name) ~= "string" or name == "" then partial = true; return end
         local key = string.lower(name)
         local rank = type(sub) == "string" and tonumber(string.match(sub, "(%d+)")) or 0
         if not names[key] or rank > names[key] then names[key] = rank end
@@ -86,6 +88,7 @@ local function scanSpellBook()
     local function last(offset, n)
         offset, n = num(offset), num(n)
         if offset and n and offset >= 0 and n >= 0 then return offset + n end
+        partial = true
         return 0
     end
     local total = 0
@@ -111,7 +114,7 @@ local function scanSpellBook()
         if not lines then return false end
         for t = 1, math.min(lines, 32) do
             local info = C_SpellBook.GetSpellBookSkillLineInfo(t)
-            if type(info) == "table" then total = math.max(total, last(info.itemIndexOffset, info.numSpellBookItems)) end
+            if type(info) == "table" then total = math.max(total, last(info.itemIndexOffset, info.numSpellBookItems)) else partial = true end
         end
         for i = 1, math.min(total, BOOK_LIMIT) do
             local info = C_SpellBook.GetSpellBookItemInfo and C_SpellBook.GetSpellBookItemInfo(i, bank)
@@ -120,15 +123,19 @@ local function scanSpellBook()
     else
         return false
     end
+    if partial or total > BOOK_LIMIT then return false end
     return count > 0 and names or false
 end
 
--- fresh = true skips the short cache (a snapshot always reads the current book); a burst of
--- SPELLS_CHANGED events within a second shares one scan.
+-- Cached for a second. fresh = true (snapshots, SPELLS_CHANGED) always reads the current book,
+-- so a spell learned a moment ago is never missed. A failed scan (false) is reused for that
+-- second even when fresh, so a client without a usable book is not rescanned on every event.
 function FC:SpellBook(fresh)
     local now = GetTime and num(GetTime())
-    if not fresh and self.spellBookCache and now and self.spellBookAt and now - self.spellBookAt < 1 then
-        return self.spellBookCache
+    local cached, at = self.spellBookCache, self.spellBookAt
+    if cached ~= nil and now and at then
+        local age = now - at
+        if age >= 0 and age < 1 and (cached == false or not fresh) then return cached end
     end
     local ok, res = pcall(scanSpellBook)
     if not ok then res = false end
@@ -150,7 +157,7 @@ local function knowsByName(self, id, book, label)
         base = base or label
     end
     local names = {}
-    local own = self:SpellName(id)
+    local own = plain(self:SpellName(id))
     if type(own) == "string" then names[#names + 1] = own end
     if base then names[#names + 1] = base end
     if #names == 0 then return nil end
@@ -165,10 +172,16 @@ local function knowsByName(self, id, book, label)
     if unsure then return nil end
     return false
 end
+-- A failing name lookup leaves only that spell unanswered (nil), never the whole snapshot.
+local function knowsByNameSafe(self, id, book, label)
+    local ok, r = pcall(knowsByName, self, id, book, label)
+    if ok then return r end
+    return nil
+end
 function FC:KnowsSpell(id, book, label)
     if knowsSpellID(id) == true then return true end
     if book == nil then book = self:SpellBook() end
-    return knowsByName(self, id, book, label)
+    return knowsByNameSafe(self, id, book, label)
 end
 
 function FC:SpellName(id)
@@ -363,7 +376,7 @@ function FC:Snapshot()
                 local k = knowsSpellID(id)
                 if k ~= true then
                     if book == nil then book = self:SpellBook(true) end
-                    k = knowsByName(self, id, book, m.name)
+                    k = knowsByNameSafe(self, id, book, m.name)
                 end
                 if k ~= nil then s.spells[id] = k end
             end
@@ -466,7 +479,7 @@ local function onEvent(event, arg1)
         elseif event == "TRAINER_CLOSED" then
             scanTrainer(); later(1, "refresh", function() FC:Refresh("trainer") end)
         elseif event == "SPELLS_CHANGED" then
-            if FC.Session then FC.Session:SyncSpells() end
+            if FC.Session then FC.Session:SyncSpells(true) end -- read the current book, not a cached one
             later(3, "refresh", function() FC:Refresh("spells") end)
         elseif event == "GET_ITEM_INFO_RECEIVED" or event == "ITEM_DATA_LOAD_RESULT" then
             later(5, "refresh", function() FC:Refresh("iteminfo") end)

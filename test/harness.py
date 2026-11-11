@@ -80,7 +80,8 @@ local function bookEntries()
   end
   return e
 end
-function GetNumSpellTabs() if STATE.nobook then return nil end; return 1 end
+TABCALLS = 0
+function GetNumSpellTabs() TABCALLS = TABCALLS + 1; if STATE.nobook then return nil end; return 1 end
 function GetSpellTabInfo(t) return "General", "icon", 0, #bookEntries() end
 function GetSpellBookItemName(i) BOOKCALLS = BOOKCALLS + 1; local e = bookEntries()[i]; if e then return e[1], e[2] end end
 function GetSpellBookItemInfo(i) local e = bookEntries()[i]; if e then return e[3] and "FUTURESPELL" or "SPELL", 0 end end
@@ -712,6 +713,43 @@ L.execute('STATE.book = { {"Attack",""}, ' + ROGUE_BOOK + '{"Shank","Rank 2"} }'
 miss = [(f.text or '') for f in findings(c) if 'not learned' in (f.text or '')]
 check(not any('Shank' in x for x in miss), f'rogue: Shank rank 2 -> neither Shank tip ({[x for x in miss if "Shank" in x]})')
 check(c.lastError is None, f'no internal error ({c.lastError and c.lastError.err})')
+
+
+print('== scenario: spellbook failure paths (review S1-S3)')
+L, G, FC, c = client({'level': 35, 'unspent': 0, 'known': {71: True, 355: True, 2458: True}}, gq=False)
+L.execute("""STATE.book = { {"Attack",""}, {"Defensive Stance",""}, {"Sunder Armor","Rank 4"}, {"Revenge","Rank 3"}, {"Overpower","Rank 2"} }""")
+# S1: the name lookup fails for one spell -> only that spell is unanswered
+L.execute("""local lower = string.lower
+  string.lower = function(s) if s == "Berserker Rage" then error("lookup failed") end return lower(s) end""")
+refresh(FC)
+check(c.lastError is None, f'S1: a failing name lookup does not break the snapshot ({c.lastError and c.lastError.err})')
+check(c.snapshot.spells[18499] is None and c.snapshot.spells[7386] is True, 'S1: only that spell has no answer; the others still do')
+check(not any('Berserker Rage' in (f.text or '') for f in findings(c)), 'S1: no warning for the spell without an answer')
+# S2: a spell learned a moment after a scan is seen by SPELLS_CHANGED; one scan per burst
+L, G, FC, c = client({'level': 35, 'unspent': 0, 'known': {71: True}}, gq=False)
+L.execute('C_Timer = { After = function() end }')  # keep the delayed refresh out of the counts
+L.execute('STATE.book = { {"Attack",""}, {"Revenge","Rank 3"} }')
+FC.SpellBook(FC)
+check(FC.spellBookCache['overpower'] is None, 'S2: Overpower not in the first book')
+L.execute('table.insert(STATE.book, {"Overpower","Rank 2"})'); G.ADVANCE(0.3)
+G.FIRE('SPELLS_CHANGED')
+check(FC.spellBookCache['overpower'] == 2, 'S2: SPELLS_CHANGED reads the current book, not the 0.3 s old one')
+L.execute('STATE.nobook = true; ForeverCoach.spellBookCache = nil'); G.ADVANCE(1); G.TABCALLS = 0
+for _ in range(20):
+    G.FIRE('SPELLS_CHANGED'); G.ADVANCE(0.01)
+check(G.TABCALLS == 1, f'S2: a failed scan is reused for a second ({G.TABCALLS} scans for 20 events)')
+# S3: a partly readable book (secret count on the class tab) is unknown, not "not learned"
+L, G, FC, c = client({'level': 35, 'unspent': 0, 'known': {71: True, 355: True, 2458: True}}, gq=False)
+L.execute("""STATE.book = { {"Attack",""}, {"Sunder Armor","Rank 4"} }
+  GetNumSpellTabs = function() return 2 end
+  GetSpellTabInfo = function(t) if t == 1 then return "General", "i", 0, 1 end; return "Warrior", "i", 1, SECRET end""")
+refresh(FC)
+miss = [(f.text or '') for f in findings(c) if 'not learned' in (f.text or '')]
+check(not miss, f'S3: secret class-tab count -> no "not learned" warning ({miss})')
+check(c.snapshot.spells[6572] is None and c.lastError is None, 'S3: unknown, no error')
+L.execute('GetSpellTabInfo = function(t) if t == 1 then return "General", "i", 0, 1 end; return "Warrior", "i", 1, 1 end; GetSpellBookItemName = function(i) if i == 1 then return "Attack", "" end return SECRET end')
+refresh(FC)
+check(not [(f.text or '') for f in findings(c) if 'not learned' in (f.text or '')], 'S3: a slot without a readable name -> no "not learned" warning')
 
 print('ALL OK' if not fails else f'{len(fails)} FAILED')
 sys.exit(1 if fails else 0)

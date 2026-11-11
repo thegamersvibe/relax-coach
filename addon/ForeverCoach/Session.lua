@@ -36,7 +36,8 @@ local function usable(name)
     return ok and plain(u) == true  -- "usable but not enough rage" does not count as a chance
 end
 
-function S:SyncSpells()
+-- fresh = true (SPELLS_CHANGED): read the current spellbook, not one cached a moment ago.
+function S:SyncSpells(fresh)
     if not cur then return end
     local _, cls = UnitClass("player")
     local book -- the spellbook is read only when an untracked proc spell's ID says no
@@ -46,7 +47,7 @@ function S:SyncSpells()
             if not procs[name] then
                 local known = FC:KnowsSpell(p.spellId, false) == true -- the ID alone
                 if not known then
-                    if book == nil then book = FC:SpellBook() end
+                    if book == nil then book = FC:SpellBook(fresh) end
                     known = FC:KnowsSpell(p.spellId, book, p.name) == true
                 end
                 if known then
