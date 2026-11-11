@@ -56,9 +56,11 @@ type nativeReport struct {
 type nativeOffer struct {
 	Version, Name, Notes, HTMLURL, InstalledVersion string
 	Available                                       bool
-	// Install: Coach is not installed, so the action is Install, not Update.
+	// Install: Coach is not installed (or a repair), so the action is Install.
 	Install bool
-	Bundle  AddonBundleState
+	// Repair: the installed version again, to complete an incomplete install.
+	Repair bool
+	Bundle AddonBundleState
 }
 
 type nativeRequest struct {
@@ -306,6 +308,12 @@ func (b *nativeBridge) check() (nativeOffer, error) {
 	if err != nil {
 		return nativeOffer{}, err
 	}
+	// The latest release is the installed one, but the install is incomplete
+	// (a missing folder, or an install interrupted by a crash): offer it again
+	// as Install, through the same verified transaction.
+	if !release.Available && release.sameVersion != nil && addonRepairNeeded(game) {
+		release = *release.sameVersion
+	}
 	if err = ctx.Err(); err != nil {
 		return nativeOffer{}, err
 	}
@@ -324,7 +332,7 @@ func (b *nativeBridge) check() (nativeOffer, error) {
 	}
 	bundle := InstalledBundleState(game)
 	return nativeOffer{Version: release.Version, Name: release.Name, Notes: release.Notes, HTMLURL: link, InstalledVersion: current,
-		Available: release.Available, Install: current == "0.0.0", Bundle: bundle}, nil
+		Available: release.Available, Install: current == "0.0.0" || release.Repair, Repair: release.Repair, Bundle: bundle}, nil
 }
 
 func (b *nativeBridge) apply(expected string) (AddonUpdateResult, error) {

@@ -129,3 +129,47 @@ func TestFILockRecoveryKeepsAReplacementLock(t *testing.T) {
 		t.Fatalf("recovery removed another instance's fresh lock: %v", err)
 	}
 }
+
+// The same-version Install (repair) is only offered and only applied when the
+// install is incomplete; a complete install is never reinstalled.
+func TestFIRepairOnlyWhenIncomplete(t *testing.T) {
+	const version = "1.5.0"
+	game := freshClient(t)
+	u := guildUpdaterForVersion(t, bundleZip(t, version, nil), version)
+	if _, err := u.apply(context.Background(), game, guildInfoForVersion(version)); err != nil {
+		t.Fatal(err)
+	}
+	same := guildInfoForVersion(version)
+	same.Repair = true
+	if _, err := u.apply(context.Background(), game, same); err == nil || !strings.Contains(err.Error(), "nothing to repair") {
+		t.Fatalf("a complete install was reinstalled as a repair: %v", err)
+	}
+	a := &App{}
+	a.setGame(game)
+	b := newNativeBridge(a, false, nativeServices{check: func(context.Context, string) (AddonReleaseInfo, error) {
+		info := guildInfoForVersion(version)
+		none := addonNoUpdate(info, "current")
+		info.Repair = true
+		none.sameVersion = &info
+		return none, nil
+	}, apply: u.apply})
+	defer b.Close()
+	v, err := b.Call("checkAddon", nil)
+	if err != nil || v.(nativeOffer).Available {
+		t.Fatalf("complete install: no offer expected, got %+v %v", v, err)
+	}
+	// Remove the planner: now the same version is offered as Install.
+	os.RemoveAll(filepath.Join(game, filepath.FromSlash(addonPlannerRoot)))
+	v, err = b.Call("checkAddon", nil)
+	o := v.(nativeOffer)
+	if err != nil || !o.Available || !o.Install || !o.Repair || o.Version != version {
+		t.Fatalf("incomplete install: expected an Install (repair) offer, got %+v %v", o, err)
+	}
+	v, err = b.Call("applyAddon", nativeArgs(version))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(v.(AddonUpdateResult).Message, "installed again") || InstalledBundleState(game).State != "installed" {
+		t.Fatalf("repair result %+v", v)
+	}
+}

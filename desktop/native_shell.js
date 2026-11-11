@@ -339,7 +339,7 @@ function bundleNote(b, available) {
   let text = '';
   if (missing) text += ' Missing folders: '+missing+'.';
   if (b.install && present) text += ' Already there: '+present+'; '+verb(true)+' moves '+((b.present || []).length > 1 ? 'them' : 'it')+' into RelaxCoachBackups first.';
-  if (missing) text += available ? ' '+verb(b.install)+' puts every folder in place.' : ' The next Relax Coach release puts them back; until then the bundle ZIP fallback in the README restores them.';
+  if (missing) text += available ? ' '+verb(b.install)+' puts every folder in place.' : ' Check again after a moment; if no Install is offered, the bundle ZIP fallback in the README restores them.';
   return text;
 }
 function bundleStatus(text) { $('update-status').textContent = text; $('setup-status').textContent = text; }
@@ -360,7 +360,8 @@ async function checkBundle() {
     $('release-link').href = offer.HTMLURL;
     $('release-link').hidden = !offer.HTMLURL;
     bundleStatus(offer.Available
-      ? 'Relax Coach '+offer.Version+' is ready to '+(install ? 'install' : 'update')+'.'+closeThen(install)+bundleNote(offer.Bundle,true)
+      ? 'Relax Coach '+offer.Version+' is ready to '+(install ? 'install' : 'update')+'.'+closeThen(install)
+        +(offer.Repair ? ' This completes an interrupted or incomplete install: every Relax Coach folder is installed again, and the folders there now are kept in RelaxCoachBackups.' : bundleNote(offer.Bundle,true))
       : (offer.Notes || 'No compatible new addon update is available.')+' No files changed.'+bundleNote(offer.Bundle,false));
   } catch(err) {
     $('offered-version').textContent = $('setup-offered').textContent = 'Unavailable';

@@ -39,7 +39,7 @@ A new player needs only `RelaxCoach.exe`: no ZIP to extract, no PowerShell.
 4. Close WoW and click **Install**. The app takes the stable GitHub release, verifies the bundle's SHA256 checksum and manifest, and installs **Relax Coach**, **Relax Journey** with its guide content and **Relax Quest Planner** in one transaction. A folder of the same name that is already there (for example a normal Journey) is moved into `RelaxCoachBackups`, not deleted; a failed install rolls back. A missing `Interface\AddOns` folder is created.
 5. Start WoW, enable **Relax Coach**, **Relax Journey** and **Relax Quest Planner** on the AddOns screen, log in and type `/reload` once. Use `/coach`, `/journey` and `/rqp`; your report appears under **Coach Report**.
 
-Later releases: **Updates → Check → Update**. The optional **More addons** (RankUp, Forever Maps) use the same **Check → Install / Update** buttons and the same checks. If some Relax Coach folders are missing, **Check** lists them and the next **Install** or **Update** puts them back; when Coach is already on the latest version, the app does not reinstall it, so use the ZIP fallback below.
+Later releases: **Updates → Check → Update**. The optional **More addons** (RankUp, Forever Maps) use the same **Check → Install / Update** buttons and the same checks. If some Relax Coach folders are missing, or an install was interrupted (the app closed or the PC lost power), **Check** offers **Install** again even when Coach is already on the latest version: it finishes the interrupted install, puts every folder in place through the same verified transaction and keeps the folders that were there in `RelaxCoachBackups`. A complete install is never reinstalled.
 
 ### Fallback: bundle ZIP and PowerShell
 

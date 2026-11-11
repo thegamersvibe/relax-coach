@@ -24,19 +24,22 @@ const addonLockStaleAfter = 15 * time.Minute
 // Nothing is ever deleted: the transaction folder stays for inspection. The
 // lock is removed only when every moved-aside folder is safe; otherwise it is
 // kept and the next install keeps reporting the lock.
-func (u *addonUpdater) addonRecoverStaleLock(game string) {
-	backups := filepath.Join(game, "RelaxCoachBackups")
-	if addonPlainDirectory(backups) != nil {
-		return
+// It reports whether a stale lock was found (whether or not it could be
+// cleared), i.e. whether an earlier install was interrupted.
+func (u *addonUpdater) addonRecoverStaleLock(game string) (stale bool) {
+	if !addonStaleBundleLock(game) {
+		return false
 	}
+	backups := filepath.Join(game, "RelaxCoachBackups")
 	lockPath := filepath.Join(backups, ".addon-update.lock")
 	info, err := os.Lstat(lockPath)
-	if err != nil || !info.Mode().IsRegular() || time.Since(info.ModTime()) < addonLockStaleAfter {
-		return
+	if err != nil {
+		return false
 	}
+	stale = true
 	b, err := addonReadSmallFile(lockPath)
 	if err != nil {
-		return
+		return stale
 	}
 	// Remove only this very lock (same file, same bytes): another instance may
 	// have cleared it and taken a fresh one meanwhile.
@@ -48,11 +51,11 @@ func (u *addonUpdater) addonRecoverStaleLock(game string) {
 	if name := strings.TrimSpace(string(b)); name != "" {
 		transaction := filepath.Clean(name)
 		if filepath.Dir(transaction) != filepath.Clean(backups) || !strings.HasPrefix(filepath.Base(transaction), "ForeverCoach-") {
-			return
+			return stale
 		}
 		if _, err := os.Lstat(transaction); err == nil {
 			if addonPlainDirectory(transaction) != nil {
-				return
+				return stale
 			}
 			pairs := [][2]string{{filepath.Join(transaction, "ForeverCoach"), filepath.Join(game, "Interface", "AddOns", "ForeverCoach")}}
 			for _, root := range addonGuildRootsFor(addonBundleMinimumVersion) {
@@ -65,26 +68,48 @@ func (u *addonUpdater) addonRecoverStaleLock(game string) {
 					continue
 				}
 				if addonPlainDirectory(moved) != nil {
-					return
+					return stale
 				}
 				if _, err := os.Lstat(target); err == nil {
 					continue // the target is there: keep both
 				} else if !os.IsNotExist(err) {
-					return
+					return stale
 				}
 				parent := filepath.Dir(target)
 				if _, err := os.Lstat(parent); os.IsNotExist(err) {
 					if addonPlainDirectory(filepath.Dir(parent)) != nil || os.Mkdir(parent, 0755) != nil {
-						return
+						return stale
 					}
 				}
 				if addonPlainDirectory(parent) != nil || u.rename(moved, target) != nil {
-					return
+					return stale
 				}
 			}
 		} else if !os.IsNotExist(err) {
-			return
+			return stale
 		}
 	}
 	removeLock()
+	return stale
+}
+
+// addonStaleBundleLock reports a bundle lock left by an interrupted install:
+// an old regular file in a plain RelaxCoachBackups folder.
+func addonStaleBundleLock(game string) bool {
+	if game == "" || !filepath.IsAbs(game) {
+		return false
+	}
+	backups := filepath.Join(filepath.Clean(game), "RelaxCoachBackups")
+	if addonPlainDirectory(backups) != nil {
+		return false
+	}
+	info, err := os.Lstat(filepath.Join(backups, ".addon-update.lock"))
+	return err == nil && info.Mode().IsRegular() && time.Since(info.ModTime()) >= addonLockStaleAfter
+}
+
+// addonRepairNeeded: Coach is installed but the bundle is incomplete (a
+// missing or empty folder) or an earlier install was interrupted (stale lock).
+func addonRepairNeeded(game string) bool {
+	s := InstalledBundleState(game)
+	return (!s.Install && s.State == "partial") || addonStaleBundleLock(game)
 }

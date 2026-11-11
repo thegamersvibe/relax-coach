@@ -157,3 +157,16 @@ test('opening Get started before the first report still looks the release up',as
   assert.equal(count('checkAddon'),1);
   assert.equal($('setup-install').disabled,false);
 });
+
+test('an incomplete install at the latest version is offered as Install (repair)',async t=>{
+  const partial={state:'partial',install:false,present:['ForeverCoach'],missing:['Journey','Journey-Content','RelaxQuestPlanner']};
+  const {$,calls}=await setup(t,{reportRefresh:()=>report('C:\\WoW','1.5.0',partial),
+    checkAddon:()=>({Version:'1.5.0',Available:true,Install:true,Repair:true,InstalledVersion:'1.5.0',Bundle:partial}),
+    applyAddon:v=>({version:v,message:'Relax Coach 1.5.0 installed again to complete an interrupted or incomplete install'})});
+  $('check-update').click();await settle();
+  assert.equal($('apply-update').textContent,'Install');
+  assert.match($('update-status').textContent,/ready to install\. Close WoW, then click Install\. This completes an interrupted or incomplete install/);
+  $('apply-update').click();await settle();await settle();
+  assert.deepEqual(calls.find(c=>c.method==='applyAddon').params,['1.5.0']);
+  assert.match($('update-status').textContent,/installed again/);
+});
