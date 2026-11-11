@@ -224,18 +224,18 @@ function displayReport(result,folderChanged = false) {
     $('release-notes').textContent = 'Check again for this game folder.';
     $('setup-offered').textContent = 'Not checked';
     autoChecked.clear(); // a folder chosen again gets a fresh lookup
-    bundleStatus('Game folder changed. Check again before installing or updating.');
+    bundleStatus('Game folder changed. Check again before installing or updating.', 'initial');
     for (const k of Object.keys(extraOffers)) delete extraOffers[k];
     if ($('extra-list').children.length) loadExtras();
     updateButtons();
   }
   // Say it before any click, from the folder state alone; recomputed on every
   // refresh, so the line goes away once the folder is Relax Journey again.
-  if (!busy && !offer && result.Bundle) {
-    const note = result.Bundle.state === 'replaced' ? foreignRepair+' Click Check, then Repair.'
-      : result.Bundle.journeyUnreadable ? unreadableJourney : '';
-    if (note) bundleStatus(note, true);
-    else if (journeyNoteShown) bundleStatus('');
+  if (!busy && !offer && result.Bundle && statusKind !== 'result') {
+    const note = result.Bundle.state === 'replaced' ? foreignBeforeCheck()
+      : result.Bundle.journeyUnreadable ? unreadableJourney+' Nothing is offered for it.' : '';
+    if (note) bundleStatus(note, 'note');
+    else if (statusKind === 'note') bundleStatus('', 'initial');
   }
   updateButtons();
 }
@@ -340,8 +340,16 @@ const foreignJourney = action => 'The Journey installed here is not Relax Journe
 const foreignRepair = foreignJourney('Click Repair to install Relax Journey');
 const foreignUpdate = foreignJourney('Click Update to install Relax Journey with it');
 const foreignNoRelease = foreignJourney('Repair needs a published Relax Coach release, so check again later');
-const unreadableJourney = "Relax Coach couldn't read Journey's TOC (Interface\\AddOns\\Journey\\Journey.toc), so it can't tell whether this is Relax Journey. Nothing is offered for it.";
-let journeyNoteShown = false;
+const unreadableJourney = "Relax Coach couldn't read Journey's TOC (Interface\\AddOns\\Journey\\Journey.toc), so it can't tell whether this is Relax Journey.";
+// Before any Check the Repair button is disabled: point at Check instead.
+const foreignBeforeCheck = () => document.body.dataset.updatesDisabled === 'true'
+  ? foreignJourney('Updates are disabled by -no-update, so Repair is not available here')
+  : foreignJourney('Click Check; when a release is found, Repair installs Relax Journey');
+// What the shared bundle status line shows: the page's initial text, a
+// folder-state note, or the result of an operation (check, install, error).
+// A folder-state note may replace only the initial text or an earlier note,
+// never an operation result or an error.
+let statusKind = 'initial';
 function bundleReplaced() {
   const b = offer ? offer.Bundle : (lastReport && lastReport.Bundle);
   return !!(b && b.state === 'replaced');
@@ -360,7 +368,7 @@ function renderBundleLabels() {
 // Partial installs: say what is missing and what Install/Update will do.
 function bundleNote(b, available) {
   if (b && b.state === 'replaced') return ' '+(available ? foreignUpdate : foreignNoRelease);
-  const unreadable = b && b.journeyUnreadable ? ' '+unreadableJourney : '';
+  const unreadable = b && b.journeyUnreadable ? ' '+unreadableJourney+(available ? '' : ' Nothing is offered for it.') : '';
   if (!b || b.state !== 'partial') return unreadable;
   const missing = (b.missing || []).join(', '), present = (b.present || []).join(', ');
   let text = '';
@@ -369,7 +377,7 @@ function bundleNote(b, available) {
   if (missing) text += available ? ' '+verb(b.install)+' puts every folder in place.' : ' Check again after a moment; if no Install is offered, the bundle ZIP fallback in the README restores them.';
   return text+unreadable;
 }
-function bundleStatus(text, journeyNote = false) { $('update-status').textContent = text; $('setup-status').textContent = text; journeyNoteShown = journeyNote; }
+function bundleStatus(text, kind = 'result') { $('update-status').textContent = text; $('setup-status').textContent = text; statusKind = kind; }
 async function checkBundle() {
   if (busy) return;
   busy = true; offer = null; updateButtons();

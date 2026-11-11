@@ -203,7 +203,7 @@ test('Journey replaced by another updater: own text and a Repair button on Updat
     checkAddon:()=>({Version:'1.5.2',Available:true,Install:true,Repair:true,InstalledVersion:'1.5.2',Bundle:replaced}),
     applyAddon:v=>{state=report('C:\\WoW',v,installed);return {version:v,message:'Relax Journey installed: … kept in the backup, not deleted.',backupPath:'C:\\WoW\\RelaxCoachBackups\\x'}}});
   await settle();
-  assert.ok($('update-status').textContent.startsWith(text),'shown from the folder state before any click');
+  assert.equal($('update-status').textContent,'The Journey installed here is not Relax Journey (another updater such as CurseForge, Wago or Journey Guide Manager may have replaced it). Click Check; when a release is found, Repair installs Relax Journey; if you use the normal Journey on purpose, you can ignore this.','shown from the folder state before any click, without pointing at the disabled Repair');
   assert.equal($('setup-status').textContent,$('update-status').textContent,'Get started shows it too');
   assert.equal($('apply-update').textContent,'Repair');
   assert.equal($('setup-install').textContent,'Repair');
@@ -264,4 +264,46 @@ test('an unreadable Journey TOC: neutral note, no Repair',async t=>{
   assert.match($('update-status').textContent,/couldn't read Journey's TOC/);
   assert.equal(/Repair/.test($('update-status').textContent),false);
   assert.equal($('apply-update').textContent,'Update');
+});
+
+// مانع final round S5 (Astra's tt_ui_probe.cjs): the folder-state note never
+// overwrites an operation result or error; N13/N15 wording.
+for (const kind of ['check','repair']) for (const unreadableToc of [false,true]) {
+  test('S5: a '+kind+' error survives refreshes ('+(unreadableToc?'unreadable TOC':'foreign Journey')+')',async t=>{
+    const b=unreadableToc?{...installed,journeyUnreadable:true}:foreignB;
+    const err=kind==='check'?'network offline':'Close WoW and try again: Windows refused to move a file that is in use.';
+    const {$}=await setup(t,{reportRefresh:()=>report('C:\\WoW','1.5.2',b),
+      checkAddon:()=>{if(kind==='check')throw Error(err);return {Version:'1.5.2',Available:true,Install:true,Repair:!unreadableToc,InstalledVersion:'1.5.2',Bundle:b}},
+      applyAddon:()=>{throw Error(err)}});
+    await settle();
+    $('check-update').click();await settle();
+    if(kind!=='check'){$('apply-update').click();await settle();await settle();}
+    const text=$('update-status').textContent;
+    assert.ok(text.includes(err),text);
+    for(let i=0;i<3;i++){$('refresh').click();await settle();await settle();}
+    assert.equal($('update-status').textContent,text,'a refresh erased the error');
+    assert.equal($('setup-status').textContent,text);
+  });
+}
+test('N13: with updates disabled the foreign-Journey note does not point at Repair',async t=>{
+  const page=html.replace('data-updates-disabled="false"','data-updates-disabled="true"');
+  assert.notEqual(page,html);
+  const {JSDOM:D}=require('jsdom');let listener;
+  const dom=new D(page,{runScripts:'dangerously',pretendToBeVisual:true,beforeParse(w){
+    w.setInterval=()=>1;w.requestAnimationFrame=()=>0;w.fetch=()=>assert.fail('network');
+    w.chrome={webview:{addEventListener(_,fn){listener=fn},postMessage(raw){const req=JSON.parse(raw);Promise.resolve().then(()=>listener({data:{kind:'native-response',id:req.id,result:req.method==='reportRefresh'?report('C:\\WoW','1.5.2',foreignB):null}}))}}};
+  }});
+  t.after(()=>dom.window.close());await settle();await settle();
+  const s=dom.window.document.getElementById('update-status').textContent;
+  assert.match(s,/Updates are disabled by -no-update, so Repair is not available here/);
+  assert.equal(/Click Repair/.test(s),false);
+});
+test('N15: unreadable TOC with a newer release: no "Nothing is offered" next to Click Update',async t=>{
+  const unreadable={...installed,journeyUnreadable:true};
+  const {$}=await setup(t,{reportRefresh:()=>report('C:\\WoW','1.5.2',unreadable),
+    checkAddon:()=>({Version:'1.5.3',Available:true,Install:false,Repair:false,InstalledVersion:'1.5.2',Bundle:unreadable})});
+  await settle();
+  $('check-update').click();await settle();
+  assert.match($('update-status').textContent,/Click Update.*couldn't read Journey's TOC/);
+  assert.equal(/Nothing is offered/.test($('update-status').textContent),false);
 });
