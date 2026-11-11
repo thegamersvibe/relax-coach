@@ -229,8 +229,14 @@ function displayReport(result,folderChanged = false) {
     if ($('extra-list').children.length) loadExtras();
     updateButtons();
   }
-  // Say it before any click: the folder state alone shows the replaced Journey.
-  if (!busy && !offer && result.Bundle && result.Bundle.state === 'replaced') bundleStatus(replacedText+' Click Check, then Repair.');
+  // Say it before any click, from the folder state alone; recomputed on every
+  // refresh, so the line goes away once the folder is Relax Journey again.
+  if (!busy && !offer && result.Bundle) {
+    const note = result.Bundle.state === 'replaced' ? foreignRepair+' Click Check, then Repair.'
+      : result.Bundle.journeyUnreadable ? unreadableJourney : '';
+    if (note) bundleStatus(note, true);
+    else if (journeyNoteShown) bundleStatus('');
+  }
   updateButtons();
 }
 async function refresh(manual = false) {
@@ -327,8 +333,15 @@ function bundleInstall() {
   if (lastReport && lastReport.Bundle) return lastReport.Bundle.install === true;
   return !!lastReport && lastReport.InstalledVersion === '0.0.0';
 }
-// Journey overwritten by another updater: its own state, text and Repair button.
-const replacedText = 'Journey was replaced by another updater (CurseForge, Wago or Journey Guide Manager). Click Repair to restore Relax Journey, and turn off auto-update for Journey there or it will happen again.';
+// A Journey that is not Relax Journey: its own state, neutral text (the normal
+// Journey next to Coach is a supported choice) and a Repair button. The text
+// names the action the visible button really offers.
+const foreignJourney = action => 'The Journey installed here is not Relax Journey (another updater such as CurseForge, Wago or Journey Guide Manager may have replaced it). '+action+'; if you use the normal Journey on purpose, you can ignore this.';
+const foreignRepair = foreignJourney('Click Repair to install Relax Journey');
+const foreignUpdate = foreignJourney('Click Update to install Relax Journey with it');
+const foreignNoRelease = foreignJourney('Repair needs a published Relax Coach release, so check again later');
+const unreadableJourney = "Relax Coach couldn't read Journey's TOC (Interface\\AddOns\\Journey\\Journey.toc), so it can't tell whether this is Relax Journey. Nothing is offered for it.";
+let journeyNoteShown = false;
 function bundleReplaced() {
   const b = offer ? offer.Bundle : (lastReport && lastReport.Bundle);
   return !!(b && b.state === 'replaced');
@@ -346,16 +359,17 @@ function renderBundleLabels() {
 }
 // Partial installs: say what is missing and what Install/Update will do.
 function bundleNote(b, available) {
-  if (b && b.state === 'replaced') return ' '+replacedText;
-  if (!b || b.state !== 'partial') return '';
+  if (b && b.state === 'replaced') return ' '+(available ? foreignUpdate : foreignNoRelease);
+  const unreadable = b && b.journeyUnreadable ? ' '+unreadableJourney : '';
+  if (!b || b.state !== 'partial') return unreadable;
   const missing = (b.missing || []).join(', '), present = (b.present || []).join(', ');
   let text = '';
   if (missing) text += ' Missing folders: '+missing+'.';
   if (b.install && present) text += ' Already there: '+present+'; '+verb(true)+' moves '+((b.present || []).length > 1 ? 'them' : 'it')+' into RelaxCoachBackups first.';
   if (missing) text += available ? ' '+verb(b.install)+' puts every folder in place.' : ' Check again after a moment; if no Install is offered, the bundle ZIP fallback in the README restores them.';
-  return text;
+  return text+unreadable;
 }
-function bundleStatus(text) { $('update-status').textContent = text; $('setup-status').textContent = text; }
+function bundleStatus(text, journeyNote = false) { $('update-status').textContent = text; $('setup-status').textContent = text; journeyNoteShown = journeyNote; }
 async function checkBundle() {
   if (busy) return;
   busy = true; offer = null; updateButtons();
@@ -373,7 +387,7 @@ async function checkBundle() {
     $('release-link').href = offer.HTMLURL;
     $('release-link').hidden = !offer.HTMLURL;
     bundleStatus(offer.Available && offer.Repair && bundleReplaced()
-      ? replacedText+' WoW can stay open.'
+      ? foreignRepair+' WoW can stay open.'
       : offer.Available
       ? 'Relax Coach '+offer.Version+' is ready to '+(install ? 'install' : 'update')+'.'+clickThen(install)
         +(offer.Repair ? ' This completes an interrupted or incomplete install: every Relax Coach folder is installed again, and the folders there now are kept in RelaxCoachBackups.' : bundleNote(offer.Bundle,true))

@@ -35,9 +35,10 @@ end
 function FC:Print(msg) DEFAULT_CHAT_FRAME:AddMessage("|cff4fc3f7Relax Coach|r: " .. tostring(msg)) end
 
 -- CurseForge, Wago/WowUp and Journey's Guide Manager can auto-update the
--- Journey folder and overwrite Relax Journey. Read-only metadata calls under
--- pcall (C_AddOns first, then the old globals); warn once per session, and
--- only when a loaded Journey's Title is not ours.
+-- Journey folder and overwrite Relax Journey; a player may also keep the
+-- normal Journey on purpose. Read-only metadata calls under pcall (C_AddOns
+-- first, then the old globals); one neutral line per session, only when a
+-- loaded Journey's Title is not ours.
 local function addonCall(name, ...)
     local api = C_AddOns and C_AddOns[name]
     if type(api) == "function" then
@@ -58,8 +59,8 @@ function FC:CheckJourney()
     title = title:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
     if title == "Relax Journey" then return end
     self.journeyWarned = true
-    self:Print("|cffff8800Journey was replaced by another updater (CurseForge, Wago or Journey Guide Manager).|r"
-        .. " Open the Relax Coach app and click Repair to restore Relax Journey, and turn off auto-update for Journey there or it will happen again.")
+    self:Print("|cffff8800The Journey loaded here is not Relax Journey|r (another updater such as CurseForge, Wago or Journey Guide Manager may have replaced it)."
+        .. " To install Relax Journey, open the Relax Coach app and click Repair; if you use the normal Journey on purpose, you can ignore this.")
 end
 
 function FC:CharKey()

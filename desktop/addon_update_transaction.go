@@ -568,7 +568,7 @@ func (u *addonUpdater) installTrees(ctx context.Context, game string, release Ad
 			result.Message = "Relax Coach " + release.Version + " installed again to complete an interrupted or incomplete install: Coach, Journey, Relax Quest Planner and guide content, every installed file verified. The folders that were there are kept in the backup. SavedVariables, settings and unrelated addons were not touched."
 		}
 		if release.journeyReplaced {
-			result.Message = "Relax Journey restored: Coach, Journey, Relax Quest Planner and guide content " + release.Version + " installed, every installed file verified. The Journey folder another updater put there is kept in the backup, not deleted. In CurseForge, Wago or Journey Guide Manager, remove Journey or turn off auto-update for Journey there, or it will happen again."
+			result.Message = "Relax Journey installed: Coach, Journey, Relax Quest Planner and guide content " + release.Version + ", every installed file verified. The Journey that was there is kept in the backup, not deleted. If CurseForge, Wago or Journey Guide Manager put it there, remove Journey there or turn off its auto-update, or it can happen again."
 		}
 		if !before.exists {
 			// First install (Coach was not there): same transaction, install wording.

@@ -117,9 +117,12 @@ func TestJourneyReplacedRepairKeepsForeignFolder(t *testing.T) {
 	if err != nil || string(kept) != "-- from CurseForge\n" {
 		t.Fatalf("the other updater's Journey is not in the backup %s: %v", res.BackupPath, err)
 	}
-	for _, want := range []string{"Relax Journey restored", "turn off auto-update for Journey"} {
+	for _, want := range []string{"Relax Journey installed", "kept in the backup", "turn off its auto-update"} {
 		if !strings.Contains(res.Message, want) {
 			t.Fatalf("message %q lacks %q", res.Message, want)
 		}
+	}
+	if strings.Contains(res.Message, "another updater put") || strings.Contains(res.Message, "restored") {
+		t.Fatalf("message claims the folder was replaced by an updater: %q", res.Message)
 	}
 }

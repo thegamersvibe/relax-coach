@@ -755,13 +755,13 @@ check(not [(f.text or '') for f in findings(c) if 'not learned' in (f.text or ''
 # Journey replaced by another updater (CurseForge, Wago, Journey Guide Manager):
 # one chat warning per session at login; nothing when Journey is ours, absent
 # or disabled, or when the metadata API is missing or throws.
-J_WARN = 'Journey was replaced by another updater'
+J_WARN = 'is not Relax Journey'
 def journey_case(pre):
     L, G, FC, c = client({'level': 20}, gq=False, fdj=False, pre=pre)
     return L, G, c, [str(m) for m in G.CHAT.values() if J_WARN in str(m)]
 LOADED = 'C_AddOns = C_AddOns or {}; C_AddOns.IsAddOnLoaded = function(n) return n == "Journey" end\n'
 L, G, c, warn = journey_case(LOADED + 'C_AddOns.GetAddOnMetadata = function(n, f) if n == "Journey" and f == "Title" then return "Journey" end end')
-check(len(warn) == 1 and 'Repair' in warn[0] and 'auto-update' in warn[0], f'Journey foreign: one warning with the advice ({warn})')
+check(len(warn) == 1 and 'Repair' in warn[0] and 'ignore this' in warn[0] and 'was replaced' not in warn[0], f'Journey foreign: one neutral line with Repair and ignore advice ({warn})')
 G.FIRE('PLAYER_LOGIN'); G.FIRE('PLAYER_ENTERING_WORLD')
 check(len([m for m in G.CHAT.values() if J_WARN in str(m)]) == 1, 'Journey foreign: still one warning per session')
 L, G, c, warn = journey_case(LOADED + 'C_AddOns.GetAddOnMetadata = function(n, f) if f == "Title" then return "Relax Journey" end end')

@@ -197,11 +197,11 @@ test('WoW can stay open: ready text, then the /reload or restart advice from the
 
 test('Journey replaced by another updater: own text and a Repair button on Updates and Get started',async t=>{
   const replaced={state:'replaced',install:false,present:['ForeverCoach','Journey','Journey-Content','RelaxQuestPlanner'],missing:[]};
-  const text='Journey was replaced by another updater (CurseForge, Wago or Journey Guide Manager). Click Repair to restore Relax Journey, and turn off auto-update for Journey there or it will happen again.';
+  const text='The Journey installed here is not Relax Journey (another updater such as CurseForge, Wago or Journey Guide Manager may have replaced it). Click Repair to install Relax Journey; if you use the normal Journey on purpose, you can ignore this.';
   let state=report('C:\\WoW','1.5.2',replaced);
   const {$,calls}=await setup(t,{reportRefresh:()=>state,
     checkAddon:()=>({Version:'1.5.2',Available:true,Install:true,Repair:true,InstalledVersion:'1.5.2',Bundle:replaced}),
-    applyAddon:v=>{state=report('C:\\WoW',v,installed);return {version:v,message:'Relax Journey restored: … kept in the backup, not deleted.',backupPath:'C:\\WoW\\RelaxCoachBackups\\x'}}});
+    applyAddon:v=>{state=report('C:\\WoW',v,installed);return {version:v,message:'Relax Journey installed: … kept in the backup, not deleted.',backupPath:'C:\\WoW\\RelaxCoachBackups\\x'}}});
   await settle();
   assert.ok($('update-status').textContent.startsWith(text),'shown from the folder state before any click');
   assert.equal($('setup-status').textContent,$('update-status').textContent,'Get started shows it too');
@@ -213,7 +213,7 @@ test('Journey replaced by another updater: own text and a Repair button on Updat
   assert.equal($('setup-install').textContent,'Repair');
   $('setup-install').click();await settle();await settle();
   assert.deepEqual(calls.find(c=>c.method==='applyAddon').params,['1.5.2']);
-  assert.match($('update-status').textContent,/Relax Journey restored/);
+  assert.match($('update-status').textContent,/Relax Journey installed/);
   assert.equal($('apply-update').textContent,'Update','back to Update once Relax Journey is restored');
 });
 
@@ -224,10 +224,44 @@ test('a newer release over a replaced Journey keeps Update and says why',async t
   await settle();
   $('check-update').click();await settle();
   assert.equal($('apply-update').textContent,'Update');
-  assert.match($('update-status').textContent,/ready to update\. Click Update\. WoW can stay open\. Journey was replaced by another updater/);
+  assert.match($('update-status').textContent,/ready to update\. Click Update\. WoW can stay open\. The Journey installed here is not Relax Journey .*Click Update to install Relax Journey with it; if you use the normal Journey on purpose, you can ignore this\./);
+  assert.equal(/Click Repair/.test($('update-status').textContent),false,'the button says Update');
 });
 
 test('no claim that /reload cannot load new files',()=>{
   assert.equal(/reload is not enough/i.test(html),false);
   assert.equal(/only load at game start/i.test(html),false);
+});
+
+// مانع round 2, S4 (his jr_ui_probe.cjs, inverted into the wanted behaviour).
+const foreignB={state:'replaced',install:false,present:['ForeverCoach','Journey','Journey-Content','RelaxQuestPlanner'],missing:[]};
+test('no compatible release over a foreign Journey: no "Click Repair" next to a disabled Update',async t=>{
+  const {$}=await setup(t,{reportRefresh:()=>report('C:\\WoW','1.5.2',foreignB),
+    checkAddon:()=>({InstalledVersion:'1.5.2',Available:false,Install:false,Repair:false,Bundle:foreignB,Notes:'No compatible release.'})});
+  await settle();
+  $('check-update').click();await settle();
+  assert.equal($('apply-update').disabled,true);
+  assert.equal(/Click Repair/.test($('update-status').textContent),false,$('update-status').textContent);
+  assert.match($('update-status').textContent,/not Relax Journey/);
+});
+test('the foreign-Journey line goes away once a refresh sees Relax Journey again',async t=>{
+  let b=foreignB;
+  const {$}=await setup(t,{reportRefresh:()=>report('C:\\WoW','1.5.2',b)});
+  await settle();
+  assert.match($('update-status').textContent,/not Relax Journey/);
+  b=installed;
+  $('refresh').click();await settle();await settle();
+  assert.equal(/not Relax Journey/.test($('update-status').textContent),false,$('update-status').textContent);
+  assert.equal($('setup-status').textContent,$('update-status').textContent);
+  assert.equal($('apply-update').textContent,'Update');
+});
+test('an unreadable Journey TOC: neutral note, no Repair',async t=>{
+  const unreadable={state:'installed',install:false,present:['ForeverCoach','Journey','Journey-Content','RelaxQuestPlanner'],missing:[],journeyUnreadable:true};
+  const {$}=await setup(t,{reportRefresh:()=>report('C:\\WoW','1.5.2',unreadable),
+    checkAddon:()=>({InstalledVersion:'1.5.2',Available:false,Install:false,Repair:false,Bundle:unreadable,Notes:'Up to date.'})});
+  await settle();
+  $('check-update').click();await settle();
+  assert.match($('update-status').textContent,/couldn't read Journey's TOC/);
+  assert.equal(/Repair/.test($('update-status').textContent),false);
+  assert.equal($('apply-update').textContent,'Update');
 });
