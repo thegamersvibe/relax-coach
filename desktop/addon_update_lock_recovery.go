@@ -38,6 +38,13 @@ func (u *addonUpdater) addonRecoverStaleLock(game string) {
 	if err != nil {
 		return
 	}
+	// Remove only this very lock (same file, same bytes): another instance may
+	// have cleared it and taken a fresh one meanwhile.
+	removeLock := func() {
+		if addonCheckLock(lockPath, info, string(b)) == nil {
+			os.Remove(lockPath)
+		}
+	}
 	if name := strings.TrimSpace(string(b)); name != "" {
 		transaction := filepath.Clean(name)
 		if filepath.Dir(transaction) != filepath.Clean(backups) || !strings.HasPrefix(filepath.Base(transaction), "ForeverCoach-") {
@@ -79,5 +86,5 @@ func (u *addonUpdater) addonRecoverStaleLock(game string) {
 			return
 		}
 	}
-	os.Remove(lockPath)
+	removeLock()
 }

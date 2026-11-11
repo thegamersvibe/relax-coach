@@ -29,7 +29,7 @@ func TestFICopyPublishLeavesOneLink(t *testing.T) {
 	var atKill uint64
 	var readErr error
 	appCopyPublished = func(target string) {
-		atKill = fiLinks(t, target)            // what a kill at this instant leaves
+		atKill = fiLinks(t, target)                        // what a kill at this instant leaves
 		_, readErr = appReadFile(target, appMaxExecutable) // the check ApplyAppRelease runs first
 	}
 	t.Cleanup(func() { appCopyPublished = nil })

@@ -21,4 +21,3 @@ func appSingleLink(f *os.File) error {
 }
 func appRejectReparse(path string) error    { return nil }
 func appPrivateDirectory(path string) error { return os.Mkdir(path, 0700) }
-

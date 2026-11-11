@@ -97,3 +97,35 @@ func TestFICrashBundleBlocksLaterInstalls(t *testing.T) {
 		}
 	})
 }
+
+// مانع S2: recovery removes only the lock it inspected. If another instance
+// cleared it and took a fresh lock meanwhile, the fresh lock stays.
+func TestFILockRecoveryKeepsAReplacementLock(t *testing.T) {
+	game := guildGame(t)
+	lock, _ := crashedBundleTransaction(t, game, 20*time.Minute, true)
+	newTx := filepath.Join(game, "RelaxCoachBackups", "ForeverCoach-new-owner")
+	os.Mkdir(newTx, 0700)
+	u := guildUpdaterForVersion(t, bundleZip(t, "1.5.0", nil), "1.5.0")
+	swapped := false
+	u.rename = func(from, to string) error {
+		if err := os.Rename(from, to); err != nil {
+			return err
+		}
+		if !swapped {
+			swapped = true
+			os.Remove(lock)
+			if err := os.WriteFile(lock, []byte(newTx+"\n"), 0600); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	u.addonRecoverStaleLock(game)
+	if !swapped {
+		t.Fatal("interleaving not exercised")
+	}
+	b, err := os.ReadFile(lock)
+	if err != nil || strings.TrimSpace(string(b)) != newTx {
+		t.Fatalf("recovery removed another instance's fresh lock: %v", err)
+	}
+}
