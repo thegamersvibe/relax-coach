@@ -32,9 +32,9 @@ func TestFirstInstallBundleState(t *testing.T) {
 		{"only unrelated addons", "none", true, map[string]string{"Interface/AddOns/Other/Other.toc": "x"}, []string{}, []string{"ForeverCoach", "Journey", "Journey-Content", "RelaxQuestPlanner"}},
 		{"normal Journey only", "partial", true, map[string]string{"Interface/AddOns/Journey/Journey.toc": "## Title: Journey\n"}, []string{"Journey"}, []string{"ForeverCoach", "Journey-Content", "RelaxQuestPlanner"}},
 		{"Coach folder without readable TOC", "partial", true, map[string]string{"Interface/AddOns/ForeverCoach/Core.lua": "x"}, []string{"ForeverCoach"}, []string{"Journey", "Journey-Content", "RelaxQuestPlanner"}},
-		{"1.5.0 without content and planner", "partial", false, map[string]string{"Interface/AddOns/ForeverCoach/ForeverCoach.toc": coach("1.5.0"), "Interface/AddOns/Journey/Journey.toc": "x"}, []string{"ForeverCoach", "Journey"}, []string{"Journey-Content", "RelaxQuestPlanner"}},
-		{"1.4.5 guild install", "installed", false, map[string]string{"Interface/AddOns/ForeverCoach/ForeverCoach.toc": coach("1.4.5"), "Interface/AddOns/Journey/Journey.toc": "x", "Interface/Content/Journey-Content/a.html": "x"}, []string{"ForeverCoach", "Journey", "Journey-Content"}, []string{}},
-		{"1.5.0 bundle install", "installed", false, map[string]string{"Interface/AddOns/ForeverCoach/ForeverCoach.toc": coach("1.5.0"), "Interface/AddOns/Journey/Journey.toc": "x", "Interface/AddOns/RelaxQuestPlanner/RelaxQuestPlanner.toc": "x", "Interface/Content/Journey-Content/a.html": "x"}, []string{"ForeverCoach", "Journey", "Journey-Content", "RelaxQuestPlanner"}, []string{}},
+		{"1.5.0 without content and planner", "partial", false, map[string]string{"Interface/AddOns/ForeverCoach/ForeverCoach.toc": coach("1.5.0"), "Interface/AddOns/Journey/Journey.toc": "## Title: Relax Journey\n"}, []string{"ForeverCoach", "Journey"}, []string{"Journey-Content", "RelaxQuestPlanner"}},
+		{"1.4.5 guild install", "installed", false, map[string]string{"Interface/AddOns/ForeverCoach/ForeverCoach.toc": coach("1.4.5"), "Interface/AddOns/Journey/Journey.toc": "## Title: Relax Journey\n", "Interface/Content/Journey-Content/a.html": "x"}, []string{"ForeverCoach", "Journey", "Journey-Content"}, []string{}},
+		{"1.5.0 bundle install", "installed", false, map[string]string{"Interface/AddOns/ForeverCoach/ForeverCoach.toc": coach("1.5.0"), "Interface/AddOns/Journey/Journey.toc": "## Title: Relax Journey\n", "Interface/AddOns/RelaxQuestPlanner/RelaxQuestPlanner.toc": "x", "Interface/Content/Journey-Content/a.html": "x"}, []string{"ForeverCoach", "Journey", "Journey-Content", "RelaxQuestPlanner"}, []string{}},
 		{"legacy Coach-only 1.3.1", "installed", false, map[string]string{"Interface/AddOns/ForeverCoach/ForeverCoach.toc": coach("1.3.1")}, []string{"ForeverCoach"}, []string{}},
 	}
 	for _, c := range cases {
@@ -131,6 +131,7 @@ func TestFirstInstallOverNormalJourneyKeepsItInBackup(t *testing.T) {
 func TestFirstInstallExistingClientStillSaysUpdated(t *testing.T) {
 	const version = "1.5.0"
 	game := guildGame(t)
+	addonPut(t, game, "Interface/AddOns/Journey/Journey.toc", "## Title: Relax Journey\n")
 	u := guildUpdaterForVersion(t, bundleZip(t, version, nil), version)
 	result, err := u.apply(context.Background(), game, guildInfoForVersion(version))
 	if err != nil {
