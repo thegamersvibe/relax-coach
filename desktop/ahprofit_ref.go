@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -163,18 +164,28 @@ func loadFarmRef(game string, cache *farmRefCache) farmRef {
 	farm, k1, err1 := readAddonFile(game, "AHProfit", "FarmData.lua")
 	hist, k2, err2 := readAddonFile(game, "AHProfit", "History.lua")
 	seed, k3, err3 := readAddonFile(game, "AHProfit", "Data.lua")
-	key := k1 + "|" + k2 + "|" + k3
-	if cache != nil && cache.key == key && key != "||" {
+	key := filepath.Clean(game) + "\x00" + k1 + "|" + k2 + "|" + k3
+	if cache != nil && cache.key == key && k1+k2+k3 != "" {
 		return cache.ref
 	}
 	farmRefParses++
+	// A file whose first data row has an unexpected shape (a changed format)
+	// means no bundled names at all: wrong names are worse than none.
+	var farmD, histD map[string]any
 	if err1 == nil {
-		if d, err := parseLuaAssignedTable(farm, "ns.farmData"); err == nil {
-			addFarmData(&ref, d)
-		}
+		farmD, _ = parseLuaAssignedTable(farm, "ns.farmData")
 	}
 	if err2 == nil {
-		if d, err := parseLuaAssignedTable(hist, "ns.hist"); err == nil {
+		histD, _ = parseLuaAssignedTable(hist, "ns.hist")
+	}
+	if (farmD != nil && !farmDataShapeOK(farmD)) || (histD != nil && !historyShapeOK(histD)) {
+		farmD, histD = nil, nil
+	}
+	if farmD != nil {
+		addFarmData(&ref, farmD)
+	}
+	if d := histD; d != nil {
+		{
 			for _, row := range List(d["3"]) {
 				r := List(row)
 				if len(r) < 2 {
@@ -225,6 +236,58 @@ func farmSeedFrom(d map[string]any) *farmSeed {
 		s.Prices[id] = [2]int{p, q}
 	}
 	return s
+}
+
+// rowShape reports whether the first row of list has exactly the given
+// column kinds: 's' string, 'n' number, 't' table.
+func rowShape(list []any, kinds string) bool {
+	if len(list) == 0 {
+		return true // nothing to read from it anyway
+	}
+	r := List(list[0])
+	if len(r) != len(kinds) {
+		return false
+	}
+	for i, k := range kinds {
+		var ok bool
+		switch k {
+		case 's':
+			_, ok = r[i].(string)
+		case 'n':
+			_, ok = r[i].(float64)
+		case 't':
+			_, ok = r[i].(map[string]any)
+		}
+		if !ok {
+			return false
+		}
+	}
+	return true
+}
+
+// farmDataShapeOK: item and zone rows give values by position (id, vendor,
+// mapID), so their column count and kinds must match exactly; node rows give
+// only their first column, the name.
+func farmDataShapeOK(d map[string]any) bool {
+	_, timeOK := d["1"].(float64)
+	nodes := List(d["3"])
+	nodeOK := len(nodes) == 0
+	if !nodeOK {
+		r := List(nodes[0])
+		_, nodeOK = func() (string, bool) {
+			if len(r) == 0 {
+				return "", false
+			}
+			s, ok := r[0].(string)
+			return s, ok
+		}()
+	}
+	return timeOK && nodeOK && rowShape(List(d["2"]), "snnnnn") && rowShape(List(d["4"]), "snnnnttt")
+}
+
+func historyShapeOK(d map[string]any) bool {
+	_, timeOK := d["1"].(float64)
+	return timeOK && rowShape(List(d["3"]), "snnnn")
 }
 
 // FarmData: { time, ITEMS, NODES, ZONES, ... } with ITEMS[i] = { name,
@@ -282,7 +345,9 @@ func addFarmData(ref *farmRef, d map[string]any) {
 }
 
 // saveItemRefs reads the save's own item cache (AH Profit's items[id] =
-// { name, vendor }, saved data version 3). It wins over the bundled files.
+// { name, vendor }, saved data version 3). Each field wins over the bundled
+// files on its own: a valid save name with no vendor keeps a known bundled
+// vendor price, and the other way round.
 func saveItemRefs(db map[string]any, into map[int]farmItemRef) {
 	for k, raw := range M(db["items"]) {
 		id, err := strconv.Atoi(k)
@@ -290,16 +355,18 @@ func saveItemRefs(db map[string]any, into map[int]farmItemRef) {
 		if err != nil || id <= 0 || id > 1e7 || len(r) < 1 {
 			continue
 		}
-		name := S(r[0])
-		if _, isString := r[0].(string); !isString || name == "" || len(name) > 128 {
-			continue
+		it, had := into[id]
+		changed := false
+		if name, isString := r[0].(string); isString && name != "" && len(name) <= 128 {
+			it.Name, changed = name, true
 		}
-		it := farmItemRef{Name: name}
 		if len(r) > 1 {
 			if v, ok := ahpInt(r[1], 1e9); ok {
-				it.Vendor, it.VendorKnown = v, true
+				it.Vendor, it.VendorKnown, changed = v, true, true
 			}
 		}
-		into[id] = it
+		if changed && (had || it.Name != "") {
+			into[id] = it
+		}
 	}
 }

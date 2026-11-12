@@ -316,7 +316,9 @@ func TestFarmCoin(t *testing.T) {
 // TestFarmRenderForUITests writes the Farming fragment of the synthetic save
 // for the jsdom tests (native_farm_ui_test.cjs) when FARM_HTML_OUT is set.
 func TestFarmRenderForUITests(t *testing.T) {
-	fv, err := buildFarm([]byte(farmFixture()), farmChars(), time.Unix(farmNow, 0), farmRef{})
+	// Alt-Nowhere's house (known from Coach, never scanned) must be selectable.
+	chars := append(farmChars(), CharView{Name: "Alt", Realm: "Nowhere", Faction: "Horde", Updated: time.Unix(farmNow-9000, 0)})
+	fv, err := buildFarm([]byte(farmFixture()), chars, time.Unix(farmNow, 0), farmRef{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -51,6 +51,19 @@ test('AH Profit save: Farming entry, page, and the current house first',async t=
   assert.ok(!$('farm-body').innerHTML.includes('<b>Linen</b>'),'save text stays escaped');
 });
 
+test('every house that has bank rows can be chosen, scanned or not',async t=>{
+  const {$,shown}=await setup(t,{reportRefresh:()=>report('B#2',true,farm)});
+  $('nav-farm').click();
+  const options=[...$('farm-house').options].map(o=>o.value);
+  const houses=[...new Set([...$('farm-body').querySelectorAll('tr[data-house]')].map(r=>r.dataset.house))];
+  assert.ok(houses.includes('Nowhere|Horde'),'fixture has a row on an unscanned house');
+  for (const h of houses) {
+    assert.ok(options.includes(h),'house '+JSON.stringify(h)+' is in the list');
+    $('farm-house').value=h;fire($('farm-house'));
+    assert.ok(shown().length>0 && shown().every(x=>x===h),'its rows show: '+h);
+  }
+});
+
 test('refresh keeps the chosen house; the page goes away when the save does',async t=>{
   let state=report('B#2',true,farm);
   const {$,shown}=await setup(t,{reportRefresh:()=>state});

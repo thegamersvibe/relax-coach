@@ -197,6 +197,9 @@ func (a *App) setGame(game string) {
 	}
 	a.rescanAccountsLocked()
 	a.modTime = time.Time{}
+	// Nothing parsed from another game folder is reused (AH Profit's save and
+	// its bundled files are cached by file version).
+	a.farmRef, a.farmParse = farmRefCache{}, farmParseCache{}
 	// Do not carry another game's last-good report across a folder change.
 	a.view = View{AppVersion: Version, Game: game, NoGame: game == ""}
 }

@@ -5,7 +5,7 @@
 <div class="card farm-head">
  <p class="subtle">From AH Profit's save for this account{{if not .SaveTime.IsZero}}, saved {{ago .SaveTime}}{{end}}. Asking prices, not completed sales; {{.Cut}}% auction cut taken off.</p>
  {{if .Houses}}<div class="account-controls"><label for="farm-house">Auction house</label><select id="farm-house">
-  {{range .Houses}}<option value="{{.Key}}"{{if eq .Key $.DefaultHouse}} selected{{end}}>{{.Realm}} · {{.Faction}} ({{.Items}} prices{{if not .FullScan.IsZero}}, full scan {{ago .FullScan}}{{end}})</option>{{end}}
+  {{range .Houses}}<option value="{{.Key}}"{{if eq .Key $.DefaultHouse}} selected{{end}}>{{.Realm}} · {{.Faction}} ({{if .Items}}{{.Items}} prices{{if not .FullScan.IsZero}}, full scan {{ago .FullScan}}{{end}}{{else}}not scanned{{end}})</option>{{end}}
   <option value=""{{if eq "" $.DefaultHouse}} selected{{end}}>Characters whose auction house is unknown</option>
  </select></div>{{else}}<p class="subtle">No auction house scanned yet: open the auction house in game with AH Profit enabled, then /reload.</p>{{end}}
 </div>
@@ -25,7 +25,7 @@
  {{if .Sell}}<p class="subtle">The 150 most valuable rows per auction house. A character's auction house is known once Relax Coach has seen that character.</p><table class="farm-table"><thead><tr><th>Item</th><th>Character</th><th class="num">Count</th><th class="num">Lowest each</th><th class="num">After cut, all</th><th class="num">Against a vendor</th></tr></thead><tbody>
  {{range $r := .Sell}}<tr data-house="{{$r.House}}"><td>{{$r.Name}}</td><td>{{$r.Char}}</td><td class="num">{{$r.Count}}{{if $r.Bound}} <small class="subtle">({{$r.Bound}} bound)</small>{{end}}</td>
   {{if $r.NoPrice}}<td class="num subtle" colspan="2">no price for this house</td>{{else}}<td class="num">{{coin $r.Price}}<br><small class="subtle">{{if eq $r.Source "guild"}}guild{{if $r.From}} ({{$r.From}}){{end}}{{else if eq $r.Source "feed"}}AH Profit's bundled prices{{else}}your scan{{end}}, {{ago $r.Seen}}, {{$r.Listed}} listed</small></td><td class="num">{{coin $r.Value}}</td>{{end}}
-  <td class="num">{{if not $r.VendorKnown}}<small class="subtle">vendor price not known</small>{{else if $r.NoPrice}}<small class="subtle">vendor pays {{coin $r.Vendor}} each</small>{{else if lt $r.Gain 0}}<span class="vendor-better">vendor pays more: {{coin $r.Vendor}} each</span>{{else}}<span class="ah-better">+{{coin $r.Gain}} over vendoring</span>{{end}}</td></tr>{{end}}
+  <td class="num">{{if $r.AllBound}}<small class="subtle">bound, can't be auctioned{{if $r.VendorKnown}}; vendor pays {{coin $r.Vendor}} each{{end}}</small>{{else if not $r.VendorKnown}}<small class="subtle">vendor price not known</small>{{else if $r.NoPrice}}<small class="subtle">vendor pays {{coin $r.Vendor}} each</small>{{else if lt $r.Gain 0}}<span class="vendor-better">vendor pays more: {{coin $r.Vendor}} each</span>{{else if eq $r.Gain 0}}<small class="subtle">same as a vendor ({{coin $r.Vendor}} each)</small>{{else}}<span class="ah-better">+{{coin $r.Gain}} over vendoring</span>{{end}}</td></tr>{{end}}
  </tbody></table>
  <p class="subtle farm-empty-house" hidden>No bank items for this auction house.</p>
  <p class="scope">The bank is read when you open it in game. Names and vendor prices come from AH Profit's save when it has them, otherwise from AH Profit's bundled farm data (mostly gathering materials); where neither knows an item, no vendor comparison is made.</p>

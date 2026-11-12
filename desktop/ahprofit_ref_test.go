@@ -219,6 +219,14 @@ func TestFarmRefOnlyFromARealAddonFolder(t *testing.T) {
 	if ref := loadFarmRef(real, nil); ref.Items[2840].Name != "Copper Bar (history)" || ref.Items[2840].VendorKnown {
 		t.Fatalf("a linked FarmData.lua is not read (History.lua still is): %+v", ref.Items[2840])
 	}
+	// a relative link inside the folder (os.Root would follow it): refused by the Lstat check
+	os.Remove(filepath.Join(dir, "FarmData.lua"))
+	if err := os.Symlink("real.lua", filepath.Join(dir, "FarmData.lua")); err != nil {
+		t.Fatal(err)
+	}
+	if ref := loadFarmRef(real, nil); ref.Items[2840].Name != "Copper Bar (history)" || ref.Items[2840].VendorKnown {
+		t.Fatalf("a relative link to FarmData.lua is not read: %+v", ref.Items[2840])
+	}
 }
 
 func TestFarmRefSameGameCachedAndNeverWritten(t *testing.T) {

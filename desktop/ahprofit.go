@@ -103,6 +103,7 @@ type FarmSellRow struct {
 	VendorKnown       bool
 	Gain              int // (Net − Vendor) × unbound, only when VendorKnown
 	NoPrice           bool
+	AllBound          bool // every item of the stack is bound: nothing to auction
 }
 
 type FarmZone struct {
@@ -384,7 +385,7 @@ func buildFarmDB(db map[string]any, chars []CharView, now time.Time, ref farmRef
 			if !ok1 || !ok2 || id == 0 || n == 0 || bound > n {
 				continue
 			}
-			r := FarmSellRow{House: house, Char: char, ID: id, Name: "item " + strconv.Itoa(id), Count: n, Bound: bound, BankSeen: seen}
+			r := FarmSellRow{House: house, Char: char, ID: id, Name: "item " + strconv.Itoa(id), Count: n, Bound: bound, BankSeen: seen, AllBound: bound == n}
 			if it, ok := items[id]; ok {
 				r.Name, r.Vendor, r.VendorKnown = it.Name, it.Vendor, it.VendorKnown
 			}
@@ -396,7 +397,7 @@ func buildFarmDB(db map[string]any, chars []CharView, now time.Time, ref farmRef
 			} else {
 				r.Net = r.Price * (100 - fv.Cut) / 100
 				r.Value = ahpMul(r.Net, n-bound)
-				if r.VendorKnown {
+				if r.VendorKnown && !r.AllBound {
 					if r.Net >= r.Vendor {
 						r.Gain = ahpMul(r.Net-r.Vendor, n-bound)
 					} else {
@@ -427,6 +428,20 @@ func buildFarmDB(db map[string]any, chars []CharView, now time.Time, ref farmRef
 		}
 	}
 	fv.Sell = kept
+	// Every house that has rows can be chosen, also one known from Coach but
+	// never scanned (listed as "not scanned").
+	listed := map[string]bool{}
+	for _, h := range fv.Houses {
+		listed[h.Key] = true
+	}
+	for _, r := range fv.Sell {
+		if r.House != "" && !listed[r.House] {
+			listed[r.House] = true
+			realm, faction, _ := strings.Cut(r.House, "|")
+			fv.Houses = append(fv.Houses, FarmHouse{Key: r.House, Realm: realm, Faction: faction})
+		}
+	}
+	sort.Slice(fv.Houses, func(i, j int) bool { return fv.Houses[i].Key < fv.Houses[j].Key })
 
 	// 4. Gathering: nodes per map, how many kinds, when last seen, who picked.
 	for mapKey, raw := range M(db["nodes"]) {
