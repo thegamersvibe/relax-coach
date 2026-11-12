@@ -128,7 +128,7 @@ func TestFarmCutAndSchemaVersions(t *testing.T) {
 	if err != nil || fv.Cut != 15 || farmRow(fv, "Tester-Stormrage", 2772).Net != 255 {
 		t.Fatalf("15%% cut: %v %+v", err, fv.Cut)
 	}
-	newer := strings.Replace(farmFixture(), `["v"] = 2`, `["v"] = 3`, 1)
+	newer := strings.Replace(farmFixture(), `["v"] = 2`, `["v"] = 4`, 1)
 	fv, err = buildFarm([]byte(newer), farmChars(), time.Unix(farmNow, 0), farmRef{})
 	if err != nil || !strings.Contains(fv.Note, "newer AH Profit") || len(fv.Sell) == 0 {
 		t.Fatalf("a newer save is still read, with a note: %v %q", err, fv.Note)
@@ -138,7 +138,7 @@ func TestFarmCutAndSchemaVersions(t *testing.T) {
 	if err != nil || fv.HasLedger || fv.DefaultHouse != "R|Horde" || len(fv.Sell) != 0 || len(fv.Houses) != 1 {
 		t.Fatalf("old save without newer fields: %v %+v", err, fv)
 	}
-	withLedger := strings.Replace(farmFixture(), `["rec"] = { },`, `["rec"] = { }, ["ledger"] = { }, ["sessions"] = { },`, 1)
+	withLedger := strings.Replace(strings.Replace(farmFixture(), `["rec"] = { },`, `["rec"] = { }, ["ledger"] = { }, ["sessions"] = { },`, 1), `["v"] = 2`, `["v"] = 3`, 1)
 	fv, err = buildFarm([]byte(withLedger), farmChars(), time.Unix(farmNow, 0), farmRef{})
 	if err != nil || !fv.HasLedger || !fv.HasSessions {
 		t.Fatalf("ledger/sessions present: %v %+v", err, fv)
@@ -318,12 +318,17 @@ func TestFarmCoin(t *testing.T) {
 func TestFarmRenderForUITests(t *testing.T) {
 	// Alt-Nowhere's house (known from Coach, never scanned) must be selectable.
 	chars := append(farmChars(), CharView{Name: "Alt", Realm: "Nowhere", Faction: "Horde", Updated: time.Unix(farmNow-9000, 0)})
-	fv, err := buildFarm([]byte(farmFixture()), chars, time.Unix(farmNow, 0), farmRef{})
+	// A version 3 save with a ledger and sessions, so the UI test sees the Gold and Sessions tables.
+	day := (farmNow - 1577836800) / 86400
+	sv := strings.Replace(strings.Replace(farmFixture(), `["v"] = 2`, `["v"] = 3`, 1), `["rec"] = { },`, fmt.Sprintf(`["rec"] = { },
+	["ledger"] = { ["Tester-Stormrage"] = { [%d] = { ["loot"] = { 5000, 0 }, ["repair"] = { 0, 1200 } } } },
+	["sessions"] = { { ["char"] = "<b>Tester</b>", ["zone"] = "Elwynn Forest", ["start"] = %d, ["stop"] = %d, ["dur"] = 3600, ["inc"] = { ["loot"] = 5000 }, ["out"] = { }, ["items"] = { }, ["nodes"] = 3 } },`, day, farmNow-4000, farmNow-400), 1)
+	fv, err := buildFarm([]byte(sv), chars, time.Unix(farmNow, 0), farmRef{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	html, err := renderFarmBody(View{Farm: fv})
-	if err != nil || !strings.Contains(html, `id="farm-house"`) || !strings.Contains(html, `data-house="Stormrage|Horde"`) {
+	if err != nil || !strings.Contains(html, `id="farm-house"`) || !strings.Contains(html, `data-house="Stormrage|Horde"`) || !fv.HasLedger || len(fv.Sessions) != 1 {
 		t.Fatalf("render: %v", err)
 	}
 	if out := os.Getenv("FARM_HTML_OUT"); out != "" {

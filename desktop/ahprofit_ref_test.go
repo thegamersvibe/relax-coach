@@ -94,7 +94,7 @@ func TestFarmNamesAndVendorOrder(t *testing.T) {
 	ref := loadFarmRef(farmGame(t, farmDataFixture, historyFixture), nil)
 	// The save's own item cache (saved data version 3) wins: its vendor 0 is
 	// the game's own answer (cannot be sold), so it is known.
-	save := strings.Replace(farmFixture(), `["rec"] = { },`, `["rec"] = { }, ["items"] = { [2589] = { "Linen Cloth (save)", 1 }, [3858] = { "Mithril Ore (save)", 0 }, [7] = { 5, 5 }, [8] = { "x" } },`, 1)
+	save := strings.Replace(strings.Replace(farmFixture(), `["v"] = 2`, `["v"] = 3`, 1), `["rec"] = { },`, `["rec"] = { }, ["items"] = { [2589] = { "Linen Cloth (save)", 1 }, [3858] = { "Mithril Ore (save)", 0 }, [7] = { 5, 5 }, [8] = { "x" } },`, 1)
 	fv, err := buildFarm([]byte(save), farmChars(), time.Unix(farmNow, 0), ref)
 	if err != nil {
 		t.Fatal(err)

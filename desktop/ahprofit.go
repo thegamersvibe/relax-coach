@@ -63,7 +63,7 @@ type farmParseCache struct {
 
 // ahpKnownVersion is the newest AHProfitDB.v this app understands. Newer
 // versions only add fields, so they are still read, with a note.
-const ahpKnownVersion = 2
+const ahpKnownVersion = 3
 
 // ahpOwnFresh: your own scan wins over a guild price while it is this young
 // (the same rule as AH Profit's lookup).
@@ -74,12 +74,15 @@ type FarmView struct {
 	Error        string // could not be read or parsed (Present stays true)
 	Warning      string // shown with the last good data
 	Note         string // e.g. written by a newer AH Profit
+	Newer        bool   // the save's version is newer than this app knows
 	SaveTime     time.Time
 	Cut          int
 	Houses       []FarmHouse
 	DefaultHouse string
-	HasLedger    bool // PR-D fields present
-	HasSessions  bool
+	HasLedger    bool // version 3 save with a ledger (Gold is set)
+	HasSessions  bool // version 3 save with a session archive
+	Gold         *FarmGold
+	Sessions     []FarmSession
 	Sell         []FarmSellRow
 	Gathering    []FarmZone
 	Auctions     []FarmAuctionStat
@@ -261,15 +264,22 @@ func buildFarmDB(db map[string]any, chars []CharView, now time.Time, ref farmRef
 	for id, it := range ref.Items {
 		items[id] = it
 	}
-	saveItemRefs(db, items)
+	ver, verOK := ahpInt(db["v"], 1e6)
+	v3 := verOK && ver == 3 // ledger, sessions and items exist only in version 3
+	if v3 {
+		saveItemRefs(db, items)
+	}
 	if c, ok := ahpInt(db["cut"], 100); ok && (c == 5 || c == 15) {
 		fv.Cut = c
 	}
 	if ver, ok := ahpInt(db["v"], 1e6); ok && ver > ahpKnownVersion {
 		fv.Note = "This save was written by a newer AH Profit; parts it added are not shown yet. Update Relax Coach."
+		fv.Newer = true
 	}
-	_, fv.HasLedger = db["ledger"].(map[string]any)
-	_, fv.HasSessions = db["sessions"].(map[string]any)
+	if v3 {
+		fv.Gold, fv.HasLedger = buildGold(db, now)
+		fv.Sessions, fv.HasSessions = buildSessions(db, ref.Maps)
+	}
 
 	live, shared := M(db["live"]), M(db["shared"])
 	// Guild prices only from a saved-data version that has them, as the addon reads them.

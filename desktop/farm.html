@@ -11,12 +11,28 @@
 </div>
 
 <div class="grid farm-grid">
-<div class="card" id="farm-gold"><h3>Gold</h3>
- {{if .HasLedger}}<p class="subtle">This AH Profit saves gold history; this Relax Coach version does not show it yet.</p>
+<div class="card" id="farm-gold"><h3>Gold <small class="subtle">all characters of this account</small></h3>
+ {{if .HasLedger}}{{with .Gold}}<table class="farm-table"><thead><tr><th></th>{{range .Periods}}<th class="num">{{.Label}}</th>{{end}}</tr></thead><tbody>
+ <tr><th>Earned</th>{{range .Periods}}<td class="num">{{coin .In}}</td>{{end}}</tr>
+ <tr><th>Spent</th>{{range .Periods}}<td class="num">{{coin .Out}}</td>{{end}}</tr>
+ <tr><th>Net</th>{{range .Periods}}<td class="num">{{if ge .Net 0}}+{{end}}{{coin .Net}}</td>{{end}}</tr>
+ </tbody></table>
+ {{if .Sources}}<h4>Last 30 days by source</h4><table class="farm-table"><thead><tr><th>Source</th><th class="num">Earned</th><th class="num">Spent</th></tr></thead><tbody>
+ {{range .Sources}}<tr><td>{{.Name}}</td><td class="num">{{coin .In}}</td><td class="num">{{coin .Out}}</td></tr>{{end}}
+ </tbody></table>{{end}}
+ {{if .Chars}}<h4>Last 30 days by character</h4><table class="farm-table"><thead><tr><th>Character</th><th class="num">Earned</th><th class="num">Spent</th><th class="num">Net</th></tr></thead><tbody>
+ {{range .Chars}}<tr><td>{{.Name}}</td><td class="num">{{coin .In}}</td><td class="num">{{coin .Out}}</td><td class="num">{{if ge .Net 0}}+{{end}}{{coin .Net}}</td></tr>{{end}}
+ </tbody></table>{{end}}
+ <p class="scope">From the change of your money in game, by the window that was open. Days are UTC days, as AH Profit counts them.</p>{{end}}
+ {{else if $.Newer}}<p class="subtle">Gold history from this newer AH Profit needs a newer Relax Coach.</p>
  {{else}}<p class="subtle">Update AH Profit to get gold history (earned and spent per day, by source).</p>{{end}}
 </div>
-<div class="card" id="farm-sessions"><h3>Sessions</h3>
- {{if .HasSessions}}<p class="subtle">This AH Profit saves past sessions; this Relax Coach version does not show them yet.</p>
+<div class="card" id="farm-sessions"><h3>Sessions <small class="subtle">farming sessions you stopped</small></h3>
+ {{if .HasSessions}}{{if .Sessions}}<table class="farm-table"><thead><tr><th>Started</th><th>Character</th><th>Zone</th><th>Time</th><th class="num">Net</th><th class="num">Per hour</th><th class="num">Nodes</th></tr></thead><tbody>
+ {{range .Sessions}}<tr><td>{{ago .Start}}</td><td>{{.Char}}</td><td>{{if .Zone}}{{.Zone}}{{else}}unknown{{end}}</td><td>{{ahpDur .Dur}}</td><td class="num">{{if ge .Net 0}}+{{end}}{{coin .Net}}</td><td class="num">{{if .HasRate}}{{if ge .PerHour 0}}+{{end}}{{coin .PerHour}}{{else}}<small class="subtle">too short</small>{{end}}</td><td class="num">{{.Nodes}}</td></tr>{{end}}
+ </tbody></table><p class="scope">Coin only; items gained are not valued here.</p>
+ {{else}}<p class="subtle">No sessions saved yet. Start one with /ahp session start, farm, then /ahp session stop.</p>{{end}}
+ {{else if $.Newer}}<p class="subtle">Sessions from this newer AH Profit need a newer Relax Coach.</p>
  {{else}}<p class="subtle">Update AH Profit to keep past farming sessions (zone, time, gold per hour).</p>{{end}}
 </div>
 </div>

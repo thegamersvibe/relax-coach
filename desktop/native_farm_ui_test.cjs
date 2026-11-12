@@ -38,7 +38,9 @@ test('AH Profit save: Farming entry, page, and the current house first',async t=
   assert.equal($('report-view').hidden,true);
   assert.equal($('nav-farm').getAttribute('aria-current'),'page');
   for (const id of ['farm-gold','farm-sessions','farm-sell','farm-gathering','farm-auctions']) assert.ok($(id),id);
-  assert.match($('farm-gold').textContent,/Update AH Profit to get gold history/);
+  assert.match($('farm-gold').textContent,/Earned/);
+  assert.match($('farm-sessions').textContent,/Elwynn Forest/);
+  assert.ok(!$('farm-body').innerHTML.includes('<b>Tester</b>'),'session names stay escaped');
   assert.equal($('farm-house').value,'Stormrage|Alliance');
   assert.ok(shown().length>0 && shown().every(h=>h==='Stormrage|Alliance'),'only the current house');
   $('farm-house').value='Stormrage|Horde';
@@ -47,6 +49,8 @@ test('AH Profit save: Farming entry, page, and the current house first',async t=
   $('farm-house').value='Other Realm|Alliance';
   fire($('farm-house'));
   assert.deepEqual(shown(),[]);
+  const goldRows=[...$('farm-gold').querySelectorAll('tr'),...$('farm-sessions').querySelectorAll('tr')];
+  assert.ok(goldRows.length>4 && goldRows.every(r=>!r.hidden),'Gold and Sessions are for the whole account, whatever the house');
   assert.equal($('farm-body').querySelector('.farm-empty-house').hidden,false,'says so when a house has no bank items');
   assert.ok(!$('farm-body').innerHTML.includes('<b>Linen</b>'),'save text stays escaped');
 });
