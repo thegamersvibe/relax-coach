@@ -50,7 +50,7 @@ func TestAppMainRoutesStrictModesBeforeNormalStartup(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := string(b)
-	for _, want := range []string{`var Version = "1.5.3"`, "parseAppMode(os.Args[1:])", "appPlatformWorker(", "initAppUpdateRuntime(", "initAppStartup("} {
+	for _, want := range []string{`var Version = "1.5.4"`, "parseAppMode(os.Args[1:])", "appPlatformWorker(", "initAppUpdateRuntime(", "initAppStartup("} {
 		if !strings.Contains(s, want) {
 			t.Errorf("missing lifecycle integration: %s", want)
 		}
