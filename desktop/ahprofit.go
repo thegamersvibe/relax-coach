@@ -18,9 +18,47 @@ import (
 	"time"
 )
 
-// ahpMaxBytes caps how much of AHProfit.lua is read. A daily price history
-// for a large auction house is several MB; anything past this is refused.
-var ahpMaxBytes int64 = 64 << 20
+// ahpMaxBytes caps how much of AHProfit.lua is read, and ahpMaxValues how
+// many table entries are parsed (a full daily history is about 1 MB and a
+// few hundred thousand values); anything past either is refused.
+var (
+	ahpMaxBytes  int64 = 16 << 20
+	ahpMaxValues       = 500000
+)
+
+// farmParses counts parses of AHProfit.lua (tests check the cache).
+var farmParses int
+
+// The addon's bounds on prices received from guild members (Sync.lua): a
+// scan timed more than 5 minutes ahead or more than 12 hours ago is ignored.
+const (
+	ahpGuildAhead  = 300 * time.Second
+	ahpGuildBehind = 12 * time.Hour
+)
+
+// ahpRowsPerHouse: Sell now shows at most this many rows per auction house.
+const ahpRowsPerHouse = 150
+
+// ahpMaxCopper bounds sums so they cannot overflow (far above the gold cap).
+const ahpMaxCopper = 1_000_000_000_000_000
+
+// ahpMul and ahpAdd saturate at ahpMaxCopper; inputs are never negative.
+func ahpMul(a, b int) int {
+	if a == 0 || b == 0 {
+		return 0
+	}
+	if a > ahpMaxCopper/b {
+		return ahpMaxCopper
+	}
+	return min(a*b, ahpMaxCopper)
+}
+
+func ahpAdd(a, b int) int { return min(a+b, ahpMaxCopper) }
+
+type farmParseCache struct {
+	key string // game, account, size and time of the file parsed
+	db  map[string]any
+}
 
 // ahpKnownVersion is the newest AHProfitDB.v this app understands. Newer
 // versions only add fields, so they are still read, with a note.
@@ -88,10 +126,12 @@ type FarmListing struct {
 }
 
 // readAHProfitLocked returns the raw save of the selected account, or
-// fs.ErrNotExist when that account has none. Callers hold a.mu.
-func (a *App) readAHProfitLocked() ([]byte, time.Time, error) {
+// fs.ErrNotExist when that account has none. The key names the file version
+// (game, account, size, time); when it equals known the file is not read and
+// data is nil. Callers hold a.mu.
+func (a *App) readAHProfitLocked(known string) ([]byte, time.Time, string, error) {
 	if a.game == "" || !validAccountID(a.account) {
-		return nil, time.Time{}, fs.ErrNotExist
+		return nil, time.Time{}, "", fs.ErrNotExist
 	}
 	available := false
 	for _, account := range a.accounts {
@@ -101,42 +141,57 @@ func (a *App) readAHProfitLocked() ([]byte, time.Time, error) {
 		}
 	}
 	if !available {
-		return nil, time.Time{}, fs.ErrNotExist
+		return nil, time.Time{}, "", fs.ErrNotExist
 	}
 	root, err := openAccountsRoot(a.game)
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, time.Time{}, "", err
 	}
 	defer root.Close()
 	f, err := openAccountFile(root, a.account, "AHProfit.lua")
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, time.Time{}, "", err
 	}
 	defer f.Close()
 	st, err := f.Stat()
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, time.Time{}, "", err
 	}
+	key := fmt.Sprintf("%s\x00%s\x00%d\x00%d", a.game, a.account, st.Size(), st.ModTime().UnixNano())
 	if st.Size() > ahpMaxBytes {
-		return nil, st.ModTime(), fmt.Errorf("AHProfit.lua is larger than %d MB; not read", ahpMaxBytes>>20)
+		return nil, st.ModTime(), key, fmt.Errorf("AHProfit.lua is larger than %d MB; not read", ahpMaxBytes>>20)
+	}
+	if key == known {
+		return nil, st.ModTime(), key, nil
 	}
 	data, err := io.ReadAll(io.LimitReader(f, ahpMaxBytes+1))
 	if err == nil && int64(len(data)) > ahpMaxBytes {
 		err = fmt.Errorf("AHProfit.lua is larger than %d MB; not read", ahpMaxBytes>>20)
 	}
-	return data, st.ModTime(), err
+	return data, st.ModTime(), key, err
 }
 
 // loadFarmLocked fills v.Farm. A read or parse failure keeps the previous
 // good farm data of the same game and account, with a warning.
 func (a *App) loadFarmLocked(v *View, prev View) {
-	data, mod, err := a.readAHProfitLocked()
+	data, mod, key, err := a.readAHProfitLocked(a.farmParse.key)
 	if errors.Is(err, fs.ErrNotExist) {
 		return // page hidden
 	}
 	var fv FarmView
 	if err == nil {
-		fv, err = buildFarm(data, v.Chars, time.Now(), loadFarmRef(a.game, &a.farmRef))
+		// An unchanged file (same size and time) is not read or parsed again;
+		// the page is still rebuilt, since ages and the Coach data move on.
+		db := a.farmParse.db
+		if data != nil || key != a.farmParse.key {
+			a.farmParse = farmParseCache{}
+			if db, err = parseFarm(data); err == nil {
+				a.farmParse = farmParseCache{key: key, db: db}
+			}
+		}
+		if err == nil {
+			fv = buildFarmDB(db, v.Chars, time.Now(), loadFarmRef(a.game, &a.farmRef))
+		}
 	}
 	if err != nil {
 		if prev.Farm.Present && prev.Farm.Error == "" && prev.Game == v.Game && prev.Account == v.Account {
@@ -170,14 +225,31 @@ func ahpTime(v any) time.Time {
 // Coach report's characters of the same account, used only to tell which
 // auction house (realm and faction) a character belongs to.
 func buildFarm(data []byte, chars []CharView, now time.Time, ref farmRef) (FarmView, error) {
-	vars, err := ParseSavedVariables(string(data))
+	db, err := parseFarm(data)
 	if err != nil {
 		return FarmView{}, err
 	}
+	return buildFarmDB(db, chars, now, ref), nil
+}
+
+// parseFarm parses AHProfit.lua within the byte and value caps.
+func parseFarm(data []byte) (map[string]any, error) {
+	if int64(len(data)) > ahpMaxBytes {
+		return nil, fmt.Errorf("AHProfit.lua is larger than %d MB; not read", ahpMaxBytes>>20)
+	}
+	farmParses++
+	vars, err := ParseSavedVariablesLimited(string(data), ahpMaxValues)
+	if err != nil {
+		return nil, err
+	}
 	db := M(vars["AHProfitDB"])
 	if db == nil {
-		return FarmView{}, errors.New("no AHProfitDB in AHProfit.lua")
+		return nil, errors.New("no AHProfitDB in AHProfit.lua")
 	}
+	return db, nil
+}
+
+func buildFarmDB(db map[string]any, chars []CharView, now time.Time, ref farmRef) FarmView {
 	fv := FarmView{Present: true, Cut: 5}
 	// Names and vendor prices: the save's own item cache first, then AH
 	// Profit's bundled files, then "item <id>" with no vendor claim.
@@ -206,9 +278,9 @@ func buildFarm(data []byte, chars []CharView, now time.Time, ref farmRef) (FarmV
 	}
 	sort.Slice(fv.Houses, func(i, j int) bool { return fv.Houses[i].Key < fv.Houses[j].Key })
 
-	// Which house a bank character trades on: the Coach character with the
-	// same name and realm gives the faction; otherwise, if exactly one house
-	// is on that realm, that one. Never a guess across realms or factions.
+	// Which house a bank character trades on: only the Coach character with
+	// the same name and realm says (its faction). Without one the house is
+	// unknown and the row unpriced; never a guess.
 	houseOf := func(char string) string {
 		name, realm, ok := strings.Cut(char, "-")
 		if !ok {
@@ -219,16 +291,7 @@ func buildFarm(data []byte, chars []CharView, now time.Time, ref farmRef) (FarmV
 				return realm + "|" + c.Faction
 			}
 		}
-		found := ""
-		for _, h := range fv.Houses {
-			if h.Realm == realm {
-				if found != "" {
-					return ""
-				}
-				found = h.Key
-			}
-		}
-		return found
+		return ""
 	}
 	// The most recently saved Coach character picks the house shown first.
 	var newest time.Time
@@ -241,6 +304,14 @@ func buildFarm(data []byte, chars []CharView, now time.Time, ref farmRef) (FarmV
 		fv.DefaultHouse = fv.Houses[0].Key
 	}
 
+	// The same order as AH Profit's lookup: your own scan under 2 hours old;
+	// then a guild scan newer than yours; then your older scan; then the
+	// bundled feed (Data.lua) of the house's faction. A scan older than the
+	// feed loses to it, and a complete scan newer than the feed hides it.
+	// Guild prices outside the addon's time bounds are ignored.
+	guildOK := func(t time.Time) bool {
+		return !t.IsZero() && !t.After(now.Add(ahpGuildAhead)) && !t.Before(now.Add(-ahpGuildBehind))
+	}
 	price := func(house string, id int) (p, q int, t time.Time, src, from string) {
 		k := strconv.Itoa(id)
 		L, H := M(live[house]), M(shared[house])
@@ -248,10 +319,36 @@ func buildFarm(data []byte, chars []CharView, now time.Time, ref farmRef) (FarmV
 		lt := ahpTime(M(L["t"])[k])
 		gp, okG := ahpInt(M(H["p"])[k], 1e12)
 		gt := ahpTime(M(H["t"])[k])
-		okL, okG = okL && lp > 0 && !lt.IsZero(), okG && gp > 0 && !gt.IsZero()
+		okL, okG = okL && lp > 0 && !lt.IsZero(), okG && gp > 0 && guildOK(gt)
 		if okL && now.Sub(lt) <= ahpOwnFresh {
 			q, _ = ahpInt(M(L["q"])[k], 1e9)
 			return lp, q, lt, "scan", ""
+		}
+		var sp, sq int
+		var st time.Time
+		okS := false
+		if s := ref.Seed; s != nil {
+			_, faction, _ := strings.Cut(house, "|")
+			if e, have := s.Prices[id]; have && (s.Faction == "" || s.Faction == faction) {
+				sp, sq, st, okS = e[0], e[1], s.Time, true
+			}
+		}
+		if okS {
+			full := ahpTime(L["full"])
+			if hf := ahpTime(H["full"]); guildOK(hf) && hf.After(full) {
+				full = hf
+			}
+			switch {
+			case !full.IsZero() && !full.Before(st):
+				okS = false
+			default:
+				if okL && lt.Before(st) {
+					okL = false
+				}
+				if okG && gt.Before(st) {
+					okG = false
+				}
+			}
 		}
 		if okG && (!okL || gt.After(lt)) {
 			q, _ = ahpInt(M(H["q"])[k], 1e9)
@@ -260,6 +357,9 @@ func buildFarm(data []byte, chars []CharView, now time.Time, ref farmRef) (FarmV
 		if okL {
 			q, _ = ahpInt(M(L["q"])[k], 1e9)
 			return lp, q, lt, "scan", ""
+		}
+		if okS {
+			return sp, sq, st, "feed", ""
 		}
 		return 0, 0, time.Time{}, "", ""
 	}
@@ -294,9 +394,13 @@ func buildFarm(data []byte, chars []CharView, now time.Time, ref farmRef) (FarmV
 				r.NoPrice = true
 			} else {
 				r.Net = r.Price * (100 - fv.Cut) / 100
-				r.Value = r.Net * (n - bound)
+				r.Value = ahpMul(r.Net, n-bound)
 				if r.VendorKnown {
-					r.Gain = (r.Net - r.Vendor) * (n - bound)
+					if r.Net >= r.Vendor {
+						r.Gain = ahpMul(r.Net-r.Vendor, n-bound)
+					} else {
+						r.Gain = -ahpMul(r.Vendor-r.Net, n-bound)
+					}
 				}
 			}
 			fv.Sell = append(fv.Sell, r)
@@ -312,6 +416,16 @@ func buildFarm(data []byte, chars []CharView, now time.Time, ref farmRef) (FarmV
 		}
 		return a.ID < b.ID
 	})
+	// At most ahpRowsPerHouse rows per house (the most valuable), so one
+	// large house cannot push another out of the list.
+	perHouse, kept := map[string]int{}, fv.Sell[:0]
+	for _, r := range fv.Sell {
+		if perHouse[r.House] < ahpRowsPerHouse {
+			perHouse[r.House]++
+			kept = append(kept, r)
+		}
+	}
+	fv.Sell = kept
 
 	// 4. Gathering: nodes per map, how many kinds, when last seen, who picked.
 	for mapKey, raw := range M(db["nodes"]) {
@@ -406,7 +520,7 @@ func buildFarm(data []byte, chars []CharView, now time.Time, ref farmRef) (FarmV
 				l.SoldWaiting++
 			} else {
 				l.Active++
-				l.ActiveAfterCut += each * (100 - fv.Cut) / 100 * q // per unit after the cut, as AH Profit shows it
+				l.ActiveAfterCut = ahpAdd(l.ActiveAfterCut, ahpMul(each*(100-fv.Cut)/100, q)) // per unit after the cut, as AH Profit shows it
 			}
 		}
 		if l.Active+l.SoldWaiting > 0 {
@@ -414,7 +528,7 @@ func buildFarm(data []byte, chars []CharView, now time.Time, ref farmRef) (FarmV
 		}
 	}
 	sort.Slice(fv.Listings, func(i, j int) bool { return fv.Listings[i].Char < fv.Listings[j].Char })
-	return fv, nil
+	return fv
 }
 
 // coin formats copper the way AH Profit does: "1g 23s 45c", "23s 0c", "7c".

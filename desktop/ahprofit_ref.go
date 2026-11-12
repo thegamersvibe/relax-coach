@@ -12,6 +12,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // ahpRefMaxBytes caps each bundled file (FarmData.lua is under 100 KB today).
@@ -29,7 +30,16 @@ type farmItemRef struct {
 	VendorKnown bool
 }
 
+// farmSeed is AH Profit's bundled price feed (Data.lua: ns.seed = { t,
+// label, faction, n, flat = { itemID, price, listed, ... } }).
+type farmSeed struct {
+	Time    time.Time
+	Faction string
+	Prices  map[int][2]int // itemID -> price per unit, listed
+}
+
 type farmRef struct {
+	Seed  *farmSeed
 	Items map[int]farmItemRef
 	Nodes map[int]string // AH Profit's node-name hash -> name (unambiguous hashes only)
 	Maps  map[int]string // uiMapID -> zone name
@@ -74,7 +84,7 @@ func parseLuaAssignedTable(src, name string) (out map[string]any, err error) {
 	if at < 0 {
 		return nil, fmt.Errorf("%s not found", name)
 	}
-	p := &luaParser{s: src, pos: at}
+	p := &luaParser{s: src, pos: at, maxValues: ahpMaxValues}
 	if !p.eat('=') {
 		return nil, fmt.Errorf("%s: expected =", name)
 	}
@@ -152,8 +162,9 @@ func loadFarmRef(game string, cache *farmRefCache) farmRef {
 	}
 	farm, k1, err1 := readAddonFile(game, "AHProfit", "FarmData.lua")
 	hist, k2, err2 := readAddonFile(game, "AHProfit", "History.lua")
-	key := k1 + "|" + k2
-	if cache != nil && cache.key == key && key != "|" {
+	seed, k3, err3 := readAddonFile(game, "AHProfit", "Data.lua")
+	key := k1 + "|" + k2 + "|" + k3
+	if cache != nil && cache.key == key && key != "||" {
 		return cache.ref
 	}
 	farmRefParses++
@@ -179,10 +190,41 @@ func loadFarmRef(game string, cache *farmRefCache) farmRef {
 			}
 		}
 	}
+	if err3 == nil {
+		if d, err := parseLuaAssignedTable(seed, "ns.seed"); err == nil {
+			ref.Seed = farmSeedFrom(d)
+		}
+	}
 	if cache != nil {
 		cache.key, cache.ref = key, ref
 	}
 	return ref
+}
+
+// farmSeedFrom reads the feed; anything malformed means no feed at all
+// (a partly read feed could show prices the game would not).
+func farmSeedFrom(d map[string]any) *farmSeed {
+	t := ahpTime(d["t"])
+	flat := List(d["flat"])
+	if t.IsZero() || len(flat) == 0 || len(flat)%3 != 0 {
+		return nil
+	}
+	s := &farmSeed{Time: t, Prices: make(map[int][2]int, len(flat)/3)}
+	if f, ok := d["faction"]; ok {
+		if s.Faction, ok = f.(string); !ok || (s.Faction != "Alliance" && s.Faction != "Horde") {
+			return nil
+		}
+	}
+	for i := 0; i < len(flat); i += 3 {
+		id, ok1 := ahpInt(flat[i], 1e7)
+		p, ok2 := ahpInt(flat[i+1], 1e12)
+		q, ok3 := ahpInt(flat[i+2], 1e9)
+		if !ok1 || !ok2 || !ok3 || id == 0 || p == 0 {
+			return nil
+		}
+		s.Prices[id] = [2]int{p, q}
+	}
+	return s
 }
 
 // FarmData: { time, ITEMS, NODES, ZONES, ... } with ITEMS[i] = { name,

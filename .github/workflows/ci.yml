@@ -60,6 +60,7 @@ jobs:
       - name: Existing Go tests with race detection
         env:
           NATIVE_HTML_OUT: ${{ runner.temp }}/relax-coach-native.html
+          FARM_HTML_OUT: ${{ runner.temp }}/relax-coach-farm.html
         working-directory: desktop
         run: go test -race -count=1 ./...
       - name: Go vet
@@ -71,6 +72,7 @@ jobs:
         env:
           NODE_PATH: ${{ github.workspace }}/.github/node_modules
           NATIVE_HTML_OUT: ${{ runner.temp }}/relax-coach-native.html
+          FARM_HTML_OUT: ${{ runner.temp }}/relax-coach-farm.html
         run: node --test desktop/*_ui_test.cjs
 
   bundle-contract:

@@ -111,7 +111,8 @@ type App struct {
 	accounts               []AccountChoice
 	configWarning          string
 	canAutoSelect          bool
-	farmRef                farmRefCache // AH Profit's bundled names, reparsed only when the files change
+	farmRef                farmRefCache   // AH Profit's bundled names, reparsed only when the files change
+	farmParse              farmParseCache // the parsed AHProfit.lua, reparsed only when the file changes
 }
 
 func main() {

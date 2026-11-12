@@ -12,6 +12,9 @@ type luaParser struct {
 	s     string
 	pos   int
 	depth int
+	// maxValues > 0 bounds the number of table entries parsed (the Farming
+	// page uses it; the Coach save keeps the unbounded behaviour).
+	maxValues, values int
 }
 
 func ParseSavedVariables(src string) (out map[string]any, err error) {
@@ -20,11 +23,22 @@ func ParseSavedVariables(src string) (out map[string]any, err error) {
 			out, err = nil, fmt.Errorf("SavedVariables: unreadable (%v)", r)
 		}
 	}()
-	return parseSV(src)
+	return parseSV(src, 0)
 }
 
-func parseSV(src string) (map[string]any, error) {
-	p := &luaParser{s: src}
+// ParseSavedVariablesLimited is ParseSavedVariables with at most maxValues
+// table entries; more is an error, found before the work grows further.
+func ParseSavedVariablesLimited(src string, maxValues int) (out map[string]any, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			out, err = nil, fmt.Errorf("SavedVariables: unreadable (%v)", r)
+		}
+	}()
+	return parseSV(src, maxValues)
+}
+
+func parseSV(src string, maxValues int) (map[string]any, error) {
+	p := &luaParser{s: src, maxValues: maxValues}
 	out := map[string]any{}
 	for {
 		p.skip()
@@ -235,6 +249,9 @@ func (p *luaParser) table() (any, error) {
 				n++
 				key = strconv.Itoa(n)
 			}
+		}
+		if p.values++; p.maxValues > 0 && p.values > p.maxValues {
+			return nil, fmt.Errorf("more than %d values; not read", p.maxValues)
 		}
 		v, err := p.value()
 		if err != nil {
