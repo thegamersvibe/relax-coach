@@ -123,8 +123,8 @@ func TestFarmSessionsListed(t *testing.T) {
 	s := goldCard(html, "farm-sessions")
 	// newest first; net 10000-1000 = 9000 over 1 h; zone from the save, else the map name
 	for _, want := range []string{
-		`<td>Ahmed</td><td>Westfall</td>`,
-		`<td>Abdullah</td><td>Elwynn Forest</td><td>1h 0m</td><td class="num">+90s 0c</td><td class="num">+90s 0c</td><td class="num">4</td>`,
+		`<td>Ahmed-Stormrage</td><td>Westfall</td>`,
+		`<td>Abdullah-Stormrage</td><td>Elwynn Forest</td><td>1h 0m</td><td class="num">+90s 0c</td><td class="num">+90s 0c</td><td class="num">4</td>`,
 		`<td>30m</td><td class="num">-5s 0c</td><td class="num">-10s 0c</td>`,
 	} {
 		if !strings.Contains(s, want) {
@@ -232,10 +232,49 @@ func TestFarmGoldFromAddonOutput(t *testing.T) {
 			t.Fatalf("missing %s in\n%s", want, g)
 		}
 	}
-	if !strings.Contains(s, `<td>Abdullah</td><td>Elwynn Forest</td><td>45m</td><td class="num">+30s 0c</td><td class="num">+40s 0c</td><td class="num">5</td>`) {
+	if !strings.Contains(s, `<td>Abdullah-Realm</td><td>Elwynn Forest</td><td>45m</td><td class="num">+30s 0c</td><td class="num">+40s 0c</td><td class="num">5</td>`) {
 		t.Fatalf("the addon's session:\n%s", s)
 	}
 	if !fv.HasLedger || !fv.HasSessions || fv.Note != "" {
 		t.Fatalf("a version 3 save from the addon is fully read: %+v", fv)
+	}
+}
+
+// Final review (S1 and notes): characters with their realm; capped totals;
+// a session whose clock stepped back; the addon's caps for item names and vendor prices.
+func TestFarmGoldReview(t *testing.T) {
+	now := time.Unix(farmNow, 0)
+	d := goldDay(now)
+	sv := fmt.Sprintf(`AHProfitDB = { ["v"] = 3, ["ledger"] = {
+		["Big-R"] = { [%d] = { ["loot"] = { 900000000000, 0 } }, [%d] = { ["ah"] = { 900000000000, 0 } }, [%d] = { ["vendor"] = { 0, 1 } } },
+	}, ["sessions"] = {
+		{ ["char"] = "Sam", ["realm"] = "Stormrage", ["start"] = %d, ["stop"] = %d, ["dur"] = 600, ["inc"] = { ["loot"] = 100 }, ["out"] = { }, ["items"] = { } },
+		{ ["char"] = "Sam", ["realm"] = "Ravencrest", ["start"] = %d, ["stop"] = %d, ["dur"] = 1200, ["inc"] = { ["loot"] = 200 }, ["out"] = { }, ["items"] = { } },
+		{ ["char"] = "Back", ["realm"] = "R", ["start"] = %d, ["stop"] = %d, ["dur"] = 1800, ["inc"] = { ["loot"] = 300 }, ["out"] = { }, ["items"] = { } },
+	}, ["bank"] = { ["Sam-Stormrage"] = { ["t"] = 1, ["items"] = { { 7001, 1, 0 }, { 7002, 1, 0 } } } },
+	["items"] = { [7001] = { "%s", 5000000000, 1 }, [7002] = { "%s", 1, 1 } } }`,
+		d, d-1, d, now.Unix()-5000, now.Unix()-4400, now.Unix()-4000, now.Unix()-2800, now.Unix()-1000, now.Unix()-2000,
+		strings.Repeat("n", 200), strings.Repeat("x", 201))
+	// ahpAdd caps sums at 10^15: make the period sums hit it
+	for i := 0; i < 1200; i++ {
+		sv = strings.Replace(sv, `["Big-R"] = {`, fmt.Sprintf(`["Big%d-R"] = { [%d] = { ["loot"] = { 900000000000, 0 } } }, ["Big-R"] = {`, i, d), 1)
+	}
+	fv, html := goldRender(t, sv, now)
+	g, s := goldCard(html, "farm-gold"), goldCard(html, "farm-sessions")
+	if !strings.Contains(s, "<td>Sam-Stormrage</td>") || !strings.Contains(s, "<td>Sam-Ravencrest</td>") {
+		t.Errorf("sessions name the character with its realm:\n%s", s)
+	}
+	if !strings.Contains(s, "<td>Back-R</td>") || !strings.Contains(s, "<td>30m</td>") {
+		t.Errorf("a session whose stop is before its start (clock stepped back) is kept, timed by dur:\n%s", s)
+	}
+	if !strings.Contains(g, `<td class="num">more than 100,000,000,000g 0s 0c</td>`) {
+		t.Errorf("a capped total says more than:\n%s", g[:min(len(g), 800)])
+	}
+	r1, r2 := farmRow(fv, "Sam-Stormrage", 7001), farmRow(fv, "Sam-Stormrage", 7002)
+	if r1 == nil || r2 == nil {
+		t.Fatal("bank rows missing")
+	}
+	if r1.Name != strings.Repeat("n", 200) || r1.Vendor != 5000000000 || !r1.VendorKnown || r2.Name == strings.Repeat("x", 201) {
+		t.Errorf("names up to 200 bytes and vendor prices up to 1e10, as the addon stores them: %q %d / %q", r1.Name[:min(len(r1.Name), 10)], r1.Vendor, r2.Name)
 	}
 }

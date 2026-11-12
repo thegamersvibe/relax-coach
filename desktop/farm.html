@@ -13,15 +13,15 @@
 <div class="grid farm-grid">
 <div class="card" id="farm-gold"><h3>Gold <small class="subtle">all characters of this account</small></h3>
  {{if .HasLedger}}{{with .Gold}}<table class="farm-table"><thead><tr><th></th>{{range .Periods}}<th class="num">{{.Label}}</th>{{end}}</tr></thead><tbody>
- <tr><th>Earned</th>{{range .Periods}}<td class="num">{{coin .In}}</td>{{end}}</tr>
- <tr><th>Spent</th>{{range .Periods}}<td class="num">{{coin .Out}}</td>{{end}}</tr>
- <tr><th>Net</th>{{range .Periods}}<td class="num">{{if ge .Net 0}}+{{end}}{{coin .Net}}</td>{{end}}</tr>
+ <tr><th>Earned</th>{{range .Periods}}<td class="num">{{if atCap .In}}more than {{end}}{{coin .In}}</td>{{end}}</tr>
+ <tr><th>Spent</th>{{range .Periods}}<td class="num">{{if atCap .Out}}more than {{end}}{{coin .Out}}</td>{{end}}</tr>
+ <tr><th>Net</th>{{range .Periods}}<td class="num">{{if atCap .Out}}<small class="subtle">too large to total</small>{{else}}{{if atCap .In}}more than {{end}}{{if ge .Net 0}}+{{end}}{{coin .Net}}{{end}}</td>{{end}}</tr>
  </tbody></table>
  {{if .Sources}}<h4>Last 30 days by source</h4><table class="farm-table"><thead><tr><th>Source</th><th class="num">Earned</th><th class="num">Spent</th></tr></thead><tbody>
- {{range .Sources}}<tr><td>{{.Name}}</td><td class="num">{{coin .In}}</td><td class="num">{{coin .Out}}</td></tr>{{end}}
+ {{range .Sources}}<tr><td>{{.Name}}</td><td class="num">{{if atCap .In}}more than {{end}}{{coin .In}}</td><td class="num">{{if atCap .Out}}more than {{end}}{{coin .Out}}</td></tr>{{end}}
  </tbody></table>{{end}}
  {{if .Chars}}<h4>Last 30 days by character</h4><table class="farm-table"><thead><tr><th>Character</th><th class="num">Earned</th><th class="num">Spent</th><th class="num">Net</th></tr></thead><tbody>
- {{range .Chars}}<tr><td>{{.Name}}</td><td class="num">{{coin .In}}</td><td class="num">{{coin .Out}}</td><td class="num">{{if ge .Net 0}}+{{end}}{{coin .Net}}</td></tr>{{end}}
+ {{range .Chars}}<tr><td>{{.Name}}</td><td class="num">{{if atCap .In}}more than {{end}}{{coin .In}}</td><td class="num">{{if atCap .Out}}more than {{end}}{{coin .Out}}</td><td class="num">{{if atCap .Out}}<small class="subtle">too large to total</small>{{else}}{{if atCap .In}}more than {{end}}{{if ge .Net 0}}+{{end}}{{coin .Net}}{{end}}</td></tr>{{end}}
  </tbody></table>{{end}}
  <p class="scope">From the change of your money in game, by the window that was open. Days are UTC days, as AH Profit counts them.</p>{{end}}
  {{else if $.Newer}}<p class="subtle">Gold history from this newer AH Profit needs a newer Relax Coach.</p>

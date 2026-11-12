@@ -357,11 +357,11 @@ func saveItemRefs(db map[string]any, into map[int]farmItemRef) {
 		}
 		it, had := into[id]
 		changed := false
-		if name, isString := r[0].(string); isString && name != "" && len(name) <= 128 {
+		if name, isString := r[0].(string); isString && name != "" && len(name) <= 200 { // AH Profit's own cap
 			it.Name, changed = name, true
 		}
 		if len(r) > 1 {
-			if v, ok := ahpInt(r[1], 1e9); ok {
+			if v, ok := ahpInt(r[1], 1e10); ok { // AH Profit's own cap
 				it.Vendor, it.VendorKnown, changed = v, true, true
 			}
 		}

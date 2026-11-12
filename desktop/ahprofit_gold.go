@@ -145,16 +145,22 @@ func buildSessions(db map[string]any, maps map[int]string) ([]FarmSession, bool)
 	for _, r := range List(raw) {
 		s := M(r)
 		start, ok1 := ahpInt(s["start"], 1e10)
-		stop, ok2 := ahpInt(s["stop"], 1e10)
+		_, ok2 := ahpInt(s["stop"], 1e10)
 		dur, ok3 := ahpInt(s["dur"], 1e9)
 		inc, okI := s["inc"].(map[string]any)
 		exp, okO := s["out"].(map[string]any)
-		if !ok1 || !ok2 || !ok3 || !okI || !okO || stop < start {
+		// A stop before the start (the server clock stepped back) keeps the
+		// session: its time comes from dur, which the addon measures itself.
+		if !ok1 || !ok2 || !ok3 || !okI || !okO {
 			continue
 		}
 		fs := FarmSession{Start: time.Unix(int64(start), 0), Dur: dur}
+		// Name-Realm, as the Gold table shows characters.
 		if c, isStr := s["char"].(string); isStr && len(c) <= 64 {
 			fs.Char = c
+			if r, isStr := s["realm"].(string); isStr && r != "" && len(r) <= 64 {
+				fs.Char = c + "-" + r
+			}
 		}
 		if z, isStr := s["zone"].(string); isStr && len(z) <= 80 {
 			fs.Zone = z
