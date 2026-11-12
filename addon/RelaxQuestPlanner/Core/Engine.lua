@@ -67,11 +67,13 @@ local function graph(p)
     end
     for _,q in ipairs(D.AllQuestIds()) do
         local r=D.Quest(q)
-        for _,x in ipairs(r.grp) do edge(math.abs(x),q) end
-        for _,x in ipairs(r.single) do edge(math.abs(x),q) end
-        if r.startingWith then edge(r.startingWith,q) end
-        if r.parent then edge(r.parent,q) end
-        if r.next then g.leads[r.next]=g.leads[r.next] or {}; table.insert(g.leads[r.next],q) end
+        if r then
+            for _,x in ipairs(r.grp) do edge(math.abs(x),q) end
+            for _,x in ipairs(r.single) do edge(math.abs(x),q) end
+            if r.startingWith then edge(r.startingWith,q) end
+            if r.parent then edge(r.parent,q) end
+            if r.next then g.leads[r.next]=g.leads[r.next] or {}; table.insert(g.leads[r.next],q) end
+        end
         tick()
     end
     local fdj=D.FDJ()
@@ -268,7 +270,7 @@ local function dungeonTargets(name,p,g)
     local targets={}
     for _,q in ipairs(D.AllQuestIds()) do
         local r=D.Quest(q)
-        if not D.Blacklisted(q) then
+        if r and not D.Blacklisted(q) then
             local matches=classify(r)[name]
             for _,dn in ipairs(lists[q] or {}) do if dungeonMatch(name,dn) then matches=true end end
             if matches then
@@ -280,7 +282,8 @@ local function dungeonTargets(name,p,g)
         tick()
     end
     table.sort(targets,function(a,b)
-        local al,bl=D.Quest(a).qLevel,D.Quest(b).qLevel
+        local ra,rb=D.Quest(a),D.Quest(b)
+        local al,bl=ra and ra.qLevel or 0,rb and rb.qLevel or 0
         if al~=bl then return al<bl end; return a<b
     end)
     return targets
@@ -363,6 +366,7 @@ local function dependencies(q,p,g,planned)
     -- An observed active quest is already accepted: do not invent missing gates.
     if p.log[q] then return {},active,parentActive end
     local r=D.Quest(q)
+    if not r then return {},active,parentActive end
     -- Unlike startingWith, this constraint survives while the parent is in the
     -- log and must still be enforced if it is turned in after this plan is built.
     if r.parent and not refuted(q,r.parent) then
@@ -379,9 +383,9 @@ local function dependencies(q,p,g,planned)
                         -- Positive group prereqs allow an exclusive alternative;
                         -- preserve the particular alternative selected in the plan.
                         local positive=false
-                        for _,raw in ipairs(D.Quest(q).grp) do if raw==id then positive=true end end
-                        local r=positive and D.Quest(id)
-                        for _,alt in ipairs(r and r.excl or {}) do
+                        for _,raw in ipairs(r.grp) do if raw==id then positive=true end end
+                        local prereq=positive and D.Quest(id)
+                        for _,alt in ipairs(prereq and prereq.excl or {}) do
                             if planned[alt] and alt~=q then needs[alt]=true; break end
                         end
                     end
@@ -398,7 +402,7 @@ local function dependencies(q,p,g,planned)
     for _,lead in ipairs(g.leads[q] or {}) do
         if planned[lead] and not p.done[lead] and lead~=q then needs[lead]=true end
     end
-    for _,id in ipairs(D.Quest(q).bcs) do
+    for _,id in ipairs(r.bcs) do
         if planned[id] and not p.done[id] and id~=q then needs[id]=true end
     end
     return D.Keys(needs),active,parentActive
@@ -440,7 +444,7 @@ local function actions(route,p,g,targets)
     for index,q in ipairs(route.plan) do
         local r=D.Quest(q); local needs,active,parentActive=dependencies(q,p,g,planned)
         route.availability[q]=state(q,p,p.done,p.log,p.level,g)
-        route.questNames[q]=r.name
+        route.questNames[q]=r and r.name
         for _,id in ipairs(needs) do
             local parent=D.Quest(id)
             route.questNames[id]=parent and parent.name
