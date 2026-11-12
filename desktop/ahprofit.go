@@ -125,6 +125,7 @@ type FarmListing struct {
 	Seen                time.Time
 	Active, SoldWaiting int
 	ActiveAfterCut      int
+	BidOnly             int // listed without a buyout: proceeds unknown, not counted
 }
 
 // readAHProfitLocked returns the raw save of the selected account, or
@@ -252,6 +253,7 @@ func parseFarm(data []byte) (map[string]any, error) {
 }
 
 func buildFarmDB(db map[string]any, chars []CharView, now time.Time, ref farmRef) FarmView {
+	now = now.Truncate(time.Second) // whole seconds, like the game's GetServerTime
 	fv := FarmView{Present: true, Cut: 5}
 	// Names and vendor prices: the save's own item cache first, then AH
 	// Profit's bundled files, then "item <id>" with no vendor claim.
@@ -270,6 +272,10 @@ func buildFarmDB(db map[string]any, chars []CharView, now time.Time, ref farmRef
 	_, fv.HasSessions = db["sessions"].(map[string]any)
 
 	live, shared := M(db["live"]), M(db["shared"])
+	// Guild prices only from a saved-data version that has them, as the addon reads them.
+	if v, ok := ahpInt(db["v"], 1e6); !ok || v < 1 || v > 3 {
+		shared = nil
+	}
 	for key, raw := range live {
 		L := M(raw)
 		realm, faction, ok := strings.Cut(key, "|")
@@ -534,12 +540,14 @@ func buildFarmDB(db map[string]any, chars []CharView, now time.Time, ref farmRef
 			}
 			if N(x[3]) == 1 {
 				l.SoldWaiting++
+			} else if each == 0 {
+				l.BidOnly++
 			} else {
 				l.Active++
 				l.ActiveAfterCut = ahpAdd(l.ActiveAfterCut, ahpMul(each*(100-fv.Cut)/100, q)) // per unit after the cut, as AH Profit shows it
 			}
 		}
-		if l.Active+l.SoldWaiting > 0 {
+		if l.Active+l.SoldWaiting+l.BidOnly > 0 {
 			fv.Listings = append(fv.Listings, l)
 		}
 	}
