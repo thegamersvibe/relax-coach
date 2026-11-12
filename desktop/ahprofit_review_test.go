@@ -124,12 +124,12 @@ func TestFarmHugeSaveFailsFast(t *testing.T) {
 		t.Fatalf("refused only after %v", el)
 	}
 	// under the byte cap but with too many values
-	data = []byte("AHProfitDB={x={" + strings.Repeat("1,", 600000) + "}}")
+	data = []byte("AHProfitDB={x={" + strings.Repeat("1,", 1100000) + "}}")
 	start = time.Now()
 	if _, err := buildFarm(data, nil, time.Unix(farmNow, 0), farmRef{}); err == nil || !strings.Contains(err.Error(), "values") {
 		t.Fatalf("too many values refused: %v", err)
 	}
-	if el := time.Since(start); el > 2*time.Second {
+	if el := time.Since(start); el > 15*time.Second { // generous for -race; the unbounded parse took minutes and GBs
 		t.Fatalf("value cap hit only after %v", el)
 	}
 	if ahpMaxBytes != 16<<20 {
@@ -139,6 +139,36 @@ func TestFarmHugeSaveFailsFast(t *testing.T) {
 	data = []byte("-- " + strings.Repeat("x", 16<<20) + "\nAHProfitDB={}")
 	if _, err := buildFarm(data, nil, time.Unix(farmNow, 0), farmRef{}); err == nil || !strings.Contains(err.Error(), "16 MB") {
 		t.Fatalf("over 16 MB refused by size: %v", err)
+	}
+}
+
+// A guild flood within AH Profit's own caps still reads: two houses with
+// both the own and the guild layer at 60,000 items.
+func TestFarmFullLayersStillParse(t *testing.T) {
+	now := time.Unix(farmNow, 0)
+	var b strings.Builder
+	b.WriteString("AHProfitDB = { v=2, live={")
+	for h := 0; h < 2; h++ {
+		fmt.Fprintf(&b, "[\"R%d|Alliance\"]=%s,", h, reviewHouse(60000, farmNow-100))
+	}
+	b.WriteString("}, shared={")
+	for h := 0; h < 2; h++ {
+		fmt.Fprintf(&b, "[\"R%d|Alliance\"]=%s,", h, reviewHouse(60000, farmNow-50))
+	}
+	b.WriteString("}, bank={[\"A-R0\"]={t=1,items={{5,2,0}}}} }")
+	data := []byte(b.String())
+	if int64(len(data)) > ahpMaxBytes {
+		t.Fatalf("fixture %d bytes is over the byte cap", len(data))
+	}
+	fv, err := buildFarm(data, []CharView{{Name: "A", Realm: "R0", Faction: "Alliance", Updated: now}}, now, farmRef{})
+	if err != nil {
+		t.Fatalf("full layers must parse: %v", err)
+	}
+	if len(fv.Houses) != 2 || fv.Houses[0].Items != 60000 {
+		t.Fatalf("houses %+v", fv.Houses)
+	}
+	if r := farmRow(fv, "A-R0", 5); r == nil || r.Source != "scan" || r.Price != 10005 {
+		t.Fatalf("priced from the fresh own scan: %+v", r)
 	}
 }
 

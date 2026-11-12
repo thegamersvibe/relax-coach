@@ -97,7 +97,7 @@ func TestFarmFeedMalformedMeansNoFeed(t *testing.T) {
 		"no time":       strings.Replace(dataFixture, fmt.Sprintf("t = %d,", dataFixtureT), "", 1),
 		"code":          "ns.seed = loadstring('x')()",
 		"cut off":       dataFixture[:len(dataFixture)/2],
-		"too many vals": "ns.seed = { t = 1, flat = {" + strings.Repeat("1,1,1,", 200000) + "} }",
+		"too many vals": "ns.seed = { t = 1, flat = {" + strings.Repeat("1,1,1,", 400000) + "} }",
 	} {
 		if ref := loadFarmRef(feedGame(t, body), nil); ref.Seed != nil {
 			t.Fatalf("%s: a malformed feed is not used: %+v", name, ref.Seed)

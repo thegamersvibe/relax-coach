@@ -19,11 +19,12 @@ import (
 )
 
 // ahpMaxBytes caps how much of AHProfit.lua is read, and ahpMaxValues how
-// many table entries are parsed (a full daily history is about 1 MB and a
-// few hundred thousand values); anything past either is refused.
+// many table entries are parsed. Two auction houses with both price layers
+// at AH Profit's 60,000-item cap are about 10 MB and 720,000 values and must
+// still be read; anything past either cap is refused.
 var (
 	ahpMaxBytes  int64 = 16 << 20
-	ahpMaxValues       = 500000
+	ahpMaxValues       = 1000000
 )
 
 // farmParses counts parses of AHProfit.lua (tests check the cache).
