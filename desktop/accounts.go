@@ -65,6 +65,12 @@ func openAccountsRoot(game string) (*os.Root, error) {
 }
 
 func openAccountOutput(root *os.Root, id string) (*os.File, error) {
+	return openAccountFile(root, id, "ForeverCoach.lua")
+}
+
+// openAccountFile opens one SavedVariables file of one local account, with
+// the same containment and identity checks for every file the app reads.
+func openAccountFile(root *os.Root, id, name string) (*os.File, error) {
 	if !validAccountID(id) {
 		return nil, fmt.Errorf("invalid local account identity")
 	}
@@ -78,14 +84,14 @@ func openAccountOutput(root *os.Root, id string) (*os.File, error) {
 		return nil, err
 	}
 	defer saves.Close()
-	st, err := saves.Lstat("ForeverCoach.lua")
+	st, err := saves.Lstat(name)
 	if err != nil {
 		return nil, err
 	}
 	if !st.Mode().IsRegular() {
 		return nil, fmt.Errorf("account output is not a regular local save")
 	}
-	f, err := saves.Open("ForeverCoach.lua")
+	f, err := saves.Open(name)
 	if err != nil {
 		return nil, err
 	}

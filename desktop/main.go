@@ -1,5 +1,5 @@
 // Relax Coach native Windows application.
-// Reads only ForeverCoach SavedVariables. No memory reading or game automation.
+// Reads ForeverCoach and AH Profit SavedVariables, and AH Profit's bundled data files (read-only). No memory reading or game automation.
 // Diagnostic HTTP is opt-in; the normal UI uses direct in-process Go bindings.
 package main
 
@@ -20,7 +20,7 @@ var Version = "1.5.2" // May be overridden with -X main.Version for private veri
 const Repo = "thegamersvibe/relax-coach"
 const RulesSchema = 1
 
-//go:embed report.html logo.png native_shell.html native_shell.js
+//go:embed report.html farm.html logo.png native_shell.html native_shell.js
 var assets embed.FS
 
 type Finding struct {
@@ -99,6 +99,7 @@ type View struct {
 	NoGame                      bool
 	UpdateNote, AppVersion      string
 	Loaded                      time.Time
+	Farm                        FarmView // AH Profit, same account; zero when it has no save
 }
 
 type App struct {
@@ -110,6 +111,8 @@ type App struct {
 	accounts               []AccountChoice
 	configWarning          string
 	canAutoSelect          bool
+	farmRef                farmRefCache   // AH Profit's bundled names, reparsed only when the files change
+	farmParse              farmParseCache // the parsed AHProfit.lua, reparsed only when the file changes
 }
 
 func main() {
@@ -194,6 +197,9 @@ func (a *App) setGame(game string) {
 	}
 	a.rescanAccountsLocked()
 	a.modTime = time.Time{}
+	// Nothing parsed from another game folder is reused (AH Profit's save and
+	// its bundled files are cached by file version).
+	a.farmRef, a.farmParse = farmRefCache{}, farmParseCache{}
 	// Do not carry another game's last-good report across a folder change.
 	a.view = View{AppVersion: Version, Game: game, NoGame: game == ""}
 }
@@ -244,7 +250,17 @@ func (a *App) reloadLocked() {
 			v.Chars = buildChars(db)
 		}
 	}
+	// AH Profit is optional and read for the same account only; its result
+	// never changes the Coach report's own error or last-good handling.
+	chars := v.Chars
+	if v.Error != "" && prev.Game == v.Game && prev.Account == v.Account {
+		chars = prev.Chars
+	}
+	farmFor := View{Game: v.Game, Account: v.Account, Chars: chars}
+	a.loadFarmLocked(&farmFor, prev)
+	v.Farm = farmFor.Farm
 	if v.Error != "" && prev.SVPath != "" && prev.Error == "" && prev.Game == v.Game && prev.Account == v.Account {
+		prev.Farm = v.Farm
 		prev.Accounts = v.Accounts
 		prev.ConfigWarning = v.ConfigWarning
 		prev.Warning = "Latest save couldn't be read yet, showing the previous one (" + v.Error + ")"
