@@ -27,7 +27,7 @@ There is deliberately no Coach-only `RelaxCoach-1.5.3.zip`: older apps must not 
   - **Sell now:** your bank items at your auction house's lowest price after the cut, against the vendor price where it is known, the most valuable first.
   - **Gathering:** the nodes you and your guild picked, per map, with when they were last picked and by whom.
   - **Auctions:** what you have listed and what it brings after the cut, and sold/expired counts per item.
-  - **Gold:** earned, spent and net for today, 7, 30 and 180 days, by source (vendor, repairs, auction house, mail, quests, loot…) and by character.
+  - **Gold:** earned, spent and net for today, 7, 30 and 180 days, plus the last 30 days by source (vendor, repairs, auction house, mail, quests, loot…) and by character.
   - **Sessions:** your stopped farming sessions with zone, time, gold net and gold per hour.
 - **Read-only:** the page reads AH Profit's SavedVariables and its bundled data files as data; it never runs them and never writes to them.
 - **Gold and Sessions need AH Profit 0.6.0 or newer** (its gold ledger and session archive). With an older AH Profit those two sections say to update it; Sell now, Gathering and Auctions work with the AH Profit you have.
