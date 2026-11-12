@@ -17,9 +17,10 @@ var funcs = template.FuncMap{
 		}
 		return strings.Join(w, " ")
 	},
-	"inc": func(n int) int { return n + 1 },
-	"sub": func(a, b int) int { return a - b },
-	"add": func(a, b int) int { return a + b },
+	"inc":  func(n int) int { return n + 1 },
+	"coin": coin,
+	"sub":  func(a, b int) int { return a - b },
+	"add":  func(a, b int) int { return a + b },
 	"commas": func(n int) string {
 		s := fmt.Sprint(n)
 		for i := len(s) - 3; i > 0; i -= 3 {

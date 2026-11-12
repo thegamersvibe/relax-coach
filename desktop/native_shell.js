@@ -72,7 +72,8 @@ function show(view) {
   $('setup-view').hidden = view !== 'setup';
   $('report-view').hidden = view !== 'report';
   $('update-view').hidden = view !== 'update';
-  for (const name of ['setup','report','update']) {
+  $('farm-view').hidden = view !== 'farm';
+  for (const name of ['setup','report','farm','update']) {
     $('nav-'+name).classList.toggle('active',name === view);
     if (name === view) $('nav-'+name).setAttribute('aria-current','page');
     else $('nav-'+name).removeAttribute('aria-current');
@@ -188,6 +189,33 @@ function setReportFilter(filters,button) {
   filters.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===button));
   filters.closest('.card').querySelectorAll('.more .fix').forEach(row=>{row.hidden=button.dataset.f!=='all'&&row.dataset.area!==button.dataset.f;});
 }
+// Farming page: shown only when the selected account has an AH Profit save.
+// The HTML comes from html/template in Go, like the report body.
+let renderedFarm = $('farm-body').innerHTML;
+function filterFarmHouse() {
+  const select = $('farm-house');
+  const house = select ? select.value : null;
+  const rows = $('farm-body').querySelectorAll('tr[data-house]');
+  let shown = 0;
+  for (const row of rows) { row.hidden = house !== null && row.dataset.house !== house; if (!row.hidden) shown++; }
+  const empty = $('farm-body').querySelector('.farm-empty-house');
+  if (empty) empty.hidden = !rows.length || shown > 0;
+}
+function displayFarm(result) {
+  const has = result.HasFarm === true;
+  $('nav-farm').hidden = !has;
+  if (!has && !$('farm-view').hidden) show('report');
+  const html = has ? result.FarmHTML : '';
+  if (html !== renderedFarm) {
+    const previous = $('farm-house') ? $('farm-house').value : null;
+    $('farm-body').innerHTML = html;
+    renderedFarm = html;
+    const select = $('farm-house');
+    if (select && previous !== null && [...select.options].some(o=>o.value===previous)) select.value = previous;
+  }
+  filterFarmHouse();
+}
+$('farm-body').addEventListener('change',event=>{ if (event.target && event.target.id === 'farm-house') filterFarmHouse(); });
 function displayReport(result,folderChanged = false) {
   lastReport = result;
   if (result.AppVersion) $('installed-app-version').textContent = result.AppVersion;
@@ -212,6 +240,7 @@ function displayReport(result,folderChanged = false) {
     }
     renderedReport = {HTML:result.HTML,Game:result.Game,Account:result.Account};
   }
+  displayFarm(result);
   $('installed-version').textContent = result.InstalledVersion === '0.0.0' ? 'Not installed' : result.InstalledVersion;
   $('setup-installed').textContent = $('installed-version').textContent;
   $('setup-folder').textContent = result.Game || 'Not chosen yet.';
@@ -258,6 +287,7 @@ async function refresh(manual = false) {
 $('nav-setup').addEventListener('click',()=>{ userNavigated = true; show('setup'); maybeAutoCheck(); });
 $('nav-report').addEventListener('click',()=>{ userNavigated = true; show('report'); });
 $('nav-update').addEventListener('click',()=>{ userNavigated = true; show('update'); if (!busy) loadExtras(); });
+$('nav-farm').addEventListener('click',()=>{ userNavigated = true; show('farm'); });
 $('setup-report').addEventListener('click',()=>{ userNavigated = true; show('report'); });
 $('setup-more').addEventListener('click',()=>{ userNavigated = true; show('update'); if (!busy) loadExtras(); });
 $('refresh').addEventListener('click',()=>refresh(true));
@@ -270,6 +300,7 @@ async function changeFolder(select) {
   $('folder-label').textContent = 'Changing game folder…';
   $('account-source').textContent = 'Changing game folder…';
   $('report-body').hidden = true;
+  $('farm-body').hidden = true;
   updateButtons();
   try {
     const result = await select();
@@ -284,6 +315,7 @@ async function changeFolder(select) {
     // Cancellation/errors leave the backend selection and checked offer unchanged.
     $('folder-label').textContent = folder;
     $('report-body').hidden = false;
+    $('farm-body').hidden = false;
     if (lastReport) displayAccount(lastReport);
     busy = switchingFolder = false;
     updateButtons();
@@ -305,6 +337,8 @@ $('account-select').addEventListener('change',async()=>{
   // An account switch is a data boundary, including failed reads or writes.
   $('report-body').replaceChildren();
   renderedReport = null;
+  $('farm-body').replaceChildren();
+  renderedFarm = null;
   $('account-source').textContent = 'Changing account…';
   $('account-save-time').textContent = 'Not loaded';
   $('account-save-time').dateTime = '';

@@ -1,0 +1,49 @@
+{{define "farm-body"}}
+{{if .Warning}}<div class="note warnbar">{{.Warning}}</div>{{end}}
+{{if .Error}}<div class="note err">AH Profit's save could not be read: {{.Error}}</div>{{else}}
+{{if .Note}}<div class="note">{{.Note}}</div>{{end}}
+<div class="card farm-head">
+ <p class="subtle">From AH Profit's save for this account{{if not .SaveTime.IsZero}}, saved {{ago .SaveTime}}{{end}}. Asking prices, not completed sales; {{.Cut}}% auction cut taken off.</p>
+ {{if .Houses}}<div class="account-controls"><label for="farm-house">Auction house</label><select id="farm-house">
+  {{range .Houses}}<option value="{{.Key}}"{{if eq .Key $.DefaultHouse}} selected{{end}}>{{.Realm}} · {{.Faction}} ({{.Items}} prices{{if not .FullScan.IsZero}}, full scan {{ago .FullScan}}{{end}})</option>{{end}}
+  <option value=""{{if eq "" $.DefaultHouse}} selected{{end}}>Characters whose auction house is unknown</option>
+ </select></div>{{else}}<p class="subtle">No auction house scanned yet: open the auction house in game with AH Profit enabled, then /reload.</p>{{end}}
+</div>
+
+<div class="grid farm-grid">
+<div class="card" id="farm-gold"><h3>Gold</h3>
+ {{if .HasLedger}}<p class="subtle">This AH Profit saves gold history; this Relax Coach version does not show it yet.</p>
+ {{else}}<p class="subtle">Update AH Profit to get gold history (earned and spent per day, by source).</p>{{end}}
+</div>
+<div class="card" id="farm-sessions"><h3>Sessions</h3>
+ {{if .HasSessions}}<p class="subtle">This AH Profit saves past sessions; this Relax Coach version does not show them yet.</p>
+ {{else}}<p class="subtle">Update AH Profit to keep past farming sessions (zone, time, gold per hour).</p>{{end}}
+</div>
+</div>
+
+<div class="card" id="farm-sell"><h3>Sell now <small class="subtle">bank items at your auction house's price</small></h3>
+ {{if .Sell}}<table class="farm-table"><thead><tr><th>Item</th><th>Character</th><th class="num">Count</th><th class="num">Lowest each</th><th class="num">After cut, all</th></tr></thead><tbody>
+ {{range $i, $r := .Sell}}{{if lt $i 150}}<tr data-house="{{$r.House}}"><td>{{$r.Name}}</td><td>{{$r.Char}}</td><td class="num">{{$r.Count}}{{if $r.Bound}} <small class="subtle">({{$r.Bound}} bound)</small>{{end}}</td>
+  {{if $r.NoPrice}}<td class="num subtle" colspan="2">no price for this house</td>{{else}}<td class="num">{{coin $r.Price}}<br><small class="subtle">{{if eq $r.Source "guild"}}guild{{if $r.From}} ({{$r.From}}){{end}}{{else}}your scan{{end}}, {{ago $r.Seen}}, {{$r.Listed}} listed</small></td><td class="num">{{coin $r.Value}}</td>{{end}}</tr>{{end}}{{end}}
+ </tbody></table>
+ <p class="subtle farm-empty-house" hidden>No bank items for this auction house.</p>
+ <p class="scope">The bank is read when you open it in game. Vendor prices are not in AH Profit's save, so this list does not say whether a vendor pays more.</p>
+ {{else}}<p class="subtle">No bank contents saved yet: open your bank in game with AH Profit enabled, then /reload.</p>{{end}}
+</div>
+
+<div class="card" id="farm-gathering"><h3>Gathering <small class="subtle">nodes you and your guild picked</small></h3>
+ {{if .Gathering}}<table class="farm-table"><thead><tr><th>Map</th><th class="num">Nodes</th><th class="num">Kinds</th><th>Last picked</th><th>Picked by</th></tr></thead><tbody>
+ {{range .Gathering}}<tr><td>{{.Name}}</td><td class="num">{{.Nodes}}</td><td class="num">{{.Kinds}}</td><td>{{if .Last.IsZero}}unknown{{else}}{{ago .Last}}{{end}}</td><td>{{join .Who ", "}}</td></tr>{{end}}
+ </tbody></table>
+ {{else}}<p class="subtle">No gathering nodes saved yet. AH Profit records a node when you mine or pick it.</p>{{end}}
+</div>
+
+<div class="card" id="farm-auctions"><h3>Auctions</h3>
+ {{if .Listings}}<ul class="farm-listings">{{range .Listings}}<li><b>{{.Char}}</b>: {{.Active}} listed, {{coin .ActiveAfterCut}} after the cut if all sell{{if .SoldWaiting}}, {{.SoldWaiting}} sold with gold waiting{{end}} <small class="subtle">(seen {{ago .Seen}})</small></li>{{end}}</ul>{{end}}
+ {{if .Auctions}}<table class="farm-table"><thead><tr><th>Item</th><th class="num">Sold</th><th class="num">Expired</th><th class="num">Sold rate</th></tr></thead><tbody>
+ {{range $i, $a := .Auctions}}{{if lt $i 100}}<tr><td>{{$a.Name}}</td><td class="num">{{$a.Sold}}</td><td class="num">{{$a.Expired}}</td><td class="num">{{$a.RatePct}}%</td></tr>{{end}}{{end}}
+ </tbody></table><p class="scope">Counted from the game's "sold" and "expired" messages while AH Profit was running.</p>
+ {{else if not .Listings}}<p class="subtle">No auctions seen yet: open the Auctions tab of the auction house in game, then /reload.</p>{{end}}
+</div>
+{{end}}
+{{end}}

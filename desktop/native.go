@@ -40,7 +40,7 @@ func renderNativeShell(v View, disabled bool, token string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	tpl, err := template.New("native_shell.html").Funcs(funcs).ParseFS(assets, "report.html", "native_shell.html")
+	tpl, err := template.New("native_shell.html").Funcs(funcs).ParseFS(assets, "report.html", "farm.html", "native_shell.html")
 	if err != nil {
 		return "", err
 	}

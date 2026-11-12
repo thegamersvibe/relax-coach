@@ -50,6 +50,9 @@ type nativeReport struct {
 	Accounts                                 []AccountChoice
 	Stale                                    bool
 	Bundle                                   AddonBundleState
+	// Farming page (AH Profit, same account): HasFarm shows its nav entry.
+	HasFarm  bool
+	FarmHTML string
 }
 
 // Deliberately omit the download URL/checksum fields from the UI projection.
@@ -225,6 +228,10 @@ func (b *nativeBridge) reportLocked() (nativeReport, error) {
 	if err == nil {
 		b.reportRendered = true
 	}
+	farmHTML, ferr := renderFarmBody(v)
+	if err == nil {
+		err = ferr
+	}
 	saveTime := ""
 	if !v.SaveTime.IsZero() {
 		saveTime = v.SaveTime.Format(time.RFC3339)
@@ -232,7 +239,8 @@ func (b *nativeBridge) reportLocked() (nativeReport, error) {
 	return nativeReport{HTML: html, Game: v.Game, InstalledVersion: InstalledCoachVersion(v.Game),
 		AppVersion: Version, AppUpdateStatus: currentAppUpdateStatus(),
 		Account: v.Account, Accounts: v.Accounts, SVPath: v.SVPath, SaveTime: saveTime,
-		Stale: v.Warning != "", ConfigWarning: v.ConfigWarning, Bundle: InstalledBundleState(v.Game)}, err
+		Stale: v.Warning != "", ConfigWarning: v.ConfigWarning, Bundle: InstalledBundleState(v.Game),
+		HasFarm: v.Farm.Present, FarmHTML: farmHTML}, err
 }
 
 func (b *nativeBridge) selectAccount(id string) (nativeReport, error) {
