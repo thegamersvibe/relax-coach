@@ -5,35 +5,60 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 	"unicode/utf16"
 )
 
-func TestAppResourceVersionMatches154(t *testing.T) {
-	b, err := os.ReadFile("versioninfo.json")
+// winres/winres.json is the single source for the exe's Windows resources (icon, manifest,
+// version). resource_windows_amd64.syso is generated from it with go-winres; see CONTRIBUTING.md.
+func readWinres(t *testing.T) (meta struct {
+	Manifest map[string]map[string]struct {
+		ExecutionLevel string `json:"execution-level"`
+		UIAccess       bool   `json:"ui-access"`
+		AutoElevate    bool   `json:"auto-elevate"`
+		DPIAwareness   string `json:"dpi-awareness"`
+		MinimumOS      string `json:"minimum-os"`
+	} `json:"RT_MANIFEST"`
+	Icon    map[string]map[string]string `json:"RT_GROUP_ICON"`
+	Version map[string]map[string]struct {
+		Fixed struct {
+			FileVersion    string `json:"file_version"`
+			ProductVersion string `json:"product_version"`
+		} `json:"fixed"`
+		Info map[string]map[string]string `json:"info"`
+	} `json:"RT_VERSION"`
+}) {
+	b, err := os.ReadFile("winres/winres.json")
 	if err != nil {
 		t.Fatal(err)
-	}
-	var meta struct {
-		FixedFileInfo struct {
-			FileVersion, ProductVersion struct{ Major, Minor, Patch, Build int }
-		}
-		StringFileInfo struct{ FileVersion, ProductVersion string }
 	}
 	if err := json.Unmarshal(b, &meta); err != nil {
 		t.Fatal(err)
 	}
-	for _, v := range []string{Version, meta.StringFileInfo.FileVersion, meta.StringFileInfo.ProductVersion} {
-		if v != "1.5.4" {
-			t.Errorf("stale app/resource version %q", v)
+	return meta
+}
+
+func TestAppResourceVersionMatches154(t *testing.T) {
+	meta := readWinres(t)
+	v := meta.Version["#1"]["0000"]
+	info := v.Info["0409"]
+	for _, s := range []string{Version, info["FileVersion"], info["ProductVersion"]} {
+		if s != "1.5.4" {
+			t.Errorf("stale app/resource version %q", s)
 		}
 	}
-	for _, v := range []struct{ Major, Minor, Patch, Build int }{meta.FixedFileInfo.FileVersion, meta.FixedFileInfo.ProductVersion} {
-		if v.Major != 1 || v.Minor != 5 || v.Patch != 4 || v.Build != 0 {
-			t.Errorf("stale fixed version %+v", v)
+	for _, s := range []string{v.Fixed.FileVersion, v.Fixed.ProductVersion} {
+		if s != "1.5.4.0" {
+			t.Errorf("stale fixed version %q", s)
 		}
 	}
-	b, err = os.ReadFile("resource_windows_amd64.syso")
+	for k, want := range map[string]string{"CompanyName": "TheGamersVibe", "ProductName": "Relax Coach", "OriginalFilename": "RelaxCoach.exe"} {
+		if info[k] != want {
+			t.Errorf("version info %s = %q, want %q", k, info[k], want)
+		}
+	}
+	b, err := os.ReadFile("resource_windows_amd64.syso")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,5 +78,37 @@ func TestAppResourceVersionMatches154(t *testing.T) {
 	}
 	if !bytes.Contains(b, encoded.Bytes()) {
 		t.Error("compiled Windows string version is stale")
+	}
+}
+
+// An exe with no manifest makes Windows guess (installer detection, virtualization, legacy DPI)
+// and is a common antivirus heuristic signal. Keep an explicit asInvoker, never-elevating manifest.
+func TestAppResourceDeclaresSafeManifest(t *testing.T) {
+	meta := readWinres(t)
+	m, ok := meta.Manifest["#1"]["0409"]
+	if !ok {
+		t.Fatal("winres.json has no RT_MANIFEST #1")
+	}
+	if m.ExecutionLevel != "as invoker" || m.UIAccess || m.AutoElevate {
+		t.Errorf("manifest must run as invoker without uiAccess/autoElevate: %+v", m)
+	}
+	if m.DPIAwareness != "per monitor v2" || m.MinimumOS != "win10" {
+		t.Errorf("manifest dpi/os = %q/%q", m.DPIAwareness, m.MinimumOS)
+	}
+	if meta.Icon["#1"]["0000"] != "../icon.ico" {
+		t.Error("RT_GROUP_ICON #1 must be icon.ico (native window loads icon ID 1)")
+	}
+	b, err := os.ReadFile("resource_windows_amd64.syso")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(b)
+	for _, want := range []string{`requestedExecutionLevel level="asInvoker" uiAccess="false"`, "permonitorv2", `name="TheGamersVibe.RelaxCoach" version="1.5.4.0"`, "{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("compiled manifest is stale: missing %s (regenerate with go-winres)", want)
+		}
+	}
+	if strings.Contains(s, "requireAdministrator") || strings.Contains(s, "highestAvailable") {
+		t.Error("compiled manifest must never request elevation")
 	}
 }

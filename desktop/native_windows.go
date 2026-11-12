@@ -31,7 +31,7 @@ const (
 	nativeWMTask    = 0x8001
 	nativeWMClose   = 0x0010
 	nativeWMDestroy = 0x0002
-	nativeIconID    = 1 // RT_GROUP_ICON 1 in goversioninfo's resource_windows_amd64.syso
+	nativeIconID    = 1 // RT_GROUP_ICON 1 in resource_windows_amd64.syso (go-winres, winres/winres.json)
 )
 
 type nativePoint struct{ X, Y int32 }
