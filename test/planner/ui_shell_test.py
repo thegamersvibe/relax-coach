@@ -307,7 +307,7 @@ class UIShellTests(unittest.TestCase):
           assert(help:find("shows the top 3 guides; click one to jump to your first undone step",1,true))
         ''')
         readme = (ADDON / 'README.md').read_text()
-        for expected in ('0.2.0', 'Relax Coach v1.5.0', 'RelaxCoach-Bundle-', 'Journey',
+        for expected in ('0.2.1', 'Relax Coach v1.5.0', 'RelaxCoach-Bundle-', 'Journey',
                          '/rqp mode [strict|game|all]', '/rqp guide',
                          'shows the top 3 guides; click one to jump to your first undone step'):
             self.assertIn(expected, readme)
@@ -720,7 +720,7 @@ class UIShellTests(unittest.TestCase):
         self.assertEqual(metadata["Interface"], "16001")
         self.assertEqual(metadata["Title"], "Relax Quest Planner")
         self.assertEqual(metadata["Author"], "TheGamersVibe")
-        self.assertEqual(metadata["Version"], "0.2.0")
+        self.assertEqual(metadata["Version"], "0.2.1")
         self.assertEqual(client().eval('RelaxQuestPlanner.version'), metadata["Version"])
         self.assertEqual(metadata["SavedVariablesPerCharacter"], "RelaxQuestPlannerDB")
         self.assertEqual(metadata["OptionalDeps"].split(", "), [

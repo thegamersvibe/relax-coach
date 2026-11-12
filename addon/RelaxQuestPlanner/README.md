@@ -1,10 +1,10 @@
-# Relax Quest Planner — 0.2.0
+# Relax Quest Planner — 0.2.1
 
 Quest planner for **WoW Forever** (Interface 16001), shipped in the Relax Coach
 bundle from **v1.5.0**. It plans dungeon quest chains and individual quest goals
 without accepting, completing or turning in quests for you.
 
-**Validation status:** version 0.2.0 has passed the offline test suites only. It
+**Validation status:** version 0.2.1 has passed the offline test suites only. It
 has not been validated in the native Forever client yet; please report anything
 that misbehaves in game.
 
