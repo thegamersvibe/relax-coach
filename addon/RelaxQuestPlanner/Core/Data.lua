@@ -189,7 +189,9 @@ function D.AllQuestIds()
     if ids then return ids end
     D.Ready(); loadSupplements()
     local all={}
-    if lib then for _,id in ipairs(questAPI.GetAllIds()) do all[id]=true; tick() end end
+    -- QuestieDB can list an id it cannot name (a stub row such as a quest marked
+    -- "not in the game"). D.Quest returns nil for those, so keep only ids it resolves.
+    if lib then for _,id in ipairs(questAPI.GetAllIds()) do if D.Quest(id) then all[id]=true end; tick() end end
     for id in pairs(supplements) do all[id]=true end
     ids=keys(all); return ids
 end
