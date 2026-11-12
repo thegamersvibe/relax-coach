@@ -13,29 +13,55 @@ import (
 // os.Root guarantees containment, not a no-symlinks open. Lstat/OpenRoot are
 // separate operations. Exercise the exact candidate read path without hooks.
 func TestIndependentAccountDirectorySwapMustNotCrossIdentity(t *testing.T) {
-	if runtime.GOOS != "linux" { t.Skip("Linux race probe; Windows needs native validation") }
+	if runtime.GOOS != "linux" {
+		t.Skip("Linux race probe; Windows needs native validation")
+	}
 	accountConfigEnv(t)
 	game := filepath.Join(t.TempDir(), "_forever_")
 	p := accountSave(t, game, "A#1", "Alpha")
 	accountSave(t, game, "B#2", "BetaForeign")
 	a, b := accountApp(t, game)
-	if _, err := b.Call("selectAccount", nativeArgs("A#1")); err != nil { t.Fatal(err) }
+	if _, err := b.Call("selectAccount", nativeArgs("A#1")); err != nil {
+		t.Fatal(err)
+	}
 	dir := filepath.Dir(filepath.Dir(p))
 	parked := filepath.Join(filepath.Dir(dir), "parked")
 	stop, done := make(chan struct{}), make(chan error, 1)
 	go func() {
 		for {
-			select { case <-stop: done <- nil; return; default: }
-			if err := os.Rename(dir, parked); err != nil { done <- err; return }
-			if err := os.Symlink("B#2", dir); err != nil { done <- err; return }
+			select {
+			case <-stop:
+				done <- nil
+				return
+			default:
+			}
+			if err := os.Rename(dir, parked); err != nil {
+				done <- err
+				return
+			}
+			if err := os.Symlink("B#2", dir); err != nil {
+				done <- err
+				return
+			}
 			runtime.Gosched()
-			if err := os.Remove(dir); err != nil { done <- err; return }
-			if err := os.Rename(parked, dir); err != nil { done <- err; return }
+			if err := os.Remove(dir); err != nil {
+				done <- err
+				return
+			}
+			if err := os.Rename(parked, dir); err != nil {
+				done <- err
+				return
+			}
 			runtime.Gosched()
 		}
 	}()
-	defer func() { close(stop); if err := <-done; err != nil { t.Error(err) } }()
-	deadline := time.Now().Add(4*time.Second)
+	defer func() {
+		close(stop)
+		if err := <-done; err != nil {
+			t.Error(err)
+		}
+	}()
+	deadline := time.Now().Add(4 * time.Second)
 	for attempts := 1; time.Now().Before(deadline); attempts++ {
 		// Same readSelectedSave used by reloadLocked, with initially enumerated
 		// identities. No new identity request is sent during this loop.
@@ -47,34 +73,64 @@ func TestIndependentAccountDirectorySwapMustNotCrossIdentity(t *testing.T) {
 }
 
 func TestIndependentAccountFullRefreshSwapMustNotCrossIdentity(t *testing.T) {
-	if runtime.GOOS != "linux" { t.Skip("Linux race probe; Windows needs native validation") }
+	if runtime.GOOS != "linux" {
+		t.Skip("Linux race probe; Windows needs native validation")
+	}
 	accountConfigEnv(t)
 	game := filepath.Join(t.TempDir(), "_forever_")
 	p := accountSave(t, game, "A#1", "Alpha")
 	accountSave(t, game, "B#2", "BetaForeign")
 	a, b := accountApp(t, game)
-	if _, err := b.Call("selectAccount", nativeArgs("A#1")); err != nil { t.Fatal(err) }
+	if _, err := b.Call("selectAccount", nativeArgs("A#1")); err != nil {
+		t.Fatal(err)
+	}
 	dir := filepath.Dir(filepath.Dir(p))
 	parked := filepath.Join(filepath.Dir(dir), "parked")
 	stop, done := make(chan struct{}), make(chan error, 1)
 	go func() {
 		for {
-			select { case <-stop: done <- nil; return; default: }
-			if err := os.Rename(dir, parked); err != nil { done <- err; return }
-			if err := os.Symlink("B#2", dir); err != nil { done <- err; return }
+			select {
+			case <-stop:
+				done <- nil
+				return
+			default:
+			}
+			if err := os.Rename(dir, parked); err != nil {
+				done <- err
+				return
+			}
+			if err := os.Symlink("B#2", dir); err != nil {
+				done <- err
+				return
+			}
 			runtime.Gosched()
-			if err := os.Remove(dir); err != nil { done <- err; return }
-			if err := os.Rename(parked, dir); err != nil { done <- err; return }
+			if err := os.Remove(dir); err != nil {
+				done <- err
+				return
+			}
+			if err := os.Rename(parked, dir); err != nil {
+				done <- err
+				return
+			}
 			runtime.Gosched()
 		}
 	}()
-	defer func() { close(stop); if err := <-done; err != nil { t.Error(err) } }()
-	deadline := time.Now().Add(8*time.Second)
+	defer func() {
+		close(stop)
+		if err := <-done; err != nil {
+			t.Error(err)
+		}
+	}()
+	deadline := time.Now().Add(8 * time.Second)
 	for attempts := 1; time.Now().Before(deadline); attempts++ {
 		value, err := b.Call("reportRefresh", nil)
-		if err != nil { t.Fatal(err) }
+		if err != nil {
+			t.Fatal(err)
+		}
 		v := a.snapshot()
-		if v.Account != "A#1" { t.Fatalf("selected identity changed: %q", v.Account) }
+		if v.Account != "A#1" {
+			t.Fatalf("selected identity changed: %q", v.Account)
+		}
 		if strings.Contains(value.(nativeReport).HTML, "BetaForeign") {
 			t.Fatalf("full reportRefresh displayed B#2's BetaForeign under selected %q and source %q (attempt %d)", v.Account, v.SVPath, attempts)
 		}
@@ -335,4 +391,3 @@ func accountIdentitySwapProbe(t *testing.T, path, link string, probe func(int)) 
 		probe(attempts)
 	}
 }
-

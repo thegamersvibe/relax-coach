@@ -28,7 +28,8 @@ func TestFarmPrivateRealSaveRender(t *testing.T) {
 		}
 	}
 	start := time.Now()
-	fv, err := buildFarm(data, chars, time.Now())
+	// AHPROFIT_GAME (optional): a game folder whose Interface/AddOns/AHProfit has the bundled data files.
+	fv, err := buildFarm(data, chars, time.Now(), loadFarmRef(os.Getenv("AHPROFIT_GAME"), nil))
 	if err != nil {
 		t.Fatal(err)
 	}

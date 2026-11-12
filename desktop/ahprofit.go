@@ -69,6 +69,7 @@ type FarmSellRow struct {
 type FarmZone struct {
 	MapID, Nodes, Kinds int
 	Name                string
+	KindNames           []string // node kinds whose name is known
 	Last                time.Time
 	Who                 []string
 }
@@ -135,7 +136,7 @@ func (a *App) loadFarmLocked(v *View, prev View) {
 	}
 	var fv FarmView
 	if err == nil {
-		fv, err = buildFarm(data, v.Chars, time.Now())
+		fv, err = buildFarm(data, v.Chars, time.Now(), loadFarmRef(a.game, &a.farmRef))
 	}
 	if err != nil {
 		if prev.Farm.Present && prev.Farm.Error == "" && prev.Game == v.Game && prev.Account == v.Account {
@@ -168,7 +169,7 @@ func ahpTime(v any) time.Time {
 // buildFarm turns a parsed AHProfit.lua into the page model. chars are the
 // Coach report's characters of the same account, used only to tell which
 // auction house (realm and faction) a character belongs to.
-func buildFarm(data []byte, chars []CharView, now time.Time) (FarmView, error) {
+func buildFarm(data []byte, chars []CharView, now time.Time, ref farmRef) (FarmView, error) {
 	vars, err := ParseSavedVariables(string(data))
 	if err != nil {
 		return FarmView{}, err
@@ -178,6 +179,13 @@ func buildFarm(data []byte, chars []CharView, now time.Time) (FarmView, error) {
 		return FarmView{}, errors.New("no AHProfitDB in AHProfit.lua")
 	}
 	fv := FarmView{Present: true, Cut: 5}
+	// Names and vendor prices: the save's own item cache first, then AH
+	// Profit's bundled files, then "item <id>" with no vendor claim.
+	items := map[int]farmItemRef{}
+	for id, it := range ref.Items {
+		items[id] = it
+	}
+	saveItemRefs(db, items)
 	if c, ok := ahpInt(db["cut"], 100); ok && (c == 5 || c == 15) {
 		fv.Cut = c
 	}
@@ -276,6 +284,9 @@ func buildFarm(data []byte, chars []CharView, now time.Time) (FarmView, error) {
 				continue
 			}
 			r := FarmSellRow{House: house, Char: char, ID: id, Name: "item " + strconv.Itoa(id), Count: n, Bound: bound, BankSeen: seen}
+			if it, ok := items[id]; ok {
+				r.Name, r.Vendor, r.VendorKnown = it.Name, it.Vendor, it.VendorKnown
+			}
 			if house != "" {
 				r.Price, r.Listed, r.Seen, r.Source, r.From = price(house, id)
 			}
@@ -284,6 +295,9 @@ func buildFarm(data []byte, chars []CharView, now time.Time) (FarmView, error) {
 			} else {
 				r.Net = r.Price * (100 - fv.Cut) / 100
 				r.Value = r.Net * (n - bound)
+				if r.VendorKnown {
+					r.Gain = (r.Net - r.Vendor) * (n - bound)
+				}
 			}
 			fv.Sell = append(fv.Sell, r)
 		}
@@ -306,6 +320,9 @@ func buildFarm(data []byte, chars []CharView, now time.Time) (FarmView, error) {
 			continue
 		}
 		z := FarmZone{MapID: mapID, Name: "Map " + mapKey}
+		if name, ok := ref.Maps[mapID]; ok {
+			z.Name = name
+		}
 		kinds, who := map[int]bool{}, map[string]bool{}
 		for _, nraw := range List(raw) {
 			n := List(nraw)
@@ -331,6 +348,12 @@ func buildFarm(data []byte, chars []CharView, now time.Time) (FarmView, error) {
 			continue
 		}
 		z.Kinds = len(kinds)
+		for h := range kinds {
+			if name, ok := ref.Nodes[h]; ok {
+				z.KindNames = append(z.KindNames, name)
+			}
+		}
+		sort.Strings(z.KindNames)
 		for w := range who {
 			z.Who = append(z.Who, w)
 		}

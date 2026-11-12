@@ -1,5 +1,5 @@
 // Relax Coach native Windows application.
-// Reads ForeverCoach and, when installed, AH Profit SavedVariables (read-only). No memory reading or game automation.
+// Reads ForeverCoach and AH Profit SavedVariables, and AH Profit's bundled data files (read-only). No memory reading or game automation.
 // Diagnostic HTTP is opt-in; the normal UI uses direct in-process Go bindings.
 package main
 
@@ -111,6 +111,7 @@ type App struct {
 	accounts               []AccountChoice
 	configWarning          string
 	canAutoSelect          bool
+	farmRef                farmRefCache // AH Profit's bundled names, reparsed only when the files change
 }
 
 func main() {

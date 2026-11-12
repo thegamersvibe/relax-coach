@@ -27,7 +27,7 @@ Coach provides gear, build, training, class-quest and leveling advice plus sessi
 
 ## Report
 
-Use `/reload` or logout in WoW to write current data, then **Refresh** in the app. Refresh rereads the save; it cannot force WoW to save. Only Coach's `ForeverCoach.lua` and, when installed, AH Profit's `AHProfit.lua` SavedVariables are parsed (read-only, never executed); AH Profit's data appears on the **Farming** page.
+Use `/reload` or logout in WoW to write current data, then **Refresh** in the app. Refresh rereads the save; it cannot force WoW to save. Only Coach's `ForeverCoach.lua` and AH Profit's `AHProfit.lua` SavedVariables, and AH Profit's bundled data files, are parsed (read-only, never executed); AH Profit's data appears on the **Farming** page.
 
 Legacy folder discovery settings remain supported (`FOREVER_COACH_GAME` and `%AppData%\ForeverCoach\config.json`).
 

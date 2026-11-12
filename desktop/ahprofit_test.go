@@ -67,7 +67,7 @@ func farmRow(fv FarmView, char string, id int) *FarmSellRow {
 }
 
 func TestFarmBuildPricesHousesAndSources(t *testing.T) {
-	fv, err := buildFarm([]byte(farmFixture()), farmChars(), time.Unix(farmNow, 0))
+	fv, err := buildFarm([]byte(farmFixture()), farmChars(), time.Unix(farmNow, 0), farmRef{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,31 +124,31 @@ func TestFarmBuildPricesHousesAndSources(t *testing.T) {
 
 func TestFarmCutAndSchemaVersions(t *testing.T) {
 	src := strings.Replace(farmFixture(), `["cut"] = 5`, `["cut"] = 15`, 1)
-	fv, err := buildFarm([]byte(src), farmChars(), time.Unix(farmNow, 0))
+	fv, err := buildFarm([]byte(src), farmChars(), time.Unix(farmNow, 0), farmRef{})
 	if err != nil || fv.Cut != 15 || farmRow(fv, "Tester-Stormrage", 2772).Net != 255 {
 		t.Fatalf("15%% cut: %v %+v", err, fv.Cut)
 	}
 	newer := strings.Replace(farmFixture(), `["v"] = 2`, `["v"] = 3`, 1)
-	fv, err = buildFarm([]byte(newer), farmChars(), time.Unix(farmNow, 0))
+	fv, err = buildFarm([]byte(newer), farmChars(), time.Unix(farmNow, 0), farmRef{})
 	if err != nil || !strings.Contains(fv.Note, "newer AH Profit") || len(fv.Sell) == 0 {
 		t.Fatalf("a newer save is still read, with a note: %v %q", err, fv.Note)
 	}
 	old := `AHProfitDB = { ["cut"] = 5, ["live"] = { ["R|Horde"] = { ["p"] = { [1] = 5 }, ["q"] = { [1] = 1 }, ["t"] = { [1] = 1 }, ["full"] = 0 } } }`
-	fv, err = buildFarm([]byte(old), nil, time.Unix(farmNow, 0))
+	fv, err = buildFarm([]byte(old), nil, time.Unix(farmNow, 0), farmRef{})
 	if err != nil || fv.HasLedger || fv.DefaultHouse != "R|Horde" || len(fv.Sell) != 0 || len(fv.Houses) != 1 {
 		t.Fatalf("old save without newer fields: %v %+v", err, fv)
 	}
 	withLedger := strings.Replace(farmFixture(), `["rec"] = { },`, `["rec"] = { }, ["ledger"] = { }, ["sessions"] = { },`, 1)
-	fv, err = buildFarm([]byte(withLedger), farmChars(), time.Unix(farmNow, 0))
+	fv, err = buildFarm([]byte(withLedger), farmChars(), time.Unix(farmNow, 0), farmRef{})
 	if err != nil || !fv.HasLedger || !fv.HasSessions {
 		t.Fatalf("ledger/sessions present: %v %+v", err, fv)
 	}
-	if _, err := buildFarm([]byte(`OtherDB = { }`), nil, time.Now()); err == nil {
+	if _, err := buildFarm([]byte(`OtherDB = { }`), nil, time.Now(), farmRef{}); err == nil {
 		t.Fatal("a file without AHProfitDB must be an error")
 	}
 	// Two characters with the same name on one realm, both factions, and no
 	// Coach data: the house is unknown rather than guessed.
-	fv, _ = buildFarm([]byte(farmFixture()), nil, time.Unix(farmNow, 0))
+	fv, _ = buildFarm([]byte(farmFixture()), nil, time.Unix(farmNow, 0), farmRef{})
 	if r := farmRow(fv, "Tester-Stormrage", 2772); r == nil || r.House != "" || !r.NoPrice || fv.DefaultHouse != "" {
 		t.Fatalf("no Coach characters and two houses on the realm: house must stay unknown: %+v default %q", r, fv.DefaultHouse)
 	}
@@ -163,7 +163,7 @@ func TestFarmTruncatedNeverPanics(t *testing.T) {
 					t.Fatalf("panic at byte %d: %v", i, r)
 				}
 			}()
-			buildFarm([]byte(src[:i]), farmChars(), time.Unix(farmNow, 0))
+			buildFarm([]byte(src[:i]), farmChars(), time.Unix(farmNow, 0), farmRef{})
 		}()
 	}
 }
@@ -173,7 +173,7 @@ func FuzzBuildFarm(f *testing.F) {
 	f.Add(`AHProfitDB = { ["bank"] = { ["a-b"] = { ["items"] = { { 1e308, -1, 2 } } } }, ["nodes"] = { [1] = { { 1, 2, 3, 1e300, 5 } } } }`)
 	f.Add(`AHProfitDB = { ["auc"] = { ["own"] = { ["x"] = { ["list"] = { { 1, 1e9, 1e12, 0 } } } } } }`)
 	f.Fuzz(func(t *testing.T, s string) {
-		fv, err := buildFarm([]byte(s), farmChars(), time.Unix(farmNow, 0))
+		fv, err := buildFarm([]byte(s), farmChars(), time.Unix(farmNow, 0), farmRef{})
 		if err == nil {
 			if _, rerr := renderFarmBody(View{Farm: fv}); rerr != nil {
 				t.Fatal(rerr)
@@ -316,7 +316,7 @@ func TestFarmCoin(t *testing.T) {
 // TestFarmRenderForUITests writes the Farming fragment of the synthetic save
 // for the jsdom tests (native_farm_ui_test.cjs) when FARM_HTML_OUT is set.
 func TestFarmRenderForUITests(t *testing.T) {
-	fv, err := buildFarm([]byte(farmFixture()), farmChars(), time.Unix(farmNow, 0))
+	fv, err := buildFarm([]byte(farmFixture()), farmChars(), time.Unix(farmNow, 0), farmRef{})
 	if err != nil {
 		t.Fatal(err)
 	}

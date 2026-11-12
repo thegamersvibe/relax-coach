@@ -22,18 +22,19 @@
 </div>
 
 <div class="card" id="farm-sell"><h3>Sell now <small class="subtle">bank items at your auction house's price</small></h3>
- {{if .Sell}}<table class="farm-table"><thead><tr><th>Item</th><th>Character</th><th class="num">Count</th><th class="num">Lowest each</th><th class="num">After cut, all</th></tr></thead><tbody>
+ {{if .Sell}}<table class="farm-table"><thead><tr><th>Item</th><th>Character</th><th class="num">Count</th><th class="num">Lowest each</th><th class="num">After cut, all</th><th class="num">Against a vendor</th></tr></thead><tbody>
  {{range $i, $r := .Sell}}{{if lt $i 150}}<tr data-house="{{$r.House}}"><td>{{$r.Name}}</td><td>{{$r.Char}}</td><td class="num">{{$r.Count}}{{if $r.Bound}} <small class="subtle">({{$r.Bound}} bound)</small>{{end}}</td>
-  {{if $r.NoPrice}}<td class="num subtle" colspan="2">no price for this house</td>{{else}}<td class="num">{{coin $r.Price}}<br><small class="subtle">{{if eq $r.Source "guild"}}guild{{if $r.From}} ({{$r.From}}){{end}}{{else}}your scan{{end}}, {{ago $r.Seen}}, {{$r.Listed}} listed</small></td><td class="num">{{coin $r.Value}}</td>{{end}}</tr>{{end}}{{end}}
+  {{if $r.NoPrice}}<td class="num subtle" colspan="2">no price for this house</td>{{else}}<td class="num">{{coin $r.Price}}<br><small class="subtle">{{if eq $r.Source "guild"}}guild{{if $r.From}} ({{$r.From}}){{end}}{{else}}your scan{{end}}, {{ago $r.Seen}}, {{$r.Listed}} listed</small></td><td class="num">{{coin $r.Value}}</td>{{end}}
+  <td class="num">{{if not $r.VendorKnown}}<small class="subtle">vendor price not known</small>{{else if $r.NoPrice}}<small class="subtle">vendor pays {{coin $r.Vendor}} each</small>{{else if lt $r.Gain 0}}<span class="vendor-better">vendor pays more: {{coin $r.Vendor}} each</span>{{else}}<span class="ah-better">+{{coin $r.Gain}} over vendoring</span>{{end}}</td></tr>{{end}}{{end}}
  </tbody></table>
  <p class="subtle farm-empty-house" hidden>No bank items for this auction house.</p>
- <p class="scope">The bank is read when you open it in game. Vendor prices are not in AH Profit's save, so this list does not say whether a vendor pays more.</p>
+ <p class="scope">The bank is read when you open it in game. Names and vendor prices come from AH Profit's save when it has them, otherwise from AH Profit's bundled farm data (mostly gathering materials); where neither knows an item, no vendor comparison is made.</p>
  {{else}}<p class="subtle">No bank contents saved yet: open your bank in game with AH Profit enabled, then /reload.</p>{{end}}
 </div>
 
 <div class="card" id="farm-gathering"><h3>Gathering <small class="subtle">nodes you and your guild picked</small></h3>
- {{if .Gathering}}<table class="farm-table"><thead><tr><th>Map</th><th class="num">Nodes</th><th class="num">Kinds</th><th>Last picked</th><th>Picked by</th></tr></thead><tbody>
- {{range .Gathering}}<tr><td>{{.Name}}</td><td class="num">{{.Nodes}}</td><td class="num">{{.Kinds}}</td><td>{{if .Last.IsZero}}unknown{{else}}{{ago .Last}}{{end}}</td><td>{{join .Who ", "}}</td></tr>{{end}}
+ {{if .Gathering}}<table class="farm-table"><thead><tr><th>Map</th><th class="num">Nodes</th><th>Kinds</th><th>Last picked</th><th>Picked by</th></tr></thead><tbody>
+ {{range .Gathering}}<tr><td>{{.Name}}</td><td class="num">{{.Nodes}}</td><td>{{if .KindNames}}{{join .KindNames ", "}}{{if gt .Kinds (len .KindNames)}} <small class="subtle">+{{sub .Kinds (len .KindNames)}} unnamed</small>{{end}}{{else}}{{.Kinds}}{{end}}</td><td>{{if .Last.IsZero}}unknown{{else}}{{ago .Last}}{{end}}</td><td>{{join .Who ", "}}</td></tr>{{end}}
  </tbody></table>
  {{else}}<p class="subtle">No gathering nodes saved yet. AH Profit records a node when you mine or pick it.</p>{{end}}
 </div>
