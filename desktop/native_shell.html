@@ -21,7 +21,7 @@ h1,h2,h3,h4{font-family:"Segoe UI Variable Display","Segoe UI Variable","Segoe U
 .primary:hover:not(:disabled){background:linear-gradient(180deg,#f8d389,#e9b65c)}
 .primary:active:not(:disabled),.secondary:active:not(:disabled),.navbtn:active{transform:scale(.975)}
 button:disabled{opacity:.5;cursor:default;box-shadow:none}
-.primary:disabled{background:#ffffff08;color:var(--dim);border-color:var(--line2);border-style:dashed;font-weight:600;opacity:1}
+.primary:disabled{background:#ffffff08;color:var(--mut);border-color:var(--line2);border-style:dashed;font-weight:600;opacity:1}
 .navbtn{display:flex;align-items:center;gap:12px;text-align:left;white-space:nowrap;border-color:transparent;background:transparent;color:var(--mut);font-weight:600;padding:10px 12px;position:relative}
 .navbtn:before{content:"";flex:none;width:20px;height:20px;background:currentColor;-webkit-mask:var(--i) center/contain no-repeat;mask:var(--i) center/contain no-repeat}
 .navbtn:after{content:"";position:absolute;inset:-1px;border-radius:10px;background:#e9b65c1f;border:1px solid #e9b65c40;opacity:0;pointer-events:none;transition:opacity .16s ease-out}
@@ -92,13 +92,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
 .account-controls select{font:inherit;font-size:14px;min-width:200px;max-width:100%;background:var(--well);border:1px solid var(--line2);border-radius:10px;padding:7px 10px;color:var(--fg)}
 .account-meta{display:contents;font-size:12.5px;line-height:1.5;color:var(--dim)}
 .account-meta p{margin:0;min-width:0;overflow-wrap:anywhere}
-.account-meta #account-source{color:var(--mut);grid-column:2;grid-row:1;overflow-wrap:break-word}
-.account-meta p:has(time){grid-column:3;grid-row:1;white-space:nowrap}
-.account-meta #account-help{grid-column:1/-1;grid-row:2;margin-top:4px}
-.account-meta #account-status{grid-column:1/-1;grid-row:3;color:var(--warn)}
-@media(max-width:1000px){.account-panel{grid-template-columns:auto minmax(0,1fr)}.account-meta p:has(time){grid-column:2;grid-row:auto}.account-meta #account-help{grid-row:auto}.account-meta #account-status{grid-row:auto}}
+.account-meta p:has(time){grid-column:3;grid-row:1;white-space:nowrap;justify-self:end}
+.account-meta #account-source{color:var(--mut);grid-column:1/-1;grid-row:2;margin-top:6px}
+.account-meta #account-help{grid-column:1/-1;grid-row:3}
+.account-meta #account-status{grid-column:1/-1;grid-row:4;color:var(--warn)}
 .farm-head{margin-bottom:16px}.farm-head .account-controls{margin-top:12px}
-.farm-grid{grid-template-columns:1fr 1fr;margin:16px 0}
+.farm-grid{grid-template-columns:1fr 1fr;margin:16px 0;align-items:start}
 .farm-table{width:100%;border-collapse:collapse;font-size:13.5px}
 .farm-table th,.farm-table td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
 .farm-table thead th{color:var(--mut);font-size:12px;font-weight:600;letter-spacing:.3px}
@@ -118,7 +117,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
   .extra{display:grid;grid-template-columns:minmax(0,1fr) 300px 190px;gap:2px 24px;align-items:center}
   .extra h4{grid-column:1;grid-row:1;align-self:end;margin:0}.extra .extra-blurb{grid-column:1;grid-row:2;align-self:start}
   .extra .versions{grid-column:2;grid-row:1/span 2;margin:0;flex-wrap:nowrap}.extra .versions>div{flex:1 1 0;min-width:0;padding:7px 12px}.extra .versions dd{font-size:16px;white-space:nowrap}
-  .extra .actions{grid-column:3;grid-row:1/span 2;flex-wrap:nowrap;justify-content:flex-end}
+  .extra .actions{grid-column:3;grid-row:1/span 2;flex-wrap:nowrap}
   .extra .extra-status{grid-column:1/-1;margin:10px 0 0}
 }
 @media(max-width:1180px){.farm-grid{grid-template-columns:1fr}}
