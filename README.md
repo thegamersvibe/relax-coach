@@ -26,7 +26,7 @@ There is deliberately no Coach-only `RelaxCoach-1.5.5.zip`: older apps must not 
 - **New look ("night campfire"):** the Windows app has a new dark theme with a "Do these next" panel first, an icon sidebar, a compact account bar and the report in columns on wide windows.
 - **Update notice at launch:** when you open the app, it checks GitHub for a newer Relax Coach release and highlights **Updates** if one exists. It only reads the release information: nothing downloads or installs until you click **Update App**. If you're offline, it stays quiet. Start the app with `-no-update` to turn release checks off.
 - **Application manifest:** `RelaxCoach.exe` now declares that it runs as the normal user (no administrator rights, Windows 10 or newer). That should mean fewer antivirus false alarms, but it's no guarantee: the app is still unsigned.
-- **On app 1.5.4 or older:** click **Check App Update → Update App** once to get this release. The launch notice only exists from 1.5.5 on, so older apps don't tell you about it themselves.
+- **On app 1.5.0 to 1.5.4:** click **Check App Update → Update App** once to get this release. The launch notice only exists from 1.5.5 on, so older apps don't tell you about it themselves.
 - Coach's addon only changes its version; Relax Journey (`4.00.04`), the guide content (`4.00.08`) and Relax Quest Planner (`0.2.1`) are unchanged.
 
 ## What's new in v1.5.4
