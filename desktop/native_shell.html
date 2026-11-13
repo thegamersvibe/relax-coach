@@ -6,13 +6,12 @@
 [hidden]{display:none!important}
 body{display:flex;height:100vh;overflow:hidden}
 h1,h2,h3,h4{font-family:"Segoe UI Variable Display","Segoe UI Variable","Segoe UI",system-ui,sans-serif}
-.sidebar{width:236px;flex-shrink:0;padding:24px 16px 18px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:22px;overflow-y:auto;
+.sidebar{width:236px;flex-shrink:0;padding:20px 14px 16px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:20px;position:relative;z-index:20;
   background:radial-gradient(340px 260px at 50% 104%,#e98a3a26 0%,transparent 70%),linear-gradient(180deg,#0b0f18,#090c13)}
-.sidebar .brand{display:block;text-align:center;padding:0 14px;position:relative}
-.sidebar .brand:before{content:"";position:absolute;left:0;right:0;top:-10px;height:190px;background:radial-gradient(closest-side,#e9b65c26,transparent);pointer-events:none}
-.sidebar .crest{display:block;position:relative;width:100%;height:auto;aspect-ratio:1 / 1;object-fit:contain;margin-bottom:14px;border-radius:22%;box-shadow:0 0 0 1px #e9b65c33,0 14px 34px #000000a6}
-.sidebar h1{position:relative;font-size:20px;font-weight:700;letter-spacing:.2px;margin:0 -14px}
-.sidebar .brand small{position:relative;margin:2px -14px 0;font-size:12.5px;color:var(--mut)}
+.sidebar .brand{display:grid;grid-template-columns:56px minmax(0,1fr);column-gap:12px;align-items:center;text-align:left;padding:2px 4px;margin:0}
+.sidebar .crest{display:block;grid-row:1 / span 2;width:100%;height:auto;aspect-ratio:1 / 1;object-fit:contain;margin:0;border-radius:14px;background:#0b0f18;box-shadow:0 0 0 1px #e9b65c66,0 6px 16px #0000008c}
+.sidebar h1{font-size:19px;line-height:1.2;font-weight:700;letter-spacing:.2px;margin:0;align-self:end;white-space:nowrap}
+.sidebar .brand small{display:block;margin:1px 0 0;font-size:12px;line-height:1.4;color:var(--mut);align-self:start;white-space:nowrap}
 .sidebar nav{display:grid;gap:4px}
 .navbtn,.primary,.secondary{font:inherit;line-height:1.3;border:1px solid var(--line2);border-radius:10px;padding:9px 16px;color:var(--fg);background:#ffffff0b;cursor:pointer;transition:transform .12s ease-out,opacity .12s ease-out}
 .primary,.secondary{font-weight:600}
@@ -32,8 +31,10 @@ button:disabled{opacity:.5;cursor:default;box-shadow:none}
 #nav-report{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 20v-6'/%3E%3Cpath d='M12 20V4'/%3E%3Cpath d='M19 20V10'/%3E%3C/svg%3E")}
 #nav-farm{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3C/svg%3E")}
 #nav-update{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 4v11'/%3E%3Cpath d='M7 10.5l5 5 5-5'/%3E%3Cpath d='M5 20h14'/%3E%3C/svg%3E")}
-.sidebar .smallprint{margin-top:auto;color:var(--dim);font-size:12px;line-height:1.5;padding:14px 4px 0;border-top:1px solid var(--line);text-wrap:pretty}
-.sidebar .smallprint::first-line{color:var(--mut);font-weight:600;font-size:12.5px}
+.sidebar .smallprint{margin-top:auto;color:var(--mut);font-size:12.5px;line-height:1.5;padding:14px 4px 0;border-top:1px solid var(--line);text-wrap:pretty;position:relative}
+.sidebar .smallprint .ver{display:block;color:var(--fg);font-weight:600;font-size:13px}
+.sidebar .smallprint .fine{display:block}
+.nb{white-space:nowrap}
 .workspace{flex:1;overflow-y:auto;scrollbar-gutter:stable;min-width:0;padding:20px 36px 56px;max-width:none;margin:0;scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
 .workspace>*{max-width:1340px;margin-left:auto;margin-right:auto}
 .workspace>section:not([hidden]),#app-placement:not([hidden]){animation:viewin .18s ease-out both}
@@ -122,12 +123,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
 }
 @media(max-width:1180px){.farm-grid{grid-template-columns:1fr}}
 @media(max-width:1000px){.sidebar{width:196px;padding:20px 12px 14px}.navbtn{gap:10px;padding:10px}.workspace{padding:16px 22px 44px}.pagehead h2{font-size:25px}}
-@media(max-height:700px){.sidebar{gap:16px;padding-top:18px}.sidebar .brand{padding:0 48px}.sidebar h1,.sidebar .brand small{margin-left:-48px;margin-right:-48px}.sidebar .crest{margin-bottom:10px}.sidebar .brand:before{height:120px}}
+@media(max-height:700px){.sidebar{gap:14px;padding-top:16px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
 </style></head><body data-token="{{.Token}}" data-updates-disabled="{{.UpdatesDisabled}}">
 <aside class="sidebar"><div class="brand"><img class="crest" src="{{.Logo}}" alt="Relax Coach tea-glass emblem"><h1>Relax Coach</h1><small>WoW Forever companion</small></div>
 <nav aria-label="Main"><button id="nav-setup" class="navbtn">Get started</button><button id="nav-report" class="navbtn active" aria-current="page">Coach Report</button><button id="nav-farm" class="navbtn"{{if not .View.Farm.Present}} hidden{{end}}>Farming</button><button id="nav-update" class="navbtn">Updates</button></nav>
-<div class="smallprint">App {{.View.AppVersion}}<br>Local report · no online sign-in<br><br>Reads Relax Coach and AH Profit saved data, and AH Profit's bundled data files (read-only).<br>No game input or memory access.</div></aside>
+<div class="smallprint"><span class="ver">App {{.View.AppVersion}}</span><span class="fine">Local report · no online sign-in<br><br>Reads Relax Coach and AH Profit saved data, and AH Profit's bundled data files <span class="nb">(read-only)</span>.<br>No game input or memory access.</span></div></aside>
 <main class="workspace">
 <details class="folder card" id="folder-panel"{{if .View.NoGame}} open{{end}}><summary>Game folder <span id="folder-label">{{.View.Game}}</span></summary>
 <form id="game-form"><input id="game-path" aria-label="WoW Forever game folder" value="{{.View.Game}}" placeholder="D:\World of Warcraft\_forever_"><button id="browse-folder" class="secondary" type="button">Browse…</button><button id="use-folder" class="secondary" type="submit">Use this folder</button></form>
