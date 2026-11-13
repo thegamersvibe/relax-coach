@@ -6,9 +6,9 @@
 [hidden]{display:none!important}
 body{display:flex;height:100vh;overflow:hidden}
 h1,h2,h3,h4{font-family:"Segoe UI Variable Display","Segoe UI Variable","Segoe UI",system-ui,sans-serif}
-.sidebar{width:236px;flex-shrink:0;padding:20px 14px 16px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:20px;position:relative;z-index:20;
+.sidebar{width:252px;flex-shrink:0;padding:20px 14px 16px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:20px;position:relative;z-index:20;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--line2) transparent;
   background:radial-gradient(340px 260px at 50% 104%,#e98a3a26 0%,transparent 70%),linear-gradient(180deg,#0b0f18,#090c13)}
-.sidebar .brand{display:grid;grid-template-columns:56px minmax(0,1fr);column-gap:12px;align-items:center;text-align:left;padding:2px 4px;margin:0}
+.sidebar .brand{display:grid;grid-template-columns:56px minmax(0,1fr);column-gap:12px;align-items:center;text-align:left;padding:2px 0;margin:0}
 .sidebar .crest{display:block;grid-row:1 / span 2;width:100%;height:auto;aspect-ratio:1 / 1;object-fit:contain;margin:0;border-radius:14px;background:#0b0f18;box-shadow:0 0 0 1px #e9b65c66,0 6px 16px #0000008c}
 .sidebar h1{font-size:19px;line-height:1.2;font-weight:700;letter-spacing:.2px;margin:0;align-self:end;white-space:nowrap}
 .sidebar .brand small{display:block;margin:1px 0 0;font-size:12px;line-height:1.4;color:var(--mut);align-self:start;white-space:nowrap}
@@ -35,11 +35,11 @@ button:disabled{opacity:.5;cursor:default;box-shadow:none}
 .sidebar .smallprint .ver{display:block;color:var(--fg);font-weight:600;font-size:13px}
 .sidebar .smallprint .fine{display:block}
 .nb{white-space:nowrap}
-.workspace{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding:18px 0 0;max-width:none;margin:0;--gx:36px;--sb:10px;--edge:max(var(--gx),calc((100% - var(--sb) - 1340px)/2))}
+.workspace{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding:18px 0 0;max-width:none;margin:0;--gx:36px;--sb:10px;--mw:1340px;--edge:max(var(--gx),calc((100% - var(--sb) - var(--mw))/2))}
 .workspace>.folder,.workspace>#global-status,.workspace>#app-placement,.workspace>section>.pagehead,.workspace>section>.account-panel{flex:none;max-width:none;margin-left:var(--edge);margin-right:calc(var(--edge) + var(--sb))}
 .workspace>section{flex:1;min-height:0;display:flex;flex-direction:column}
-#report-body,#farm-body,.pane{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;scrollbar-gutter:stable;padding:2px var(--gx) 36px}
-#report-body>*,#farm-body>*,.pane>*{max-width:1340px;margin-left:auto;margin-right:auto}
+#report-body,#farm-body,.pane{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;scrollbar-gutter:stable;padding:14px var(--gx) 36px;border-top:1px solid var(--line)}
+#report-body>*,#farm-body>*,.pane>*{max-width:var(--mw);margin-left:auto;margin-right:auto}
 #report-body>section:last-child{margin-bottom:0!important}
 .workspace ::-webkit-scrollbar{width:10px;height:10px}
 .workspace ::-webkit-scrollbar-track{background:#ffffff08;border-left:1px solid var(--line)}
@@ -61,6 +61,7 @@ button:disabled{opacity:.5;cursor:default;box-shadow:none}
 .folder summary span:empty:before{content:"not chosen yet";font-style:italic}
 .folder[open]{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px 14px;box-shadow:var(--shadow)}
 .folder form{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.folder input::placeholder{color:var(--dim);opacity:1}
 .folder input{flex:1;min-width:230px;background:var(--well);border:1px solid var(--line2);border-radius:10px;padding:9px 12px;color:var(--fg);font:inherit;font-size:14px}
 .folder p{margin:10px 0 0;color:var(--mut);font-size:13px}
 .status{white-space:pre-wrap;overflow-wrap:anywhere}
@@ -130,9 +131,21 @@ button:focus-visible,a:focus-visible,.smallprint:focus-visible,input:focus-visib
   .extra .actions{grid-column:3;grid-row:1/span 2;flex-wrap:nowrap}.extra .actions button{flex:1 1 0;padding-left:10px;padding-right:10px}
   .extra .extra-status{grid-column:1/-1;margin:10px 0 0}
 }
+@media(min-width:1760px){
+  .workspace{--mw:1560px}
+  #report-body section[style*="--cc"]{grid-template-columns:minmax(0,40fr) minmax(0,30fr) minmax(0,30fr);grid-template-rows:repeat(7,auto) 1fr}
+  #report-body .cols>.grid:first-child{grid-row:3/span 6}
+  #report-body .tiles{grid-template-columns:repeat(2,1fr)}
+  #report-body .cols>.grid:last-child{display:contents}
+  #report-body .cols>.grid:last-child>.card{grid-column:2;margin-bottom:16px}
+  #report-body .cols>.grid:last-child>.card:first-child{grid-column:3;grid-row:3/span 6;align-self:start}
+  #report-body .cols>.grid:last-child>.card:nth-child(2){grid-row:5}
+  #report-body .cols>.grid:last-child>.card:nth-child(3){grid-row:6}
+  #report-body .cols>.grid:last-child>.card:nth-child(4){grid-row:7}
+}
 @media(max-width:1180px){.farm-grid{grid-template-columns:1fr}}
 @media(max-width:1000px){
-  .sidebar{width:76px;padding:14px 10px 12px;gap:14px}
+  .sidebar{width:76px;padding:14px 10px 12px;gap:14px;overflow:visible}
   .sidebar .brand{grid-template-columns:1fr;padding:0 4px}
   .sidebar h1,.sidebar .brand small{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
   .navbtn{justify-content:center;gap:0;padding:11px 0}
@@ -152,14 +165,16 @@ button:focus-visible,a:focus-visible,.smallprint:focus-visible,input:focus-visib
   .pagehead{margin-bottom:10px}.pagehead h2{font-size:22px;margin:0}
   .pagehead>div{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 14px;min-width:0}
   .account-panel{padding:8px 14px;margin-bottom:10px}
-  .account-meta #account-source{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:4px}
-  .account-meta #account-help{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  #report-body,#farm-body,.pane{padding-top:10px}
+  .account-meta #account-source{margin-top:4px}
+  .account-meta #account-help{position:absolute;left:12px;right:12px;top:calc(100% + 6px);z-index:15;padding:8px 12px;background:#1c2536;color:var(--fg);border:1px solid var(--line2);border-radius:8px;box-shadow:0 10px 26px #000000a6;opacity:0;pointer-events:none;transform:translateY(-4px);transition:opacity .14s ease-out,transform .14s ease-out}
+  .account-panel:hover #account-help,.account-panel:focus-within #account-help{opacity:1;transform:none}
 }
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
 </style></head><body data-token="{{.Token}}" data-updates-disabled="{{.UpdatesDisabled}}">
 <aside class="sidebar"><div class="brand"><img class="crest" src="{{.Logo}}" alt="Relax Coach tea-glass emblem"><h1>Relax Coach</h1><small>WoW Forever companion</small></div>
 <nav aria-label="Main"><button id="nav-setup" class="navbtn"><span>Get started</span></button><button id="nav-report" class="navbtn active" aria-current="page"><span>Coach Report</span></button><button id="nav-farm" class="navbtn"{{if not .View.Farm.Present}} hidden{{end}}><span>Farming</span></button><button id="nav-update" class="navbtn"><span>Updates</span></button></nav>
-<div class="smallprint" tabindex="0"><span class="ver">App {{.View.AppVersion}}</span><span class="fine">Local report · no online sign-in<br><br>Reads Relax Coach and AH Profit saved data, and AH Profit's bundled data files <span class="nb">(read-only)</span>.<br>No game input or memory access.</span></div></aside>
+<div class="smallprint" tabindex="0" role="note"><span class="ver">App {{.View.AppVersion}}</span><span class="fine">Local report · no online sign-in<br><br>Reads Relax Coach and AH Profit saved data, and AH Profit's bundled data files <span class="nb">(read-only)</span>.<br>No game input or memory access.</span></div></aside>
 <main class="workspace">
 <details class="folder card" id="folder-panel"{{if .View.NoGame}} open{{end}}><summary>Game folder <span id="folder-label">{{.View.Game}}</span></summary>
 <form id="game-form"><input id="game-path" aria-label="WoW Forever game folder" value="{{.View.Game}}" placeholder="D:\World of Warcraft\_forever_"><button id="browse-folder" class="secondary" type="button">Browse…</button><button id="use-folder" class="secondary" type="submit">Use this folder</button></form>
@@ -176,7 +191,7 @@ button:focus-visible,a:focus-visible,.smallprint:focus-visible,input:focus-visib
 <div id="app-placement" class="card placement" hidden><p id="app-placement-text" class="status" role="status" aria-live="polite"></p><div class="actions"><button id="app-copy" class="primary" hidden>Copy to my user folder</button><button id="app-copy-later" class="secondary">Not now</button></div></div>
 <section id="report-view"><header class="pagehead"><div><h2>Coach Report</h2><p class="subtle">Updates when the game saves: /reload or logout.</p></div><button id="refresh" class="secondary">↻ Refresh</button></header>
 <div class="card account-panel">
-<div class="account-controls" title="Local WTF/Account folder, not a BattleTag or online status."><label for="account-select">Account</label><select id="account-select" aria-describedby="account-help account-source account-status" disabled><option value="">Loading accounts…</option></select></div>
+<div class="account-controls"><label for="account-select">Account</label><select id="account-select" aria-describedby="account-help account-source account-status" disabled><option value="">Loading accounts…</option></select></div>
 <div class="account-meta"><p id="account-help">Local WTF/Account folder, not a BattleTag or online status. Your choice is remembered for this game folder; Refresh never switches accounts.</p>
 <p id="account-source">{{if .View.Account}}Account {{.View.Account}} · {{.View.SVPath}}{{else}}Choose an account to view its saved characters.{{end}}</p>
 <p>Save time: <time id="account-save-time">Not loaded</time></p>
