@@ -28,6 +28,7 @@ const rc = Object.freeze({
   checkAddon: () => call('checkAddon'),
   applyAddon: version => call('applyAddon',version),
   checkApp: () => call('checkApp'),
+  checkAppStartup: () => call('checkAppStartup'),
   applyApp: version => call('applyApp',version),
   appReady: () => call('appReady'),
   openExternal: url => call('openExternal',url),
@@ -45,6 +46,8 @@ const clickThen = install => ' Click '+verb(install)+'. WoW can stay open.';
 const progressText = 'Downloading, verifying and installing… Do not force-close the application.';
 const failText = (install,err) => verb(install)+' failed: '+err.message+' Check again before retrying.';
 let offer = null, appOffer = null, busy = false, refreshing = false, restarting = false;
+// Reads asked for while busy run once the UI is free again (see updateButtons).
+let startupCheckPending = false, extrasPending = false;
 let healthPending = false, healthSent = false;
 // Two animation frames follow a successful Go report RPC and DOM rendering.
 // This is startup health, not an idle heartbeat or a page-load acknowledgement.
@@ -79,7 +82,14 @@ function show(view) {
     else $('nav-'+name).removeAttribute('aria-current');
   }
 }
+function runDeferred() {
+  if (busy || restarting) return;
+  if (extrasPending) { extrasPending = false; loadExtras(); }
+  if (startupCheckPending && !busy) { startupCheckPending = false; startupAppCheck(); }
+}
 function updateButtons() {
+  // Every busy=false path calls this; a microtask lets its finally finish first.
+  if (!busy && (startupCheckPending || extrasPending)) queueMicrotask(runDeferred);
   const disabled = document.body.dataset.updatesDisabled === 'true';
   $('refresh').disabled = refreshing || switchingFolder || switchingAccount;
   $('account-select').disabled = busy || !lastReport || !(lastReport.Accounts || []).length;
@@ -286,10 +296,10 @@ async function refresh(manual = false) {
 }
 $('nav-setup').addEventListener('click',()=>{ userNavigated = true; show('setup'); maybeAutoCheck(); });
 $('nav-report').addEventListener('click',()=>{ userNavigated = true; show('report'); });
-$('nav-update').addEventListener('click',()=>{ userNavigated = true; show('update'); if (!busy) loadExtras(); });
+$('nav-update').addEventListener('click',()=>{ userNavigated = true; show('update'); if (!busy) loadExtras(); else extrasPending = true; });
 $('nav-farm').addEventListener('click',()=>{ userNavigated = true; show('farm'); });
 $('setup-report').addEventListener('click',()=>{ userNavigated = true; show('report'); });
-$('setup-more').addEventListener('click',()=>{ userNavigated = true; show('update'); if (!busy) loadExtras(); });
+$('setup-more').addEventListener('click',()=>{ userNavigated = true; show('update'); if (!busy) loadExtras(); else extrasPending = true; });
 $('refresh').addEventListener('click',()=>refresh(true));
 async function changeFolder(select) {
   if (busy) return;
@@ -498,12 +508,13 @@ $('app-copy-later').addEventListener('click',()=>{ placementDismissed = true; $(
 // (and its new look) without visiting GitHub. Nothing downloads or installs
 // until they click Update App; -no-update skips it entirely.
 async function startupAppCheck() {
-  if (busy || appOffer || document.body.dataset.updatesDisabled === 'true') return;
+  if (appOffer || document.body.dataset.updatesDisabled === 'true') return;
+  if (busy) { startupCheckPending = true; return; } // runs once the bundle check ends
   // Go holds appBusy for the whole check and rejects other operations meanwhile,
   // so the UI stays locked (busy) too; the finally gives a starved auto-check its retry.
   busy = true; updateButtons();
   try {
-    const found = await rc.checkApp();
+    const found = await rc.checkAppStartup();
     if (!found || !found.Available || appOffer) return;
     appOffer = found;
     showAppOffer(appOffer); updateButtons();
