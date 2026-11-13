@@ -76,7 +76,7 @@ p.status:empty{display:none}
 .versions dd{margin:0;font-size:21px;line-height:1.3;font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .actions a{font-size:14px;cursor:pointer}
-.notes{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--mut);font-size:14px;padding:12px 16px;background:var(--well);border:1px solid var(--line);border-radius:10px}
+.notes{width:fit-content;max-width:100%;justify-self:start;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--mut);font-size:14px;padding:12px 16px;background:var(--well);border:1px solid var(--line);border-radius:10px}
 .extra{padding:16px 0;border-top:1px solid var(--line)}
 .extra:first-child{border-top:0}
 .extra h4{margin:0 0 4px;font-size:16.5px;font-weight:650}
@@ -85,7 +85,7 @@ p.status:empty{display:none}
 #extra-list:empty:before{content:"No optional addons listed yet.";display:block;color:var(--dim);padding:14px 0 2px}
 .scope{margin:18px 0 0;border-top:1px solid var(--line);padding-top:14px;color:var(--dim);font-size:13px;line-height:1.55}
 .scope strong{color:var(--mut);font-weight:600}
-button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+button:focus-visible,a:focus-visible,.smallprint:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .steps{list-style:none;margin:0;padding:0;display:grid;gap:14px;max-width:900px;counter-reset:s}
 .step{padding:20px 22px 20px 74px;counter-increment:s}
 .step:before{content:counter(s);position:absolute;left:22px;top:18px;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:750;font-size:15px;color:var(--gold);border:1px solid #e9b65c66;background:#e9b65c17}
@@ -99,7 +99,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
 .account-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .account-controls label{font-weight:600;font-size:13.5px;color:var(--mut)}
 .account-controls select{font:inherit;font-size:14px;min-width:200px;max-width:100%;background:var(--well);border:1px solid var(--line2);border-radius:10px;padding:7px 10px;color:var(--fg)}
-.account-meta{display:contents;font-size:12.5px;line-height:1.5;color:var(--dim)}
+.account-meta{display:contents;font-size:13px;line-height:1.5;color:var(--mut)}
 .account-meta p{margin:0;min-width:0;overflow-wrap:anywhere}
 .account-meta p:has(time){grid-column:3;grid-row:1;white-space:nowrap;justify-self:end}
 .account-meta #account-source{color:var(--mut);grid-column:1/-1;grid-row:2;margin-top:6px}
@@ -111,6 +111,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
 .farm-table th,.farm-table td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
 .farm-table thead th{color:var(--mut);font-size:12px;font-weight:600;letter-spacing:.3px}
 .farm-table tbody tr:last-child>*{border-bottom:0}
+.farm-table small{font-size:12px}
 .farm-table .num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .farm-listings{margin:0 0 12px;padding-left:18px}
 .vendor-better{color:var(--warn)}.ah-better{color:var(--ok)}
@@ -130,7 +131,21 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
   .extra .extra-status{grid-column:1/-1;margin:10px 0 0}
 }
 @media(max-width:1180px){.farm-grid{grid-template-columns:1fr}}
-@media(max-width:1000px){.sidebar{width:196px;padding:20px 12px 14px}.navbtn{gap:10px;padding:10px}.workspace{padding:16px 22px 44px}.pagehead h2{font-size:25px}}
+@media(max-width:1000px){
+  .sidebar{width:76px;padding:14px 10px 12px;gap:14px}
+  .sidebar .brand{grid-template-columns:1fr;padding:0 4px}
+  .sidebar h1,.sidebar .brand small{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .navbtn{justify-content:center;gap:0;padding:11px 0}
+  .navbtn span,.sidebar .smallprint .fine{position:absolute;left:calc(100% + 14px);z-index:30;opacity:0;pointer-events:none;transform:translateX(-4px);transition:opacity .14s ease-out,transform .14s ease-out;
+    background:#1c2536;color:var(--fg);border:1px solid var(--line2);border-radius:8px;box-shadow:0 10px 26px #000000a6;text-align:left}
+  .navbtn span{top:calc(50% - 15px);line-height:20px;padding:4px 10px;font-size:13px;white-space:nowrap}
+  .navbtn:hover span,.navbtn:focus-visible span,.sidebar .smallprint:hover .fine,.sidebar .smallprint:focus .fine{opacity:1;transform:none}
+  .sidebar .smallprint{padding:10px 0 0;text-align:center;cursor:help;border-radius:8px}
+  .sidebar .smallprint:before{content:"";display:block;width:18px;height:18px;margin:0 auto 4px;background:currentColor;-webkit-mask:var(--i) center/contain no-repeat;mask:var(--i) center/contain no-repeat;--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 11v5.5'/%3E%3Cpath d='M12 7.600v.1'/%3E%3C/svg%3E")}
+  .sidebar .smallprint .ver{font-size:12px;line-height:1.35}
+  .sidebar .smallprint .fine{bottom:0;width:264px;padding:10px 12px;color:var(--mut);font-size:12.5px}
+  .workspace{--gx:22px}.pagehead h2{font-size:25px}
+}
 @media(max-height:700px){
   .sidebar{gap:14px;padding-top:16px}
   .workspace{padding-top:12px}.folder{margin-bottom:8px}
@@ -143,8 +158,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
 </style></head><body data-token="{{.Token}}" data-updates-disabled="{{.UpdatesDisabled}}">
 <aside class="sidebar"><div class="brand"><img class="crest" src="{{.Logo}}" alt="Relax Coach tea-glass emblem"><h1>Relax Coach</h1><small>WoW Forever companion</small></div>
-<nav aria-label="Main"><button id="nav-setup" class="navbtn">Get started</button><button id="nav-report" class="navbtn active" aria-current="page">Coach Report</button><button id="nav-farm" class="navbtn"{{if not .View.Farm.Present}} hidden{{end}}>Farming</button><button id="nav-update" class="navbtn">Updates</button></nav>
-<div class="smallprint"><span class="ver">App {{.View.AppVersion}}</span><span class="fine">Local report · no online sign-in<br><br>Reads Relax Coach and AH Profit saved data, and AH Profit's bundled data files <span class="nb">(read-only)</span>.<br>No game input or memory access.</span></div></aside>
+<nav aria-label="Main"><button id="nav-setup" class="navbtn"><span>Get started</span></button><button id="nav-report" class="navbtn active" aria-current="page"><span>Coach Report</span></button><button id="nav-farm" class="navbtn"{{if not .View.Farm.Present}} hidden{{end}}><span>Farming</span></button><button id="nav-update" class="navbtn"><span>Updates</span></button></nav>
+<div class="smallprint" tabindex="0"><span class="ver">App {{.View.AppVersion}}</span><span class="fine">Local report · no online sign-in<br><br>Reads Relax Coach and AH Profit saved data, and AH Profit's bundled data files <span class="nb">(read-only)</span>.<br>No game input or memory access.</span></div></aside>
 <main class="workspace">
 <details class="folder card" id="folder-panel"{{if .View.NoGame}} open{{end}}><summary>Game folder <span id="folder-label">{{.View.Game}}</span></summary>
 <form id="game-form"><input id="game-path" aria-label="WoW Forever game folder" value="{{.View.Game}}" placeholder="D:\World of Warcraft\_forever_"><button id="browse-folder" class="secondary" type="button">Browse…</button><button id="use-folder" class="secondary" type="submit">Use this folder</button></form>
