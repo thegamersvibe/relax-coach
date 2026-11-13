@@ -132,10 +132,11 @@ button:focus-visible,a:focus-visible,.smallprint:focus-visible,input:focus-visib
   .extra .extra-status{grid-column:1/-1;margin:10px 0 0}
 }
 @media(min-width:1760px){
-  .workspace{--mw:1560px}
-  #report-body section[style*="--cc"]{grid-template-columns:minmax(0,40fr) minmax(0,30fr) minmax(0,30fr);grid-template-rows:repeat(7,auto) 1fr}
+  .workspace:has(#report-view:not([hidden])){--mw:1560px}
+  #report-body section[style*="--cc"]{grid-template-columns:minmax(0,40fr) minmax(0,30fr) minmax(0,30fr);grid-template-rows:repeat(3,auto) 1fr repeat(4,auto)}
   #report-body .cols>.grid:first-child{grid-row:3/span 6}
-  #report-body .tiles{grid-template-columns:repeat(2,1fr)}
+  #report-body .tiles{grid-template-columns:repeat(2,1fr);grid-auto-rows:1fr}
+  #report-body .tile{display:flex;flex-direction:column;justify-content:center}
   #report-body .cols>.grid:last-child{display:contents}
   #report-body .cols>.grid:last-child>.card{grid-column:2;margin-bottom:16px}
   #report-body .cols>.grid:last-child>.card:first-child{grid-column:3;grid-row:3/span 6;align-self:start}
