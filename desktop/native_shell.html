@@ -22,6 +22,7 @@ h1,h2,h3,h4{font-family:"Segoe UI Variable Display","Segoe UI Variable","Segoe U
 button:disabled{opacity:.5;cursor:default;box-shadow:none}
 .primary:disabled{background:#ffffff08;color:var(--mut);border-color:var(--line2);border-style:dashed;font-weight:600;opacity:1}
 .navbtn{display:flex;align-items:center;gap:12px;text-align:left;white-space:nowrap;border-color:transparent;background:transparent;color:var(--mut);font-weight:600;padding:10px 12px;position:relative}
+#nav-update[data-new]{color:var(--fg)}#nav-update[data-new]:after{opacity:1}
 .navbtn:before{content:"";flex:none;width:20px;height:20px;background:currentColor;-webkit-mask:var(--i) center/contain no-repeat;mask:var(--i) center/contain no-repeat}
 .navbtn:after{content:"";position:absolute;inset:-1px;border-radius:10px;background:#e9b65c1f;border:1px solid #e9b65c40;opacity:0;pointer-events:none;transition:opacity .16s ease-out}
 .navbtn:hover{color:var(--fg);background:#ffffff0b}

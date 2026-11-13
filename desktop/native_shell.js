@@ -494,6 +494,34 @@ $('app-copy').addEventListener('click',async()=>{
   finally { busy = false; updateButtons(); }
 });
 $('app-copy-later').addEventListener('click',()=>{ placementDismissed = true; $('app-placement').hidden = true; });
+// Read-only release check once per launch so players learn about a new app
+// (and its new look) without visiting GitHub. Nothing downloads or installs
+// until they click Update App; -no-update skips it entirely.
+async function startupAppCheck() {
+  if (busy || appOffer || document.body.dataset.updatesDisabled === 'true') return;
+  busy = true; updateButtons();
+  try {
+    const found = await rc.checkApp();
+    if (!found || !found.Available || appOffer) return;
+    appOffer = found;
+    showAppOffer(appOffer);
+    $('nav-update').dataset.new = 'true';
+    $('nav-update').title = 'Relax Coach '+appOffer.Version+' is available';
+    message('Relax Coach '+appOffer.Version+' is available. Open Updates and click Update App. No re-download needed.');
+  } catch(_) { /* offline: the manual check still works */ }
+  finally { busy = false; updateButtons(); }
+}
+function showAppOffer(o) {
+  $('installed-app-version').textContent = o.InstalledVersion;
+  $('offered-app-version').textContent = o.Version || 'Unavailable';
+  $('app-release-name').textContent = o.Name || 'App release notes';
+  $('app-release-notes').textContent = o.Notes || 'No release notes provided.';
+  $('app-release-link').href = o.HTMLURL;
+  $('app-release-link').hidden = !o.HTMLURL;
+  $('app-update-status').textContent = o.Available
+    ? 'Click Update App to download, verify, back up and restart Relax Coach. WoW can stay open.'
+    : 'No compatible new app update is available. See release notes. No files changed.';
+}
 $('check-app-update').addEventListener('click',async()=>{
   if (busy || document.body.dataset.updatesDisabled === 'true') return;
   busy = true; appOffer = null; updateButtons();
@@ -502,15 +530,8 @@ $('check-app-update').addEventListener('click',async()=>{
   $('app-update-status').textContent = 'Checking the latest stable app release…';
   try {
     appOffer = await rc.checkApp();
-    $('installed-app-version').textContent = appOffer.InstalledVersion;
-    $('offered-app-version').textContent = appOffer.Version || 'Unavailable';
-    $('app-release-name').textContent = appOffer.Name || 'App release notes';
-    $('app-release-notes').textContent = appOffer.Notes || 'No release notes provided.';
-    $('app-release-link').href = appOffer.HTMLURL;
-    $('app-release-link').hidden = !appOffer.HTMLURL;
-    $('app-update-status').textContent = appOffer.Available
-      ? 'Click Update App to download, verify, back up and restart Relax Coach. WoW can stay open.'
-      : 'No compatible new app update is available. See release notes. No files changed.';
+    showAppOffer(appOffer);
+    if (!appOffer.Available) delete $('nav-update').dataset.new;
   } catch(err) {
     $('offered-app-version').textContent = 'Unavailable';
     $('app-release-notes').textContent = 'Release notes unavailable. Check again when online.';
@@ -553,5 +574,5 @@ document.addEventListener('click',event=>{
 });
 // A convenience refresh, not a heartbeat. No timer can close the native window.
 setInterval(()=>{if (!document.hidden && !busy) refresh();},5000);
-refresh().then(loadPlacement);
+refresh().then(loadPlacement).then(startupAppCheck);
 })();
