@@ -8,9 +8,11 @@ local MEDIA = "Interface\\AddOns\\ForeverCoach\\Media\\Reactions\\"
 local CLIPS = {
     level = { "level_up.mp3", 1.66 },
     bags1 = { "bags_1.mp3", 2.62 }, bags2 = { "bags_2.mp3", 1.27 },
-    death = { "death.mp3", 2.12 }, campfire = { "campfire.mp3", 34 },
+    death = { "death.mp3", 2.12 },
+    campfire1 = { "campfire_1.mp3", 60.14 }, campfire2 = { "campfire_2.mp3", 63.34 },
 }
-local CAMPFIRES, HOUR = { 1289723, 1229739 }, 3600
+-- Campfire songs take turns (1, 2, 1, ...); the next one is kept as reactions.campfireNext.
+local CAMPFIRES, CAMPFIRE_COOLDOWN = { 1289723, 1229739 }, 1800
 local RETRIES, RETRY_DELAY, END_MARGIN = 3, 1, 0.15
 
 -- Do not compare, coerce, stringify or index secret values. Checks fail closed.
@@ -109,7 +111,7 @@ function R:CampfireEligible(at)
     local stamp = self.store.campfireLastPlayedAt
     if stamp == nil then return true end
     stamp = number(stamp)
-    return stamp ~= nil and stamp > 0 and t >= stamp and t - stamp >= HOUR
+    return stamp ~= nil and stamp > 0 and t >= stamp and t - stamp >= CAMPFIRE_COOLDOWN
 end
 function R:Wake()
     self.frame:SetScript("OnUpdate", self.update)
@@ -167,7 +169,10 @@ function R:Pump()
         self:RemoveFirst()
         return
     end
-    local clip = CLIPS[job.kind == "bags" and ("bags" .. self.store.bagNext) or job.kind]
+    -- optional field: missing or bad starts at song 1
+    local campNext = self.store.campfireNext == 2 and 2 or 1
+    local clip = CLIPS[job.kind == "bags" and ("bags" .. self.store.bagNext)
+        or job.kind == "campfire" and ("campfire" .. campNext) or job.kind]
     if not clip then self:RemoveFirst() return end
     local ok, played, handle = false, false, nil
     if type(PlaySoundFile) == "function" and type(StopSound) == "function" then
@@ -184,6 +189,7 @@ function R:Pump()
             if self.full == true and self.bagEpisode == job.token then self.store.bagsAnnounced = true end
         elseif job.kind == "campfire" then
             self.store.campfireLastPlayedAt = campStamp
+            self.store.campfireNext = campNext == 1 and 2 or 1
         elseif job.kind == "level" then
             self:ShowPopup(t)
         end

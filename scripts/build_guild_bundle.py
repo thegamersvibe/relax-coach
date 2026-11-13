@@ -4,6 +4,10 @@ from pathlib import Path
 import argparse,hashlib,json,re,shutil,zipfile
 ROOT=Path(__file__).resolve().parents[1]
 REACTION_AUDIO={'Interface/AddOns/ForeverCoach/Media/Reactions/'+name+'.mp3' for name in ('level_up','bags_1','bags_2','death','campfire')}
+# 1.5.6 replaced the one campfire song with two that take turns.
+REACTION_AUDIO_156=(REACTION_AUDIO-{'Interface/AddOns/ForeverCoach/Media/Reactions/campfire.mp3'})|{'Interface/AddOns/ForeverCoach/Media/Reactions/campfire_'+n+'.mp3' for n in ('1','2')}
+def reaction_audio_for(version):
+    return REACTION_AUDIO_156 if tuple(map(int,version.split('.'))) >= (1,5,6) else REACTION_AUDIO
 
 def digest(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 
@@ -45,7 +49,7 @@ def main():
         if name.startswith('Interface/Content/') and p.suffix!='.html':raise SystemExit('Unexpected guide file: '+name)
         for root,toc in (('Interface/AddOns/Journey/','Journey.toc'),('Interface/AddOns/RelaxQuestPlanner/','RelaxQuestPlanner.toc')):
             if name.startswith(root) and name.lower().endswith('.toc') and name!=root+toc:raise SystemExit('Extra addon TOC rejected: '+name)
-        reaction_audio=name in REACTION_AUDIO and tuple(map(int,a.version.split('.'))) >= (1,4,3)
+        reaction_audio=name in reaction_audio_for(a.version) and tuple(map(int,a.version.split('.'))) >= (1,4,3)
         if name.startswith('Interface/AddOns/') and not reaction_audio and p.suffix.lower() not in {'.lua','.toc','.tga','.blp','.xml','.txt','.md','.ttf','.otf','.html','.png'}:raise SystemExit('Unexpected addon file: '+name)
         names.add(name)
     rows=[{'path':name,'sha256':digest(p),'bytes':p.stat().st_size} for p,name in inputs]

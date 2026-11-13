@@ -91,6 +91,31 @@ class GuildBuilderExeTests(unittest.TestCase):
         self.assertIn('Unexpected addon file:',result.stderr)
         self.assertFalse(self.standalone.exists())
 
+    def test_campfire_songs_replace_the_single_song_from_1_5_6(self):
+        self.add_planner()
+        base={'Reactions.lua':b'-- synthetic reaction module\n','Media/Reactions/level_up.tga':b'synthetic artwork fixture'}
+        base.update({'Media/Reactions/'+name+'.mp3':b'ID3synthetic audio '+name.encode() for name in ('level_up','bags_1','bags_2','death','campfire_1','campfire_2')})
+        for name,data in base.items():
+            p=self.root/'addon/ForeverCoach'/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(data)
+        (self.root/'addon/ForeverCoach/ForeverCoach.toc').write_text('## Title: Relax Coach\n## Version: 1.5.6\nReactions.lua\n')
+        result=self.run_builder(self.exe,'1.5.6')
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        with zipfile.ZipFile(self.root/'dist/RelaxCoach-Bundle-1.5.6.zip') as z:
+            names=set(z.namelist())
+            rows={r['path']:r for r in json.loads(z.read('manifest.json'))['files']}
+        for song in ('campfire_1','campfire_2'):
+            path='Interface/AddOns/ForeverCoach/Media/Reactions/'+song+'.mp3'
+            self.assertIn(path,names); self.assertIn(path,rows)
+        self.assertNotIn('Interface/AddOns/ForeverCoach/Media/Reactions/campfire.mp3',names)
+        # the old single song is refused from 1.5.6, and the new songs before it
+        old=self.root/'addon/ForeverCoach/Media/Reactions/campfire.mp3';old.write_bytes(b'ID3synthetic audio campfire')
+        result=self.run_builder(self.exe,'1.5.6')
+        self.assertNotEqual(result.returncode,0); self.assertIn('Unexpected addon file:',result.stderr)
+        old.unlink()
+        (self.root/'addon/ForeverCoach/ForeverCoach.toc').write_text('## Title: Relax Coach\n## Version: 1.5.5\nReactions.lua\n')
+        result=self.run_builder(self.exe,'1.5.5')
+        self.assertNotEqual(result.returncode,0); self.assertIn('Unexpected addon file:',result.stderr)
+
     def add_planner(self,title='Relax Quest Planner',version='0.2.0'):
         files={'addon/RelaxQuestPlanner/RelaxQuestPlanner.toc':'## Title: '+title+'\r\n## Version: '+version+'\r\nInit.lua\r\n',
                'addon/RelaxQuestPlanner/Init.lua':'-- synthetic planner\n','addon/RelaxQuestPlanner/Media/relax-icon.tga':'tga'}
