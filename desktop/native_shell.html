@@ -3,25 +3,194 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-{{.Nonce}}'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-src 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Relax Coach</title>
 <style>{{template "report-style" .View}}
-[hidden]{display:none!important}.farm-grid{grid-template-columns:1fr 1fr;margin:16px 0}.farm-table{width:100%;border-collapse:collapse;font-size:13.5px}.farm-table th,.farm-table td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}.farm-table .num{text-align:right;white-space:nowrap}.farm-listings{margin:0 0 12px;padding-left:18px}.vendor-better{color:var(--warn)}.ah-better{color:var(--ok)}#farm-view .card{margin-bottom:16px}body{display:flex;height:100vh;overflow:hidden}.sidebar{width:230px;flex-shrink:0;padding:28px 20px;border-right:1px solid var(--line);background:#0d1118;display:flex;flex-direction:column;gap:26px}.sidebar .brand{display:block}.sidebar .crest{display:block;width:100%;height:auto;aspect-ratio:1 / 1;object-fit:contain;margin-bottom:15px;border-radius:18px}.sidebar h1{font-size:22px}.sidebar nav{display:grid;gap:9px}.navbtn,.primary,.secondary{font:inherit;border:1px solid var(--line2);border-radius:9px;padding:10px 14px;color:var(--fg);background:#171f2c;cursor:pointer}.navbtn{text-align:left}.navbtn.active,.primary{background:var(--gold);color:#17130b;border-color:var(--gold);font-weight:650}button:hover{filter:brightness(1.1)}button:disabled{opacity:.45;cursor:default}.sidebar .smallprint{margin-top:auto;color:var(--dim);font-size:12px}.workspace{flex:1;overflow-y:auto;min-width:0;padding:26px 32px 50px;max-width:none}.pagehead{display:flex;justify-content:space-between;align-items:start;gap:15px;margin-bottom:20px}.pagehead h2{font-size:26px;margin:0 0 6px}.subtle{color:var(--mut);margin:0}.folder{margin-bottom:22px}.folder summary{cursor:pointer;color:var(--gold)}.folder form{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.folder input{flex:1;min-width:230px;background:#090d14;border:1px solid var(--line2);border-radius:8px;padding:10px;color:var(--fg);font:inherit}.folder p{margin:10px 0 0;color:var(--mut);font-size:12px}.status{white-space:pre-wrap;overflow-wrap:anywhere}.updatecard{max-width:850px}.versions{display:flex;gap:40px;margin:22px 0}.versions dt{color:var(--mut);font-size:12px;margin-bottom:4px}.versions dd{margin:0;font-size:24px;font-weight:650}.actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.notes{white-space:pre-wrap;overflow-wrap:anywhere;color:#cfd6e2;max-height:38vh;overflow:auto;padding:16px;background:#090d14;border-radius:10px}.extra{padding:14px 0;border-top:1px solid var(--line)}.extra:first-child{border-top:0}.extra h4{margin:0 0 4px;font-size:17px}.extra .versions{margin:12px 0}.extra .versions dd{font-size:18px}.scope{margin-top:20px;border-top:1px solid var(--line);padding-top:18px;color:var(--mut)}#global-status:empty{display:none}button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--gold);outline-offset:3px}@media(max-width:900px){.sidebar{width:175px;padding:22px 14px}.workspace{padding:22px 18px}}
-.steps{list-style:none;margin:0;padding:0;display:grid;gap:16px;max-width:850px}.step h3{margin-top:0}.step.done h3::after{content:" ✓";color:var(--gold)}.placement{margin:20px 0;max-width:850px}.account-panel{margin-bottom:20px}.account-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.account-controls label{font-weight:650}.account-controls select{font:inherit;min-width:200px;max-width:100%;background:#090d14;border:1px solid var(--line2);border-radius:8px;padding:10px;color:var(--fg)}.account-meta{font-size:12px;color:var(--mut);overflow-wrap:anywhere}.account-meta p{margin:8px 0}.account-controls select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+[hidden]{display:none!important}
+body{display:flex;height:100vh;overflow:hidden}
+h1,h2,h3,h4{font-family:"Segoe UI Variable Display","Segoe UI Variable","Segoe UI",system-ui,sans-serif}
+.sidebar{width:252px;flex-shrink:0;padding:20px 14px 16px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:20px;position:relative;z-index:20;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--line2) transparent;
+  background:radial-gradient(340px 260px at 50% 104%,#e98a3a26 0%,transparent 70%),linear-gradient(180deg,#0b0f18,#090c13)}
+.sidebar .brand{display:grid;grid-template-columns:56px minmax(0,1fr);column-gap:12px;align-items:center;text-align:left;padding:2px 0;margin:0}
+.sidebar .crest{display:block;grid-row:1 / span 2;width:100%;height:auto;aspect-ratio:1 / 1;object-fit:contain;margin:0;border-radius:14px;background:#0b0f18;box-shadow:0 0 0 1px #e9b65c66,0 6px 16px #0000008c}
+.sidebar h1{font-size:19px;line-height:1.2;font-weight:700;letter-spacing:.2px;margin:0;align-self:end;white-space:nowrap}
+.sidebar .brand small{display:block;margin:1px 0 0;font-size:12px;line-height:1.4;color:var(--mut);align-self:start;white-space:nowrap}
+.sidebar nav{display:grid;gap:4px}
+.navbtn,.primary,.secondary{font:inherit;line-height:1.3;border:1px solid var(--line2);border-radius:10px;padding:9px 16px;color:var(--fg);background:#ffffff0b;cursor:pointer;transition:transform .12s ease-out,opacity .12s ease-out}
+.primary,.secondary{font-weight:600}
+.secondary:hover:not(:disabled){background:#ffffff17;border-color:#4a5a78}
+.primary{background:linear-gradient(180deg,#f2c672,#e0a94c);color:#1b1306;border-color:#f5d08a;font-weight:700;box-shadow:0 1px 0 #fff5 inset,0 6px 18px #e9a04a33}
+.primary:hover:not(:disabled){background:linear-gradient(180deg,#f8d389,#e9b65c)}
+.primary:active:not(:disabled),.secondary:active:not(:disabled),.navbtn:active{transform:scale(.975)}
+button:disabled{opacity:.5;cursor:default;box-shadow:none}
+.primary:disabled{background:#ffffff08;color:var(--mut);border-color:var(--line2);border-style:dashed;font-weight:600;opacity:1}
+.navbtn{display:flex;align-items:center;gap:12px;text-align:left;white-space:nowrap;border-color:transparent;background:transparent;color:var(--mut);font-weight:600;padding:10px 12px;position:relative}
+#nav-update[data-new]{color:var(--fg)}#nav-update[data-new]:after{opacity:1}
+.navbtn:before{content:"";flex:none;width:20px;height:20px;background:currentColor;-webkit-mask:var(--i) center/contain no-repeat;mask:var(--i) center/contain no-repeat}
+.navbtn:after{content:"";position:absolute;inset:-1px;border-radius:10px;background:#e9b65c1f;border:1px solid #e9b65c40;opacity:0;pointer-events:none;transition:opacity .16s ease-out}
+.navbtn:hover{color:var(--fg);background:#ffffff0b}
+.navbtn.active{color:var(--gold)}
+.navbtn.active:after{opacity:1}
+#nav-setup{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M10 8.5l5.5 3.5-5.5 3.5z'/%3E%3C/svg%3E")}
+#nav-report{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 20v-6'/%3E%3Cpath d='M12 20V4'/%3E%3Cpath d='M19 20V10'/%3E%3C/svg%3E")}
+#nav-farm{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3C/svg%3E")}
+#nav-update{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 4v11'/%3E%3Cpath d='M7 10.5l5 5 5-5'/%3E%3Cpath d='M5 20h14'/%3E%3C/svg%3E")}
+.sidebar .smallprint{margin-top:auto;color:var(--mut);font-size:12.5px;line-height:1.5;padding:14px 4px 0;border-top:1px solid var(--line);text-wrap:pretty;position:relative}
+.sidebar .smallprint .ver{display:block;color:var(--fg);font-weight:600;font-size:13px}
+.sidebar .smallprint .fine{display:block}
+.nb{white-space:nowrap}
+.workspace{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding:18px 0 0;max-width:none;margin:0;--gx:36px;--sb:10px;--mw:1340px;--edge:max(var(--gx),calc((100% - var(--sb) - var(--mw))/2))}
+.workspace>.folder,.workspace>#global-status,.workspace>#app-placement,.workspace>section>.pagehead,.workspace>section>.account-panel{flex:none;max-width:none;margin-left:var(--edge);margin-right:calc(var(--edge) + var(--sb))}
+.workspace>section{flex:1;min-height:0;display:flex;flex-direction:column}
+#report-body,#farm-body,.pane{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;scrollbar-gutter:stable;padding:14px var(--gx) 36px;border-top:1px solid var(--line)}
+#report-body>*,#farm-body>*,.pane>*{max-width:var(--mw);margin-left:auto;margin-right:auto}
+.pane>.steps{max-width:900px;margin-left:max(0px,calc((100% - var(--mw))/2));margin-right:auto}
+#report-body>section:last-child{margin-bottom:0!important}
+.workspace ::-webkit-scrollbar{width:10px;height:10px}
+.workspace ::-webkit-scrollbar-track{background:#ffffff08;border-left:1px solid var(--line)}
+.workspace ::-webkit-scrollbar-thumb{background:#5b6b8c;border:2px solid transparent;border-radius:5px;background-clip:padding-box}
+.workspace ::-webkit-scrollbar-thumb:hover{background-color:#7d8db0}
+.workspace>section:not([hidden]),#app-placement:not([hidden]){animation:viewin .18s ease-out both}
+@keyframes viewin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.pagehead{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:16px}
+.pagehead h2{font-size:28px;line-height:1.2;font-weight:750;letter-spacing:-.2px;margin:0 0 2px}
+.subtle{color:var(--mut);margin:0}
+.folder{margin-bottom:18px;padding:0;background:transparent;border:0;box-shadow:none;font-size:13px}
+.folder summary{cursor:pointer;color:var(--dim);list-style:none;display:flex;align-items:center;gap:8px;width:fit-content;max-width:100%;padding:4px 0;border-radius:8px;font-weight:600;letter-spacing:.2px}
+.folder summary::-webkit-details-marker{display:none}
+.folder summary:before{content:"";flex:none;width:15px;height:15px;background:currentColor;-webkit-mask:var(--i) center/contain no-repeat;mask:var(--i) center/contain no-repeat;--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2h-7l-2-3H5a2 2 0 0 0-2 2z'/%3E%3C/svg%3E")}
+.folder summary:after{content:"Change";color:var(--gold);font-weight:600;margin-left:4px}
+.folder[open] summary:after{content:"Close"}
+.folder summary:hover{color:var(--fg)}
+.folder summary span{color:var(--mut);font-weight:400;letter-spacing:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.folder summary span:empty:before{content:"not chosen yet";font-style:italic}
+.folder[open]{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px 14px;box-shadow:var(--shadow)}
+.folder form{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.folder input::placeholder{color:var(--dim);opacity:1}
+.folder input{flex:1;min-width:230px;background:var(--well);border:1px solid var(--line2);border-radius:10px;padding:9px 12px;color:var(--fg);font:inherit;font-size:14px}
+.folder p{margin:10px 0 0;color:var(--mut);font-size:13px}
+.status{white-space:pre-wrap;overflow-wrap:anywhere}
+p.status:empty{display:none}
+#global-status:empty{display:none}
+.updatecard,.placement{margin-bottom:16px}
+.updatecard h3,.step h3,#farm-view .card h3{font-size:18px;font-weight:700;margin-bottom:10px}
+.updatecard h3[id]{font-size:14px;font-weight:650;color:var(--mut);margin:20px 0 8px}
+.updatecard .status,.step .status{color:var(--mut);margin:12px 0 0}
+.versions{display:flex;gap:12px;margin:16px 0;flex-wrap:wrap}
+.versions>div{flex:1;min-width:150px;max-width:260px;background:var(--well);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.versions dt{color:var(--mut);font-size:12px;font-weight:600;letter-spacing:.3px;margin-bottom:2px}
+.versions dd{margin:0;font-size:21px;line-height:1.3;font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.actions a{font-size:14px;cursor:pointer}
+.notes{width:fit-content;max-width:100%;justify-self:start;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--mut);font-size:14px;padding:12px 16px;background:var(--well);border:1px solid var(--line);border-radius:10px}
+.extra{padding:16px 0;border-top:1px solid var(--line)}
+.extra:first-child{border-top:0}
+.extra h4{margin:0 0 4px;font-size:16.5px;font-weight:650}
+.extra .versions{margin:12px 0}
+.extra .versions dd{font-size:17px}
+#extra-list:empty:before{content:"No optional addons listed yet.";display:block;color:var(--dim);padding:14px 0 2px}
+.scope{margin:18px 0 0;border-top:1px solid var(--line);padding-top:14px;color:var(--dim);font-size:13px;line-height:1.55}
+.scope strong{color:var(--mut);font-weight:600}
+button:focus-visible,a:focus-visible,.smallprint:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:14px;max-width:900px;counter-reset:s}
+.step{padding:20px 22px 20px 74px;counter-increment:s}
+.step:before{content:counter(s);position:absolute;left:22px;top:18px;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:750;font-size:15px;color:var(--gold);border:1px solid #e9b65c66;background:#e9b65c17}
+.step.done:before{content:"✓";color:#10210f;background:var(--ok);border-color:var(--ok)}
+.step h3{margin-top:4px;justify-content:flex-start}
+.step p{margin:0 0 12px;color:var(--mut)}
+.step p strong{color:var(--fg);font-weight:600}
+.step #setup-folder{color:var(--fg);font-family:"Cascadia Mono",Consolas,ui-monospace,monospace;font-size:13.5px;background:var(--well);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:0 0 12px}
+.step .actions+p{margin:12px 0 0;font-size:13.5px}
+.account-panel{margin-bottom:16px;padding:10px 16px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:2px 18px;align-items:center;background:#ffffff05;box-shadow:none}
+.account-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.account-controls label{font-weight:600;font-size:13.5px;color:var(--mut)}
+.account-controls select{font:inherit;font-size:14px;min-width:200px;max-width:100%;background:var(--well);border:1px solid var(--line2);border-radius:10px;padding:7px 10px;color:var(--fg)}
+.account-meta{display:contents;font-size:13px;line-height:1.5;color:var(--mut)}
+.account-meta p{margin:0;min-width:0;overflow-wrap:anywhere}
+.account-meta p:has(time){grid-column:3;grid-row:1;white-space:nowrap;justify-self:end}
+.account-meta #account-source{color:var(--mut);grid-column:1/-1;grid-row:2;margin-top:6px}
+.account-meta #account-help{grid-column:1/-1;grid-row:3}
+.account-meta #account-status{grid-column:1/-1;grid-row:4;color:var(--warn)}
+.farm-head{margin-bottom:16px}.farm-head .account-controls{margin-top:12px}
+.farm-grid{grid-template-columns:1fr 1fr;margin:16px 0;align-items:start}
+.farm-table{width:100%;border-collapse:collapse;font-size:13.5px}
+.farm-table th,.farm-table td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.farm-table thead th{color:var(--mut);font-size:12px;font-weight:600;letter-spacing:.3px}
+.farm-table tbody tr:last-child>*{border-bottom:0}
+.farm-table small{font-size:12px}
+.farm-table .num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.farm-listings{margin:0 0 12px;padding-left:18px}
+.vendor-better{color:var(--warn)}.ah-better{color:var(--ok)}
+#farm-view .card{margin-bottom:16px}
+#farm-view .card h3 small{font-size:12.5px;font-weight:400}
+@media(min-width:1100px){
+  .updatecard:has(.notes){display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:28px;align-items:start}
+  .updatecard:has(.notes)>*{grid-column:1}
+  .updatecard:has(.notes)>h3[id]{grid-column:2;grid-row:1;margin:3px 0 10px;align-self:start}
+  .updatecard:has(.notes)>.notes{grid-column:2;grid-row:2/span 4}
+  .updatecard:has(.notes)>.scope{grid-column:1/-1}
+  .updatecard:has(.notes) .versions{margin-top:0}
+  .extra{display:grid;grid-template-columns:minmax(0,1fr) 300px 190px;gap:2px 24px;align-items:center}
+  .extra h4{grid-column:1;grid-row:1;align-self:end;margin:0}.extra .extra-blurb{grid-column:1;grid-row:2;align-self:start}
+  .extra .versions{grid-column:2;grid-row:1/span 2;margin:0;flex-wrap:nowrap}.extra .versions>div{flex:1 1 0;min-width:0;padding:7px 12px}.extra .versions dd{font-size:16px;white-space:nowrap}
+  .extra .actions{grid-column:3;grid-row:1/span 2;flex-wrap:nowrap}.extra .actions button{flex:1 1 0;padding-left:10px;padding-right:10px}
+  .extra .extra-status{grid-column:1/-1;margin:10px 0 0}
+}
+@media(min-width:1760px){
+  .workspace:has(#report-view:not([hidden])){--mw:1560px}
+  #report-body section[style*="--cc"]{grid-template-columns:minmax(0,40fr) minmax(0,30fr) minmax(0,30fr);grid-template-rows:repeat(3,auto) 1fr repeat(4,auto)}
+  #report-body .cols>.grid:first-child{grid-row:3/span 6}
+  #report-body .tiles{grid-template-columns:repeat(2,1fr);grid-auto-rows:1fr}
+  #report-body .tile{display:flex;flex-direction:column;justify-content:center}
+  #report-body .cols>.grid:last-child{display:contents}
+  #report-body .cols>.grid:last-child>.card{grid-column:2;margin-bottom:16px}
+  #report-body .cols>.grid:last-child>.card:first-child{grid-column:3;grid-row:3/span 6;align-self:start}
+  #report-body .cols>.grid:last-child>.card:nth-child(2){grid-row:5}
+  #report-body .cols>.grid:last-child>.card:nth-child(3){grid-row:6}
+  #report-body .cols>.grid:last-child>.card:nth-child(4){grid-row:7}
+}
+@media(max-width:1180px){.farm-grid{grid-template-columns:1fr}}
+@media(max-width:1000px){
+  .sidebar{width:78px;padding:14px 10px 12px;gap:14px;overflow:visible}
+  .sidebar .brand{grid-template-columns:1fr;padding:0}
+  .sidebar h1,.sidebar .brand small{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .navbtn{justify-content:center;gap:0;padding:11px 0}
+  .navbtn span,.sidebar .smallprint .fine{position:absolute;left:calc(100% + 14px);z-index:30;opacity:0;pointer-events:none;transform:translateX(-4px);transition:opacity .14s ease-out,transform .14s ease-out;
+    background:#1c2536;color:var(--fg);border:1px solid var(--line2);border-radius:8px;box-shadow:0 10px 26px #000000a6;text-align:left}
+  .navbtn span{top:calc(50% - 15px);line-height:20px;padding:4px 10px;font-size:13px;white-space:nowrap}
+  .navbtn:hover span,.navbtn:focus-visible span,.sidebar .smallprint:hover .fine,.sidebar .smallprint:focus .fine{opacity:1;transform:none}
+  .sidebar .smallprint{padding:10px 0 0;text-align:center;cursor:help;border-radius:8px}
+  .sidebar .smallprint:before{content:"";display:block;width:18px;height:18px;margin:0 auto 4px;background:currentColor;-webkit-mask:var(--i) center/contain no-repeat;mask:var(--i) center/contain no-repeat;--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 11v5.5'/%3E%3Cpath d='M12 7.600v.1'/%3E%3C/svg%3E")}
+  .sidebar .smallprint .ver{font-size:12px;line-height:1.35}
+  .sidebar .smallprint .fine{bottom:0;width:264px;padding:10px 12px;color:var(--mut);font-size:12.5px}
+  .workspace{--gx:22px}.pagehead h2{font-size:25px}
+}
+@media(max-height:700px){
+  .sidebar{gap:14px;padding-top:16px}
+  .workspace{padding-top:12px}.folder{margin-bottom:8px}
+  .pagehead{margin-bottom:10px}.pagehead h2{font-size:22px;margin:0}
+  .pagehead>div{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 14px;min-width:0}
+  .account-panel{padding:8px 14px;margin-bottom:10px}
+  #report-body,#farm-body,.pane{padding-top:10px}
+  .account-meta #account-source{margin-top:4px}
+  .account-meta #account-help{position:absolute;left:12px;right:12px;top:calc(100% + 6px);z-index:15;padding:8px 12px;background:#1c2536;color:var(--fg);border:1px solid var(--line2);border-radius:8px;box-shadow:0 10px 26px #000000a6;opacity:0;pointer-events:none;transform:translateY(-4px);transition:opacity .14s ease-out,transform .14s ease-out}
+  .account-panel:has(.account-controls:hover) #account-help,.account-panel:focus-within #account-help{opacity:1;transform:none}
+}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
 </style></head><body data-token="{{.Token}}" data-updates-disabled="{{.UpdatesDisabled}}">
 <aside class="sidebar"><div class="brand"><img class="crest" src="{{.Logo}}" alt="Relax Coach tea-glass emblem"><h1>Relax Coach</h1><small>WoW Forever companion</small></div>
-<nav aria-label="Main"><button id="nav-setup" class="navbtn">Get started</button><button id="nav-report" class="navbtn active" aria-current="page">Coach Report</button><button id="nav-farm" class="navbtn"{{if not .View.Farm.Present}} hidden{{end}}>Farming</button><button id="nav-update" class="navbtn">Updates</button></nav>
-<div class="smallprint">App {{.View.AppVersion}}<br>Local report · no online sign-in<br><br>Reads Relax Coach and AH Profit saved data, and AH Profit's bundled data files (read-only).<br>No game input or memory access.</div></aside>
+<nav aria-label="Main"><button id="nav-setup" class="navbtn"><span>Get started</span></button><button id="nav-report" class="navbtn active" aria-current="page"><span>Coach Report</span></button><button id="nav-farm" class="navbtn"{{if not .View.Farm.Present}} hidden{{end}}><span>Farming</span></button><button id="nav-update" class="navbtn"><span>Updates</span></button></nav>
+<div class="smallprint" tabindex="0" role="note"><span class="ver">App {{.View.AppVersion}}</span><span class="fine">Local report · no online sign-in<br><br>Reads Relax Coach and AH Profit saved data, and AH Profit's bundled data files <span class="nb">(read-only)</span>.<br>No game input or memory access.</span></div></aside>
 <main class="workspace">
 <details class="folder card" id="folder-panel"{{if .View.NoGame}} open{{end}}><summary>Game folder <span id="folder-label">{{.View.Game}}</span></summary>
 <form id="game-form"><input id="game-path" aria-label="WoW Forever game folder" value="{{.View.Game}}" placeholder="D:\World of Warcraft\_forever_"><button id="browse-folder" class="secondary" type="button">Browse…</button><button id="use-folder" class="secondary" type="submit">Use this folder</button></form>
 <p>Choose or paste your _forever_ folder. This selection is remembered for the next launch.</p></details>
 <div id="global-status" class="note status" role="status" aria-live="polite"></div>
 <section id="setup-view" hidden><header class="pagehead"><div><h2>Get started</h2><p class="subtle">Choose the game folder, click Install, then start (or restart) WoW. Nothing is installed until you click Install.</p></div></header>
-<ol class="steps">
+<div class="pane"><ol class="steps">
 <li class="card step" id="step-folder"><h3>1. Choose your WoW Forever game folder</h3><p id="setup-folder" class="status">{{if .View.Game}}{{.View.Game}}{{else}}Not chosen yet.{{end}}</p><div class="actions"><button id="setup-browse" class="primary" type="button">Choose folder…</button></div><p class="subtle">The _forever_ folder of your WoW Forever client. You can also paste it under Game folder above.</p></li>
 <li class="card step" id="step-install"><h3>2. Install Relax Coach</h3><p>Installs <strong>Relax Coach</strong>, <strong>Relax Journey</strong> with its guide content and <strong>Relax Quest Planner</strong> from the stable GitHub release, after verifying its SHA256 checksum. A folder of the same name that is already there is moved into RelaxCoachBackups, not deleted. WoW can stay open; the app then says whether /reload is enough or WoW must be restarted.</p>
 <dl class="versions"><div><dt>Installed Coach</dt><dd id="setup-installed">{{if eq .InstalledVersion "0.0.0"}}Not installed{{else}}{{.InstalledVersion}}{{end}}</dd></div><div><dt>Latest release</dt><dd id="setup-offered">Not checked</dd></div></dl>
 <div class="actions"><button id="setup-install" class="primary" disabled>{{if eq .InstalledVersion "0.0.0"}}Install{{else}}Update{{end}}</button></div><p id="setup-status" class="status" role="status" aria-live="polite">{{if .UpdatesDisabled}}Updates are disabled by -no-update.{{end}}</p></li>
 <li class="card step" id="step-done"><h3>3. Start WoW</h3><p>Start WoW (if it was open while installing, exit it completely and start it again so the new addons load). On the AddOns screen enable <strong>Relax Coach</strong>, <strong>Relax Journey</strong> and <strong>Relax Quest Planner</strong>, log in, then type /reload once. Your report appears under Coach Report. Optional addons such as RankUp and Forever Maps are under Updates → More addons.</p><div class="actions"><button id="setup-report" class="secondary">Open Coach Report</button><button id="setup-more" class="secondary">More addons</button></div></li>
-</ol></section>
+</ol></div></section>
 <div id="app-placement" class="card placement" hidden><p id="app-placement-text" class="status" role="status" aria-live="polite"></p><div class="actions"><button id="app-copy" class="primary" hidden>Copy to my user folder</button><button id="app-copy-later" class="secondary">Not now</button></div></div>
 <section id="report-view"><header class="pagehead"><div><h2>Coach Report</h2><p class="subtle">Updates when the game saves: /reload or logout.</p></div><button id="refresh" class="secondary">↻ Refresh</button></header>
 <div class="card account-panel">
@@ -34,7 +203,7 @@
 <section id="farm-view" hidden><header class="pagehead"><div><h2>Farming</h2><p class="subtle">From the AH Profit addon's save for the selected account. Updates when the game saves: /reload or logout.</p></div></header>
 <div id="farm-body">{{template "farm-body" .View.Farm}}</div></section>
 <section id="update-view" hidden><header class="pagehead"><div><h2>Updates</h2><p class="subtle">Stable releases from thegamersvibe/relax-coach on GitHub.</p></div></header>
-<div class="card updatecard"><h3>Relax Coach app</h3>
+<div class="pane"><div class="card updatecard"><h3>Relax Coach app</h3>
 <dl class="versions"><div><dt>Installed app</dt><dd id="installed-app-version">{{.AppVersion}}</dd></div><div><dt>Offered app</dt><dd id="offered-app-version">Not checked</dd></div></dl>
 <div class="actions"><button id="check-app-update" class="secondary"{{if .UpdatesDisabled}} disabled{{end}}>Check App Update</button><button id="apply-app-update" class="primary" disabled>Update App</button><a id="app-release-link" hidden>View app release on GitHub ↗</a></div>
 <p id="app-update-status" class="status" role="status" aria-live="polite">{{if .UpdatesDisabled}}Updates are disabled by -no-update.{{else}}Check first, then click Update App. Relax Coach will restart. WoW can stay open.{{end}}</p>
@@ -51,5 +220,5 @@
 <div class="card updatecard"><h3>More addons</h3><p class="subtle">Optional addons made for WoW Forever. Each one installs into its own folder and updates separately from Coach.</p>
 <div id="extra-list"></div>
 <p class="scope">Install and Update download only the stable GitHub release of that addon, verify its SHA256 checksum, check the archive and TOC, and keep a backup of the previous version in RelaxCoachBackups, like the Relax Coach addons above. WoW can stay open. Settings, saves and other addons are not touched.</p>
-</div></section></main>
+</div></div></section></main>
 <script nonce="{{.Nonce}}">{{.Script}}</script></body></html>

@@ -28,7 +28,8 @@ test('Updates has separate app controls with backend installed version and recov
  assert.match($('app-last-result').textContent,/rolled back/);
  assert.equal($('check-app-update').disabled,false,'app checks need no game/account');
  assert.ok($('apply-update'),'addon controls retained');
- assert.equal(calls.some(c=>c.method==='checkApp'||c.method==='applyApp'),false,'no automatic updates');
+ assert.equal(calls.filter(c=>c.method==='checkApp').length,1,'one read-only startup check');
+ assert.equal(calls.some(c=>c.method==='applyApp'||c.method==='applyAddon'),false,'no automatic installs');
 });
 test('app offer is inert, independent and confirms only version after explicit restart click',async t=>{
  const {$,calls}=await setup(t,{checkApp:()=>offer,checkAddon:()=>({...offer,Version:'2.0.0',InstalledVersion:'1.0.0'}),applyApp:()=>({restartReady:true,message:'Restarting Relax Coach'})});
@@ -75,4 +76,31 @@ test('failed initial report does not acknowledge; successful manual retry does',
  let fail=true;const s=await setup(t,{reportRefresh:()=>{if(fail)throw Error('render unavailable');return report}});
  s.frame();s.frame();await settle();assert.equal(s.calls.some(c=>c.method==='appReady'),false);
  fail=false;s.$('refresh').click();await settle();s.frame();s.frame();await settle();assert.equal(s.calls.filter(c=>c.method==='appReady').length,1);
+});
+test('startup check announces a new app on Updates without installing; -no-update skips it',async t=>{
+ const {$,calls}=await setup(t,{checkApp:()=>offer});
+ assert.equal(calls.filter(c=>c.method==='checkApp').length,1);
+ assert.equal($('nav-update').dataset.new,'true');
+ assert.equal($('nav-update').textContent,'Updates');
+ assert.equal($('offered-app-version').textContent,'1.5.0');
+ assert.equal($('apply-app-update').disabled,false,'one click to update');
+ assert.match($('global-status').textContent,/1\.5\.0 is available/);
+ assert.equal(calls.some(c=>c.method==='applyApp'),false,'never installs by itself');
+ const quiet=await setup(t,{checkApp:()=>({...offer,Available:false})});
+ assert.equal(quiet.$('nav-update').dataset.new,undefined);
+ assert.equal(quiet.$('global-status').textContent,'');
+ const off=await setup(t,{checkApp:()=>offer},true);
+ assert.equal(off.calls.some(c=>c.method==='checkApp'),false);
+ const down=await setup(t,{checkApp:()=>{throw Error('offline')}});
+ assert.equal(down.$('offered-app-version').textContent,'Not checked');
+ assert.equal(down.$('check-app-update').disabled,false);
+});
+test('slow startup check locks like Go does, then releases and retries the auto-check',async t=>{
+ let release,pending=false;
+ const {$,calls}=await setup(t,{checkApp:()=>{pending=true;return new Promise(r=>{release=()=>{pending=false;r({Available:false})}})},checkAddon:()=>{if(pending)throw Error('another addon operation is already running');return {Available:false}}});
+ assert.equal($('check-update').disabled,true,'locked while the launch check is pending');
+ assert.equal($('browse-folder').disabled,true);
+ release();await settle();
+ assert.equal($('check-update').disabled,false,'released after the launch check');
+ assert.equal($('browse-folder').disabled,false);
 });

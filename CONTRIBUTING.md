@@ -96,6 +96,12 @@ python scripts/build_guild_bundle.py --exe dist/RelaxCoach.exe
 python -I -B test/test_guild_bundle.py
 ```
 
+Windows resources (icon, version, manifest) live in `desktop/winres/winres.json`. After changing the version or icon, regenerate the committed resource object, and keep the plain build above: no UPX or other packers and no obfuscation, because antivirus heuristics flag packed Go binaries.
+
+```
+(cd desktop && go run github.com/tc-hib/go-winres@v0.3.3 make --in winres/winres.json --arch amd64 --out resource)
+```
+
 The workflow is the executable source of truth for CI commands. Its stable
 `Required CI` gate fails if an expected job fails, is cancelled, is skipped or
 is absent. No path filters skip documentation-only PRs. Checks use disposable
