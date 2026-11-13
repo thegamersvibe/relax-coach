@@ -9,17 +9,25 @@ Three **separate WoW Forever addons**, plus a native Windows report app:
 
 ## Download
 
-**[Download release v1.5.4](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.5.4)**:
+**[Download release v1.5.5](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.5.5)**:
 
-- `RelaxCoach-Bundle-1.5.4.zip` — the three independent addons (Coach, Journey, Relax Quest Planner 0.2.1), Journey guide content **4.00.08**, the Windows app and optional installer/restore scripts. From v1.5.0 the combined download has this new name; earlier releases used `RelaxCoach-Guild-<version>.zip`.
+- `RelaxCoach-Bundle-1.5.5.zip` — the three independent addons (Coach, Journey, Relax Quest Planner 0.2.1), Journey guide content **4.00.08**, the Windows app and optional installer/restore scripts. From v1.5.0 the combined download has this new name; earlier releases used `RelaxCoach-Guild-<version>.zip`.
 - `RelaxCoach.exe` — app-only download, for updating the application separately.
 - `SHA256SUMS.txt` — checksums for these release assets.
 
-**On app 1.5.0 to 1.5.3?** Use **Check App Update → Update App** first (the Farming page comes with app 1.5.3; installing while WoW is open with 1.5.2; Get started and the repair with 1.5.1), then **Updates → Check → Update**.
+**On app 1.5.0 to 1.5.4?** Use **Check App Update → Update App** first (the new look and the launch update notice come with app 1.5.5; the Farming page with 1.5.3; installing while WoW is open with 1.5.2; Get started and the repair with 1.5.1), then **Updates → Check → Update**.
 
 **On app 1.4.x?** Use **Check App Update → Update App** first, then close WoW and use **Check for updates → Update Addon**. Apps before 1.5.0 cannot install the bundle (from 1.5.0) and report it as an app-only release until the app is updated. App 1.4.0 needs one manual EXE replacement with Relax Coach closed before it can update itself.
 
-There is deliberately no Coach-only `RelaxCoach-1.5.4.zip`: older apps must not report a completed addon update while leaving the guide content behind. The previous app-only v1.4.1 release remains unchanged.
+There is deliberately no Coach-only `RelaxCoach-1.5.5.zip`: older apps must not report a completed addon update while leaving the guide content behind. The previous app-only v1.4.1 release remains unchanged.
+
+## What's new in v1.5.5
+
+- **New look ("night campfire"):** the Windows app has a new dark theme with a "Do these next" panel first, an icon sidebar, a compact account bar and the report in columns on wide windows.
+- **Update notice at launch:** when you open the app, it checks GitHub for a newer Relax Coach release and highlights **Updates** if one exists. It only reads the release information: nothing downloads or installs until you click **Update App**. If you're offline, it stays quiet. Start the app with `-no-update` to turn release checks off.
+- **Application manifest:** `RelaxCoach.exe` now declares that it runs as the normal user (no administrator rights, Windows 10 or newer). That should mean fewer antivirus false alarms, but it's no guarantee: the app is still unsigned.
+- **On app 1.5.4 or older:** click **Check App Update → Update App** once to get this release. The launch notice only exists from 1.5.5 on, so older apps don't tell you about it themselves.
+- Coach's addon only changes its version; Relax Journey (`4.00.04`), the guide content (`4.00.08`) and Relax Quest Planner (`0.2.1`) are unchanged.
 
 ## What's new in v1.5.4
 
@@ -126,7 +134,7 @@ Use the included `Restore-RelaxCoach.ps1 -Backup <backup-folder>` with WoW close
 ## Coverage and known limits
 
 - Optional installed providers: GearQuest Forever for comparable item scores, ForeverDungeonJournal for dungeon information. Unknown or incomparable gear is shown as unscored, not assigned an invented score.
-- Included Journey code: `4.00.04`; Relax package/Coach version: `1.5.4`; guide-content version: `4.00.08`. The original signed catalog and guide bytes are retained. The content's existing validity date is **18 December 2026**; this release does not remove expiry checks.
+- Included Journey code: `4.00.04`; Relax package/Coach version: `1.5.5`; guide-content version: `4.00.08`. The original signed catalog and guide bytes are retained. The content's existing validity date is **18 December 2026**; this release does not remove expiry checks.
 - This is not a claim of complete coverage for every custom Forever class/spec/item or every leveling route. Some route entries are stubs.
 - An intermittent blank native window occurred during development. The final local candidate passed ten restart/Refresh cycles and a more-than-three-minute minimize/restore test, but the earlier root cause was not conclusively identified. If the window is blank, close and reopen it and report the issue.
 
