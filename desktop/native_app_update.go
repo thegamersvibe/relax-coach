@@ -22,7 +22,15 @@ func (b *nativeBridge) startAppUpdate() error {
 	return nil
 }
 func (b *nativeBridge) finishAppUpdate() { b.mu.Lock(); b.appBusy = false; b.mu.Unlock() }
-func (b *nativeBridge) checkApp() (nativeOffer, error) {
+
+// The manual check keeps the long budget; the read-only launch check gives up
+// sooner so a slow GitHub cannot hold every button disabled for 45 seconds.
+const (
+	appCheckTimeout        = 45 * time.Second
+	startupAppCheckTimeout = 10 * time.Second
+)
+
+func (b *nativeBridge) checkApp(timeout time.Duration) (nativeOffer, error) {
 	if err := b.startAppUpdate(); err != nil {
 		return nativeOffer{}, err
 	}
@@ -31,7 +39,7 @@ func (b *nativeBridge) checkApp() (nativeOffer, error) {
 	b.appRelease = nil
 	b.mu.Unlock()
 	current := Version
-	ctx, cancel := context.WithTimeout(b.ctx, 45*time.Second)
+	ctx, cancel := context.WithTimeout(b.ctx, timeout)
 	defer cancel()
 	r, err := b.services.checkApp(ctx, current)
 	if err != nil {

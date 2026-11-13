@@ -154,7 +154,7 @@ func (b *nativeBridge) Call(method string, args []json.RawMessage) (any, error) 
 		if len(args) != 1 || json.Unmarshal(args[0], &arg) != nil || len(arg) > 4096 || strings.IndexByte(arg, 0) >= 0 {
 			return nil, errors.New("expected one text argument")
 		}
-	case "reportRefresh", "chooseGame", "checkAddon", "checkApp", "appReady", "extraList", "appPlacement", "installAppCopy":
+	case "reportRefresh", "chooseGame", "checkAddon", "checkApp", "checkAppStartup", "appReady", "extraList", "appPlacement", "installAppCopy":
 		if len(args) != 0 {
 			return nil, errors.New("this method takes no arguments")
 		}
@@ -181,7 +181,9 @@ func (b *nativeBridge) Call(method string, args []json.RawMessage) (any, error) 
 		}
 		return b.setGame(game)
 	case "checkApp":
-		return b.checkApp()
+		return b.checkApp(appCheckTimeout)
+	case "checkAppStartup":
+		return b.checkApp(startupAppCheckTimeout)
 	case "applyApp":
 		return b.applyApp(arg)
 	case "appReady":

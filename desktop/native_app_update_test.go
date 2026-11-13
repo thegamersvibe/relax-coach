@@ -162,9 +162,36 @@ func TestNativeAppDisableCancelAndHealthAdmission(t *testing.T) {
 func TestNativeAppMethodHasExplicitAdmission(t *testing.T) {
 	b := newNativeBridge(&App{}, true, nativeServices{})
 	defer b.Close()
-	for _, method := range []string{"checkApp", "appReady"} {
+	for _, method := range []string{"checkApp", "checkAppStartup", "appReady"} {
 		if _, err := b.Call(method, nativeArgs("unexpected")); err == nil || !strings.Contains(err.Error(), "no arguments") {
 			t.Fatalf("%s must explicitly reject parameters, got %v", method, err)
 		}
+	}
+}
+
+func TestNativeStartupAppCheckUsesShortTimeout(t *testing.T) {
+	a := &App{}
+	a.setGame("")
+	budgets := map[string]time.Duration{}
+	var method string
+	b := newNativeBridge(a, false, nativeServices{checkApp: func(ctx context.Context, _ string) (AppReleaseInfo, error) {
+		deadline, ok := ctx.Deadline()
+		if !ok {
+			t.Fatal("app check has no deadline")
+		}
+		budgets[method] = time.Until(deadline)
+		return AppReleaseInfo{}, nil
+	}})
+	defer b.Close()
+	for _, method = range []string{"checkAppStartup", "checkApp"} {
+		if _, err := b.Call(method, nil); err != nil {
+			t.Fatalf("%s: %v", method, err)
+		}
+	}
+	if d := budgets["checkAppStartup"]; d <= 0 || d > startupAppCheckTimeout {
+		t.Fatalf("launch check budget %v, want <= %v", d, startupAppCheckTimeout)
+	}
+	if d := budgets["checkApp"]; d <= startupAppCheckTimeout || d > appCheckTimeout {
+		t.Fatalf("manual check budget %v, want the full %v", d, appCheckTimeout)
 	}
 }

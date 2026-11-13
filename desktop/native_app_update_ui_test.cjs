@@ -8,6 +8,8 @@ const settle=()=>new Promise(r=>setTimeout(r,25));
 const report={HTML:'<p>No game selected</p>',Game:'',Account:'',Accounts:[],InstalledVersion:'0.0.0',AppVersion:'1.4.1',AppUpdateStatus:'Previous update rolled back safely.'};
 const offer={Version:'1.5.0',InstalledVersion:'1.4.1',Available:true,Name:'<img src=x>',Notes:'<script>unsafe</script>',HTMLURL:'https://github.com/thegamersvibe/relax-coach/releases/tag/v1.5.0'};
 async function setup(t,handlers={},disabled=false){
+ // The launch check uses its own method (shorter timeout); same fake unless a test splits them.
+ if(handlers.checkApp&&!handlers.checkAppStartup)handlers={...handlers,checkAppStartup:handlers.checkApp};
  const calls=[],frames=[];let listener;
  const dom=new JSDOM(disabled?html.replace('data-updates-disabled="false"','data-updates-disabled="true"'):html,{runScripts:'dangerously',pretendToBeVisual:true,beforeParse(w){
   w.setInterval=()=>1;w.requestAnimationFrame=fn=>frames.push(fn);
@@ -28,7 +30,7 @@ test('Updates has separate app controls with backend installed version and recov
  assert.match($('app-last-result').textContent,/rolled back/);
  assert.equal($('check-app-update').disabled,false,'app checks need no game/account');
  assert.ok($('apply-update'),'addon controls retained');
- assert.equal(calls.filter(c=>c.method==='checkApp').length,1,'one read-only startup check');
+ assert.equal(calls.filter(c=>c.method==='checkAppStartup').length,1,'one read-only startup check');
  assert.equal(calls.some(c=>c.method==='applyApp'||c.method==='applyAddon'),false,'no automatic installs');
 });
 test('app offer is inert, independent and confirms only version after explicit restart click',async t=>{
@@ -79,7 +81,7 @@ test('failed initial report does not acknowledge; successful manual retry does',
 });
 test('startup check announces a new app on Updates without installing; -no-update skips it',async t=>{
  const {$,calls}=await setup(t,{checkApp:()=>offer});
- assert.equal(calls.filter(c=>c.method==='checkApp').length,1);
+ assert.equal(calls.filter(c=>c.method==='checkAppStartup').length,1);
  assert.equal($('nav-update').dataset.new,'true');
  assert.equal($('nav-update').textContent,'Updates');
  assert.equal($('offered-app-version').textContent,'1.5.0');
@@ -90,7 +92,7 @@ test('startup check announces a new app on Updates without installing; -no-updat
  assert.equal(quiet.$('nav-update').dataset.new,undefined);
  assert.equal(quiet.$('global-status').textContent,'');
  const off=await setup(t,{checkApp:()=>offer},true);
- assert.equal(off.calls.some(c=>c.method==='checkApp'),false);
+ assert.equal(off.calls.some(c=>/^checkApp/.test(c.method)),false);
  const down=await setup(t,{checkApp:()=>{throw Error('offline')}});
  assert.equal(down.$('offered-app-version').textContent,'Not checked');
  assert.equal(down.$('check-app-update').disabled,false);
@@ -103,4 +105,23 @@ test('slow startup check locks like Go does, then releases and retries the auto-
  release();await settle();
  assert.equal($('check-update').disabled,false,'released after the launch check');
  assert.equal($('browse-folder').disabled,false);
+});
+test('startup check starved by a running bundle check is queued and runs once it ends',async t=>{
+ let release;
+ const {$,calls}=await setup(t,{reportRefresh:()=>({...report,Game:'C:\\WoW'}),checkAddon:()=>new Promise(r=>{release=()=>r({Available:false})}),checkAppStartup:()=>offer});
+ $('nav-setup').click();await settle();
+ assert.equal(calls.filter(c=>c.method==='checkAddon').length,1,'bundle check running');
+ assert.equal(calls.some(c=>c.method==='checkAppStartup'),false,'app check waits, not dropped');
+ release();await settle();await settle();
+ assert.equal(calls.filter(c=>c.method==='checkAppStartup').length,1,'queued launch check ran');
+ assert.equal($('nav-update').dataset.new,'true');
+});
+test('opening Updates during the launch check fills More addons once it ends',async t=>{
+ let release;
+ const {$,calls}=await setup(t,{checkAppStartup:()=>new Promise(r=>{release=()=>r({Available:false})}),extraList:()=>[{ID:'rankup',Name:'RankUp',Blurb:'',InstalledVersion:'0.0.0'}]});
+ $('nav-update').click();await settle();
+ assert.equal(calls.some(c=>c.method==='extraList'),false,'busy: list deferred');
+ release();await settle();await settle();
+ assert.equal(calls.filter(c=>c.method==='extraList').length,1,'deferred list loaded once');
+ assert.ok($('extra-rankup'),'More addons not left empty');
 });
