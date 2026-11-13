@@ -213,7 +213,13 @@ func runNative(app *App, disabled bool) error {
 	if atom == 0 {
 		return fmt.Errorf("register app window: %w", callErr)
 	}
-	hwnd, _, callErr := nativeUser32.NewProc("CreateWindowExW").Call(0, uintptr(unsafe.Pointer(className)), uintptr(unsafe.Pointer(title)), 0x00CF0000, 0x80000000, 0x80000000, 1280, 900, 0, 0, uintptr(instance), 0)
+	// The manifest is per-monitor DPI aware, so sizes are physical pixels: scale the
+	// intended 1280x900 by the system DPI (96 = 100%).
+	winW, winH := uintptr(1280), uintptr(900)
+	if dpi, _, _ := nativeUser32.NewProc("GetDpiForSystem").Call(); dpi >= 96 && dpi <= 480 {
+		winW, winH = winW*dpi/96, winH*dpi/96
+	}
+	hwnd, _, callErr := nativeUser32.NewProc("CreateWindowExW").Call(0, uintptr(unsafe.Pointer(className)), uintptr(unsafe.Pointer(title)), 0x00CF0000, 0x80000000, 0x80000000, winW, winH, 0, 0, uintptr(instance), 0)
 	if hwnd == 0 {
 		return fmt.Errorf("create app window: %w", callErr)
 	}

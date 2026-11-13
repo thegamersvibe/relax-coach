@@ -95,3 +95,8 @@ test('startup check announces a new app on Updates without installing; -no-updat
  assert.equal(down.$('offered-app-version').textContent,'Not checked');
  assert.equal(down.$('check-app-update').disabled,false);
 });
+test('slow startup check does not lock the rest of the app',async t=>{
+ const {$}=await setup(t,{checkApp:()=>new Promise(()=>{})});
+ assert.equal($('check-update').disabled,false,'startup check must not hold busy');
+ assert.equal($('browse-folder').disabled,false);
+});

@@ -44,7 +44,7 @@ const verb = install => install ? 'Install' : 'Update';
 const clickThen = install => ' Click '+verb(install)+'. WoW can stay open.';
 const progressText = 'Downloading, verifying and installing… Do not force-close the application.';
 const failText = (install,err) => verb(install)+' failed: '+err.message+' Check again before retrying.';
-let offer = null, appOffer = null, busy = false, refreshing = false, restarting = false;
+let offer = null, appOffer = null, busy = false, appChecking = false, refreshing = false, restarting = false;
 let healthPending = false, healthSent = false;
 // Two animation frames follow a successful Go report RPC and DOM rendering.
 // This is startup health, not an idle heartbeat or a page-load acknowledgement.
@@ -498,18 +498,18 @@ $('app-copy-later').addEventListener('click',()=>{ placementDismissed = true; $(
 // (and its new look) without visiting GitHub. Nothing downloads or installs
 // until they click Update App; -no-update skips it entirely.
 async function startupAppCheck() {
-  if (busy || appOffer || document.body.dataset.updatesDisabled === 'true') return;
-  busy = true; updateButtons();
+  if (appChecking || appOffer || document.body.dataset.updatesDisabled === 'true') return;
+  appChecking = true; // not `busy`: a slow network must not lock the rest of the app
   try {
     const found = await rc.checkApp();
     if (!found || !found.Available || appOffer) return;
     appOffer = found;
-    showAppOffer(appOffer);
+    showAppOffer(appOffer); updateButtons();
     $('nav-update').dataset.new = 'true';
     $('nav-update').title = 'Relax Coach '+appOffer.Version+' is available';
     message('Relax Coach '+appOffer.Version+' is available. Open Updates and click Update App. No re-download needed.');
   } catch(_) { /* offline: the manual check still works */ }
-  finally { busy = false; updateButtons(); }
+  finally { appChecking = false; }
 }
 function showAppOffer(o) {
   $('installed-app-version').textContent = o.InstalledVersion;
