@@ -95,8 +95,12 @@ test('startup check announces a new app on Updates without installing; -no-updat
  assert.equal(down.$('offered-app-version').textContent,'Not checked');
  assert.equal(down.$('check-app-update').disabled,false);
 });
-test('slow startup check does not lock the rest of the app',async t=>{
- const {$}=await setup(t,{checkApp:()=>new Promise(()=>{})});
- assert.equal($('check-update').disabled,false,'startup check must not hold busy');
+test('slow startup check locks like Go does, then releases and retries the auto-check',async t=>{
+ let release,pending=false;
+ const {$,calls}=await setup(t,{checkApp:()=>{pending=true;return new Promise(r=>{release=()=>{pending=false;r({Available:false})}})},checkAddon:()=>{if(pending)throw Error('another addon operation is already running');return {Available:false}}});
+ assert.equal($('check-update').disabled,true,'locked while the launch check is pending');
+ assert.equal($('browse-folder').disabled,true);
+ release();await settle();
+ assert.equal($('check-update').disabled,false,'released after the launch check');
  assert.equal($('browse-folder').disabled,false);
 });
