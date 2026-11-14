@@ -38,7 +38,9 @@ const rc = Object.freeze({
   appPlacement: () => call('appPlacement'),
   installAppCopy: () => call('installAppCopy'),
   repairAppLinks: list => call('repairAppLinks',list),
-  openInstalledApp: () => call('openInstalledApp')
+  openInstalledApp: () => call('openInstalledApp'),
+  afterAppUpdate: () => call('afterAppUpdate'),
+  gameState: () => call('gameState')
 });
 // One vocabulary for every addon (Relax Coach bundle and More addons):
 // Install when the addon is not there yet, otherwise Update.
@@ -104,6 +106,7 @@ function updateButtons() {
   for (const id of ['browse-folder','use-folder','game-path','setup-browse','setup-app-install','setup-app-open','setup-app-repair','settings-keep']) $(id).disabled = busy;
   $('settings-replace').disabled = busy || !replaceChoice().length;
   $('settings-repair').disabled = busy || !linksNeedRepair();
+  $('update-all').disabled = busy || disabled;
   renderBundleLabels();
   for (const b of document.querySelectorAll('#extra-list button')) {
     const o = extraOffers[b.dataset.id];
@@ -447,7 +450,9 @@ async function checkBundle() {
     $('release-notes').textContent = offer.Notes || 'No release notes provided.';
     $('release-link').href = offer.HTMLURL;
     $('release-link').hidden = !offer.HTMLURL;
-    bundleStatus(offer.Available && offer.Repair && bundleReplaced()
+    bundleStatus(offer.NeedsApp
+      ? 'Relax Coach '+offer.Version+' needs app '+offer.Version+' first: click Update App above, or Update everything. The addons follow.'
+      : offer.Available && offer.Repair && bundleReplaced()
       ? foreignRepair+' WoW can stay open.'
       : offer.Available
       ? 'Relax Coach '+offer.Version+' is ready to '+(install ? 'install' : 'update')+'.'+clickThen(install)
@@ -640,7 +645,7 @@ async function startupAppCheck() {
     showAppOffer(appOffer); updateButtons();
     $('nav-update').dataset.new = 'true';
     $('nav-update').title = 'Relax Coach '+appOffer.Version+' is available';
-    message('Relax Coach '+appOffer.Version+' is available. Open Updates and click Update App. No re-download needed.');
+    message('Relax Coach '+appOffer.Version+' is available. Open Updates and click Update everything. No re-download needed.');
   } catch(_) { /* offline: the manual check still works */ }
   finally { busy = false; updateButtons(); maybeAutoCheck(); }
 }
@@ -682,6 +687,139 @@ $('apply-app-update').addEventListener('click',async()=>{
   } catch(err) { $('app-update-status').textContent = 'App update failed: '+err.message+' Check again before retrying.'; }
   finally { appOffer = null; busy = restarting; updateButtons(); }
 });
+// Update everything: one chain over the existing, reviewed bridge calls. It keeps
+// no state of its own (a new click recomputes what is behind), holds the UI busy
+// flag from start to end (so the 5-second refresh does not run), stops at the
+// first failure, and never installs something the player has not installed.
+function uaLine(id, label, text) {
+  let li = $(id);
+  if (!li) {
+    li = document.createElement('li'); li.id = id;
+    const b = document.createElement('b'); const span = document.createElement('span'); span.className = 'ua-text';
+    li.append(b, ' ', span); $('update-all-lines').append(li);
+  }
+  li.querySelector('b').textContent = label;
+  li.querySelector('.ua-text').textContent = text;
+}
+function uaStatus(text) { $('update-all-status').textContent = text; }
+function markUpdateAll(why) {
+  $('nav-update').dataset.new = 'true';
+  $('update-all').dataset.new = 'true';
+  if (why) uaStatus(why);
+}
+// What the chain may install for the bundle: a plain newer version only.
+function plainBundleUpdate(o) {
+  const b = o && o.Bundle;
+  return !!(o && o.Available && !o.NeedsApp && !o.Install && !o.Repair && !(b && (b.state === 'replaced' || b.journeyUnreadable)));
+}
+async function updateAll(opts = {}) {
+  if (busy || document.body.dataset.updatesDisabled === 'true') return;
+  busy = true; offer = null; appOffer = null; for (const k in extraOffers) delete extraOffers[k]; updateButtons();
+  delete $('update-all').dataset.new;
+  const done = [], left = [];
+  const stop = (where, err, rest) => {
+    uaStatus('Stopped at '+where+': '+err.message+(done.length ? ' Done: '+done.join('; ')+'.' : '')+(rest.length ? ' Not done: '+rest.join(', ')+'.' : '')+' Click Update everything to try again.');
+  };
+  try {
+    // 1. The app. If it updates, Relax Coach restarts and the new app carries on.
+    if (!opts.skipApp) {
+      uaStatus('Checking the app…');
+      let app;
+      try { app = await rc.checkApp(); } catch(err) { stop('the app', err, ['Relax Coach addons','More addons']); return; }
+      if (app.Available) {
+        uaLine('ua-app','App',app.InstalledVersion+' → '+app.Version+': updating…');
+        uaStatus('Relax Coach will close and reopen by itself, then update your addons. Do not close it.');
+        let result;
+        try { result = await rc.applyApp(app.Version); } catch(err) { uaLine('ua-app','App',app.InstalledVersion+': update failed'); stop('the app', err, ['Relax Coach addons','More addons']); return; }
+        restarting = result.restartReady === true;
+        uaLine('ua-app','App',app.InstalledVersion+' → '+app.Version+(restarting ? ': restarting…' : ': not handed off'));
+        if (!restarting) uaStatus((result.message || 'The app update was not handed off.')+' Click Update everything to try again.');
+        return;
+      }
+      uaLine('ua-app','App',app.InstalledVersion+': up to date');
+      done.push('the app is up to date');
+    }
+    // 2. The Relax Coach addons (bundle).
+    let o = opts.offer;
+    if (!o) {
+      uaStatus('Checking the Relax Coach addons…');
+      try { o = await rc.checkAddon(); } catch(err) { stop('the Relax Coach addons', err, ['More addons']); return; }
+    }
+    const installedText = o.InstalledVersion === '0.0.0' ? 'Not installed' : o.InstalledVersion;
+    if (plainBundleUpdate(o)) {
+      uaLine('ua-bundle','Relax Coach addons',installedText+' → '+o.Version+': updating…');
+      uaStatus(progressText);
+      let result;
+      try { result = await rc.applyAddon(o.Version); }
+      catch(err) { uaLine('ua-bundle','Relax Coach addons',installedText+': update failed'); stop('the Relax Coach addons', err, ['More addons']); return; }
+      uaLine('ua-bundle','Relax Coach addons',o.Version+': updated'+(result.backupPath ? ' · backup '+result.backupPath : ''));
+      done.push('Relax Coach addons '+o.Version);
+      bundleStatus(result.message + (result.backupPath ? '\nBackup: '+result.backupPath : ''));
+      await refresh();
+    } else if (o.NeedsApp) {
+      uaLine('ua-bundle','Relax Coach addons',installedText+': needs app '+o.Version+' first');
+      stop('the Relax Coach addons', new Error('this release needs the new app first.'), ['More addons']); return;
+    } else if (o.Available) {
+      uaLine('ua-bundle','Relax Coach addons',installedText+': left to its own button below ('+(o.Install && !o.Repair ? 'first install' : bundleReplaced() || (o.Bundle && o.Bundle.state === 'replaced') ? 'Journey is not Relax Journey' : 'repair')+')');
+    } else {
+      uaLine('ua-bundle','Relax Coach addons',installedText+': up to date');
+    }
+    // 3. More addons the player installed, in list order.
+    let list = [];
+    try { list = await rc.extraList(); } catch(err) { stop('More addons', err, ['More addons']); return; }
+    const todo = list.filter(item => item.InstalledVersion !== '0.0.0' && !item.Problem);
+    for (let i = 0; i < todo.length; i++) {
+      const item = todo[i], line = 'ua-extra-'+item.ID, rest = todo.slice(i+1).map(x => x.Name);
+      uaStatus('Checking '+item.Name+'…');
+      let c;
+      try { c = await rc.checkExtra(item.ID); } catch(err) { uaLine(line,item.Name,item.InstalledVersion+': check failed'); stop(item.Name, err, rest); return; }
+      if (!c.Available || c.Install) { uaLine(line,item.Name,item.InstalledVersion+': up to date'); continue; }
+      uaLine(line,item.Name,item.InstalledVersion+' → '+c.Version+': updating…');
+      let result;
+      try { result = await rc.applyExtra(item.ID, c.Version); }
+      catch(err) { uaLine(line,item.Name,item.InstalledVersion+': update failed'); stop(item.Name, err, rest); return; }
+      uaLine(line,item.Name,c.Version+': updated'+(result.backupPath ? ' · backup '+result.backupPath : ''));
+      done.push(item.Name+' '+c.Version);
+    }
+    uaStatus(done.length ? 'Done: '+done.join('; ')+'.'+(done.some(d => !d.startsWith('the app')) ? ' Type /reload in game, or restart WoW if the results above say so.' : '') : 'Everything is up to date.');
+  } finally {
+    if (!restarting) { busy = false; updateButtons(); loadExtras(); }
+  }
+}
+$('update-all').addEventListener('click',()=>updateAll());
+// After an app update: the new app updates the addons by itself, once, only when
+// it is safe; otherwise it marks Update everything and says why.
+let autoRan = false;
+async function launchChecks() {
+  let after = null;
+  if (document.body.dataset.updatesDisabled !== 'true') {
+    try { after = await rc.afterAppUpdate(); } catch(_) { after = null; }
+  }
+  if (after && after.Updated) { await autoUpdate(); return; }
+  await startupAppCheck();
+}
+async function autoUpdate() {
+  if (autoRan) return;
+  autoRan = true; // at most once per launch, never retried
+  const version = (lastReport && lastReport.AppVersion) || $('installed-app-version').textContent;
+  const why = text => { markUpdateAll('Relax Coach was updated to '+version+'. '+text); message('Relax Coach was updated to '+version+'. '+text); };
+  if (busy) { why('Open Updates and click Update everything to update your addons.'); return; }
+  if (!lastReport || !lastReport.Game) { why('Choose your game folder, then click Update everything.'); return; }
+  if (lastReport.InstalledVersion === '0.0.0') { why('Relax Coach addons are not installed: use Get started to install them.'); return; }
+  busy = true; updateButtons();
+  let state = 'unknown', o = null, err = null;
+  try { state = await rc.gameState(); } catch(_) { state = 'unknown'; }
+  if (state === 'closed') { try { o = await rc.checkAddon(); } catch(e) { err = e; } }
+  busy = false; updateButtons();
+  if (state === 'open') { why('WoW is open, so your addons were not updated. Close WoW, then click Update everything.'); return; }
+  if (state !== 'closed') { why('Relax Coach could not tell whether WoW is running, so your addons were not updated. Close WoW, then click Update everything.'); return; }
+  if (err) { why('The addon check failed ('+err.message+'). Click Update everything to try again.'); return; }
+  if (!o.Available && !o.NeedsApp) { message('Relax Coach was updated to '+version+'. Your Relax Coach addons are up to date.'); uaStatus('Relax Coach was updated to '+version+'. Your Relax Coach addons are up to date.'); return; }
+  if (!plainBundleUpdate(o)) { why('Your Relax Coach addons need attention (a repair, or a Journey that is not Relax Journey): open Updates and use the buttons there.'); return; }
+  message('Relax Coach was updated to '+version+'. Updating your addons…');
+  if (!userNavigated) show('update');
+  await updateAll({skipApp:true, offer:o});
+}
 // Keep every link inside the document or route it through native allowlist validation.
 function interceptLink(event) {
   const link = event.target.closest('a');
@@ -707,5 +845,5 @@ document.addEventListener('click',event=>{
 });
 // A convenience refresh, not a heartbeat. No timer can close the native window.
 setInterval(()=>{if (!document.hidden && !busy) refresh();},5000);
-refresh().then(loadPlacement).then(startupAppCheck);
+refresh().then(loadPlacement).then(launchChecks);
 })();

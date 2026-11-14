@@ -22,7 +22,8 @@ h1,h2,h3,h4{font-family:"Segoe UI Variable Display","Segoe UI Variable","Segoe U
 button:disabled{opacity:.5;cursor:default;box-shadow:none}
 .primary:disabled{background:#ffffff08;color:var(--mut);border-color:var(--line2);border-style:dashed;font-weight:600;opacity:1}
 .navbtn{display:flex;align-items:center;gap:12px;text-align:left;white-space:nowrap;border-color:transparent;background:transparent;color:var(--mut);font-weight:600;padding:10px 12px;position:relative}
-#nav-update[data-new],#nav-setup[data-new],#nav-settings[data-new]{color:var(--fg)}#nav-update[data-new]:after,#nav-setup[data-new]:after,#nav-settings[data-new]:after{opacity:1}
+#nav-update[data-new],#nav-setup[data-new],#nav-settings[data-new]{color:var(--fg)}
+#update-all[data-new]{box-shadow:0 0 0 3px #e9b65c66}#nav-update[data-new]:after,#nav-setup[data-new]:after,#nav-settings[data-new]:after{opacity:1}
 #nav-settings{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1'/%3E%3C/svg%3E")}
 .links{list-style:none;margin:8px 0 12px;padding:0;display:grid;gap:6px}
 .links li{background:var(--well);border:1px solid var(--line);border-radius:10px;padding:8px 14px;overflow-wrap:anywhere}
@@ -207,7 +208,14 @@ button:focus-visible,a:focus-visible,.smallprint:focus-visible,input:focus-visib
 <section id="farm-view" hidden><header class="pagehead"><div><h2>Farming</h2><p class="subtle">From the AH Profit addon's save for the selected account. Updates when the game saves: /reload or logout.</p></div></header>
 <div id="farm-body">{{template "farm-body" .View.Farm}}</div></section>
 <section id="update-view" hidden><header class="pagehead"><div><h2>Updates</h2><p class="subtle">Stable releases from thegamersvibe/relax-coach on GitHub.</p></div></header>
-<div class="pane"><div class="card updatecard"><h3>Relax Coach app</h3>
+<div class="pane"><div class="card updatecard" id="update-all-card"><h3>Update everything</h3>
+<p class="subtle">One click: the app first (it restarts and carries on by itself), then the Relax Coach addons, then the More addons you installed. Each step is checked and verified on its own; a failed step stops the rest.</p>
+<ul id="update-all-lines" class="links"><li id="ua-app"><b>App</b> <span class="ua-text">{{.AppVersion}}</span></li><li id="ua-bundle"><b>Relax Coach addons</b> <span class="ua-text">{{if eq .InstalledVersion "0.0.0"}}Not installed{{else}}{{.InstalledVersion}}{{end}}</span></li></ul>
+<div class="actions"><button id="update-all" class="primary"{{if .UpdatesDisabled}} disabled{{end}}>Update everything</button></div>
+<p id="update-all-status" class="status" role="status" aria-live="polite">{{if .UpdatesDisabled}}Updates are disabled by -no-update.{{end}}</p>
+<p class="scope">Never installs anything you have not installed. A first install, a Repair, or a Journey that is not Relax Journey is left to its own button below.</p>
+</div>
+<div class="card updatecard"><h3>Relax Coach app</h3>
 <dl class="versions"><div><dt>Installed app</dt><dd id="installed-app-version">{{.AppVersion}}</dd></div><div><dt>Offered app</dt><dd id="offered-app-version">Not checked</dd></div></dl>
 <div class="actions"><button id="check-app-update" class="secondary"{{if .UpdatesDisabled}} disabled{{end}}>Check App Update</button><button id="apply-app-update" class="primary" disabled>Update App</button><a id="app-release-link" hidden>View app release on GitHub ↗</a></div>
 <p id="app-update-status" class="status" role="status" aria-live="polite">{{if .UpdatesDisabled}}Updates are disabled by -no-update.{{else}}Check first, then click Update App. Relax Coach will restart. WoW can stay open.{{end}}</p>
@@ -217,7 +225,7 @@ button:focus-visible,a:focus-visible,.smallprint:focus-visible,input:focus-visib
 </div>
 <div class="card updatecard"><h3>Coach, Journey, Relax Quest Planner and guide content</h3><dl class="versions"><div><dt>Installed Coach</dt><dd id="installed-version">{{.InstalledVersion}}</dd></div><div><dt>Offered addon bundle</dt><dd id="offered-version">Not checked</dd></div></dl>
 <div class="actions"><button id="check-update" class="secondary"{{if .UpdatesDisabled}} disabled{{end}}>Check</button><button id="apply-update" class="primary" disabled>{{if eq .InstalledVersion "0.0.0"}}Install{{else}}Update{{end}}</button><a id="release-link" hidden>View on GitHub ↗</a></div>
-<p id="update-status" class="status" role="status" aria-live="polite">{{if .UpdatesDisabled}}Updates are disabled by -no-update.{{else}}Nothing is downloaded until you click {{if eq .InstalledVersion "0.0.0"}}Install{{else}}Update{{end}}. WoW can stay open.{{end}}</p>
+<p id="update-status" class="status" role="status" aria-live="polite">{{if .UpdatesDisabled}}Updates are disabled by -no-update.{{else}}Click Check first. Nothing is downloaded until you click {{if eq .InstalledVersion "0.0.0"}}Install{{else}}Update{{end}}. WoW can stay open.{{end}}</p>
 <h3 id="release-name">Release notes</h3><div id="release-notes" class="notes">Check to see the latest release notes.</div>
 <p class="scope">Install and Update use the same verified transaction. From 1.4.2 they install <strong>ForeverCoach</strong>, <strong>Journey</strong> and <strong>Journey-Content</strong> together, with verified backups. From 1.5.0 it also installs <strong>RelaxQuestPlanner</strong> (Relax Quest Planner); an existing RelaxQuestPlanner folder, such as a manually installed test version, is moved into the backup in RelaxCoachBackups, not deleted. The addons remain independent. Settings, saves, progress and unrelated addons are preserved. The bundled EXE and installers are never installed or run. Update App remains separate. Legacy packages below 1.4.2 update Coach only.</p>
 </div>
