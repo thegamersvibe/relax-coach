@@ -143,7 +143,7 @@ func (e appPlacementEnv) links(p AppPlacement) []AppLink {
 		default:
 			if target, rerr := e.readShortcut(l.Path); rerr != nil {
 				l.State = "other"
-			} else if appSamePath(target, p.Target) {
+			} else if appSameLinkTarget(target, p.Target) {
 				l.State, l.Target = "ok", target
 			} else {
 				l.State, l.Target = "other", target
@@ -279,6 +279,35 @@ func appLinkProblem(label string, err error) string {
 	return "The " + label + " shortcut could not be created (" + err.Error() + ")."
 }
 
+// appLinkRandom names temporary shortcuts (a test seam).
+var appLinkRandom = func() (string, error) {
+	var random [8]byte
+	if _, err := rand.Read(random[:]); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(random[:]), nil
+}
+
+// appLongPath expands 8.3 short names (GetLongPathNameW on Windows); it returns
+// the path unchanged when it cannot.
+var appLongPath = func(path string) string { return path }
+
+// appSameLinkTarget compares a shortcut's target with the installed exe the way
+// Windows resolves paths: up to the first NUL (GetPath fills a fixed buffer),
+// 8.3 names expanded on both sides, cleaned, case-insensitive (Unicode folding).
+// A shortcut written correctly must never read back as "points elsewhere".
+func appSameLinkTarget(got, want string) bool {
+	if i := strings.IndexByte(got, 0); i >= 0 {
+		got = got[:i]
+	}
+	got, want = strings.TrimSpace(got), strings.TrimSpace(want)
+	if got == "" || want == "" {
+		return false
+	}
+	norm := func(p string) string { return filepath.Clean(appLongPath(filepath.Clean(p))) }
+	return strings.EqualFold(norm(got), norm(want))
+}
+
 // appLinkSaved is a test seam: called with the temporary link once it is saved
 // and before it is read back.
 var appLinkSaved func(temp string)
@@ -288,19 +317,21 @@ var appLinkSaved func(temp string)
 // a move that never replaces anything; a confirmed "other" link by replacing
 // that regular file. Any failure removes the temporary file.
 func (e appPlacementEnv) writeLink(l AppLink, target, workdir string) (err error) {
-	var random [8]byte
-	if _, err := rand.Read(random[:]); err != nil {
+	suffix, err := appLinkRandom()
+	if err != nil {
 		return err
 	}
-	temp := filepath.Join(filepath.Dir(l.Path), ".Relax Coach."+hex.EncodeToString(random[:])+".lnk")
+	temp := filepath.Join(filepath.Dir(l.Path), ".Relax Coach."+suffix+".lnk")
+	// Checked before the cleanup below exists: a name that is already taken
+	// belongs to someone else and is never removed.
+	if _, err := os.Lstat(temp); err == nil || !os.IsNotExist(err) {
+		return errors.New("a temporary shortcut name is taken")
+	}
 	defer func() {
 		if err != nil {
 			os.Remove(temp)
 		}
 	}()
-	if _, err := os.Lstat(temp); err == nil {
-		return errors.New("a temporary shortcut name is taken")
-	}
 	if err := e.shortcut(temp, target, workdir); err != nil {
 		return err
 	}
@@ -311,7 +342,7 @@ func (e appPlacementEnv) writeLink(l AppLink, target, workdir string) (err error
 	if err != nil {
 		return fmt.Errorf("the new shortcut could not be read back: %w", err)
 	}
-	if !appSamePath(got, target) {
+	if !appSameLinkTarget(got, target) {
 		return errors.New("the new shortcut does not point at " + target)
 	}
 	if l.State == "other" {

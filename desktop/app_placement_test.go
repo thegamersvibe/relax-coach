@@ -494,6 +494,10 @@ func TestNativeLinkErrorMarksAccessDenied(t *testing.T) {
 	if !errors.Is(denied, os.ErrPermission) || !strings.Contains(appLinkProblem("Desktop", denied), "Windows blocked writing to the Desktop") {
 		t.Fatalf("%v", denied)
 	}
+	stg := nativeLinkError(errors.New("COM method 6 failed (HRESULT 0x80030005)"))
+	if !errors.Is(stg, os.ErrPermission) {
+		t.Fatalf("STG_E_ACCESSDENIED: %v", stg)
+	}
 	other := errors.New("COM method 6 failed (HRESULT 0x80004005)")
 	if got := nativeLinkError(other); errors.Is(got, os.ErrPermission) || got != other {
 		t.Fatalf("%v", got)
@@ -517,5 +521,92 @@ func TestOpenInstalledIsWiredIntoResponseDispatch(t *testing.T) {
 	dispatch := strings.Index(text, "text, _ := windows.UTF16PtrFromString(string(data))")
 	if dispatch < 0 || !strings.Contains(text[dispatch:], "|| nativeOpenedInstalled(req.Method, value, callErr, postErr)") {
 		t.Fatal("opening the installed copy does not close this window after the response")
+	}
+}
+
+func TestAppPlacementTakenTempNameIsNeverRemoved(t *testing.T) {
+	f := newPlacementFixture(t)
+	old := appLinkRandom
+	appLinkRandom = func() (string, error) { return "fixed", nil }
+	defer func() { appLinkRandom = old }()
+	taken := filepath.Join(f.desktop, ".Relax Coach.fixed.lnk")
+	os.WriteFile(taken, []byte("someone else's"), 0644)
+	got, err := f.env(nil).install()
+	if err != nil || !strings.Contains(got.Message, "temporary shortcut name is taken") {
+		t.Fatalf("%+v %v", got, err)
+	}
+	if b, err := os.ReadFile(taken); err != nil || string(b) != "someone else's" {
+		t.Fatalf("a file we did not create was removed or changed: %q %v", b, err)
+	}
+	// An empty folder at the name is not removed either.
+	os.Remove(taken)
+	os.Mkdir(taken, 0755)
+	f.env(nil).repairLinks(nil)
+	if st, err := os.Stat(taken); err != nil || !st.IsDir() {
+		t.Fatal("a folder we did not create was removed")
+	}
+}
+
+func TestAppSameLinkTargetToleratesWindowsSpellings(t *testing.T) {
+	old := appLongPath
+	defer func() { appLongPath = old }()
+	short := map[string]string{
+		`C:\Users\PLAYER~1\RelaxCoach\RELAXC~1.EXE`:  `C:\Users\Player One\RelaxCoach\RelaxCoach.exe`,
+		`C:\Users\JRGEN~1\RelaxCoach\RelaxCoach.exe`: `C:\Users\Jürgen Ölmann\RelaxCoach\RelaxCoach.exe`,
+	}
+	appLongPath = func(p string) string {
+		if long, ok := short[p]; ok {
+			return long
+		}
+		return p
+	}
+	for _, c := range []struct {
+		name, got, want string
+		same            bool
+	}{
+		{"different-case home", `c:\users\player one\relaxcoach\RELAXCOACH.EXE`, `C:\Users\Player One\RelaxCoach\RelaxCoach.exe`, true},
+		{"8.3 short path read back", `C:\Users\PLAYER~1\RelaxCoach\RELAXC~1.EXE`, `C:\Users\Player One\RelaxCoach\RelaxCoach.exe`, true},
+		{"8.3 short path on our side", `C:\Users\Player One\RelaxCoach\RelaxCoach.exe`, `C:\Users\PLAYER~1\RelaxCoach\RELAXC~1.EXE`, true},
+		{"Unicode user name, other case", `C:\Users\JÜRGEN ÖLMANN\RelaxCoach\RelaxCoach.exe`, `C:\Users\Jürgen Ölmann\RelaxCoach\RelaxCoach.exe`, true},
+		{"Unicode user name via 8.3", `C:\Users\JRGEN~1\RelaxCoach\RelaxCoach.exe`, `C:\Users\Jürgen Ölmann\RelaxCoach\RelaxCoach.exe`, true},
+		{"GetPath buffer with trailing NULs", "C:\\Users\\Player One\\RelaxCoach\\RelaxCoach.exe\x00\x00\x00garbage", `C:\Users\Player One\RelaxCoach\RelaxCoach.exe`, true},
+		{"another folder", `C:\Users\Player One\Downloads\RelaxCoach.exe`, `C:\Users\Player One\RelaxCoach\RelaxCoach.exe`, false},
+		{"another user", `C:\Users\Other\RelaxCoach\RelaxCoach.exe`, `C:\Users\Player One\RelaxCoach\RelaxCoach.exe`, false},
+		{"empty read-back", "\x00", `C:\Users\Player One\RelaxCoach\RelaxCoach.exe`, false},
+	} {
+		if got := appSameLinkTarget(c.got, c.want); got != c.same {
+			t.Errorf("%s: %v", c.name, got)
+		}
+	}
+	if !appSameLinkTarget("/home/p/RelaxCoach/./RelaxCoach.exe", "/home/p/RelaxCoach/RelaxCoach.exe") {
+		t.Error("not cleaned")
+	}
+}
+
+func TestAppPlacementReadBackSpellingsStillPublish(t *testing.T) {
+	// The reader answers in another case with GetPath's NUL padding (a real
+	// Windows read-back of a correct link): the link is published and reads ok.
+	f := newPlacementFixture(t)
+	e := f.env(nil)
+	e.readShortcut = func(link string) (string, error) {
+		b, err := os.ReadFile(link)
+		return strings.ToUpper(string(b)) + "\x00\x00", err
+	}
+	got, err := e.install()
+	if err != nil || linkStates(got) != "desktop=ok,startmenu=ok" {
+		t.Fatalf("%+v %v", got, err)
+	}
+	noTempLinks(t, f)
+}
+
+func TestAppPlacementOneDriveDesktop(t *testing.T) {
+	// FOLDERID_Desktop redirected into OneDrive: the link lives there and still
+	// points at the install folder under the profile.
+	f := newPlacementFixture(t)
+	f.desktop = filepath.Join(f.home, "OneDrive - Contoso", "Desktop")
+	os.MkdirAll(f.desktop, 0755)
+	got, err := f.env(nil).install()
+	if err != nil || linkStates(got) != "desktop=ok,startmenu=ok" || got.Shortcut != filepath.Join(f.desktop, "Relax Coach.lnk") {
+		t.Fatalf("%+v %v", got, err)
 	}
 }

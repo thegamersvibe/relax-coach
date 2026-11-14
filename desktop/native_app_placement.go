@@ -67,7 +67,7 @@ func (b *nativeBridge) placementWork(work func(appPlacementEnv) (AppPlacement, e
 func nativeLinkError(err error) error {
 	var hr uint32
 	if err != nil {
-		if _, scanErr := fmt.Sscanf(err.Error(), "COM method %d failed (HRESULT 0x%08x)", new(int), &hr); scanErr == nil && hr == 0x80070005 {
+		if _, scanErr := fmt.Sscanf(err.Error(), "COM method %d failed (HRESULT 0x%08x)", new(int), &hr); scanErr == nil && (hr == 0x80070005 || hr == 0x80030005) { // E_ACCESSDENIED, STG_E_ACCESSDENIED
 			return fmt.Errorf("%w (%v)", os.ErrPermission, err)
 		}
 	}

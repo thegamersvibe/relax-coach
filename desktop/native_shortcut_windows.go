@@ -70,6 +70,22 @@ func nativeWriteShortcut(link, target, workdir string) error {
 	return nil
 }
 
+func init() { appLongPath = nativeLongPath }
+
+// nativeLongPath expands 8.3 short names; the path is returned unchanged on error.
+func nativeLongPath(path string) string {
+	in, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return path
+	}
+	buf := make([]uint16, 32768)
+	n, err := windows.GetLongPathName(in, &buf[0], uint32(len(buf)))
+	if err != nil || n == 0 || int(n) >= len(buf) {
+		return path
+	}
+	return windows.UTF16ToString(buf[:n])
+}
+
 // nativeReadShortcut loads link and returns its target path. Nothing is written.
 func nativeReadShortcut(link string) (string, error) {
 	var shell *nativeCOM
