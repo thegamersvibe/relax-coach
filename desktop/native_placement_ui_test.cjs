@@ -87,7 +87,9 @@ test('other-copy: only "Open the installed Relax Coach" is primary; no copy is p
     assert.equal($('setup-app-install').hidden,true,'no copy button');
     const primaries=[...$('step-app').querySelectorAll('button.primary')].filter(b=>!b.hidden);
     assert.equal(primaries.length,1);
-    assert.equal(/may be older/.test($('setup-app-text').textContent),!same,'older note only when the files differ');
+    const different='The installed file is different from this one (an older or a newer version). Opening it does not change it; use Update everything there to bring it up to date.';
+    assert.equal($('setup-app-text').textContent.includes(different),!same,'the different-file sentence only when the files differ');
+    if (!same) assert.ok($('setup-app-text').textContent.indexOf(different)<$('setup-app-text').textContent.indexOf('Nothing is overwritten.'),'said before the Open offer line ends');
     assert.match($('setup-app-text').textContent,/Nothing is overwritten\./);
     assert.equal($('nav-setup').dataset.new,'true');
     assert.equal($('step-app').classList.contains('done'),false,'a second copy is not the installed one');

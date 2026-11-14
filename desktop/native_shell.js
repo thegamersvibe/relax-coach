@@ -499,6 +499,8 @@ const linkText = l => l.State === 'ok' ? 'Opens the installed copy.'
   : l.State === 'missing' ? 'Missing.'
   : l.State === 'unavailable' ? 'Folder not found; no shortcut can be added there.'
   : l.Target ? 'Points somewhere else: '+l.Target : 'Exists, but it is not a shortcut to the installed copy.';
+// S2: said plainly before Open is offered when the two files differ.
+const differentCopy = 'The installed file is different from this one (an older or a newer version). Opening it does not change it; use Update everything there to bring it up to date.';
 const canLink = () => !!placement && ['installed','other-copy'].includes(placement.State);
 function linksNeedRepair() {
   return canLink() && (placement.Links || []).some(l => l.State === 'missing' || l.State === 'other');
@@ -508,7 +510,7 @@ function renderPlacement(p) {
   const state = placement ? placement.State : 'unavailable';
   let text = (placement && placement.Message) || '';
   if (state === 'installed') text = 'Relax Coach is installed on this PC'+(placement.Target ? ' ('+placement.Target+')' : '')+'.';
-  else if (state === 'other-copy' && !placement.SameCopy) text += ' The installed copy may be older than this one; Update everything there brings it up to date.';
+  else if (state === 'other-copy' && !placement.SameCopy) text += ' '+differentCopy;
   else if (state === 'unavailable') text = 'Relax Coach could not tell where it is installed. You can keep using it from here.';
   if (state === 'other-copy') text += ' Nothing is overwritten.';
   $('setup-app-text').textContent = text;
