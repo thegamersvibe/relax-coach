@@ -13,8 +13,8 @@ const sample = `
 ForeverCoachDB = {
 	["schema"] = 1,
 	["chars"] = {
-		["Willtank-Test"] = {
-			["snapshot"] = { ["name"] = "Willtank", ["level"] = 20, ["class"] = "WARRIOR", ["race"] = "Dwarf", ["xp"] = 500, ["xpMax"] = 10000, ["rested"] = 0 },
+		["Testwarrior-Test"] = {
+			["snapshot"] = { ["name"] = "Testwarrior", ["level"] = 20, ["class"] = "WARRIOR", ["race"] = "Dwarf", ["xp"] = 500, ["xpMax"] = 10000, ["rested"] = 0 },
 			["gear"] = { ["spec"] = "protection", ["specSource"] = "talents" },
 			["findings"] = {
 				{ ["impact"] = 80, ["area"] = "Build", ["text"] = "2 unspent talent points", ["fix"] = "Open talents" }, -- [1]
@@ -46,7 +46,7 @@ func TestParse(t *testing.T) {
 	if len(c.Deaths) != 1 || !strings.Contains(c.Deaths[0], "Redridge") {
 		t.Fatalf("deaths %v", c.Deaths)
 	}
-	ch := M(M(M(v["ForeverCoachDB"])["chars"])["Willtank-Test"])
+	ch := M(M(M(v["ForeverCoachDB"])["chars"])["Testwarrior-Test"])
 	if N(ch["hex"]) != 16 || N(ch["neg"]) != -150 || ch["flag"] != true || S(v["Other"]) != "x" {
 		t.Fatalf("scalars %v", ch)
 	}

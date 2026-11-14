@@ -27,7 +27,7 @@ func TestHelperVersionAndLegacyStorage(t *testing.T) {
 	a.setGame(game)
 	a.reload()
 	view := a.snapshot()
-	if a.addonDir != addon || a.svPath != sv || view.Error != "" || len(view.Chars) != 1 || view.Chars[0].Name != "Willtank" {
+	if a.addonDir != addon || a.svPath != sv || view.Error != "" || len(view.Chars) != 1 || view.Chars[0].Name != "Testwarrior" {
 		t.Fatalf("legacy install not loaded: addon=%q sv=%q view=%+v", a.addonDir, a.svPath, view)
 	}
 	unchanged, err := os.ReadFile(sv)

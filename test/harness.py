@@ -28,7 +28,7 @@ LOCS = {}
 function time() return 1700000000 + now end
 function GetTime() return now end
 function ADVANCE(s) now = now + s end
-function UnitName() return "Willtank" end
+function UnitName() return "Testwarrior" end
 function GetRealmName() return "TestRealm" end
 function UnitClass() return "X", STATE.class end
 function UnitRace() return STATE.race, STATE.race end
