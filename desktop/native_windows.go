@@ -124,6 +124,9 @@ func nativeWndProc(hwnd uintptr, msg uint32, wp, lp uintptr) uintptr {
 			if w.chromium != nil {
 				_ = w.chromium.NotifyParentWindowPositionChanged()
 			}
+		case 0x0024: // WM_GETMINMAXINFO: no drag below the smallest working layout
+			nativeMinTrack(hwnd, lp)
+			return 0
 		case 0x0007: // WM_SETFOCUS
 			if w.chromium != nil {
 				w.chromium.Focus()
@@ -153,6 +156,59 @@ func nativeWndProc(hwnd uintptr, msg uint32, wp, lp uintptr) uintptr {
 	}
 	value, _, _ := nativeUser32.NewProc("DefWindowProcW").Call(hwnd, uintptr(msg), wp, lp)
 	return value
+}
+
+// nativeRect is a Win32 RECT.
+type nativeRect struct{ Left, Top, Right, Bottom int32 }
+
+// nativeSystemDPI is the system DPI, or 96 before Windows 10 1607.
+func nativeSystemDPI() int {
+	if p := nativeUser32.NewProc("GetDpiForSystem"); p.Find() == nil {
+		dpi, _, _ := p.Call()
+		return int(dpi)
+	}
+	return 96
+}
+
+// nativeWorkArea is the work area (screen minus taskbar) of the monitor showing hwnd,
+// or of the primary monitor when hwnd is 0. A zero rectangle means unknown.
+func nativeWorkArea(hwnd uintptr) nativeRect {
+	var work nativeRect
+	if hwnd != 0 {
+		if mon, _, _ := nativeUser32.NewProc("MonitorFromWindow").Call(hwnd, 2); mon != 0 { // MONITOR_DEFAULTTONEAREST
+			info := struct {
+				Size          uint32
+				Monitor, Work nativeRect
+				Flags         uint32
+			}{}
+			info.Size = uint32(unsafe.Sizeof(info))
+			if ok, _, _ := nativeUser32.NewProc("GetMonitorInfoW").Call(mon, uintptr(unsafe.Pointer(&info))); ok != 0 {
+				return info.Work
+			}
+		}
+	}
+	if ok, _, _ := nativeUser32.NewProc("SystemParametersInfoW").Call(0x0030, 0, uintptr(unsafe.Pointer(&work)), 0); ok == 0 { // SPI_GETWORKAREA
+		return nativeRect{}
+	}
+	return work
+}
+
+// nativeMinTrack fills MINMAXINFO.ptMinTrackSize for WM_GETMINMAXINFO.
+func nativeMinTrack(hwnd, lp uintptr) {
+	if lp == 0 {
+		return
+	}
+	dpi := nativeSystemDPI()
+	if p := nativeUser32.NewProc("GetDpiForWindow"); p.Find() == nil {
+		if d, _, _ := p.Call(hwnd); d != 0 {
+			dpi = int(d)
+		}
+	}
+	work := nativeWorkArea(hwnd)
+	w, h := nativeWindowMinSize(dpi, int(work.Right-work.Left), int(work.Bottom-work.Top))
+	// lp is a pointer Windows handed over as an integer; read it back without uintptr arithmetic.
+	info := (*struct{ Reserved, MaxSize, MaxPosition, MinTrack, MaxTrack [2]int32 })(*(*unsafe.Pointer)(unsafe.Pointer(&lp)))
+	info.MinTrack[0], info.MinTrack[1] = int32(w), int32(h)
 }
 
 func (w *nativeWindow) destroy() {
@@ -213,15 +269,13 @@ func runNative(app *App, disabled bool) error {
 	if atom == 0 {
 		return fmt.Errorf("register app window: %w", callErr)
 	}
-	// The manifest is per-monitor DPI aware, so sizes are physical pixels: scale the
-	// intended 1280x900 by the system DPI (96 = 100%).
-	winW, winH := uintptr(1280), uintptr(900)
-	if p := nativeUser32.NewProc("GetDpiForSystem"); p.Find() == nil { // Windows 10 1607+
-		if dpi, _, _ := p.Call(); dpi >= 96 && dpi <= 480 {
-			winW, winH = winW*dpi/96, winH*dpi/96
-		}
-	}
-	hwnd, _, callErr := nativeUser32.NewProc("CreateWindowExW").Call(0, uintptr(unsafe.Pointer(className)), uintptr(unsafe.Pointer(title)), 0x00CF0000, 0x80000000, 0x80000000, winW, winH, 0, 0, uintptr(instance), 0)
+	// The manifest is per-monitor DPI aware, so sizes are physical pixels: the intended
+	// 1280x900 scaled by the system DPI, clamped to the primary work area and centred
+	// there, so the bottom of the window is never behind the taskbar or off screen.
+	work := nativeWorkArea(0)
+	winW, winH := nativeWindowSize(nativeSystemDPI(), int(work.Right-work.Left), int(work.Bottom-work.Top))
+	winX, winY := nativeWindowPos(int(work.Left), int(work.Top), int(work.Right-work.Left), int(work.Bottom-work.Top), winW, winH)
+	hwnd, _, callErr := nativeUser32.NewProc("CreateWindowExW").Call(0, uintptr(unsafe.Pointer(className)), uintptr(unsafe.Pointer(title)), 0x00CF0000, uintptr(int32(winX)), uintptr(int32(winY)), uintptr(winW), uintptr(winH), 0, 0, uintptr(instance), 0)
 	if hwnd == 0 {
 		return fmt.Errorf("create app window: %w", callErr)
 	}
