@@ -65,6 +65,9 @@ type AddonReleaseInfo struct {
 	// the installed bundle is incomplete (a missing folder or an interrupted
 	// install). ApplyAddonRelease re-checks that before installing.
 	Repair bool `json:"repair,omitempty"`
+	// HasApp: the same release also carries RelaxCoach.exe, so an app this
+	// old should update itself first (nativeBridge, "app first").
+	HasApp bool `json:"hasApp,omitempty"`
 	// sameVersion: for a release equal to the installed Coach, the full
 	// release, so the app can offer it as a repair. Never shown to the UI.
 	sameVersion *AddonReleaseInfo
@@ -203,6 +206,7 @@ func (u *addonUpdater) check(ctx context.Context, current string) (AddonReleaseI
 			info.ChecksumURL = asset.URL
 		}
 	}
+	info.HasApp = foundApp
 	if !foundAsset {
 		reason := "The public release is missing " + wanted + "."
 		if foundApp {

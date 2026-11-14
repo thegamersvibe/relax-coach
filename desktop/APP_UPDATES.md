@@ -19,6 +19,12 @@ An older app without these controls cannot update itself. Download `RelaxCoach.e
 
 Keep the app in a folder writable by your Windows user. The updater does not request elevation or install a service. If permissions or another running Relax Coach instance prevent replacement, it fails safely instead of changing permissions or terminating unrelated processes.
 
+## App first, then addons (from 1.6.0)
+
+App and addon bundle always come from the same release, so a bundle newer than the app means an app update exists. From 1.6.0 the app never installs a bundle newer than itself while that release also carries `RelaxCoach.exe`: `checkAddon` then returns `NeedsApp` with `Available` false, and `applyAddon` refuses with "Update the app first" before anything is downloaded. The app that installs bundle N is therefore always app N, which knows N's pinned Coach file set. Escape: when this executable's last app update result (`last-result.json`) is `failed`, `rolled-back` or `recovery`, the bundle may be tried directly; the pinned file set still refuses an unknown set before any disk change. Apps 1.5.6 and older cannot be changed and still need their own Update App once; 1.6.0 does not change the Coach file set, so their Update Addon also still works.
+
+`afterAppUpdate()` (no argument, read-only) returns `{Updated, From, Game}`. `Updated` is true only when this process was started by an app update and `last-result.json` records `committed` for that transaction's ID, waiting up to 15 seconds for the worker to write it; until then the worker owns the new process and stops it on any failure, so nothing may start earlier. It answers true at most once per process. `gameState()` (no argument, read-only) returns `open`, `closed` or `unknown` (the process check failed).
+
 ## Trust boundary
 
 Only the stable, non-draft latest release at

@@ -25,6 +25,11 @@ type nativeServices struct {
 	// place describes where this executable runs and how to copy it to the
 	// usual folder (first run). nil: nothing is offered.
 	place func() appPlacementEnv
+	// appLast reads this executable's last app update result (ID, State);
+	// startup is this process's app update transaction, if it was started by one.
+	appLast  func() (id, state string, err error)
+	startup  func() (id, from string, ok bool)
+	gameOpen func(context.Context) (bool, error)
 }
 
 type nativeBridge struct {
@@ -41,6 +46,7 @@ type nativeBridge struct {
 	release                                                           *AddonReleaseInfo
 	checkedGame, checkedVersion                                       string
 	extra                                                             map[string]nativeExtraState
+	afterAppAnswered                                                  bool
 }
 
 type nativeReport struct {
@@ -63,7 +69,10 @@ type nativeOffer struct {
 	Install bool
 	// Repair: the installed version again, to complete an incomplete install.
 	Repair bool
-	Bundle AddonBundleState
+	// NeedsApp: the release is newer than this app and carries RelaxCoach.exe,
+	// so the app updates itself first (Available is then false).
+	NeedsApp bool
+	Bundle   AddonBundleState
 }
 
 type nativeRequest struct {
@@ -120,6 +129,15 @@ func newNativeBridge(a *App, disabled bool, s nativeServices) *nativeBridge {
 	if s.applyExtra == nil {
 		s.applyExtra = ApplyExtraAddon
 	}
+	if s.appLast == nil {
+		s.appLast = currentAppLastState
+	}
+	if s.startup == nil {
+		s.startup = currentAppStartup
+	}
+	if s.gameOpen == nil {
+		s.gameOpen = addonGameRunning
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &nativeBridge{app: a, services: s, ctx: ctx, cancel: cancel, disabled: disabled}
 }
@@ -155,7 +173,7 @@ func (b *nativeBridge) Call(method string, args []json.RawMessage) (any, error) 
 		if len(args) != 1 || !strings.HasPrefix(strings.TrimSpace(string(args[0])), `"`) || json.Unmarshal(args[0], &arg) != nil || len(arg) > 4096 || strings.IndexByte(arg, 0) >= 0 {
 			return nil, errors.New("expected one text argument")
 		}
-	case "reportRefresh", "chooseGame", "checkAddon", "checkApp", "checkAppStartup", "appReady", "extraList", "appPlacement", "installAppCopy", "openInstalledApp":
+	case "reportRefresh", "chooseGame", "checkAddon", "checkApp", "checkAppStartup", "appReady", "extraList", "appPlacement", "installAppCopy", "openInstalledApp", "afterAppUpdate", "gameState":
 		if len(args) != 0 {
 			return nil, errors.New("this method takes no arguments")
 		}
@@ -207,6 +225,10 @@ func (b *nativeBridge) Call(method string, args []json.RawMessage) (any, error) 
 		return b.repairAppLinks(arg)
 	case "openInstalledApp":
 		return b.openInstalledApp()
+	case "afterAppUpdate":
+		return b.afterAppUpdate()
+	case "gameState":
+		return b.gameState(), nil
 	case "openExternal":
 		if err := validateExternalURL(arg); err != nil {
 			return nil, err
@@ -346,8 +368,9 @@ func (b *nativeBridge) check() (nativeOffer, error) {
 		link = ""
 	}
 	bundle := InstalledBundleState(game)
+	needsApp := release.Available && b.appFirst(release)
 	return nativeOffer{Version: release.Version, Name: release.Name, Notes: release.Notes, HTMLURL: link, InstalledVersion: current,
-		Available: release.Available, Install: current == "0.0.0" || release.Repair, Repair: release.Repair, Bundle: bundle}, nil
+		Available: release.Available && !needsApp, Install: current == "0.0.0" || release.Repair, Repair: release.Repair, NeedsApp: needsApp, Bundle: bundle}, nil
 }
 
 func (b *nativeBridge) apply(expected string) (AddonUpdateResult, error) {
@@ -365,6 +388,11 @@ func (b *nativeBridge) apply(expected string) (AddonUpdateResult, error) {
 	release := *r
 	b.release = nil // A failed install requires a fresh explicit check too.
 	b.mu.Unlock()
+	// App first: this app never installs a bundle newer than itself while the
+	// same release has a new app; the new app knows the new bundle's file set.
+	if b.appFirst(release) {
+		return AddonUpdateResult{}, errors.New("Update the app first: Relax Coach " + release.Version + " needs app " + release.Version + ". Click Update App (or Update everything); the addons follow.")
+	}
 	ctx, cancel := context.WithTimeout(b.ctx, 5*time.Minute)
 	defer cancel()
 	result, err := b.services.apply(ctx, game, release)
