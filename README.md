@@ -9,17 +9,28 @@ Three **separate WoW Forever addons**, plus a native Windows report app:
 
 ## Download
 
-**[Download release v1.5.6](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.5.6)**:
+**[Download release v1.6.0](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.6.0)**:
 
-- `RelaxCoach-Bundle-1.5.6.zip` — the three independent addons (Coach, Journey, Relax Quest Planner 0.2.1), Journey guide content **4.00.08**, the Windows app and optional installer/restore scripts. From v1.5.0 the combined download has this new name; earlier releases used `RelaxCoach-Guild-<version>.zip`.
+- `RelaxCoach-Bundle-1.6.0.zip` — the three independent addons (Coach, Journey, Relax Quest Planner 0.2.1), Journey guide content **4.00.08**, the Windows app and optional installer/restore scripts. From v1.5.0 the combined download has this new name; earlier releases used `RelaxCoach-Guild-<version>.zip`.
 - `RelaxCoach.exe` — app-only download, for updating the application separately.
 - `SHA256SUMS.txt` — checksums for these release assets.
 
-**On app 1.5.0 to 1.5.5?** Use **Check App Update → Update App** first (app 1.5.6 is needed to install the new campfire songs; the new look and the launch update notice come with app 1.5.5; the Farming page with 1.5.3; installing while WoW is open with 1.5.2; Get started and the repair with 1.5.1), then **Updates → Check → Update**.
+**On app 1.5.0 to 1.5.6?** Use **Check App Update → Update App** first (app 1.6.0 brings Update everything, the installed copy with shortcuts and the automatic addon update; app 1.5.6 is needed to install the campfire songs; the new look and the launch update notice come with app 1.5.5; the Farming page with 1.5.3; installing while WoW is open with 1.5.2; Get started and the repair with 1.5.1), then **Updates → Check → Update**.
 
 **On app 1.4.x?** Use **Check App Update → Update App** first, then close WoW and use **Check for updates → Update Addon**. Apps before 1.5.0 cannot install the bundle (from 1.5.0) and report it as an app-only release until the app is updated. App 1.4.0 needs one manual EXE replacement with Relax Coach closed before it can update itself.
 
-There is deliberately no Coach-only `RelaxCoach-1.5.6.zip`: older apps must not report a completed addon update while leaving the guide content behind. The previous app-only v1.4.1 release remains unchanged.
+There is deliberately no Coach-only `RelaxCoach-1.6.0.zip`: older apps must not report a completed addon update while leaving the guide content behind. The previous app-only v1.4.1 release remains unchanged.
+
+## What's new in v1.6.0
+
+- **Install on this PC:** Get started, step 1 copies Relax Coach to its own folder and adds Start menu and Desktop shortcuts. If a shortcut goes missing, **Settings → Repair shortcuts** puts it back; an existing shortcut that points somewhere else is only replaced after you confirm.
+- **Update everything:** one button on Updates updates the app first, then the Relax Coach addons, then the More addons you have installed. It only updates what you have, never installs something new, and stops at the first problem with a note of what was done.
+- **Automatic after an app update:** when the app has just updated itself, it updates your addons by itself once, if WoW is closed. If WoW is open, Update everything is marked instead.
+- **App first:** when a release comes with a new app, the app updates itself before it installs the new addons. If the app cannot update itself, the message links the manual download.
+- The window fits your screen, and only one copy of Relax Coach runs at a time: opening it again brings the open window to the front.
+- Plainer wording, readable release notes, and better keyboard and screen-reader support.
+- **On app 1.5.6:** **Check App Update → Update App** gets you all of this; **Updates → Check → Update** also works for the addons, which have the same files as 1.5.6.
+- Relax Journey (`4.00.04`), the guide content (`4.00.08`) and Relax Quest Planner (`0.2.1`) are unchanged.
 
 ## What's new in v1.5.6
 
@@ -141,7 +152,7 @@ Use the included `Restore-RelaxCoach.ps1 -Backup <backup-folder>` with WoW close
 ## Coverage and known limits
 
 - Optional installed providers: GearQuest Forever for comparable item scores, ForeverDungeonJournal for dungeon information. Unknown or incomparable gear is shown as unscored, not assigned an invented score.
-- Included Journey code: `4.00.04`; Relax package/Coach version: `1.5.6`; guide-content version: `4.00.08`. The original signed catalog and guide bytes are retained. The content's existing validity date is **18 December 2026**; this release does not remove expiry checks.
+- Included Journey code: `4.00.04`; Relax package/Coach version: `1.6.0`; guide-content version: `4.00.08`. The original signed catalog and guide bytes are retained. The content's existing validity date is **18 December 2026**; this release does not remove expiry checks.
 - This is not a claim of complete coverage for every custom Forever class/spec/item or every leveling route. Some route entries are stubs.
 - An intermittent blank native window occurred during development. The final local candidate passed ten restart/Refresh cycles and a more-than-three-minute minimize/restore test, but the earlier root cause was not conclusively identified. If the window is blank, close and reopen it and report the issue.
 
