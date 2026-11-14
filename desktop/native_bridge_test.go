@@ -208,3 +208,20 @@ func TestNativeLifecycleDoesNotExpire(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestNativeBridgeTextArgumentsMustBeJSONStrings(t *testing.T) {
+	a, _ := nativeTestApp(t)
+	b := newNativeBridge(a, false, nativeServices{})
+	defer b.Close()
+	for _, method := range []string{"setGame", "selectAccount", "applyAddon", "applyApp", "openExternal", "checkExtra", "applyExtra", "repairAppLinks"} {
+		for _, raw := range []string{"null", " null ", "0", "true", "[]", "{}"} {
+			if _, err := b.Call(method, []json.RawMessage{json.RawMessage(raw)}); err == nil || err.Error() != "expected one text argument" {
+				t.Fatalf("%s(%s): %v", method, raw, err)
+			}
+		}
+	}
+	// A real (empty) string still reaches the method.
+	if _, err := b.Call("repairAppLinks", []json.RawMessage{json.RawMessage(` ""`)}); err != nil && err.Error() == "expected one text argument" {
+		t.Fatalf("empty string refused: %v", err)
+	}
+}

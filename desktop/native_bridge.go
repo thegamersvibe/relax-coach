@@ -151,7 +151,8 @@ func (b *nativeBridge) Call(method string, args []json.RawMessage) (any, error) 
 	var arg string
 	switch method {
 	case "setGame", "selectAccount", "applyAddon", "applyApp", "openExternal", "checkExtra", "applyExtra", "repairAppLinks":
-		if len(args) != 1 || json.Unmarshal(args[0], &arg) != nil || len(arg) > 4096 || strings.IndexByte(arg, 0) >= 0 {
+		// A JSON string only: null would decode as "" (for repairAppLinks, "all").
+		if len(args) != 1 || !strings.HasPrefix(strings.TrimSpace(string(args[0])), `"`) || json.Unmarshal(args[0], &arg) != nil || len(arg) > 4096 || strings.IndexByte(arg, 0) >= 0 {
 			return nil, errors.New("expected one text argument")
 		}
 	case "reportRefresh", "chooseGame", "checkAddon", "checkApp", "checkAppStartup", "appReady", "extraList", "appPlacement", "installAppCopy", "openInstalledApp":
