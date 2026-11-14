@@ -390,7 +390,7 @@ func (w *nativeWindow) message(raw string) {
 			}
 			text, _ := windows.UTF16PtrFromString(string(data))
 			_, postErr := w.core.call(32, uintptr(unsafe.Pointer(text))) // PostWebMessageAsJson
-			if nativeAppRestartReady(req.Method, value, callErr, postErr) {
+			if nativeAppRestartReady(req.Method, value, callErr, postErr) || nativeOpenedInstalled(req.Method, value, callErr, postErr) {
 				// This closure runs on the locked UI thread, after response dispatch.
 				nativeUser32.NewProc("PostMessageW").Call(w.hwnd, nativeWMClose, 0, 0)
 			}

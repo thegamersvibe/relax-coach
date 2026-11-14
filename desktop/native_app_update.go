@@ -116,3 +116,10 @@ func nativeAppRestartReady(method string, value any, callErr, errorPosting error
 	r, ok := value.(AppUpdateResult)
 	return method == "applyApp" && ok && r.RestartReady && callErr == nil && errorPosting == nil
 }
+
+// nativeOpenedInstalled is true when the installed copy was just started, so
+// this window closes once the response is posted (like an app update restart).
+func nativeOpenedInstalled(method string, value any, callErr, errorPosting error) bool {
+	p, ok := value.(AppPlacement)
+	return method == "openInstalledApp" && ok && p.State == "opened" && callErr == nil && errorPosting == nil
+}
