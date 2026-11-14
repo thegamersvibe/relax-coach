@@ -717,6 +717,17 @@ async function updateAll(opts = {}) {
   busy = true; offer = null; appOffer = null; for (const k in extraOffers) delete extraOffers[k]; updateButtons();
   delete $('update-all').dataset.new;
   const done = [], left = [];
+  // The automatic run asks again whether WoW is closed right before each
+  // install; anything but "closed" stops it (unknown never installs).
+  const wowStillClosed = async (where, rest) => {
+    if (!opts.auto) return true;
+    let state = 'unknown';
+    try { state = await rc.gameState(); } catch(_) { state = 'unknown'; }
+    if (state === 'closed') return true;
+    markUpdateAll();
+    stop(where, new Error(state === 'open' ? 'WoW was started, so nothing more was updated; close WoW before you try again.' : 'Relax Coach could not tell whether WoW is running, so nothing more was updated; close WoW before you try again.'), rest);
+    return false;
+  };
   const stop = (where, err, rest) => {
     uaStatus('Stopped at '+where+': '+err.message+(done.length ? ' Done: '+done.join('; ')+'.' : '')+(rest.length ? ' Not done: '+rest.join(', ')+'.' : '')+' Click Update everything to try again.');
   };
@@ -747,6 +758,7 @@ async function updateAll(opts = {}) {
     }
     const installedText = o.InstalledVersion === '0.0.0' ? 'Not installed' : o.InstalledVersion;
     if (plainBundleUpdate(o)) {
+      if (!await wowStillClosed('the Relax Coach addons', ['Relax Coach addons','More addons'])) return;
       uaLine('ua-bundle','Relax Coach addons',installedText+' → '+o.Version+': updating…');
       uaStatus(progressText);
       let result;
@@ -774,6 +786,7 @@ async function updateAll(opts = {}) {
       let c;
       try { c = await rc.checkExtra(item.ID); } catch(err) { uaLine(line,item.Name,item.InstalledVersion+': check failed'); stop(item.Name, err, rest); return; }
       if (!c.Available || c.Install) { uaLine(line,item.Name,item.InstalledVersion+': up to date'); continue; }
+      if (!await wowStillClosed(item.Name, todo.slice(i).map(x => x.Name))) return;
       uaLine(line,item.Name,item.InstalledVersion+' → '+c.Version+': updating…');
       let result;
       try { result = await rc.applyExtra(item.ID, c.Version); }
@@ -819,7 +832,7 @@ async function autoUpdate() {
   if (!current && !plainBundleUpdate(o)) { why('Your Relax Coach addons need attention (a repair, or a Journey that is not Relax Journey): open Updates and use the buttons there.'); return; }
   message('Relax Coach was updated to '+version+'. '+(current ? 'Your Relax Coach addons are up to date; checking your More addons…' : 'Updating your addons…'));
   if (!userNavigated) show('update');
-  await updateAll({skipApp:true, offer:o});
+  await updateAll({skipApp:true, offer:o, auto:true});
 }
 // Keep every link inside the document or route it through native allowlist validation.
 function interceptLink(event) {

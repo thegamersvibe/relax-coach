@@ -204,13 +204,58 @@ test('automatic run: bundle current but WoW open updates nothing',async t=>{
   assert.match($('update-all-status').textContent,/WoW is open/);
 });
 
-test('updates disabled: no afterAppUpdate call and nothing runs',async t=>{
-  const {$,count}=await setup(t,base({afterAppUpdate:()=>after,gameState:()=>'closed',checkAddon:()=>bundle()}),{disabled:true});
-  await settle();
+test('updates disabled (-no-update): the automatic run stays silent',async t=>{
+  const {$,count,calls}=await setup(t,base({afterAppUpdate:()=>after,gameState:()=>'closed',checkAddon:()=>bundle(),extraList:()=>extras,checkExtra:id=>extraOffer(id)}),{disabled:true});
+  await settle();await settle();
   assert.equal(count('afterAppUpdate'),0);
-  assert.equal(count('applyAddon')+count('checkAddon'),0);
+  assert.equal(count('gameState')+count('checkApp')+count('applyAddon')+count('checkAddon')+count('applyExtra')+count('checkExtra'),0);
   assert.equal($('update-all').disabled,true);
+  assert.equal($('update-all').dataset.new,undefined,'no mark');
+  assert.equal($('nav-update').dataset.new,undefined,'no nav mark');
+  assert.equal($('update-all-status').textContent,'','no status');
+  assert.doesNotMatch($('global-status').textContent,/updated to|Update everything/);
 });
+
+test('automatic run: gameState is asked again right before each install',async t=>{
+  // closed at the first look, then WoW is started before the bundle install.
+  let n=0;
+  const r=await setup(t,base({afterAppUpdate:()=>after,gameState:()=>(n++===0?'closed':'open'),checkAddon:()=>bundle(),extraList:()=>extras,checkExtra:id=>extraOffer(id)}));
+  await settle();await settle();
+  assert.equal(r.count('applyAddon')+r.count('applyExtra'),0,'nothing installed');
+  assert.match(r.$('update-all-status').textContent,/Stopped at the Relax Coach addons: WoW was started/);
+  assert.equal(r.$('update-all').dataset.new,'true');
+  // unknown right before the install also stops; the order is check, ask, install.
+  let m=0;
+  const u=await setup(t,base({afterAppUpdate:()=>after,gameState:()=>(m++===0?'closed':'unknown'),checkAddon:()=>bundle()}));
+  await settle();await settle();
+  assert.equal(u.count('applyAddon'),0);
+  assert.match(u.$('update-all-status').textContent,/could not tell whether WoW is running/);
+  // closed throughout: one ask before the check, one before each install.
+  const ok=await setup(t,base({afterAppUpdate:()=>after,gameState:()=>'closed',checkAddon:()=>bundle(),applyAddon:v=>({message:'ok'}),extraList:()=>extras,checkExtra:id=>extraOffer(id),applyExtra:a=>({message:a})}));
+  await settle();await settle();
+  const seq=ok.calls.map(c=>c.method).filter(x=>/^(gameState|checkAddon|applyAddon|checkExtra|applyExtra)$/.test(x));
+  assert.deepEqual(seq,['gameState','checkAddon','gameState','applyAddon','checkExtra','gameState','applyExtra','checkExtra','gameState','applyExtra']);
+  // WoW started between two More addons: the first is done, the rest are listed.
+  let k=0;
+  const mid=await setup(t,base({afterAppUpdate:()=>after,gameState:()=>(k++<3?'closed':'open'),checkAddon:()=>bundle(),applyAddon:v=>({message:'ok'}),extraList:()=>extras,checkExtra:id=>extraOffer(id),applyExtra:a=>({message:a})}));
+  await settle();await settle();
+  assert.deepEqual(mid.calls.filter(c=>c.method==='applyExtra').map(c=>c.params[0]),['rankup@9.9.9']);
+  assert.match(mid.$('update-all-status').textContent,/Stopped at AH Profit: WoW was started.*Not done: AH Profit\./);
+});
+
+test('automatic run: a fresh check, the normal apply, no retry, stops at the first failure',async t=>{
+  const {$,count,calls}=await setup(t,base({afterAppUpdate:()=>after,gameState:()=>'closed',checkAddon:()=>bundle(),
+    applyAddon:()=>{throw Error('disk full')},extraList:()=>extras,checkExtra:id=>extraOffer(id)}));
+  await settle();await settle();await settle();
+  assert.equal(count('checkAddon'),1,'one fresh check');
+  assert.equal(count('applyAddon'),1,'one apply, never retried');
+  assert.equal(count('checkExtra')+count('applyExtra'),0,'stopped at the first failure');
+  assert.match($('update-all-status').textContent,/Stopped at the Relax Coach addons: disk full/);
+  assert.equal(calls.find(c=>c.method==='applyAddon').params[0],'1.6.1','the checked version');
+  $('nav-update').click();await settle();await settle();
+  assert.equal(count('applyAddon'),1,'no automatic retry on later reloads');
+});
+
 
 test('not started by an app update: the normal launch check runs, nothing installs',async t=>{
   const {count}=await setup(t,base({afterAppUpdate:()=>({Updated:false}),checkAppStartup:()=>({Available:false})}));
