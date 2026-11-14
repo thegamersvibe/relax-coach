@@ -37,9 +37,14 @@ test('new player: Get started first, then folder, Install, done',async t=>{
   assert.equal($('setup-install').textContent,'Install');
   assert.equal($('apply-update').textContent,'Install');
   assert.equal($('setup-install').disabled,true,'nothing to install before a folder is chosen');
+  assert.equal($('setup-browse').className,'primary','no folder yet: choosing it is the main action');
+  assert.equal($('setup-folder-found').hidden,true);
   assert.equal(count('checkAddon'),0,'no check without a game folder');
   $('setup-browse').click();await settle();await settle();
   assert.equal($('setup-folder').textContent,'C:\\WoW\\_forever_');
+  assert.equal($('setup-folder-found').hidden,false,'found folder is labelled');
+  assert.equal($('setup-browse').className,'secondary','the folder button is no longer the main action (U3)');
+  assert.equal($('setup-browse').textContent,'Change folder…');
   assert.ok($('step-folder').classList.contains('done'));
   assert.equal(count('checkAddon'),1,'one release lookup for the chosen folder');
   assert.equal(count('applyAddon'),0,'nothing installed without a click');
@@ -103,31 +108,6 @@ test('bundle and More addons use the same verbs and messages',async t=>{
   $('apply-update').click();await settle();await settle();
   assert.equal($('extra-rankup').querySelector('.extra-status').textContent,$('update-status').textContent,'same file-in-use failure wording');
   assert.equal($('update-status').textContent,'Install failed: Close WoW and try again: Windows refused to move a file that is in use. The previous addon folders were restored; nothing was changed. Check again before retrying.');
-});
-
-test('first run: copying the app is offered, never automatic',async t=>{
-  let placement={State:'offer',Message:'Relax Coach is running from C:\\Users\\p\\Downloads. Optional: copy it.'};
-  const {$,count}=await setup(t,{reportRefresh:()=>report('C:\\WoW','1.5.0',installed),appPlacement:()=>placement,
-    installAppCopy:()=>({State:'copied',Message:'Relax Coach was copied to C:\\Users\\p\\RelaxCoach\\RelaxCoach.exe. A "Relax Coach" shortcut was added to the desktop.'})});
-  assert.equal($('app-placement').hidden,false);
-  assert.equal($('app-copy').hidden,false);
-  assert.equal(count('installAppCopy'),0,'not copied without a click');
-  $('app-copy').click();await settle();
-  assert.equal(count('installAppCopy'),1);
-  assert.match($('app-placement-text').textContent,/shortcut was added/);
-  assert.equal($('app-copy').hidden,true);
-  $('app-copy-later').click();
-  assert.equal($('app-placement').hidden,true);
-  for (const state of ['installed','unavailable']) {
-    placement={State:state};
-    const r=await setup(t,{reportRefresh:()=>report('C:\\WoW','1.5.0',installed),appPlacement:()=>placement});
-    assert.equal(r.$('app-placement').hidden,true,state);
-  }
-  placement={State:'offer',Message:'x'};
-  const later=await setup(t,{reportRefresh:()=>report('C:\\WoW','1.5.0',installed),appPlacement:()=>placement});
-  later.$('app-copy-later').click();
-  assert.equal(later.$('app-placement').hidden,true);
-  assert.equal(later.count('installAppCopy'),0);
 });
 
 test('updates disabled: Get started never looks up a release',async t=>{

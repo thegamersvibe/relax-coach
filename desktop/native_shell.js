@@ -36,7 +36,9 @@ const rc = Object.freeze({
   checkExtra: id => call('checkExtra',id),
   applyExtra: (id,version) => call('applyExtra',id+'@'+version),
   appPlacement: () => call('appPlacement'),
-  installAppCopy: () => call('installAppCopy')
+  installAppCopy: () => call('installAppCopy'),
+  repairAppLinks: list => call('repairAppLinks',list),
+  openInstalledApp: () => call('openInstalledApp')
 });
 // One vocabulary for every addon (Relax Coach bundle and More addons):
 // Install when the addon is not there yet, otherwise Update.
@@ -69,14 +71,15 @@ let renderedReport = {
   Account: $('report-body').dataset.account
 };
 function message(text) { $('global-status').textContent = text; }
-let userNavigated = false, initialViewChosen = false, placementDismissed = false;
+let userNavigated = false, initialViewChosen = false, placement = null;
 const autoChecked = new Set();
 function show(view) {
   $('setup-view').hidden = view !== 'setup';
   $('report-view').hidden = view !== 'report';
   $('update-view').hidden = view !== 'update';
   $('farm-view').hidden = view !== 'farm';
-  for (const name of ['setup','report','farm','update']) {
+  $('settings-view').hidden = view !== 'settings';
+  for (const name of ['setup','report','farm','update','settings']) {
     $('nav-'+name).classList.toggle('active',name === view);
     if (name === view) $('nav-'+name).setAttribute('aria-current','page');
     else $('nav-'+name).removeAttribute('aria-current');
@@ -98,8 +101,8 @@ function updateButtons() {
   $('check-update').disabled = busy || disabled;
   $('apply-update').disabled = busy || disabled || !offer || !offer.Available;
   $('setup-install').disabled = busy || disabled || !offer || !offer.Available;
-  $('app-copy').disabled = busy;
-  for (const id of ['browse-folder','use-folder','game-path','setup-browse']) $(id).disabled = busy;
+  for (const id of ['browse-folder','use-folder','game-path','setup-browse','setup-app-install','setup-app-open','settings-replace','settings-keep']) $(id).disabled = busy;
+  $('settings-repair').disabled = busy || !linksNeedRepair();
   renderBundleLabels();
   for (const b of document.querySelectorAll('#extra-list button')) {
     const o = extraOffers[b.dataset.id];
@@ -254,6 +257,10 @@ function displayReport(result,folderChanged = false) {
   $('installed-version').textContent = result.InstalledVersion === '0.0.0' ? 'Not installed' : result.InstalledVersion;
   $('setup-installed').textContent = $('installed-version').textContent;
   $('setup-folder').textContent = result.Game || 'Not chosen yet.';
+  // Once a folder is known its button is no longer the step's main action.
+  $('setup-folder-found').hidden = !result.Game;
+  $('setup-browse').className = result.Game ? 'secondary' : 'primary';
+  $('setup-browse').textContent = result.Game ? 'Change folder…' : 'Choose folder…';
   $('folder-label').textContent = result.Game;
   if (folderChanged || document.activeElement !== $('game-path')) $('game-path').value = result.Game;
   if (folderChanged) {
@@ -298,6 +305,7 @@ $('nav-setup').addEventListener('click',()=>{ userNavigated = true; show('setup'
 $('nav-report').addEventListener('click',()=>{ userNavigated = true; show('report'); });
 $('nav-update').addEventListener('click',()=>{ userNavigated = true; show('update'); if (!busy) loadExtras(); else extrasPending = true; });
 $('nav-farm').addEventListener('click',()=>{ userNavigated = true; show('farm'); });
+$('nav-settings').addEventListener('click',()=>{ userNavigated = true; show('settings'); if (!busy) loadPlacement(); });
 $('setup-report').addEventListener('click',()=>{ userNavigated = true; show('report'); });
 $('setup-more').addEventListener('click',()=>{ userNavigated = true; show('update'); if (!busy) loadExtras(); else extrasPending = true; });
 $('refresh').addEventListener('click',()=>refresh(true));
@@ -483,27 +491,104 @@ function maybeAutoCheck() {
   autoChecked.add(game);
   checkBundle();
 }
-// First run: optionally copy the app to its usual folder and add a shortcut.
-function showPlacement(p) {
-  const box = $('app-placement');
-  if (placementDismissed || !p || !['offer','other-copy','blocked','copied'].includes(p.State)) { box.hidden = true; return; }
-  box.hidden = false;
-  $('app-placement-text').textContent = p.Message || '';
-  $('app-copy').hidden = p.State !== 'offer';
-  $('app-copy-later').textContent = p.State === 'offer' ? 'Not now' : 'OK';
+// Step 1 of Get started and the Settings page: where the app runs from and its
+// shortcuts. State text is redrawn from Go; the two status lines below it hold
+// only results and errors of a click, so no refresh can wipe them.
+const linkLabel = {desktop:'Desktop', startmenu:'Start menu'};
+const linkText = l => l.State === 'ok' ? 'Opens the installed copy.'
+  : l.State === 'missing' ? 'Missing.'
+  : l.State === 'unavailable' ? 'Folder not found; no shortcut can be added there.'
+  : l.Target ? 'Points somewhere else: '+l.Target : 'Exists, but it is not a shortcut to the installed copy.';
+const canLink = () => !!placement && ['installed','other-copy'].includes(placement.State);
+function linksNeedRepair() {
+  return canLink() && (placement.Links || []).some(l => l.State === 'missing' || l.State === 'other');
+}
+function renderPlacement(p) {
+  placement = p || null;
+  const state = placement ? placement.State : 'unavailable';
+  let text = (placement && placement.Message) || '';
+  if (state === 'installed') text = 'Relax Coach is installed on this PC'+(placement.Target ? ' ('+placement.Target+')' : '')+'.';
+  else if (state === 'other-copy' && !placement.SameCopy) text += ' The installed copy may be older than this one; Update everything there brings it up to date.';
+  else if (state === 'unavailable') text = 'Relax Coach could not tell where it is installed. You can keep using it from here.';
+  if (state === 'other-copy') text += ' Nothing is overwritten.';
+  $('setup-app-text').textContent = text;
+  $('setup-app-install').hidden = state !== 'offer';
+  $('setup-app-open').hidden = state !== 'other-copy';
+  $('step-app').classList.toggle('done', state === 'installed');
+  if (state === 'offer' || state === 'other-copy') $('nav-setup').dataset.new = 'true';
+  else delete $('nav-setup').dataset.new;
+  $('settings-running').textContent = (placement && placement.Running) || 'Unknown';
+  $('settings-target').textContent = (placement && placement.Target) || 'Unknown';
+  $('settings-location').textContent = canLink() ? '' : state === 'offer' ? 'Not installed yet: use Get started, step 1.' : text;
+  const list = $('settings-links');
+  list.replaceChildren();
+  for (const l of (placement && placement.Links) || []) {
+    const li = document.createElement('li'); li.dataset.where = l.Where; li.dataset.state = l.State;
+    const b = document.createElement('b'); b.textContent = linkLabel[l.Where] || l.Where;
+    li.append(b, ' '+linkText(l)); list.append(li);
+  }
+  updateButtons();
 }
 async function loadPlacement() {
-  try { showPlacement(await rc.appPlacement()); } catch(err) { $('app-placement').hidden = true; }
+  try {
+    const p = await rc.appPlacement();
+    renderPlacement(p);
+    // A copy that is not the installed one opens on step 1 (also with addons installed).
+    if (!userNavigated && p && ['offer','other-copy'].includes(p.State)) { show('setup'); maybeAutoCheck(); }
+  } catch(err) { renderPlacement(null); }
 }
-$('app-copy').addEventListener('click',async()=>{
+async function openInstalled(statusId, prefix) {
+  try {
+    await rc.openInstalledApp(); // Go closes this window after a successful start
+    $(statusId).textContent = prefix+'Opening the installed Relax Coach…';
+    restarting = true;
+  } catch(err) {
+    $(statusId).textContent = prefix+'Relax Coach could not reopen from its folder ('+err.message+'). Start it from '
+      +((placement && placement.Target) || 'its folder')+' next time; you can delete the downloaded file.';
+  }
+}
+$('setup-app-install').addEventListener('click',async()=>{
   if (busy) return;
   busy = true; updateButtons();
-  $('app-placement-text').textContent = 'Copying Relax Coach and adding the shortcut…';
-  try { showPlacement(await rc.installAppCopy()); }
-  catch(err) { $('app-placement-text').textContent = 'Copy failed: '+err.message; $('app-copy').hidden = true; $('app-copy-later').textContent = 'OK'; }
+  $('setup-app-status').textContent = 'Installing Relax Coach and adding shortcuts…';
+  let copied = null;
+  try { copied = await rc.installAppCopy(); renderPlacement(copied); }
+  catch(err) { $('setup-app-status').textContent = 'Install failed: '+err.message; }
   finally { busy = false; updateButtons(); }
+  if (!copied) return;
+  busy = true; updateButtons();
+  try { await openInstalled('setup-app-status', (copied.Message || '')+' '); }
+  finally { if (!restarting) { busy = false; updateButtons(); } }
 });
-$('app-copy-later').addEventListener('click',()=>{ placementDismissed = true; $('app-placement').hidden = true; });
+$('setup-app-open').addEventListener('click',async()=>{
+  if (busy) return;
+  busy = true; updateButtons();
+  $('setup-app-status').textContent = 'Opening the installed Relax Coach…';
+  try { await openInstalled('setup-app-status', ''); }
+  finally { if (!restarting) { busy = false; updateButtons(); } }
+});
+async function repairLinks(replace) {
+  if (busy) return;
+  busy = true; $('settings-confirm').hidden = true; updateButtons();
+  $('settings-status').textContent = 'Repairing shortcuts…';
+  try { const p = await rc.repairAppLinks(replace.join(',')); renderPlacement(p); $('settings-status').textContent = p.Message || 'Shortcuts checked.'; }
+  catch(err) { $('settings-status').textContent = 'Repair failed: '+err.message; }
+  finally { busy = false; updateButtons(); }
+}
+$('settings-repair').addEventListener('click',()=>{
+  if (busy || !linksNeedRepair()) return;
+  const others = placement.Links.filter(l => l.State === 'other');
+  if (!others.length) { repairLinks([]); return; }
+  // Never replace a shortcut the player did not confirm by name.
+  $('settings-confirm-text').textContent = others.map(l => 'The '+linkLabel[l.Where]+' shortcut '+(l.Target ? 'points at '+l.Target : 'is not a shortcut to the installed copy')+'.').join(' ')+' Replace it?';
+  $('settings-confirm').hidden = false;
+});
+$('settings-replace').addEventListener('click',()=>repairLinks(placement.Links.filter(l => l.State === 'other').map(l => l.Where)));
+$('settings-keep').addEventListener('click',()=>{
+  $('settings-confirm').hidden = true;
+  if (placement.Links.some(l => l.State === 'missing')) repairLinks([]);
+  else $('settings-status').textContent = 'Nothing was changed.';
+});
 // Read-only release check once per launch so players learn about a new app
 // (and its new look) without visiting GitHub. Nothing downloads or installs
 // until they click Update App; -no-update skips it entirely.

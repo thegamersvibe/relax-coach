@@ -206,8 +206,7 @@ func (e appPlacementEnv) install() (AppPlacement, error) {
 	}
 	p.State = "copied"
 	note := e.makeLinks(&p, nil)
-	p.Message = "Relax Coach was copied to " + p.Target + "." + note +
-		" Close this window and start Relax Coach from there next time; you can delete the downloaded file. Your game folder choice is kept."
+	p.Message = "Relax Coach was copied to " + p.Target + "." + note + " Your game folder choice is kept."
 	return p, nil
 }
 

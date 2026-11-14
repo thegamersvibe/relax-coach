@@ -22,7 +22,11 @@ h1,h2,h3,h4{font-family:"Segoe UI Variable Display","Segoe UI Variable","Segoe U
 button:disabled{opacity:.5;cursor:default;box-shadow:none}
 .primary:disabled{background:#ffffff08;color:var(--mut);border-color:var(--line2);border-style:dashed;font-weight:600;opacity:1}
 .navbtn{display:flex;align-items:center;gap:12px;text-align:left;white-space:nowrap;border-color:transparent;background:transparent;color:var(--mut);font-weight:600;padding:10px 12px;position:relative}
-#nav-update[data-new]{color:var(--fg)}#nav-update[data-new]:after{opacity:1}
+#nav-update[data-new],#nav-setup[data-new]{color:var(--fg)}#nav-update[data-new]:after,#nav-setup[data-new]:after{opacity:1}
+#nav-settings{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1'/%3E%3C/svg%3E")}
+.links{list-style:none;margin:8px 0 12px;padding:0;display:grid;gap:6px}
+.links li{background:var(--well);border:1px solid var(--line);border-radius:10px;padding:8px 14px;overflow-wrap:anywhere}
+.links b{display:inline-block;min-width:96px}
 .navbtn:before{content:"";flex:none;width:20px;height:20px;background:currentColor;-webkit-mask:var(--i) center/contain no-repeat;mask:var(--i) center/contain no-repeat}
 .navbtn:after{content:"";position:absolute;inset:-1px;border-radius:10px;background:#e9b65c1f;border:1px solid #e9b65c40;opacity:0;pointer-events:none;transition:opacity .16s ease-out}
 .navbtn:hover{color:var(--fg);background:#ffffff0b}
@@ -37,7 +41,7 @@ button:disabled{opacity:.5;cursor:default;box-shadow:none}
 .sidebar .smallprint .fine{display:block}
 .nb{white-space:nowrap}
 .workspace{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding:18px 0 0;max-width:none;margin:0;--gx:36px;--sb:10px;--mw:1340px;--edge:max(var(--gx),calc((100% - var(--sb) - var(--mw))/2))}
-.workspace>.folder,.workspace>#global-status,.workspace>#app-placement,.workspace>section>.pagehead,.workspace>section>.account-panel{flex:none;max-width:none;margin-left:var(--edge);margin-right:calc(var(--edge) + var(--sb))}
+.workspace>.folder,.workspace>#global-status,.workspace>section>.pagehead,.workspace>section>.account-panel{flex:none;max-width:none;margin-left:var(--edge);margin-right:calc(var(--edge) + var(--sb))}
 .workspace>section{flex:1;min-height:0;display:flex;flex-direction:column}
 #report-body,#farm-body,.pane{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;scrollbar-gutter:stable;padding:14px var(--gx) 36px;border-top:1px solid var(--line)}
 #report-body>*,#farm-body>*,.pane>*{max-width:var(--mw);margin-left:auto;margin-right:auto}
@@ -47,7 +51,7 @@ button:disabled{opacity:.5;cursor:default;box-shadow:none}
 .workspace ::-webkit-scrollbar-track{background:#ffffff08;border-left:1px solid var(--line)}
 .workspace ::-webkit-scrollbar-thumb{background:#5b6b8c;border:2px solid transparent;border-radius:5px;background-clip:padding-box}
 .workspace ::-webkit-scrollbar-thumb:hover{background-color:#7d8db0}
-.workspace>section:not([hidden]),#app-placement:not([hidden]){animation:viewin .18s ease-out both}
+.workspace>section:not([hidden]){animation:viewin .18s ease-out both}
 @keyframes viewin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .pagehead{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:16px}
 .pagehead h2{font-size:28px;line-height:1.2;font-weight:750;letter-spacing:-.2px;margin:0 0 2px}
@@ -69,7 +73,7 @@ button:disabled{opacity:.5;cursor:default;box-shadow:none}
 .status{white-space:pre-wrap;overflow-wrap:anywhere}
 p.status:empty{display:none}
 #global-status:empty{display:none}
-.updatecard,.placement{margin-bottom:16px}
+.updatecard{margin-bottom:16px}
 .updatecard h3,.step h3,#farm-view .card h3{font-size:18px;font-weight:700;margin-bottom:10px}
 .updatecard h3[id]{font-size:14px;font-weight:650;color:var(--mut);margin:20px 0 8px}
 .updatecard .status,.step .status{color:var(--mut);margin:12px 0 0}
@@ -176,22 +180,22 @@ button:focus-visible,a:focus-visible,.smallprint:focus-visible,input:focus-visib
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
 </style></head><body data-token="{{.Token}}" data-updates-disabled="{{.UpdatesDisabled}}">
 <aside class="sidebar"><div class="brand"><img class="crest" src="{{.Logo}}" alt="Relax Coach tea-glass emblem"><h1>Relax Coach</h1><small>WoW Forever companion</small></div>
-<nav aria-label="Main"><button id="nav-setup" class="navbtn"><span>Get started</span></button><button id="nav-report" class="navbtn active" aria-current="page"><span>Coach Report</span></button><button id="nav-farm" class="navbtn"{{if not .View.Farm.Present}} hidden{{end}}><span>Farming</span></button><button id="nav-update" class="navbtn"><span>Updates</span></button></nav>
+<nav aria-label="Main"><button id="nav-setup" class="navbtn"><span>Get started</span></button><button id="nav-report" class="navbtn active" aria-current="page"><span>Coach Report</span></button><button id="nav-farm" class="navbtn"{{if not .View.Farm.Present}} hidden{{end}}><span>Farming</span></button><button id="nav-update" class="navbtn"><span>Updates</span></button><button id="nav-settings" class="navbtn"><span>Settings</span></button></nav>
 <div class="smallprint" tabindex="0" role="note"><span class="ver">App {{.View.AppVersion}}</span><span class="fine">Local report · no online sign-in<br><br>Reads Relax Coach and AH Profit saved data, and AH Profit's bundled data files <span class="nb">(read-only)</span>.<br>No game input or memory access.</span></div></aside>
 <main class="workspace">
 <details class="folder card" id="folder-panel"{{if .View.NoGame}} open{{end}}><summary>Game folder <span id="folder-label">{{.View.Game}}</span></summary>
 <form id="game-form"><input id="game-path" aria-label="WoW Forever game folder" value="{{.View.Game}}" placeholder="D:\World of Warcraft\_forever_"><button id="browse-folder" class="secondary" type="button">Browse…</button><button id="use-folder" class="secondary" type="submit">Use this folder</button></form>
 <p>Choose or paste your _forever_ folder. This selection is remembered for the next launch.</p></details>
 <div id="global-status" class="note status" role="status" aria-live="polite"></div>
-<section id="setup-view" hidden><header class="pagehead"><div><h2>Get started</h2><p class="subtle">Choose the game folder, click Install, then start (or restart) WoW. Nothing is installed until you click Install.</p></div></header>
+<section id="setup-view" hidden><header class="pagehead"><div><h2>Get started</h2><p class="subtle">Install the app on this PC, choose the game folder, click Install, then start (or restart) WoW. Nothing is installed until you click.</p></div></header>
 <div class="pane"><ol class="steps">
-<li class="card step" id="step-folder"><h3>1. Choose your WoW Forever game folder</h3><p id="setup-folder" class="status">{{if .View.Game}}{{.View.Game}}{{else}}Not chosen yet.{{end}}</p><div class="actions"><button id="setup-browse" class="primary" type="button">Choose folder…</button></div><p class="subtle">The _forever_ folder of your WoW Forever client. You can also paste it under Game folder above.</p></li>
-<li class="card step" id="step-install"><h3>2. Install Relax Coach</h3><p>Installs <strong>Relax Coach</strong>, <strong>Relax Journey</strong> with its guide content and <strong>Relax Quest Planner</strong> from the stable GitHub release, after verifying its SHA256 checksum. A folder of the same name that is already there is moved into RelaxCoachBackups, not deleted. WoW can stay open; the app then says whether /reload is enough or WoW must be restarted.</p>
+<li class="card step" id="step-app"><h3>1. Install Relax Coach on this PC</h3><p id="setup-app-text" class="status">Checking where Relax Coach runs from…</p><div class="actions"><button id="setup-app-install" class="primary" type="button" hidden>Install and add shortcuts</button><button id="setup-app-open" class="primary" type="button" hidden>Open the installed Relax Coach</button></div><p id="setup-app-status" class="status" role="status" aria-live="polite"></p></li>
+<li class="card step" id="step-folder"><h3>2. Choose your WoW Forever game folder</h3><p class="status"><span id="setup-folder-found"{{if not .View.Game}} hidden{{end}}>Found: </span><span id="setup-folder">{{if .View.Game}}{{.View.Game}}{{else}}Not chosen yet.{{end}}</span></p><div class="actions"><button id="setup-browse" class="{{if .View.Game}}secondary{{else}}primary{{end}}" type="button">{{if .View.Game}}Change folder…{{else}}Choose folder…{{end}}</button></div><p class="subtle">The _forever_ folder of your WoW Forever client. You can also paste it under Game folder above.</p></li>
+<li class="card step" id="step-install"><h3>3. Install the Relax Coach addons</h3><p>Installs <strong>Relax Coach</strong>, <strong>Relax Journey</strong> with its guide content and <strong>Relax Quest Planner</strong> from the stable GitHub release, after verifying its SHA256 checksum. A folder of the same name that is already there is moved into RelaxCoachBackups, not deleted. WoW can stay open; the app then says whether /reload is enough or WoW must be restarted.</p>
 <dl class="versions"><div><dt>Installed Coach</dt><dd id="setup-installed">{{if eq .InstalledVersion "0.0.0"}}Not installed{{else}}{{.InstalledVersion}}{{end}}</dd></div><div><dt>Latest release</dt><dd id="setup-offered">Not checked</dd></div></dl>
 <div class="actions"><button id="setup-install" class="primary" disabled>{{if eq .InstalledVersion "0.0.0"}}Install{{else}}Update{{end}}</button></div><p id="setup-status" class="status" role="status" aria-live="polite">{{if .UpdatesDisabled}}Updates are disabled by -no-update.{{end}}</p></li>
-<li class="card step" id="step-done"><h3>3. Start WoW</h3><p>Start WoW (if it was open while installing, exit it completely and start it again so the new addons load). On the AddOns screen enable <strong>Relax Coach</strong>, <strong>Relax Journey</strong> and <strong>Relax Quest Planner</strong>, log in, then type /reload once. Your report appears under Coach Report. Optional addons such as RankUp and Forever Maps are under Updates → More addons.</p><div class="actions"><button id="setup-report" class="secondary">Open Coach Report</button><button id="setup-more" class="secondary">More addons</button></div></li>
+<li class="card step" id="step-done"><h3>4. Start WoW</h3><p>Start WoW (if it was open while installing, exit it completely and start it again so the new addons load). On the AddOns screen enable <strong>Relax Coach</strong>, <strong>Relax Journey</strong> and <strong>Relax Quest Planner</strong>, log in, then type /reload once. Your report appears under Coach Report. Optional addons such as RankUp and Forever Maps are under Updates → More addons.</p><div class="actions"><button id="setup-report" class="secondary">Open Coach Report</button><button id="setup-more" class="secondary">More addons</button></div></li>
 </ol></div></section>
-<div id="app-placement" class="card placement" hidden><p id="app-placement-text" class="status" role="status" aria-live="polite"></p><div class="actions"><button id="app-copy" class="primary" hidden>Copy to my user folder</button><button id="app-copy-later" class="secondary">Not now</button></div></div>
 <section id="report-view"><header class="pagehead"><div><h2>Coach Report</h2><p class="subtle">Updates when the game saves: /reload or logout.</p></div><button id="refresh" class="secondary">↻ Refresh</button></header>
 <div class="card account-panel">
 <div class="account-controls"><label for="account-select">Account</label><select id="account-select" aria-describedby="account-help account-source account-status" disabled><option value="">Loading accounts…</option></select></div>
@@ -220,5 +224,15 @@ button:focus-visible,a:focus-visible,.smallprint:focus-visible,input:focus-visib
 <div class="card updatecard"><h3>More addons</h3><p class="subtle">Optional addons made for WoW Forever. Each one installs into its own folder and updates separately from Coach.</p>
 <div id="extra-list"></div>
 <p class="scope">Install and Update download only the stable GitHub release of that addon, verify its SHA256 checksum, check the archive and TOC, and keep a backup of the previous version in RelaxCoachBackups, like the Relax Coach addons above. WoW can stay open. Settings, saves and other addons are not touched.</p>
+</div></div></section>
+<section id="settings-view" hidden><header class="pagehead"><div><h2>Settings</h2><p class="subtle">Where Relax Coach is installed, and its shortcuts.</p></div></header>
+<div class="pane"><div class="card updatecard"><h3>App location</h3>
+<dl class="versions"><div><dt>Running from</dt><dd id="settings-running">Not loaded</dd></div><div><dt>Installed copy</dt><dd id="settings-target">Not loaded</dd></div></dl>
+<p id="settings-location" class="status"></p>
+<h3>Shortcuts</h3><ul id="settings-links" class="links"></ul>
+<div id="settings-confirm" hidden><p id="settings-confirm-text" class="status"></p><div class="actions"><button id="settings-replace" class="primary" type="button">Replace it</button><button id="settings-keep" class="secondary" type="button">Keep it</button></div></div>
+<div class="actions"><button id="settings-repair" class="primary" type="button" disabled>Repair shortcuts</button></div>
+<p id="settings-status" class="status" role="status" aria-live="polite"></p>
+<p class="scope">Shortcuts open %USERPROFILE%\RelaxCoach\RelaxCoach.exe. A shortcut that points somewhere else is replaced only after you confirm it.</p>
 </div></div></section></main>
 <script nonce="{{.Nonce}}">{{.Script}}</script></body></html>
