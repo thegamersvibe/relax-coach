@@ -53,6 +53,8 @@ func (b *nativeBridge) checkApp(timeout time.Duration) (nativeOffer, error) {
 		copy := r
 		b.appRelease = &copy
 		b.checkedAppVersion = current
+		// A successful check with nothing to install opens the app-first escape.
+		b.appNotOffered = !r.Available
 	}
 	b.mu.Unlock()
 	link := r.HTMLURL

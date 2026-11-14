@@ -47,7 +47,7 @@ type nativeBridge struct {
 	release                                                           *AddonReleaseInfo
 	checkedGame, checkedVersion                                       string
 	extra                                                             map[string]nativeExtraState
-	afterAppAnswered, appApplyFailed                                  bool
+	afterAppAnswered, appApplyFailed, appNotOffered                   bool
 }
 
 type nativeReport struct {
@@ -401,6 +401,11 @@ func (b *nativeBridge) apply(expected string) (AddonUpdateResult, error) {
 	defer cancel()
 	result, err := b.services.apply(ctx, game, release)
 	if err != nil {
+		// Installed past the app-first gate (escape) with an older app: the
+		// newer app may be what this bundle needs, so say where to get it.
+		if appNewerThanThis(release) {
+			return result, fmt.Errorf("%w. This release comes with app %s; if updating the app here does not work, download RelaxCoach.exe from %s", err, release.Version, appManualDownload)
+		}
 		return result, fmt.Errorf("%w", err)
 	}
 	b.app.refresh()

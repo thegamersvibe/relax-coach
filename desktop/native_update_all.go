@@ -29,10 +29,27 @@ func (b *nativeBridge) appFirst(release AddonReleaseInfo) bool {
 	if !b.services.selfUpdate() {
 		return false
 	}
+	// Likewise when this process checked for an app update and none was
+	// offered: the chain must not loop on "app first" (manual link instead).
 	b.mu.Lock()
-	failed := b.appApplyFailed
+	failed, notOffered := b.appApplyFailed, b.appNotOffered
 	b.mu.Unlock()
-	if failed {
+	if failed || notOffered {
+		return false
+	}
+	if !appNewerThanThis(release) {
+		return false
+	}
+	if _, state, err := b.services.appLast(); err == nil && (state == "failed" || state == "rolled-back" || state == "recovery") {
+		return false
+	}
+	return true
+}
+
+// appNewerThanThis reports whether the release (which ships an app) is newer
+// than this app.
+func appNewerThanThis(release AddonReleaseInfo) bool {
+	if !release.HasApp {
 		return false
 	}
 	remote, err := parseAddonVersion(release.Version)
@@ -40,13 +57,7 @@ func (b *nativeBridge) appFirst(release AddonReleaseInfo) bool {
 		return false
 	}
 	local, err := parseAddonVersion(Version)
-	if err != nil || !remote.newerThan(local) {
-		return false
-	}
-	if _, state, err := b.services.appLast(); err == nil && (state == "failed" || state == "rolled-back" || state == "recovery") {
-		return false
-	}
-	return true
+	return err == nil && remote.newerThan(local)
 }
 
 // appManualDownload is where a player downloads the app by hand.

@@ -274,3 +274,59 @@ func TestAppFirstNeverHoldsBackAnAppThatCannotUpdateItself(t *testing.T) {
 		t.Fatalf("a refused click opened the escape: %+v", o)
 	}
 }
+
+func TestAppFirstOpensWhenNoAppUpdateIsOffered(t *testing.T) {
+	release := AddonReleaseInfo{Version: "1.7.0", AssetURL: "a", ChecksumURL: "c", Available: true, HasApp: true}
+	b, applied := appFirstBridge(t, release, "")
+	if o, _ := b.Call("checkAddon", nil); !o.(nativeOffer).NeedsApp {
+		t.Fatalf("gate missing before the app check: %+v", o)
+	}
+	// The app check succeeds with an app update on offer: the gate stays.
+	b.services.checkApp = func(context.Context, string) (AppReleaseInfo, error) {
+		return AppReleaseInfo{Version: "1.7.0", Available: true}, nil
+	}
+	b.Call("checkApp", nil)
+	if o, _ := b.Call("checkAddon", nil); !o.(nativeOffer).NeedsApp {
+		t.Fatalf("an offered app update opened the gate: %+v", o)
+	}
+	// Nothing to install: the escape opens, so the chain cannot loop.
+	b.services.checkApp = func(context.Context, string) (AppReleaseInfo, error) {
+		return AppReleaseInfo{Version: Version, Available: false}, nil
+	}
+	b.Call("checkApp", nil)
+	if o, _ := b.Call("checkAddon", nil); o.(nativeOffer).NeedsApp || !o.(nativeOffer).Available {
+		t.Fatalf("no app offered, still held back: %+v", o)
+	}
+	if _, err := b.Call("applyAddon", nativeArgs("1.7.0")); err != nil || *applied != 1 {
+		t.Fatalf("%v %d", err, *applied)
+	}
+	// A failed check is not "nothing offered".
+	b2, _ := appFirstBridge(t, release, "")
+	b2.services.checkApp = func(context.Context, string) (AppReleaseInfo, error) { return AppReleaseInfo{}, errors.New("offline") }
+	b2.Call("checkApp", nil)
+	if o, _ := b2.Call("checkAddon", nil); !o.(nativeOffer).NeedsApp {
+		t.Fatalf("a failed app check opened the gate: %+v", o)
+	}
+}
+
+func TestAddonFailureAfterTheEscapeNamesTheManualDownload(t *testing.T) {
+	release := AddonReleaseInfo{Version: "1.7.0", AssetURL: "a", ChecksumURL: "c", Available: true, HasApp: true}
+	b, _ := appFirstBridge(t, release, "")
+	b.services.selfUpdate = func() bool { return false }
+	b.services.apply = func(context.Context, string, AddonReleaseInfo) (AddonUpdateResult, error) {
+		return AddonUpdateResult{}, errors.New("archive path is outside the fixed guild allowlist")
+	}
+	b.Call("checkAddon", nil)
+	_, err := b.Call("applyAddon", nativeArgs("1.7.0"))
+	if err == nil || !strings.Contains(err.Error(), "archive path is outside the fixed guild allowlist. This release comes with app 1.7.0") || !strings.Contains(err.Error(), appManualDownload) {
+		t.Fatalf("%v", err)
+	}
+	// A release without an app keeps the plain error.
+	plain := AddonReleaseInfo{Version: "1.7.0", AssetURL: "a", ChecksumURL: "c", Available: true}
+	c, _ := appFirstBridge(t, plain, "")
+	c.services.apply = b.services.apply
+	c.Call("checkAddon", nil)
+	if _, err := c.Call("applyAddon", nativeArgs("1.7.0")); err == nil || strings.Contains(err.Error(), "download") {
+		t.Fatalf("%v", err)
+	}
+}
