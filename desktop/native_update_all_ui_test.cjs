@@ -228,7 +228,7 @@ test('R3: a new run and a folder change clear every old line; a Problem addon is
 test('R2: the app card no longer says addons are unchanged without the follow-up',async t=>{
   const {$}=await setup(t,base());
   const scope=[...$('app-update-status').parentElement.querySelectorAll('.scope')].map(e=>e.textContent).join(' ');
-  assert.match(scope,/This step does not touch addons, settings or saves; your addons follow when WoW is closed\./);
+  assert.match(scope,/this step does not touch addons, settings or saves, and your addons follow when WoW is closed\./);
 });
 
 test('automatic run: bundle already current still updates the installed More addons',async t=>{
