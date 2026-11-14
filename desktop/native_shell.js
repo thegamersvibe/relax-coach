@@ -36,7 +36,11 @@ const rc = Object.freeze({
   checkExtra: id => call('checkExtra',id),
   applyExtra: (id,version) => call('applyExtra',id+'@'+version),
   appPlacement: () => call('appPlacement'),
-  installAppCopy: () => call('installAppCopy')
+  installAppCopy: () => call('installAppCopy'),
+  repairAppLinks: list => call('repairAppLinks',list),
+  openInstalledApp: () => call('openInstalledApp'),
+  afterAppUpdate: () => call('afterAppUpdate'),
+  gameState: () => call('gameState')
 });
 // One vocabulary for every addon (Relax Coach bundle and More addons):
 // Install when the addon is not there yet, otherwise Update.
@@ -68,15 +72,33 @@ let renderedReport = {
   Game: $('report-body').dataset.game,
   Account: $('report-body').dataset.account
 };
-function message(text) { $('global-status').textContent = text; }
-let userNavigated = false, initialViewChosen = false, placementDismissed = false;
+// Short confirmations clear after a few seconds; errors stay until the next
+// message. The app update notice has its own line, so nothing overwrites it.
+let messageTimer = 0;
+function message(text, short = false) {
+  clearTimeout(messageTimer);
+  $('global-status').textContent = text;
+  if (short) messageTimer = setTimeout(()=>{ $('global-status').textContent = ''; }, 6000);
+}
+function updateNotice(text) { $('update-notice').textContent = text; $('update-notice').hidden = !text; }
+// Release notes are Markdown on GitHub; show them as plain text (still inert).
+function plainNotes(text) {
+  return String(text || '').split('\n').map(line => line
+    .replace(/^\s{0,3}#{1,6}\s+/,'')
+    .replace(/^(\s*)[-*+]\s+/,'$1• ')
+    .replace(/\*\*(.+?)\*\*/g,'$1').replace(/__(.+?)__/g,'$1')
+    .replace(/`([^`]+)`/g,'$1')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g,'$1')).join('\n');
+}
+let userNavigated = false, initialViewChosen = false, placement = null, pendingReplace = [];
 const autoChecked = new Set();
 function show(view) {
   $('setup-view').hidden = view !== 'setup';
   $('report-view').hidden = view !== 'report';
   $('update-view').hidden = view !== 'update';
   $('farm-view').hidden = view !== 'farm';
-  for (const name of ['setup','report','farm','update']) {
+  $('settings-view').hidden = view !== 'settings';
+  for (const name of ['setup','report','farm','update','settings']) {
     $('nav-'+name).classList.toggle('active',name === view);
     if (name === view) $('nav-'+name).setAttribute('aria-current','page');
     else $('nav-'+name).removeAttribute('aria-current');
@@ -98,13 +120,30 @@ function updateButtons() {
   $('check-update').disabled = busy || disabled;
   $('apply-update').disabled = busy || disabled || !offer || !offer.Available;
   $('setup-install').disabled = busy || disabled || !offer || !offer.Available;
-  $('app-copy').disabled = busy;
-  for (const id of ['browse-folder','use-folder','game-path','setup-browse']) $(id).disabled = busy;
+  for (const id of ['browse-folder','use-folder','game-path','setup-browse','setup-app-install','setup-app-open','setup-app-repair','settings-keep']) $(id).disabled = busy;
+  $('settings-replace').disabled = busy || !replaceChoice().length;
+  $('settings-repair').disabled = busy || !linksNeedRepair();
+  $('update-all').disabled = busy || disabled;
+  explainDisabled(disabled);
   renderBundleLabels();
   for (const b of document.querySelectorAll('#extra-list button')) {
     const o = extraOffers[b.dataset.id];
     b.disabled = busy || disabled || (b.dataset.role === 'apply' && !(o && o.Available));
   }
+}
+// U20: a disabled main button says why (title, read by screen readers too).
+function why(id, reason) {
+  const b = $(id);
+  if (b.disabled && reason) b.title = reason; else b.removeAttribute('title');
+}
+function explainDisabled(disabled) {
+  const wait = busy ? 'Wait for the current step to finish.' : '', off = disabled ? 'Updates are disabled by -no-update.' : '';
+  const game = lastReport && lastReport.Game;
+  why('apply-update', wait || off || (!offer ? 'Click Check first.' : offer.NeedsApp ? 'Update the app first.' : 'No newer version to install.'));
+  why('setup-install', wait || off || (!game ? 'Choose your game folder first (step 2).' : !offer ? 'Checking the latest release…' : 'No newer version to install.'));
+  why('apply-app-update', wait || off || (!appOffer ? 'Click Check App Update first.' : 'No newer app version.'));
+  why('update-all', wait || off);
+  why('settings-repair', wait || (canLink() ? 'Every shortcut is in place.' : 'Install Relax Coach first (Get started, step 1).'));
 }
 const extraOffers = {};
 function extraRow(item) {
@@ -115,7 +154,7 @@ function extraRow(item) {
     const h = document.createElement('h4'); h.className = 'extra-name';
     const p = document.createElement('p'); p.className = 'subtle extra-blurb';
     const dl = document.createElement('dl'); dl.className = 'versions';
-    for (const [k,label] of [['installed','Installed'],['offered','Offered']]) {
+    for (const [k,label] of [['installed','Installed'],['offered','Latest']]) {
       const d = document.createElement('div'); const dt = document.createElement('dt'); dt.textContent = label;
       const dd = document.createElement('dd'); dd.className = 'extra-'+k; d.append(dt,dd); dl.append(d);
     }
@@ -196,7 +235,7 @@ function displayAccount(result) {
     ? 'Selected account output is unavailable. Refresh will not switch accounts.' : '');
 }
 function setReportFilter(filters,button) {
-  filters.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===button));
+  filters.querySelectorAll('button').forEach(b=>{ b.classList.toggle('on',b===button); b.setAttribute('aria-pressed',String(b===button)); });
   filters.closest('.card').querySelectorAll('.more .fix').forEach(row=>{row.hidden=button.dataset.f!=='all'&&row.dataset.area!==button.dataset.f;});
 }
 // Farming page: shown only when the selected account has an AH Profit save.
@@ -254,6 +293,10 @@ function displayReport(result,folderChanged = false) {
   $('installed-version').textContent = result.InstalledVersion === '0.0.0' ? 'Not installed' : result.InstalledVersion;
   $('setup-installed').textContent = $('installed-version').textContent;
   $('setup-folder').textContent = result.Game || 'Not chosen yet.';
+  // Once a folder is known its button is no longer the step's main action.
+  $('setup-folder-found').hidden = !result.Game;
+  $('setup-browse').className = result.Game ? 'secondary' : 'primary';
+  $('setup-browse').textContent = result.Game ? 'Change folder…' : 'Choose folder…';
   $('folder-label').textContent = result.Game;
   if (folderChanged || document.activeElement !== $('game-path')) $('game-path').value = result.Game;
   if (folderChanged) {
@@ -289,7 +332,7 @@ async function refresh(manual = false) {
     displayReport(result);
     chooseInitialView(result);
     acknowledgeRenderedShell();
-    if (manual) message('Report refreshed. The game must save before new data appears.');
+    if (manual) message('Report refreshed. The game must save before new data appears.', true);
   }
   catch (err) { if (generation === reportGeneration) message('Could not refresh the report: '+err.message); }
   finally { refreshing = false; updateButtons(); }
@@ -298,6 +341,7 @@ $('nav-setup').addEventListener('click',()=>{ userNavigated = true; show('setup'
 $('nav-report').addEventListener('click',()=>{ userNavigated = true; show('report'); });
 $('nav-update').addEventListener('click',()=>{ userNavigated = true; show('update'); if (!busy) loadExtras(); else extrasPending = true; });
 $('nav-farm').addEventListener('click',()=>{ userNavigated = true; show('farm'); });
+$('nav-settings').addEventListener('click',()=>{ userNavigated = true; show('settings'); if (!busy) loadPlacement(); });
 $('setup-report').addEventListener('click',()=>{ userNavigated = true; show('report'); });
 $('setup-more').addEventListener('click',()=>{ userNavigated = true; show('update'); if (!busy) loadExtras(); else extrasPending = true; });
 $('refresh').addEventListener('click',()=>refresh(true));
@@ -316,8 +360,9 @@ async function changeFolder(select) {
     const result = await select();
     if (result) {
       folder = result.Game;
+      clearUpdateAllLines();
       displayReport(result,true);
-      message('Game folder saved.');
+      message('Game folder saved.', true);
     }
   }
   catch(err) { message(err.message); }
@@ -435,10 +480,12 @@ async function checkBundle() {
     $('setup-installed').textContent = $('installed-version').textContent;
     $('offered-version').textContent = $('setup-offered').textContent = offer.Available ? offer.Version : 'None';
     $('release-name').textContent = offer.Name || 'Release notes';
-    $('release-notes').textContent = offer.Notes || 'No release notes provided.';
+    $('release-notes').textContent = plainNotes(offer.Notes) || 'No release notes provided.';
     $('release-link').href = offer.HTMLURL;
     $('release-link').hidden = !offer.HTMLURL;
-    bundleStatus(offer.Available && offer.Repair && bundleReplaced()
+    bundleStatus(offer.NeedsApp
+      ? 'Relax Coach '+offer.Version+' needs app '+offer.Version+' first: click Update App above, or Update everything. The addons follow.'
+      : offer.Available && offer.Repair && bundleReplaced()
       ? foreignRepair+' WoW can stay open.'
       : offer.Available
       ? 'Relax Coach '+offer.Version+' is ready to '+(install ? 'install' : 'update')+'.'+clickThen(install)
@@ -483,27 +530,138 @@ function maybeAutoCheck() {
   autoChecked.add(game);
   checkBundle();
 }
-// First run: optionally copy the app to its usual folder and add a shortcut.
-function showPlacement(p) {
-  const box = $('app-placement');
-  if (placementDismissed || !p || !['offer','other-copy','blocked','copied'].includes(p.State)) { box.hidden = true; return; }
-  box.hidden = false;
-  $('app-placement-text').textContent = p.Message || '';
-  $('app-copy').hidden = p.State !== 'offer';
-  $('app-copy-later').textContent = p.State === 'offer' ? 'Not now' : 'OK';
+// Step 1 of Get started and the Settings page: where the app runs from and its
+// shortcuts. State text is redrawn from Go; the two status lines below it hold
+// only results and errors of a click, so no refresh can wipe them.
+const linkLabel = {desktop:'Desktop', startmenu:'Start menu'};
+const linkText = l => l.State === 'ok' ? 'Opens the installed copy.'
+  : l.State === 'missing' ? 'Missing.'
+  : l.State === 'unavailable' ? 'Folder not found; no shortcut can be added there.'
+  : l.Target ? 'Points somewhere else: '+l.Target : 'Exists, but it is not a shortcut to the installed copy.';
+// S2: said plainly before Open is offered when the two files differ.
+const differentCopy = 'The installed file is different from this one (an older or a newer version). Opening it does not change it; use Update everything there to bring it up to date.';
+const canLink = () => !!placement && ['installed','other-copy'].includes(placement.State);
+function linksNeedRepair() {
+  return canLink() && (placement.Links || []).some(l => l.State === 'missing' || l.State === 'other');
+}
+function renderPlacement(p) {
+  placement = p || null;
+  const state = placement ? placement.State : 'unavailable';
+  let text = (placement && placement.Message) || '';
+  if (state === 'installed') text = 'Relax Coach is installed on this PC'+(placement.Target ? ' ('+placement.Target+')' : '')+'.';
+  else if (state === 'other-copy' && !placement.SameCopy) text += ' '+differentCopy;
+  else if (state === 'unavailable') text = 'Relax Coach could not tell where it is installed. You can keep using it from here.';
+  if (state === 'other-copy') text += ' Nothing is overwritten.';
+  $('setup-app-text').textContent = text;
+  $('setup-app-install').hidden = state !== 'offer';
+  // A failed reopen leaves state "copied": the Open button comes back.
+  $('setup-app-open').hidden = state !== 'other-copy' && state !== 'copied';
+  // A shortcut that failed (or points elsewhere) stays visible after the reopen.
+  const broken = state === 'installed' ? (placement.Links || []).filter(l => l.State === 'missing' || l.State === 'other') : [];
+  $('setup-app-links').hidden = !broken.length;
+  $('setup-app-links').textContent = broken.map(l => linkLabel[l.Where]+' shortcut '+(l.State === 'missing' ? 'missing' : 'points elsewhere'+(l.Target ? ': '+l.Target : ''))).join('; ')+(broken.length ? ' — Repair shortcuts.' : '');
+  $('setup-app-repair').hidden = !broken.length;
+  if (broken.length) $('nav-settings').dataset.new = 'true'; else delete $('nav-settings').dataset.new;
+  $('step-app').classList.toggle('done', state === 'installed');
+  if (state === 'offer' || state === 'other-copy') $('nav-setup').dataset.new = 'true';
+  else delete $('nav-setup').dataset.new;
+  $('settings-running').textContent = (placement && placement.Running) || 'Unknown';
+  $('settings-target').textContent = (placement && placement.Target) || 'Unknown';
+  $('settings-location').textContent = canLink() ? '' : state === 'offer' ? 'Not installed yet: use Get started, step 1.' : text;
+  const list = $('settings-links');
+  list.replaceChildren();
+  for (const l of (placement && placement.Links) || []) {
+    const li = document.createElement('li'); li.dataset.where = l.Where; li.dataset.state = l.State;
+    const b = document.createElement('b'); b.textContent = linkLabel[l.Where] || l.Where;
+    li.append(b, ' '+linkText(l)); list.append(li);
+  }
+  updateButtons();
 }
 async function loadPlacement() {
-  try { showPlacement(await rc.appPlacement()); } catch(err) { $('app-placement').hidden = true; }
+  try {
+    const p = await rc.appPlacement();
+    renderPlacement(p);
+    // A copy that is not the installed one opens on step 1 (also with addons installed).
+    if (!userNavigated && p && ['offer','other-copy'].includes(p.State)) { show('setup'); maybeAutoCheck(); }
+  } catch(err) { renderPlacement(null); }
 }
-$('app-copy').addEventListener('click',async()=>{
+async function openInstalled(statusId, prefix) {
+  try {
+    const r = await rc.openInstalledApp(); // Go closes this window after a successful start
+    if (!r || r.State !== 'opened') throw new Error('it did not start');
+    $(statusId).textContent = prefix+'Opening the installed Relax Coach…';
+    restarting = true;
+  } catch(err) {
+    $(statusId).textContent = prefix+'Relax Coach could not reopen from its folder ('+err.message+'). Start it from '
+      +((placement && placement.Target) || 'its folder')+' next time; you can delete the downloaded file.';
+  }
+}
+$('setup-app-install').addEventListener('click',async()=>{
   if (busy) return;
   busy = true; updateButtons();
-  $('app-placement-text').textContent = 'Copying Relax Coach and adding the shortcut…';
-  try { showPlacement(await rc.installAppCopy()); }
-  catch(err) { $('app-placement-text').textContent = 'Copy failed: '+err.message; $('app-copy').hidden = true; $('app-copy-later').textContent = 'OK'; }
+  $('setup-app-status').textContent = 'Installing Relax Coach and adding shortcuts…';
+  let copied = null;
+  try { copied = await rc.installAppCopy(); renderPlacement(copied); }
+  catch(err) { $('setup-app-status').textContent = 'Install failed: '+err.message; }
   finally { busy = false; updateButtons(); }
+  if (!copied) return;
+  busy = true; updateButtons();
+  try { await openInstalled('setup-app-status', (copied.Message || '')+' '); }
+  finally { if (!restarting) { busy = false; updateButtons(); } }
 });
-$('app-copy-later').addEventListener('click',()=>{ placementDismissed = true; $('app-placement').hidden = true; });
+$('setup-app-open').addEventListener('click',async()=>{
+  if (busy) return;
+  busy = true; updateButtons();
+  $('setup-app-status').textContent = 'Opening the installed Relax Coach…';
+  try { await openInstalled('setup-app-status', ''); }
+  finally { if (!restarting) { busy = false; updateButtons(); } }
+});
+async function repairLinks(replace) {
+  if (busy) return;
+  busy = true; $('settings-confirm').hidden = true; pendingReplace = []; updateButtons();
+  $('settings-status').textContent = 'Repairing shortcuts…';
+  try { const p = await rc.repairAppLinks(replace.join(',')); renderPlacement(p); $('settings-status').textContent = p.Message || 'Shortcuts checked.'; }
+  catch(err) { $('settings-status').textContent = 'Repair failed: '+err.message; }
+  finally { busy = false; updateButtons(); }
+}
+// The names to replace are fixed when the prompt is shown: a later reload
+// never adds a shortcut the player did not see. Two "other" shortcuts get one
+// choice each.
+function replaceChoice() {
+  if (pendingReplace.length < 2) return pendingReplace;
+  return pendingReplace.filter(w => { const box = document.getElementById('replace-'+w); return box && box.checked; });
+}
+function startRepair() {
+  if (busy || !linksNeedRepair()) return;
+  const others = placement.Links.filter(l => l.State === 'other');
+  if (!others.length) { repairLinks([]); return; }
+  pendingReplace = others.map(l => l.Where);
+  const where = l => 'The '+linkLabel[l.Where]+' shortcut '+(l.Target ? 'points at '+l.Target : 'is not a shortcut to the installed copy')+'.';
+  const choices = $('settings-confirm-choices');
+  choices.replaceChildren();
+  if (others.length === 1) {
+    $('settings-confirm-text').textContent = where(others[0])+' Replace it?';
+    $('settings-replace').textContent = 'Replace it';
+  } else {
+    $('settings-confirm-text').textContent = 'These shortcuts point somewhere else. Choose which to replace:';
+    for (const l of others) {
+      const label = document.createElement('label'); const box = document.createElement('input');
+      box.type = 'checkbox'; box.id = 'replace-'+l.Where; box.addEventListener('change',updateButtons);
+      label.append(box, ' '+where(l)); const row = document.createElement('div'); row.append(label); choices.append(row);
+    }
+    $('settings-replace').textContent = 'Replace selected';
+  }
+  $('settings-confirm').hidden = false;
+  updateButtons();
+}
+$('settings-repair').addEventListener('click',startRepair);
+$('setup-app-repair').addEventListener('click',()=>{ userNavigated = true; show('settings'); startRepair(); });
+$('settings-replace').addEventListener('click',()=>{ const names = replaceChoice(); if (names.length) repairLinks(names); });
+$('settings-keep').addEventListener('click',()=>{
+  $('settings-confirm').hidden = true; pendingReplace = [];
+  if (placement.Links.some(l => l.State === 'missing')) repairLinks([]);
+  else $('settings-status').textContent = 'Nothing was changed.';
+});
 // Read-only release check once per launch so players learn about a new app
 // (and its new look) without visiting GitHub. Nothing downloads or installs
 // until they click Update App; -no-update skips it entirely.
@@ -520,7 +678,7 @@ async function startupAppCheck() {
     showAppOffer(appOffer); updateButtons();
     $('nav-update').dataset.new = 'true';
     $('nav-update').title = 'Relax Coach '+appOffer.Version+' is available';
-    message('Relax Coach '+appOffer.Version+' is available. Open Updates and click Update App. No re-download needed.');
+    updateNotice('Relax Coach '+appOffer.Version+' is available. Open Updates and click Update everything. No re-download needed.');
   } catch(_) { /* offline: the manual check still works */ }
   finally { busy = false; updateButtons(); maybeAutoCheck(); }
 }
@@ -528,7 +686,7 @@ function showAppOffer(o) {
   $('installed-app-version').textContent = o.InstalledVersion;
   $('offered-app-version').textContent = o.Version || 'Unavailable';
   $('app-release-name').textContent = o.Name || 'App release notes';
-  $('app-release-notes').textContent = o.Notes || 'No release notes provided.';
+  $('app-release-notes').textContent = plainNotes(o.Notes) || 'No release notes provided.';
   $('app-release-link').href = o.HTMLURL;
   $('app-release-link').hidden = !o.HTMLURL;
   $('app-update-status').textContent = o.Available
@@ -554,7 +712,7 @@ $('check-app-update').addEventListener('click',async()=>{
 $('apply-app-update').addEventListener('click',async()=>{
   if (busy || !appOffer || !appOffer.Available || document.body.dataset.updatesDisabled === 'true') return;
   busy = true; updateButtons();
-  $('app-update-status').textContent = 'Downloading and verifying the app. Relax Coach will restart when the trusted worker is ready. Close normally to cancel before handoff; do not force-close.';
+  $('app-update-status').textContent = 'Downloading and verifying the app… Relax Coach will close and reopen by itself. Don\'t close it.';
   try {
     const result = await rc.applyApp(appOffer.Version);
     restarting = result.restartReady === true;
@@ -562,6 +720,193 @@ $('apply-app-update').addEventListener('click',async()=>{
   } catch(err) { $('app-update-status').textContent = 'App update failed: '+err.message+' Check again before retrying.'; }
   finally { appOffer = null; busy = restarting; updateButtons(); }
 });
+// Update everything: one chain over the existing, reviewed bridge calls. It keeps
+// no state of its own (a new click recomputes what is behind), holds the UI busy
+// flag from start to end (so the 5-second refresh does not run), stops at the
+// first failure, and never installs something the player has not installed.
+// Results belong to one game folder: a folder change clears them.
+// A new run or a game folder change starts from clean lines.
+function clearUpdateAllLines() {
+  for (const li of [...$('update-all-lines').querySelectorAll('li[id^="ua-extra-"]')]) li.remove();
+  uaLine('ua-app','App','not checked yet');
+  uaLine('ua-bundle','Relax Coach addons','not checked yet');
+  uaStatus('');
+  delete $('update-all').dataset.new;
+}
+function uaLine(id, label, text) {
+  let li = $(id);
+  if (!li) {
+    li = document.createElement('li'); li.id = id;
+    const b = document.createElement('b'); const span = document.createElement('span'); span.className = 'ua-text';
+    li.append(b, ' ', span); $('update-all-lines').append(li);
+  }
+  li.querySelector('b').textContent = label;
+  li.querySelector('.ua-text').textContent = text;
+}
+function uaStatus(text) { $('update-all-status').textContent = text; }
+function markUpdateAll(why) {
+  $('nav-update').dataset.new = 'true';
+  $('update-all').dataset.new = 'true';
+  if (why) uaStatus(why);
+}
+// What the chain may install for the bundle: a plain newer version only.
+// Only a complete, installed bundle updates through Update everything or the
+// automatic run; anything else goes to its own button with the reason.
+function plainBundleUpdate(o) {
+  const b = o && o.Bundle;
+  return !!(o && o.Available && !o.NeedsApp && !o.Install && !o.Repair && b && b.state === 'installed' && !b.journeyUnreadable);
+}
+function bundleHold(o) {
+  const b = (o && o.Bundle) || {};
+  if (o.NeedsApp) return 'this release needs app '+o.Version+' first, and no app update could be installed here. Download RelaxCoach.exe from '+appManualDownload;
+  if (b.state === 'replaced' || bundleReplaced()) return 'Journey is not Relax Journey; use Repair below';
+  if (b.state === 'partial') return 'an addon folder is missing'+((b.missing || []).length ? ': '+b.missing.join(', ') : '')+'; use Repair below';
+  if (o.Install && !o.Repair) return 'they are not installed yet; use Install below';
+  return 'they need a repair; use Repair below';
+}
+const appManualDownload = 'https://github.com/thegamersvibe/relax-coach/releases/latest';
+async function updateAll(opts = {}) {
+  if (busy || document.body.dataset.updatesDisabled === 'true') return;
+  busy = true; offer = null; appOffer = null; for (const k in extraOffers) delete extraOffers[k]; updateButtons();
+  clearUpdateAllLines();
+  if (opts.skipApp) uaLine('ua-app','App',(opts.appVersion || '')+': updated');
+  const done = [], left = [], skipped = [];
+  // The automatic run asks again whether WoW is closed right before each
+  // install; anything but "closed" stops it (unknown never installs).
+  const wowStillClosed = async (where, rest) => {
+    if (!opts.auto) return true;
+    let state = 'unknown';
+    try { state = await rc.gameState(); } catch(_) { state = 'unknown'; }
+    if (state === 'closed') return true;
+    markUpdateAll();
+    stop(where, new Error(state === 'open' ? 'WoW is open (it was started during the update), so nothing more was updated; close WoW before you try again.' : 'Relax Coach could not tell whether WoW is running, so nothing more was updated; close WoW before you try again.'), rest);
+    return false;
+  };
+  const stop = (where, err, rest) => {
+    uaStatus('Stopped at '+where+': '+err.message+(done.length ? ' Done: '+done.join('; ')+'.' : '')+(rest.length ? ' Not done: '+rest.join(', ')+'.' : '')+' Click Update everything to try again.');
+  };
+  try {
+    // 1. The app. If it updates, Relax Coach restarts and the new app carries on.
+    if (!opts.skipApp) {
+      uaStatus('Checking the app…');
+      let app;
+      try { app = await rc.checkApp(); } catch(err) { stop('the app', err, ['Relax Coach addons','More addons']); return; }
+      if (app.Available) {
+        uaLine('ua-app','App',app.InstalledVersion+' → '+app.Version+': updating…');
+        uaStatus('Downloading and verifying the app… Relax Coach will close and reopen by itself, then update your addons. Don\'t close it.');
+        let result;
+        try { result = await rc.applyApp(app.Version); } catch(err) { uaLine('ua-app','App',app.InstalledVersion+': update failed'); stop('the app', err, ['Relax Coach addons','More addons']); return; }
+        restarting = result.restartReady === true;
+        uaLine('ua-app','App',app.InstalledVersion+' → '+app.Version+(restarting ? ': restarting…' : ': not handed off'));
+        if (!restarting) uaStatus((result.message || 'The app update was not handed off.')+' Click Update everything to try again.');
+        return;
+      }
+      uaLine('ua-app','App',app.InstalledVersion+': up to date');
+      done.push('the app is up to date');
+    }
+    // 2. The Relax Coach addons (bundle).
+    let o = opts.offer;
+    if (!o) {
+      uaStatus('Checking the Relax Coach addons…');
+      try { o = await rc.checkAddon(); } catch(err) { stop('the Relax Coach addons', err, ['More addons']); return; }
+    }
+    const installedText = o.InstalledVersion === '0.0.0' ? 'Not installed' : o.InstalledVersion;
+    if (plainBundleUpdate(o)) {
+      if (!await wowStillClosed('the Relax Coach addons', ['Relax Coach addons','More addons'])) return;
+      uaLine('ua-bundle','Relax Coach addons',installedText+' → '+o.Version+': updating…');
+      uaStatus(progressText);
+      let result;
+      try { result = await rc.applyAddon(o.Version); }
+      catch(err) { uaLine('ua-bundle','Relax Coach addons',installedText+': update failed'); stop('the Relax Coach addons', err, ['More addons']); return; }
+      uaLine('ua-bundle','Relax Coach addons',o.Version+': updated'+(result.backupPath ? ' · backup '+result.backupPath : ''));
+      done.push('Relax Coach addons '+o.Version);
+      bundleStatus(result.message + (result.backupPath ? '\nBackup: '+result.backupPath : ''));
+      await refresh();
+    } else if (o.NeedsApp) {
+      // The app step found nothing to install (or could not update itself):
+      // no loop on "app first"; point to the manual download.
+      uaLine('ua-bundle','Relax Coach addons',installedText+': needs app '+o.Version+' first');
+      stop('the Relax Coach addons', new Error(bundleHold(o)+'.'), ['More addons']); return;
+    } else if (o.Available) {
+      uaLine('ua-bundle','Relax Coach addons',installedText+': left to its own button below ('+bundleHold(o)+')');
+      if (opts.auto) markUpdateAll();
+    } else if (o.Bundle && o.Bundle.state === 'installed') {
+      uaLine('ua-bundle','Relax Coach addons',installedText+': up to date');
+    } else {
+      // No update offered, but not a complete install either: never "up to date".
+      uaLine('ua-bundle','Relax Coach addons',installedText+': left to its own button below ('+bundleHold(o)+')');
+      if (opts.auto) markUpdateAll();
+    }
+    // 3. More addons the player installed, in list order.
+    let list = [];
+    try { list = await rc.extraList(); } catch(err) { stop('More addons', err, ['More addons']); return; }
+    // An installed folder that is not this addon is named, never silently dropped.
+    for (const item of list.filter(item => item.InstalledVersion !== '0.0.0' && item.Problem)) {
+      uaLine('ua-extra-'+item.ID,item.Name,item.InstalledVersion+': skipped ('+item.Problem+')'); skipped.push(item.Name);
+    }
+    const todo = list.filter(item => item.InstalledVersion !== '0.0.0' && !item.Problem);
+    for (let i = 0; i < todo.length; i++) {
+      const item = todo[i], line = 'ua-extra-'+item.ID, rest = todo.slice(i+1).map(x => x.Name);
+      uaStatus('Checking '+item.Name+'…');
+      let c;
+      try { c = await rc.checkExtra(item.ID); } catch(err) { uaLine(line,item.Name,item.InstalledVersion+': check failed'); stop(item.Name, err, rest); return; }
+      if (!c.Available && !c.Install && !c.Problem && c.Version && c.Version === c.InstalledVersion) { uaLine(line,item.Name,item.InstalledVersion+': up to date'); continue; }
+      if (!c.Available || c.Install || c.Problem) { uaLine(line,item.Name,item.InstalledVersion+': skipped ('+(c.Problem || (c.Install ? 'needs Install from its own button' : c.Status || 'no update could be checked'))+')'); skipped.push(item.Name); continue; }
+      if (!await wowStillClosed(item.Name, todo.slice(i).map(x => x.Name))) return;
+      uaLine(line,item.Name,item.InstalledVersion+' → '+c.Version+': updating…');
+      let result;
+      try { result = await rc.applyExtra(item.ID, c.Version); }
+      catch(err) { uaLine(line,item.Name,item.InstalledVersion+': update failed'); stop(item.Name, err, rest); return; }
+      uaLine(line,item.Name,c.Version+': updated'+(result.message ? ' — '+result.message : '')+(result.backupPath ? ' · backup '+result.backupPath : ''));
+      done.push(item.Name+' '+c.Version);
+    }
+    const skippedText = skipped.length ? ' Skipped: '+skipped.join(', ')+' (see above).' : '';
+    uaStatus(done.length ? 'Done: '+done.join('; ')+'.'+skippedText+(done.some(d => !d.startsWith('the app')) ? ' Type /reload in game, or restart WoW if the results above say so.' : '')
+      : skipped.length ? 'Nothing was updated.'+skippedText : 'Everything is up to date.');
+  } finally {
+    if (!restarting) { busy = false; updateButtons(); loadExtras(); }
+  }
+}
+$('update-all').addEventListener('click',()=>updateAll());
+// After an app update: the new app updates the addons by itself, once, only when
+// it is safe; otherwise it marks Update everything and says why.
+let autoRan = false;
+async function launchChecks() {
+  let after = null;
+  if (document.body.dataset.updatesDisabled !== 'true') {
+    try { after = await rc.afterAppUpdate(); } catch(_) { after = null; }
+  }
+  if (after && after.Updated) { await autoUpdate(); return; }
+  await startupAppCheck();
+}
+async function autoUpdate() {
+  if (autoRan) return;
+  autoRan = true; // at most once per launch, never retried
+  const version = (lastReport && lastReport.AppVersion) || $('installed-app-version').textContent;
+  const why = text => { markUpdateAll('Relax Coach was updated to '+version+'. '+text); message('Relax Coach was updated to '+version+'. '+text); };
+  if (busy) { why('Open Updates and click Update everything to update your addons.'); return; }
+  if (!lastReport || !lastReport.Game) { why('Choose your game folder, then click Update everything.'); return; }
+  if (lastReport.InstalledVersion === '0.0.0') { why('Relax Coach addons are not installed: use Get started to install them.'); return; }
+  busy = true; updateButtons();
+  let state = 'unknown', o = null, err = null;
+  try { state = await rc.gameState(); } catch(_) { state = 'unknown'; }
+  if (state === 'closed') { try { o = await rc.checkAddon(); } catch(e) { err = e; } }
+  busy = false; updateButtons();
+  if (state === 'open') { why('WoW is open, so your addons were not updated. Close WoW, then click Update everything.'); return; }
+  if (state !== 'closed') { why('Relax Coach could not tell whether WoW is running, so your addons were not updated. Close WoW, then click Update everything.'); return; }
+  if (err) { why('The addon check failed ('+err.message+'). Click Update everything to try again.'); return; }
+  // Bundle already current: the installed More addons still update by themselves.
+  // "Current" means a complete install with nothing offered. NeedsApp stops
+  // everything (app first); a bundle that needs its own button (partial,
+  // replaced, repair) is marked and named, and the More addons still update.
+  const current = !o.Available && !o.NeedsApp && !!o.Bundle && o.Bundle.state === 'installed';
+  if (o.NeedsApp) { why('Your Relax Coach addons were not updated: '+bundleHold(o)+'. Open Updates and use the buttons there.'); return; }
+  const held = !current && !plainBundleUpdate(o);
+  message('Relax Coach was updated to '+version+'. '+(current ? 'Your Relax Coach addons are up to date; checking your More addons…'
+    : held ? 'Your Relax Coach addons were not updated: '+bundleHold(o)+'. Checking your More addons…' : 'Updating your addons…'));
+  if (!userNavigated) show('update');
+  await updateAll({skipApp:true, offer:o, auto:true, appVersion:version});
+}
 // Keep every link inside the document or route it through native allowlist validation.
 function interceptLink(event) {
   const link = event.target.closest('a');
@@ -583,9 +928,15 @@ document.addEventListener('click',event=>{
   const button = event.target.closest('.filters button');
   if (button) setReportFilter(button.closest('.filters'),button);
   const slot = event.target.closest('.slot');
-  if (slot) slot.classList.toggle('open');
+  if (slot) toggleSlot(slot);
+});
+function toggleSlot(slot) { slot.setAttribute('aria-expanded', String(slot.classList.toggle('open'))); }
+// Gear slots open with Enter or Space too, like a button.
+document.addEventListener('keydown',event=>{
+  const slot = event.target.closest && event.target.closest('.slot');
+  if (slot && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); toggleSlot(slot); }
 });
 // A convenience refresh, not a heartbeat. No timer can close the native window.
 setInterval(()=>{if (!document.hidden && !busy) refresh();},5000);
-refresh().then(loadPlacement).then(startupAppCheck);
+refresh().then(loadPlacement).then(launchChecks);
 })();

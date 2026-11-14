@@ -16,7 +16,7 @@ const initialReport={
   Account:'TEST',Accounts:[{ID:'TEST'}],InstalledVersion:'1.4.0'
 };
 const initialCharacter=fixture.window.document.querySelector('#report-body section[id]').id;
-assert.equal(initialCharacter,'Willtank-Test');
+assert.equal(initialCharacter,'Testwarrior-Test');
 assert.ok(initialReport.Game,'Go fixture must select a game folder');
 fixture.window.close();
 const gameA='C:\\FixtureA\\_forever_',gameB='D:\\FixtureB\\_forever_';

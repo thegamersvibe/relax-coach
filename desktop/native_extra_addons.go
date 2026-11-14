@@ -121,7 +121,7 @@ func (b *nativeBridge) applyExtra(arg string) (AddonUpdateResult, error) {
 	delete(b.extra, id) // a failed install needs a fresh check too
 	b.mu.Unlock()
 	if !found || !s.info.Available || s.info.Version != version || s.game != game || s.installed != current {
-		return AddonUpdateResult{}, errors.New("check again and confirm the offered version")
+		return AddonUpdateResult{}, errors.New("this update is no longer ready: click Check, then try again")
 	}
 	ctx, cancel := context.WithTimeout(b.ctx, 5*time.Minute)
 	defer cancel()

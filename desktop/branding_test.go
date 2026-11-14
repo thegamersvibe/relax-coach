@@ -27,7 +27,7 @@ func TestHelperVersionAndLegacyStorage(t *testing.T) {
 	a.setGame(game)
 	a.reload()
 	view := a.snapshot()
-	if a.addonDir != addon || a.svPath != sv || view.Error != "" || len(view.Chars) != 1 || view.Chars[0].Name != "Willtank" {
+	if a.addonDir != addon || a.svPath != sv || view.Error != "" || len(view.Chars) != 1 || view.Chars[0].Name != "Testwarrior" {
 		t.Fatalf("legacy install not loaded: addon=%q sv=%q view=%+v", a.addonDir, a.svPath, view)
 	}
 	unchanged, err := os.ReadFile(sv)
@@ -106,8 +106,8 @@ func TestReportRelaxBranding(t *testing.T) {
 			html := out.String()
 			for _, want := range []string{
 				"<title>Relax Coach</title>", "<h1>Relax Coach</h1>",
-				"Diagnostic report", "Relax Coach · private bundle",
-				"Install / Update delivers ForeverCoach, Journey and guide content together (from 1.5.0 also Relax Quest Planner)", "Settings and saves are preserved",
+				"Diagnostic report", "Relax Coach · based on TheGamersVibe",
+				"Updates installs the app, the Relax Coach addons (Coach, Journey with its guides, Relax Quest Planner)", "settings and saves are kept",
 				"TheGamersVibe", "ForeverCoach.lua", "WoW Forever leveling report",
 				`action="/setgame"`, `fetch('/refresh',{method:'POST'})`,
 				`src="/logo.png"`, "app " + Version,

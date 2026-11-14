@@ -53,6 +53,12 @@ func (b *nativeBridge) checkApp(timeout time.Duration) (nativeOffer, error) {
 		copy := r
 		b.appRelease = &copy
 		b.checkedAppVersion = current
+		// A successful check with nothing to install opens the app-first
+		// escape, but only for the release it answered for (see appFirst).
+		b.appNotOfferedFor = ""
+		if !r.Available {
+			b.appNotOfferedFor = r.Version
+		}
 	}
 	b.mu.Unlock()
 	link := r.HTMLURL
@@ -72,12 +78,19 @@ func (b *nativeBridge) applyApp(expected string) (AppUpdateResult, error) {
 	current := b.checkedAppVersion
 	b.mu.Unlock()
 	if r == nil || !r.Available || r.Version != expected || current != Version {
-		return AppUpdateResult{}, errors.New("check app updates again and confirm the offered version")
+		return AppUpdateResult{}, errors.New("this app update is no longer ready: click Check App Update, then Update App again")
 	}
 	ctx, cancel := context.WithTimeout(b.ctx, 5*time.Minute)
 	defer cancel()
 	result, err := b.services.applyApp(ctx, *r)
 	if err != nil {
+		// A failure before the app update had a transaction leaves no
+		// last-result; remember it so the addons are not held back (appFirst).
+		if b.ctx.Err() == nil {
+			b.mu.Lock()
+			b.appApplyFailed = true
+			b.mu.Unlock()
+		}
 		return AppUpdateResult{}, err
 	}
 	if result.RestartReady {
@@ -115,4 +128,11 @@ func (b *nativeBridge) ready() error {
 func nativeAppRestartReady(method string, value any, callErr, errorPosting error) bool {
 	r, ok := value.(AppUpdateResult)
 	return method == "applyApp" && ok && r.RestartReady && callErr == nil && errorPosting == nil
+}
+
+// nativeOpenedInstalled is true when the installed copy was just started, so
+// this window closes once the response is posted (like an app update restart).
+func nativeOpenedInstalled(method string, value any, callErr, errorPosting error) bool {
+	p, ok := value.(AppPlacement)
+	return method == "openInstalledApp" && ok && p.State == "opened" && callErr == nil && errorPosting == nil
 }
