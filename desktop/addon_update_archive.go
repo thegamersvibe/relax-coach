@@ -32,17 +32,26 @@ func addonPublicFilesForVersion(version string) map[string]bool {
 	if err != nil || minimum.newerThan(v) {
 		return addonPublicFiles
 	}
-	files := make(map[string]bool, len(addonPublicFiles)+7)
+	files := make(map[string]bool, len(addonPublicFiles)+8)
 	for name, allowed := range addonPublicFiles {
 		files[name] = allowed
 	}
 	for _, name := range []string{
 		"Reactions.lua",
 		"Media/Reactions/bags_1.mp3", "Media/Reactions/bags_2.mp3",
-		"Media/Reactions/campfire.mp3", "Media/Reactions/death.mp3",
+		"Media/Reactions/death.mp3",
 		"Media/Reactions/level_up.mp3", "Media/Reactions/level_up.tga",
 	} {
 		files[name] = true
+	}
+	// 1.5.6 replaced the one campfire song with two that take turns. Each bundle
+	// version requires exactly its own set, so neither name is allowed in the other.
+	songs, _ := parseAddonVersion("1.5.6")
+	if songs.newerThan(v) {
+		files["Media/Reactions/campfire.mp3"] = true
+	} else {
+		files["Media/Reactions/campfire_1.mp3"] = true
+		files["Media/Reactions/campfire_2.mp3"] = true
 	}
 	return files
 }

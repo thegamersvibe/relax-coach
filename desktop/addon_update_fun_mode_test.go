@@ -21,10 +21,31 @@ var funModeFixtureFiles = []string{
 	"Media/Reactions/level_up.tga",
 }
 
+// From 1.5.6 the one campfire song is two songs that take turns.
+var campfireSongsFixtureFiles = []string{
+	"Reactions.lua",
+	"Media/Reactions/bags_1.mp3",
+	"Media/Reactions/bags_2.mp3",
+	"Media/Reactions/campfire_1.mp3",
+	"Media/Reactions/campfire_2.mp3",
+	"Media/Reactions/death.mp3",
+	"Media/Reactions/level_up.mp3",
+	"Media/Reactions/level_up.tga",
+}
+
+func funModeFilesFor(version string) []string {
+	v, err := parseAddonVersion(version)
+	songs, _ := parseAddonVersion("1.5.6")
+	if err == nil && !songs.newerThan(v) {
+		return campfireSongsFixtureFiles
+	}
+	return funModeFixtureFiles
+}
+
 func funModeEntries(version string) []addonZipEntry {
 	entries := guildEntries()
 	entries[0].body = addonFixtureEntries(version)[0].body + "Reactions.lua\n"
-	for _, name := range funModeFixtureFiles {
+	for _, name := range funModeFilesFor(version) {
 		entries = append(entries, addonZipEntry{guildFixtureRoots[0] + "/" + name, "fixture " + name + "\x00\xff\r\n", 0644})
 	}
 	if addonBundleRelease(version) {
@@ -44,7 +65,7 @@ func funModeZip(t *testing.T, entries []addonZipEntry, version string) []byte {
 }
 
 func TestGuildFunModeExtractsExactCoachRuntime(t *testing.T) {
-	for _, version := range []string{"1.4.3", "1.4.3+reviewed", "1.4.4", "1.4.5", "1.5.0", "1.5.1", "1.5.2", "1.5.3", "1.5.4", "1.5.5", "1.4.10", "2.0.0"} {
+	for _, version := range []string{"1.4.3", "1.4.3+reviewed", "1.4.4", "1.4.5", "1.5.0", "1.5.1", "1.5.2", "1.5.3", "1.5.4", "1.5.5", "1.5.6", "1.4.10", "2.0.0"} {
 		t.Run(version, func(t *testing.T) {
 			entries := funModeEntries(version)
 			stage := filepath.Join(t.TempDir(), "staged")
@@ -73,8 +94,9 @@ func TestGuildFunModeExtractsExactCoachRuntime(t *testing.T) {
 				t.Fatalf("runtime inventory: got %d want %d", len(digests), count)
 			}
 			coach := addonTreeHashes(t, filepath.Join(stage, filepath.FromSlash(guildFixtureRoots[0])))
-			if len(coach) != 19 {
-				t.Fatalf("Coach inventory: got %d want 19", len(coach))
+			want := 19 + len(funModeFilesFor(version)) - len(funModeFixtureFiles) // 20 from 1.5.6: two campfire songs
+			if len(coach) != want {
+				t.Fatalf("Coach inventory: got %d want %d", len(coach), want)
 			}
 			if err := verifyAddonTree(context.Background(), stage, digests); err != nil {
 				t.Fatal(fmt.Errorf("staged tree verification: %w", err))

@@ -244,7 +244,7 @@ check(not FC.UI.frame.IsShown(FC.UI.frame), '/coach closes the window')
 G.SlashCmdList.FOREVERCOACH('help')
 check(G.CHAT[len(G.CHAT)].startswith('|cff4fc3f7Relax Coach|r: '), 'chat prefix is Relax Coach')
 check(G.SLASH_FOREVERCOACH1 == '/coach' and '/coach macros' in G.CHAT[len(G.CHAT)], 'slash commands remain /coach')
-check(FC.VERSION == '1.5.5' and G.ForeverCoachDB.addonVersion == '1.5.5', 'addon and saved version are 1.5.5')
+check(FC.VERSION == '1.5.6' and G.ForeverCoachDB.addonVersion == '1.5.6', 'addon and saved version are 1.5.6')
 check(FC.SCHEMA == 1 and G.ForeverCoachDB.schema == 1 and G.RelaxCoachDB is None and G.RelaxCoach is None,
       'SavedVariables, global and schema remain compatible')
 L.execute('''

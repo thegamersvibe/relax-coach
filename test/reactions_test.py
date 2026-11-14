@@ -114,7 +114,7 @@ end}
 -- No guessed GameError enum: Forever's verified caller uses the localized second argument.
 ERR_INV_FULL = 'localized inventory-full text'
 SOUNDS, ATTEMPTS, STOPS, ACTIVE = {}, {}, {}, {}
-DURATIONS = {['level_up.mp3']=1.66,['bags_1.mp3']=2.62,['bags_2.mp3']=1.27,['death.mp3']=2.12,['campfire.mp3']=34}
+DURATIONS = {['level_up.mp3']=1.66,['bags_1.mp3']=2.62,['bags_2.mp3']=1.27,['death.mp3']=2.12,['campfire_1.mp3']=60.13,['campfire_2.mp3']=63.33}
 function PlaySoundFile(path,channel)
   local file = path:match('([^\\]+)$')
   assert(DURATIONS[file], 'unexpected asset '..tostring(path))
@@ -224,7 +224,7 @@ class ReactionsTest(unittest.TestCase):
         c = self.make(setup='SET_FREE(1)')
         # Simulate inventory settling across a reward; no rejection was emitted.
         c.run('FULL(); ROOM(); FIRE("PLAYER_ENTERING_WORLD",false,false)')
-        c.wait(40)
+        c.wait(66)
         self.assertEqual(c.sounds(), [])
         self.assertEqual(len(c.g.ATTEMPTS), 0)
         self.assertEqual(len(c.r.queue), 0)
@@ -300,11 +300,11 @@ class ReactionsTest(unittest.TestCase):
         token = c.r.pending.bags.token
         c.run('ROOM(); FULL()')
         self.assertEqual(c.r.pending.bags.token, token)
-        c.wait(40)
-        self.assertEqual(c.sounds(), ['campfire.mp3', 'bags_1.mp3'])
+        c.wait(66)
+        self.assertEqual(c.sounds(), ['campfire_1.mp3', 'bags_1.mp3'])
         self.assertFalse(c.c.reactions.bagsAnnounced)
         c.run('FULL_ERROR()')
-        self.assertEqual(c.sounds(), ['campfire.mp3', 'bags_1.mp3', 'bags_2.mp3'])
+        self.assertEqual(c.sounds(), ['campfire_1.mp3', 'bags_1.mp3', 'bags_2.mp3'])
 
     def test_specialty_and_bank_space_cannot_rearm_general_rejection(self):
         c = self.make(setup='SET_FREE(1); STATE.containers[1]={slots=20,free=0,family=32}; STATE.containers[5]={slots=20,free=0,family=0}')
@@ -344,7 +344,7 @@ class ReactionsTest(unittest.TestCase):
     def test_existing_false_stays_muted(self):
         c=self.make(db={'reactionsEnabled':False})
         c.run('DIE(); FULL(); FULL_ERROR(); LEVEL(21); AURA_ON()')
-        c.wait(40)
+        c.wait(66)
         self.assertEqual(c.sounds(),[])
         self.assertFalse(c.g.ForeverCoachDB.reactionsEnabled)
 
@@ -445,7 +445,7 @@ class ReactionsTest(unittest.TestCase):
     def test_campfire_alternate_variant_gain(self):
         c = self.make()
         c.run('STATE.alternateAura={spellId=1229739}; FIRE("UNIT_AURA","player",{})')
-        self.assertEqual(c.sounds(), ['campfire.mp3'])
+        self.assertEqual(c.sounds(), ['campfire_1.mp3'])
         self.assertTrue(c.r.campPresent)
         self.assertIsNotNone(c.c.reactions.campfireLastPlayedAt)
 
@@ -476,45 +476,103 @@ class ReactionsTest(unittest.TestCase):
                 with self.subTest(first=first, second=second):
                     c = self.dual_campfire(first, second)
                     present = 'present' in (first, second)
-                    self.assertEqual(c.sounds(), ['campfire.mp3'] if present else [])
+                    self.assertEqual(c.sounds(), ['campfire_1.mp3'] if present else [])
                     self.assertEqual(c.r.campPresent, True if present else False if first == second == 'absent' else None)
 
     def test_campfire_variant_unknown_cannot_rearm_known_presence(self):
         for mode in ('zero', 'error', 'secret', 'opaque'):
             for side in (0, 1):
                 with self.subTest(mode=mode, side=side):
-                    c = self.dual_campfire('present', 'absent'); c.wait(35)
+                    c = self.dual_campfire('present', 'absent'); c.wait(61)
                     pair = ['absent', 'absent']; pair[side] = mode
                     c.run(f'STATE.epochShift=3601; CAMP_MODES_SET("{pair[0]}","{pair[1]}")')
                     self.assertTrue(c.r.campPresent)
                     c.run('CAMP_MODES_SET("absent","present")')
-                    self.assertEqual(c.sounds(), ['campfire.mp3'])
+                    self.assertEqual(c.sounds(), ['campfire_1.mp3'])
                     c.run('CAMP_MODES_SET("absent","absent"); CAMP_MODES_SET("absent","present")')
-                    self.assertEqual(c.sounds(), ['campfire.mp3', 'campfire.mp3'])
+                    self.assertEqual(c.sounds(), ['campfire_1.mp3', 'campfire_2.mp3'])
 
     def test_campfire_variant_overlap_and_switch_are_one_episode(self):
         for first, second in (('present','absent'), ('absent','present')):
             with self.subTest(first=first):
-                c = self.dual_campfire(first, second); c.wait(35)
+                c = self.dual_campfire(first, second); c.wait(61)
                 stamp = c.c.reactions.campfireLastPlayedAt
                 c.run('STATE.epochShift=3601; CAMP_MODES_SET("present","present")')
                 c.run(f'CAMP_MODES_SET("{second}","{first}")')
                 c.run(f'CAMP_MODES_SET("{first}","{second}")')
-                self.assertEqual(c.sounds(), ['campfire.mp3'])
+                self.assertEqual(c.sounds(), ['campfire_1.mp3'])
                 self.assertEqual(c.c.reactions.campfireLastPlayedAt, stamp)
                 self.assertEqual(c.r.campEpisode, 1)
 
-    def test_campfire_variants_share_exact_one_hour_guard(self):
+    def test_campfire_variants_share_exact_thirty_minute_guard(self):
         for first, second in (('present','absent'), ('absent','present')):
             with self.subTest(first=first):
-                c = self.dual_campfire(first, second); c.wait(35)
+                c = self.dual_campfire(first, second); c.wait(61)
                 stamp = c.c.reactions.campfireLastPlayedAt
-                c.run(f'STATE.epochShift=STATE.epochShift+{stamp}+3599-time(); CAMP_MODES_SET("absent","absent"); CAMP_MODES_SET("{second}","{first}")')
-                self.assertEqual(c.sounds(), ['campfire.mp3'])
+                c.run(f'STATE.epochShift=STATE.epochShift+{stamp}+1799-time(); CAMP_MODES_SET("absent","absent"); CAMP_MODES_SET("{second}","{first}")')
+                self.assertEqual(c.sounds(), ['campfire_1.mp3'])
                 self.assertEqual(c.c.reactions.campfireLastPlayedAt, stamp)
                 c.run(f'STATE.epochShift=STATE.epochShift+1; CAMP_MODES_SET("absent","absent"); CAMP_MODES_SET("{second}","{first}")')
-                self.assertEqual(c.sounds(), ['campfire.mp3', 'campfire.mp3'])
-                self.assertEqual(c.c.reactions.campfireLastPlayedAt, stamp + 3600)
+                self.assertEqual(c.sounds(), ['campfire_1.mp3', 'campfire_2.mp3'])
+                self.assertEqual(c.c.reactions.campfireLastPlayedAt, stamp + 1800)
+
+    def campfire_again(self, c, after=1800):
+        """Next eligible campfire episode: move the clock past the cooldown, aura off then on."""
+        stamp = c.c.reactions.campfireLastPlayedAt
+        c.run(f'STATE.epochShift=STATE.epochShift+{stamp}+{after}-time(); AURA_OFF(); AURA_ON()')
+
+    def test_campfire_songs_take_turns_across_reload(self):
+        c = self.make(); c.run('AURA_ON()'); c.wait(61)
+        self.assertEqual(c.sounds(), ['campfire_1.mp3'])
+        self.assertEqual(c.c.reactions.campfireNext, 2)
+        self.campfire_again(c); c.wait(64)
+        self.assertEqual(c.sounds(), ['campfire_1.mp3', 'campfire_2.mp3'])
+        self.assertEqual(c.c.reactions.campfireNext, 1)
+        self.campfire_again(c); c.wait(61)
+        self.assertEqual(c.sounds(), ['campfire_1.mp3', 'campfire_2.mp3', 'campfire_1.mp3'])
+        # the index survives a reload: the next campfire after it is song 2
+        saved = c.save()
+        stamp = c.c.reactions.campfireLastPlayedAt
+        reloaded = self.make(db=saved, setup=f'STATE.epochShift=STATE.epochShift+{stamp}+1800-time()')
+        reloaded.run('AURA_ON()')
+        self.assertEqual(reloaded.sounds(), ['campfire_2.mp3'])
+        self.assertEqual(reloaded.c.reactions.campfireNext, 1)
+
+    def test_campfire_thirty_minute_boundary(self):
+        c = self.make(); c.run('AURA_ON()'); c.wait(61)
+        self.campfire_again(c, after=1799); c.wait(1)
+        self.assertEqual(c.sounds(), ['campfire_1.mp3'])
+        self.assertEqual(c.c.reactions.campfireNext, 2)
+        self.campfire_again(c, after=1800)
+        self.assertEqual(c.sounds(), ['campfire_1.mp3', 'campfire_2.mp3'])
+
+    def test_campfire_bad_or_missing_index_starts_at_song_one(self):
+        for bad in ('nil', '3', '0', '"2"', '1.5', '{}', 'true'):
+            with self.subTest(bad=bad):
+                c = self.make(setup=f'ForeverCoachDB=nil')
+                c.run(f'ForeverCoach:Char().reactions.campfireNext={bad}; AURA_ON()')
+                self.assertEqual(c.sounds(), ['campfire_1.mp3'])
+                self.assertEqual(c.c.reactions.campfireNext, 2)
+
+    def test_campfire_failed_or_blocked_play_keeps_song_and_time(self):
+        # three failed attempts: no stamp, no turn
+        c = self.make(setup='STATE.soundFail=true'); c.run('AURA_ON()'); c.wait(4)
+        self.assertEqual(c.sounds(), [])
+        self.assertIsNone(c.c.reactions.campfireLastPlayedAt)
+        self.assertIsNone(c.c.reactions.campfireNext)
+        c.run('STATE.soundFail=false; AURA_OFF(); AURA_ON()')
+        self.assertEqual(c.sounds(), ['campfire_1.mp3'])
+        # a throwing or secret playback result is not a start either
+        for flag in ('soundThrows', 'soundSecret'):
+            with self.subTest(flag=flag):
+                c = self.make(setup=f'STATE.{flag}=true'); c.run('AURA_ON()'); c.wait(4)
+                self.assertIsNone(c.c.reactions.campfireLastPlayedAt)
+                self.assertIsNone(c.c.reactions.campfireNext)
+        # blocked by the cooldown: the song stays where it was
+        c = self.make(); c.run('AURA_ON()'); c.wait(61)
+        self.campfire_again(c, after=600); c.wait(1)
+        self.assertEqual(c.c.reactions.campfireNext, 2)
+        self.campfire_again(c); self.assertEqual(c.sounds(), ['campfire_1.mp3', 'campfire_2.mp3'])
 
     def test_campfire_variant_reload_preserves_shared_guard(self):
         for first, second in (('present','absent'), ('absent','present')):
@@ -530,7 +588,7 @@ class ReactionsTest(unittest.TestCase):
         self.assertEqual(c.sounds(), [])
         self.assertIsNone(c.c.reactions.campfireLastPlayedAt)
         c.run('CAMP_MODES_SET("absent","absent"); CAMP_MODES_SET("absent","present")')
-        self.assertEqual(c.sounds(), ['campfire.mp3'])
+        self.assertEqual(c.sounds(), ['campfire_1.mp3'])
 
     def test_campfire_variant_unknown_unmute_retains_silent_baseline(self):
         c = self.dual_campfire()
@@ -540,7 +598,7 @@ class ReactionsTest(unittest.TestCase):
         self.assertEqual(c.sounds(), [])
         self.assertIsNone(c.c.reactions.campfireLastPlayedAt)
         c.run('CAMP_MODES_SET("absent","absent"); CAMP_MODES_SET("absent","present")')
-        self.assertEqual(c.sounds(), ['campfire.mp3'])
+        self.assertEqual(c.sounds(), ['campfire_1.mp3'])
 
     def test_campfire_variant_playback_failure_does_not_consume_guard(self):
         c = self.dual_campfire()
@@ -551,7 +609,7 @@ class ReactionsTest(unittest.TestCase):
         c.run('STATE.soundFail=false; CAMP_MODES_SET("present","absent")')
         self.assertEqual(c.sounds(), [])
         c.run('CAMP_MODES_SET("absent","absent"); CAMP_MODES_SET("present","absent")')
-        self.assertEqual(c.sounds(), ['campfire.mp3'])
+        self.assertEqual(c.sounds(), ['campfire_1.mp3'])
 
     def test_campfire_alternate_variant_queues_once_behind_other_audio(self):
         c = self.dual_campfire()
@@ -560,7 +618,7 @@ class ReactionsTest(unittest.TestCase):
         self.assertIsNone(c.c.reactions.campfireLastPlayedAt)
         self.assertEqual(len(c.r.queue), 1)
         c.wait(3)
-        self.assertEqual(c.sounds(), ['death.mp3', 'campfire.mp3'])
+        self.assertEqual(c.sounds(), ['death.mp3', 'campfire_1.mp3'])
 
     def test_campfire_other_same_name_spell_is_not_accepted(self):
         c = self.make(setup='''C_UnitAuras.GetPlayerAuraBySpellID=function(id)
@@ -575,39 +633,39 @@ class ReactionsTest(unittest.TestCase):
         c=self.make(); c.run('AURA_ON(1)')
         stamp=c.c.reactions.campfireLastPlayedAt
         c.run('for i=1,100 do AURA_ON(i) end')
-        c.wait(40)
-        self.assertEqual(c.sounds(),['campfire.mp3'])
+        c.wait(66)
+        self.assertEqual(c.sounds(),['campfire_1.mp3'])
         self.assertEqual(c.c.reactions.campfireLastPlayedAt,stamp)
 
     def test_campfire_initial_aura_detected_once_and_persisted(self):
         c=self.make(setup='STATE.aura={spellId=1289723,auraInstanceID=55}')
-        self.assertEqual(c.sounds(),['campfire.mp3'])
+        self.assertEqual(c.sounds(),['campfire_1.mp3'])
         reloaded=self.make(db=c.save(),setup='STATE.aura={spellId=1289723,auraInstanceID=99}')
         reloaded.run('AURA_ON(100)')
         self.assertEqual(reloaded.sounds(),[])
 
     def test_campfire_hour_is_start_based_and_not_expiry_driven(self):
-        c=self.make(); c.run('AURA_ON()'); c.wait(35)
+        c=self.make(); c.run('AURA_ON()'); c.wait(61)
         c.run('AURA_OFF(); AURA_ON()'); c.wait(1)
-        self.assertEqual(c.sounds(),['campfire.mp3'])
+        self.assertEqual(c.sounds(),['campfire_1.mp3'])
         c.run('STATE.epochShift=3601; AURA_ON(88)')
         c.wait(1)
-        self.assertEqual(c.sounds(),['campfire.mp3'])
+        self.assertEqual(c.sounds(),['campfire_1.mp3'])
         c.run('AURA_OFF(); AURA_ON(89)')
-        self.assertEqual(c.sounds(),['campfire.mp3','campfire.mp3'])
+        self.assertEqual(c.sounds(),['campfire_1.mp3','campfire_2.mp3'])
 
     def test_campfire_unknown_is_not_removal_even_after_an_hour(self):
         for flag in ('auraSecret','auraError'):
             with self.subTest(flag=flag):
-                c=self.make(); c.run('AURA_ON()'); c.wait(35)
+                c=self.make(); c.run('AURA_ON()'); c.wait(61)
                 c.run(f'STATE.epochShift=3601; STATE.{flag}=true; FIRE("UNIT_AURA","player",{{}}); STATE.{flag}=false; AURA_ON(2)')
-                self.assertEqual(c.sounds(),['campfire.mp3'])
+                self.assertEqual(c.sounds(),['campfire_1.mp3'])
 
     def test_campfire_initial_unknown_can_recover(self):
         c=self.make(setup='STATE.auraError=true; STATE.aura={spellId=1289723,auraInstanceID=1}')
         self.assertEqual(c.sounds(),[])
         c.run('STATE.auraError=false; FIRE("UNIT_AURA","player",{})')
-        self.assertEqual(c.sounds(),['campfire.mp3'])
+        self.assertEqual(c.sounds(),['campfire_1.mp3'])
 
     def test_nonplayer_aura_and_secret_unit_are_ignored(self):
         c=self.make()
@@ -615,29 +673,29 @@ class ReactionsTest(unittest.TestCase):
         self.assertEqual(c.sounds(),[])
 
     def test_clock_rollback_does_not_bypass_campfire_guard(self):
-        c=self.make(); c.run('AURA_ON()'); c.wait(35)
+        c=self.make(); c.run('AURA_ON()'); c.wait(61)
         c.run('STATE.epochShift=-7200; AURA_OFF(); AURA_ON()')
-        self.assertEqual(c.sounds(),['campfire.mp3'])
+        self.assertEqual(c.sounds(),['campfire_1.mp3'])
 
     def test_no_combat_gating_or_random_rolls(self):
         c=self.make(setup='STATE.combat=true; math.random=function() error("no random reactions") end')
-        c.run('FULL(); FULL_ERROR(); DIE(); LEVEL(21); AURA_ON()'); c.wait(46)
-        self.assertCountEqual(c.sounds(),['bags_1.mp3','death.mp3','level_up.mp3','campfire.mp3'])
+        c.run('FULL(); FULL_ERROR(); DIE(); LEVEL(21); AURA_ON()'); c.wait(72)
+        self.assertCountEqual(c.sounds(),['bags_1.mp3','death.mp3','level_up.mp3','campfire_1.mp3'])
 
     def test_busy_song_queues_distinct_reactions_once(self):
         c=self.make(); c.run('AURA_ON(); DIE(); FULL(); FULL_ERROR(); LEVEL(21)')
         c.run('for i=1,100 do FIRE("PLAYER_DEAD"); FULL_ERROR(); FIRE("PLAYER_LEVEL_UP",21); AURA_ON(i) end')
-        self.assertEqual(c.sounds(),['campfire.mp3'])
-        c.wait(45)
-        self.assertEqual(c.sounds(),['campfire.mp3','death.mp3','bags_1.mp3','level_up.mp3'])
+        self.assertEqual(c.sounds(),['campfire_1.mp3'])
+        c.wait(71)
+        self.assertEqual(c.sounds(),['campfire_1.mp3','death.mp3','bags_1.mp3','level_up.mp3'])
         self.assertEqual(len(c.g.STOPS),0)
 
     def test_repeated_pending_bag_cycles_are_coalesced(self):
         c=self.make(); c.run('AURA_ON(); for i=1,50 do FULL(); FULL_ERROR(); ROOM() end; FULL(); FULL_ERROR()')
-        c.wait(45)
-        self.assertEqual(c.sounds(),['campfire.mp3','bags_1.mp3'])
+        c.wait(71)
+        self.assertEqual(c.sounds(),['campfire_1.mp3','bags_1.mp3'])
         c.run('FULL_ERROR()')
-        self.assertEqual(c.sounds(),['campfire.mp3','bags_1.mp3'])
+        self.assertEqual(c.sounds(),['campfire_1.mp3','bags_1.mp3'])
 
     def test_genuine_new_death_can_wait_behind_active_death(self):
         c=self.make(); c.run('DIE(); REVIVE(); DIE()'); c.wait(6)
@@ -645,14 +703,14 @@ class ReactionsTest(unittest.TestCase):
 
     def test_unrelated_finished_handle_cannot_release_audio_slot(self):
         c=self.make(); c.run('AURA_ON(); DIE(); FIRE("SOUNDKIT_FINISHED",99999)')
-        self.assertEqual(c.sounds(),['campfire.mp3'])
-        c.wait(40)
-        self.assertEqual(c.sounds(),['campfire.mp3','death.mp3'])
+        self.assertEqual(c.sounds(),['campfire_1.mp3'])
+        c.wait(66)
+        self.assertEqual(c.sounds(),['campfire_1.mp3','death.mp3'])
 
     def test_missing_finished_event_has_duration_fallback(self):
         c=self.make(setup='STATE.noSoundFinished=true')
-        c.run('AURA_ON(); DIE()'); c.wait(40)
-        self.assertEqual(c.sounds(),['campfire.mp3','death.mp3'])
+        c.run('AURA_ON(); DIE()'); c.wait(66)
+        self.assertEqual(c.sounds(),['campfire_1.mp3','death.mp3'])
 
     def test_level_popup_is_three_seconds_and_click_through(self):
         c=self.make(); c.run('LEVEL(21)')
@@ -669,7 +727,7 @@ class ReactionsTest(unittest.TestCase):
         self.assertEqual(c.sounds(),['level_up.mp3'])
 
     def test_other_reactions_have_no_popup(self):
-        c=self.make(); c.run('DIE(); FULL(); FULL_ERROR(); AURA_ON()'); c.wait(45)
+        c=self.make(); c.run('DIE(); FULL(); FULL_ERROR(); AURA_ON()'); c.wait(71)
         self.assertTrue(c.r.popup is None or not c.r.popup.IsShown(c.r.popup))
 
     def test_level_duplicate_and_invalid_payloads(self):
@@ -684,8 +742,8 @@ class ReactionsTest(unittest.TestCase):
         self.assertFalse(c.g.ForeverCoachDB.reactionsEnabled)
         self.assertFalse(c.r.popup.IsShown(c.r.popup))
         self.assertEqual(list(c.g.STOPS.values()),[100])
-        c.wait(45)
-        c.run('SlashCmdList.FOREVERCOACH("fun on")'); c.wait(45)
+        c.wait(71)
+        c.run('SlashCmdList.FOREVERCOACH("fun on")'); c.wait(71)
         self.assertEqual(c.sounds(),['level_up.mp3'])
         c.run('ROOM(); FULL(); FULL_ERROR()')
         self.assertEqual(c.sounds(),['level_up.mp3','bags_1.mp3'])
@@ -693,11 +751,11 @@ class ReactionsTest(unittest.TestCase):
     def test_muted_triggers_are_not_replayed_on_unmute(self):
         c=self.make()
         c.run('SlashCmdList.FOREVERCOACH("fun off"); FULL(); FULL_ERROR(); DIE(); AURA_ON(); LEVEL(21); SlashCmdList.FOREVERCOACH("fun on"); FULL_ERROR(); FIRE("PLAYER_DEAD"); AURA_ON(2)')
-        c.wait(40)
+        c.wait(66)
         self.assertEqual(c.sounds(),[])
         self.assertIsNone(c.c.reactions.campfireLastPlayedAt)
         c.run('AURA_OFF(); AURA_ON(3)')
-        self.assertEqual(c.sounds(),['campfire.mp3'])
+        self.assertEqual(c.sounds(),['campfire_1.mp3'])
 
     def test_unknown_aura_at_unmute_does_not_replay_muted_gain(self):
         for flag in ('auraNoReturn', 'auraSecret', 'auraError'):
@@ -712,7 +770,7 @@ class ReactionsTest(unittest.TestCase):
                 self.assertEqual(len(c.g.ATTEMPTS), 0)
                 self.assertEqual(len(c.r.queue), 0)
                 c.run('AURA_OFF(); AURA_ON()')
-                self.assertEqual(c.sounds(), ['campfire.mp3'])
+                self.assertEqual(c.sounds(), ['campfire_1.mp3'])
 
     def test_unknown_inventory_at_unmute_does_not_replay_muted_full(self):
         for flag in ('bagUnknown', 'bagSecret', 'bagError'):
@@ -759,7 +817,7 @@ class ReactionsTest(unittest.TestCase):
                 self.assertEqual(len(c.g.ATTEMPTS), 0)
                 # Already enabled: another "on" must not arm a new silent baseline.
                 c.run(f'STATE.{flag}=true; AURA_ON(); SlashCmdList.FOREVERCOACH("fun on"); STATE.{flag}=false; FIRE("UNIT_AURA","player",{{}})')
-                self.assertEqual(c.sounds(), ['campfire.mp3'])
+                self.assertEqual(c.sounds(), ['campfire_1.mp3'])
 
     def test_deferred_bag_baseline_can_first_confirm_room(self):
         for flag in ('bagUnknown', 'bagSecret', 'bagError'):
@@ -775,7 +833,7 @@ class ReactionsTest(unittest.TestCase):
                 self.assertEqual(c.sounds(), ['bags_1.mp3'])
 
     def test_deferred_bag_and_aura_baselines_recover_independently(self):
-        aura = ('STATE.auraNoReturn=false; FIRE("UNIT_AURA","player",{})', 'AURA_OFF(); AURA_ON()', 'campfire.mp3')
+        aura = ('STATE.auraNoReturn=false; FIRE("UNIT_AURA","player",{})', 'AURA_OFF(); AURA_ON()', 'campfire_1.mp3')
         bags = ('STATE.bagUnknown=false; FIRE("BAG_UPDATE_DELAYED")', 'ROOM(); FULL(); FULL_ERROR()', 'bags_1.mp3')
         for first, second in ((aura, bags), (bags, aura)):
             with self.subTest(first=first[2]):
@@ -790,7 +848,7 @@ class ReactionsTest(unittest.TestCase):
                 self.assertEqual(c.c.reactions.bagNext, 1 if first == aura else 2)
                 if first == bags:
                     self.assertIsNone(c.c.reactions.campfireLastPlayedAt)
-                c.wait(40)
+                c.wait(66)
                 self.assertEqual(c.sounds(), [first[2]])
                 c.run(second[1])
                 self.assertEqual(c.sounds(), [first[2], second[2]])
@@ -798,8 +856,8 @@ class ReactionsTest(unittest.TestCase):
     def test_synchronous_completion_on_mute_stop_does_not_drain_queue(self):
         c = self.make(setup='local stop=StopSound; function StopSound(h) stop(h); FIRE("SOUNDKIT_FINISHED",h) end')
         c.run('AURA_ON(); DIE(); FULL(); FULL_ERROR(); LEVEL(21); SlashCmdList.FOREVERCOACH("fun off"); SlashCmdList.FOREVERCOACH("fun off")')
-        c.wait(45)
-        self.assertEqual(c.sounds(), ['campfire.mp3'])
+        c.wait(71)
+        self.assertEqual(c.sounds(), ['campfire_1.mp3'])
         self.assertEqual(list(c.g.STOPS.values()), [100])
         self.assertEqual(len(c.r.queue), 0)
         self.assertIsNone(c.r.active)
@@ -808,16 +866,16 @@ class ReactionsTest(unittest.TestCase):
     def test_synchronous_completion_on_fallback_stop_is_reentrant_safe(self):
         c = self.make(setup='STATE.noSoundFinished=true; local stop=StopSound; function StopSound(h) stop(h); FIRE("SOUNDKIT_FINISHED",h) end')
         c.run('AURA_ON(); DIE(); FULL(); FULL_ERROR(); LEVEL(21)')
-        c.wait(45)
-        self.assertEqual(c.sounds(), ['campfire.mp3', 'death.mp3', 'bags_1.mp3', 'level_up.mp3'])
+        c.wait(71)
+        self.assertEqual(c.sounds(), ['campfire_1.mp3', 'death.mp3', 'bags_1.mp3', 'level_up.mp3'])
         self.assertEqual(list(c.g.STOPS.values()), [100, 101, 102, 103])
         self.assertIsNone(c.r.frame.scripts.OnUpdate)
 
     def test_synchronous_completion_on_logout_stop_is_reentrant_safe(self):
         c = self.make(setup='local stop=StopSound; function StopSound(h) stop(h); FIRE("SOUNDKIT_FINISHED",h) end')
         c.run('AURA_ON(); DIE(); FULL(); FULL_ERROR(); FIRE("PLAYER_LOGOUT")')
-        c.wait(45)
-        self.assertEqual(c.sounds(), ['campfire.mp3'])
+        c.wait(71)
+        self.assertEqual(c.sounds(), ['campfire_1.mp3'])
         self.assertEqual(list(c.g.STOPS.values()), [100])
         self.assertFalse(c.r.ready)
 
@@ -838,8 +896,8 @@ class ReactionsTest(unittest.TestCase):
         self.assertEqual(c.c.reactions.bagNext,1)
         self.assertIsNone(c.c.reactions.campfireLastPlayedAt)
         self.assertLessEqual(len(c.g.ATTEMPTS),6)
-        c.run('STATE.soundFail=false; ROOM(); FULL(); FULL_ERROR(); AURA_OFF(); AURA_ON()'); c.wait(40)
-        self.assertEqual(c.sounds(),['bags_1.mp3','campfire.mp3'])
+        c.run('STATE.soundFail=false; ROOM(); FULL(); FULL_ERROR(); AURA_OFF(); AURA_ON()'); c.wait(66)
+        self.assertEqual(c.sounds(),['bags_1.mp3','campfire_1.mp3'])
 
     def test_transient_failure_retries_without_consuming_or_blocking_forever(self):
         c=self.make(setup='STATE.soundFail=true')
@@ -858,16 +916,16 @@ class ReactionsTest(unittest.TestCase):
                 self.assertLessEqual(len(c.g.ATTEMPTS),3)
 
     def test_logout_clears_pending_and_stops_owned_playback(self):
-        c=self.make(); c.run('AURA_ON(); DIE(); FIRE("PLAYER_LOGOUT")'); c.wait(45)
-        self.assertEqual(c.sounds(),['campfire.mp3'])
+        c=self.make(); c.run('AURA_ON(); DIE(); FIRE("PLAYER_LOGOUT")'); c.wait(71)
+        self.assertEqual(c.sounds(),['campfire_1.mp3'])
         self.assertEqual(list(c.g.STOPS.values()),[100])
 
     def test_campfire_zero_returns_do_not_manufacture_absence(self):
-        c=self.make(); c.run('AURA_ON()'); c.wait(35)
+        c=self.make(); c.run('AURA_ON()'); c.wait(61)
         c.run('STATE.epochShift=3601; STATE.auraNoReturn=true; FIRE("UNIT_AURA","player",{}); STATE.auraNoReturn=false; AURA_ON(2)')
-        self.assertEqual(c.sounds(),['campfire.mp3'])
+        self.assertEqual(c.sounds(),['campfire_1.mp3'])
         c.run('AURA_OFF(); AURA_ON(3)')
-        self.assertEqual(c.sounds(),['campfire.mp3','campfire.mp3'])
+        self.assertEqual(c.sounds(),['campfire_1.mp3','campfire_2.mp3'])
 
     def test_level_uses_event_before_unit_level_is_applied(self):
         c=self.make()
@@ -878,8 +936,8 @@ class ReactionsTest(unittest.TestCase):
     def test_enable_command_is_idempotent_and_does_not_interrupt(self):
         c=self.make(); c.run('AURA_ON(); DIE(); SlashCmdList.FOREVERCOACH("fun on")')
         self.assertEqual(len(c.g.STOPS),0)
-        c.wait(40)
-        self.assertEqual(c.sounds(),['campfire.mp3','death.mp3'])
+        c.wait(66)
+        self.assertEqual(c.sounds(),['campfire_1.mp3','death.mp3'])
 
     def test_nullable_bag_family_is_unknown_not_general_capacity(self):
         c=self.make(setup='STATE.containers[1]={slots=8,free=0}')
@@ -894,12 +952,12 @@ class ReactionsTest(unittest.TestCase):
         queued_at=c.g.time()
         c.wait(6)
         self.assertGreater(c.c.reactions.campfireLastPlayedAt,queued_at)
-        self.assertEqual(c.sounds(),['death.mp3','bags_1.mp3','campfire.mp3'])
+        self.assertEqual(c.sounds(),['death.mp3','bags_1.mp3','campfire_1.mp3'])
 
     def test_campfire_guard_is_per_character(self):
         c=self.make(); c.run('AURA_ON()')
         other=self.make(db=c.save(),setup='function UnitName() return "OtherCharacter" end; STATE.aura={spellId=1289723}')
-        self.assertEqual(other.sounds(),['campfire.mp3'])
+        self.assertEqual(other.sounds(),['campfire_1.mp3'])
 
     def test_mute_persists_through_actual_save_reload(self):
         c=self.make(); c.run('SlashCmdList.FOREVERCOACH("fun off")')
@@ -912,7 +970,7 @@ class ReactionsTest(unittest.TestCase):
         c=self.make(setup='OPAQUE={}; STATE.aura=OPAQUE; function canaccesstable(v) return not rawequal(v,OPAQUE) end')
         self.assertEqual(c.sounds(),[])
         c.run('AURA_ON()')
-        self.assertEqual(c.sounds(),['campfire.mp3'])
+        self.assertEqual(c.sounds(),['campfire_1.mp3'])
 
     def test_nonfinite_clock_cannot_create_campfire_eligibility(self):
         c=self.make()
