@@ -71,7 +71,7 @@ let renderedReport = {
   Account: $('report-body').dataset.account
 };
 function message(text) { $('global-status').textContent = text; }
-let userNavigated = false, initialViewChosen = false, placement = null;
+let userNavigated = false, initialViewChosen = false, placement = null, pendingReplace = [];
 const autoChecked = new Set();
 function show(view) {
   $('setup-view').hidden = view !== 'setup';
@@ -101,7 +101,8 @@ function updateButtons() {
   $('check-update').disabled = busy || disabled;
   $('apply-update').disabled = busy || disabled || !offer || !offer.Available;
   $('setup-install').disabled = busy || disabled || !offer || !offer.Available;
-  for (const id of ['browse-folder','use-folder','game-path','setup-browse','setup-app-install','setup-app-open','settings-replace','settings-keep']) $(id).disabled = busy;
+  for (const id of ['browse-folder','use-folder','game-path','setup-browse','setup-app-install','setup-app-open','setup-app-repair','settings-keep']) $(id).disabled = busy;
+  $('settings-replace').disabled = busy || !replaceChoice().length;
   $('settings-repair').disabled = busy || !linksNeedRepair();
   renderBundleLabels();
   for (const b of document.querySelectorAll('#extra-list button')) {
@@ -515,7 +516,14 @@ function renderPlacement(p) {
   if (state === 'other-copy') text += ' Nothing is overwritten.';
   $('setup-app-text').textContent = text;
   $('setup-app-install').hidden = state !== 'offer';
-  $('setup-app-open').hidden = state !== 'other-copy';
+  // A failed reopen leaves state "copied": the Open button comes back.
+  $('setup-app-open').hidden = state !== 'other-copy' && state !== 'copied';
+  // A shortcut that failed (or points elsewhere) stays visible after the reopen.
+  const broken = state === 'installed' ? (placement.Links || []).filter(l => l.State === 'missing' || l.State === 'other') : [];
+  $('setup-app-links').hidden = !broken.length;
+  $('setup-app-links').textContent = broken.map(l => linkLabel[l.Where]+' shortcut '+(l.State === 'missing' ? 'missing' : 'points elsewhere'+(l.Target ? ': '+l.Target : ''))).join('; ')+(broken.length ? ' — Repair shortcuts.' : '');
+  $('setup-app-repair').hidden = !broken.length;
+  if (broken.length) $('nav-settings').dataset.new = 'true'; else delete $('nav-settings').dataset.new;
   $('step-app').classList.toggle('done', state === 'installed');
   if (state === 'offer' || state === 'other-copy') $('nav-setup').dataset.new = 'true';
   else delete $('nav-setup').dataset.new;
@@ -541,7 +549,8 @@ async function loadPlacement() {
 }
 async function openInstalled(statusId, prefix) {
   try {
-    await rc.openInstalledApp(); // Go closes this window after a successful start
+    const r = await rc.openInstalledApp(); // Go closes this window after a successful start
+    if (!r || r.State !== 'opened') throw new Error('it did not start');
     $(statusId).textContent = prefix+'Opening the installed Relax Coach…';
     restarting = true;
   } catch(err) {
@@ -571,23 +580,47 @@ $('setup-app-open').addEventListener('click',async()=>{
 });
 async function repairLinks(replace) {
   if (busy) return;
-  busy = true; $('settings-confirm').hidden = true; updateButtons();
+  busy = true; $('settings-confirm').hidden = true; pendingReplace = []; updateButtons();
   $('settings-status').textContent = 'Repairing shortcuts…';
   try { const p = await rc.repairAppLinks(replace.join(',')); renderPlacement(p); $('settings-status').textContent = p.Message || 'Shortcuts checked.'; }
   catch(err) { $('settings-status').textContent = 'Repair failed: '+err.message; }
   finally { busy = false; updateButtons(); }
 }
-$('settings-repair').addEventListener('click',()=>{
+// The names to replace are fixed when the prompt is shown: a later reload
+// never adds a shortcut the player did not see. Two "other" shortcuts get one
+// choice each.
+function replaceChoice() {
+  if (pendingReplace.length < 2) return pendingReplace;
+  return pendingReplace.filter(w => { const box = document.getElementById('replace-'+w); return box && box.checked; });
+}
+function startRepair() {
   if (busy || !linksNeedRepair()) return;
   const others = placement.Links.filter(l => l.State === 'other');
   if (!others.length) { repairLinks([]); return; }
-  // Never replace a shortcut the player did not confirm by name.
-  $('settings-confirm-text').textContent = others.map(l => 'The '+linkLabel[l.Where]+' shortcut '+(l.Target ? 'points at '+l.Target : 'is not a shortcut to the installed copy')+'.').join(' ')+' Replace it?';
+  pendingReplace = others.map(l => l.Where);
+  const where = l => 'The '+linkLabel[l.Where]+' shortcut '+(l.Target ? 'points at '+l.Target : 'is not a shortcut to the installed copy')+'.';
+  const choices = $('settings-confirm-choices');
+  choices.replaceChildren();
+  if (others.length === 1) {
+    $('settings-confirm-text').textContent = where(others[0])+' Replace it?';
+    $('settings-replace').textContent = 'Replace it';
+  } else {
+    $('settings-confirm-text').textContent = 'These shortcuts point somewhere else. Choose which to replace:';
+    for (const l of others) {
+      const label = document.createElement('label'); const box = document.createElement('input');
+      box.type = 'checkbox'; box.id = 'replace-'+l.Where; box.addEventListener('change',updateButtons);
+      label.append(box, ' '+where(l)); const row = document.createElement('div'); row.append(label); choices.append(row);
+    }
+    $('settings-replace').textContent = 'Replace selected';
+  }
   $('settings-confirm').hidden = false;
-});
-$('settings-replace').addEventListener('click',()=>repairLinks(placement.Links.filter(l => l.State === 'other').map(l => l.Where)));
+  updateButtons();
+}
+$('settings-repair').addEventListener('click',startRepair);
+$('setup-app-repair').addEventListener('click',()=>{ userNavigated = true; show('settings'); startRepair(); });
+$('settings-replace').addEventListener('click',()=>{ const names = replaceChoice(); if (names.length) repairLinks(names); });
 $('settings-keep').addEventListener('click',()=>{
-  $('settings-confirm').hidden = true;
+  $('settings-confirm').hidden = true; pendingReplace = [];
   if (placement.Links.some(l => l.State === 'missing')) repairLinks([]);
   else $('settings-status').textContent = 'Nothing was changed.';
 });

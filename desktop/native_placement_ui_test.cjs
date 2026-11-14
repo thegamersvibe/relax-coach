@@ -200,3 +200,66 @@ test('Repair stays off while a repair runs',async t=>{
   release();await settle();await settle();
   assert.equal($('settings-repair').disabled,false,'free again, the link is still missing');
 });
+
+test('S1: a shortcut that failed stays visible after the reopen',async t=>{
+  // Desktop write was blocked during install; the reopened installed copy reads it as missing.
+  let p=inst([link('desktop','missing'),link('startmenu','ok',T)]);
+  const {$,calls}=await setup(t,{reportRefresh:()=>report('C:\\WoW','1.5.6',installed),appPlacement:()=>p,
+    repairAppLinks:()=>(p=inst([link('desktop','ok',T),link('startmenu','ok',T)]))});
+  assert.equal($('setup-app-links').hidden,false);
+  assert.equal($('setup-app-links').textContent,'Desktop shortcut missing — Repair shortcuts.');
+  assert.equal($('setup-app-repair').hidden,false);
+  assert.equal($('nav-settings').dataset.new,'true','Settings is marked');
+  $('setup-app-repair').click();await settle();await settle();
+  assert.equal($('settings-view').hidden,false);
+  assert.deepEqual(calls.filter(c=>c.method==='repairAppLinks').map(c=>c.params),[['']]);
+  assert.equal($('setup-app-links').hidden,true,'gone once repaired');
+  assert.equal($('nav-settings').dataset.new,undefined);
+  // An "other" link shows where it points and goes through the confirmation.
+  const r=await setup(t,{reportRefresh:()=>report('C:\\WoW','1.5.6',installed),appPlacement:()=>inst([link('desktop','other','C:\\Old\\RelaxCoach.exe'),link('startmenu','ok',T)])});
+  assert.equal(r.$('setup-app-links').textContent,'Desktop shortcut points elsewhere: C:\\Old\\RelaxCoach.exe — Repair shortcuts.');
+  r.$('setup-app-repair').click();await settle();
+  assert.equal(r.$('settings-confirm').hidden,false);
+  assert.equal(r.calls.filter(c=>c.method==='repairAppLinks').length,0);
+  // All ok: no hint, no mark.
+  const ok=await setup(t,{reportRefresh:()=>report('C:\\WoW','1.5.6',installed),appPlacement:()=>inst([link('desktop','ok',T),link('startmenu','ok',T)])});
+  assert.equal(ok.$('setup-app-links').hidden,true);assert.equal(ok.$('setup-app-repair').hidden,true);assert.equal(ok.$('nav-settings').dataset.new,undefined);
+});
+
+test('S2: Replace sends the names shown in the prompt, not states read later',async t=>{
+  let p=inst([link('desktop','other','C:\\Old\\a.exe'),link('startmenu','ok',T)]);
+  const {$,calls}=await setup(t,{reportRefresh:()=>report('C:\\WoW','1.5.6',installed),appPlacement:()=>p,repairAppLinks:()=>p});
+  $('nav-settings').click();await settle();
+  $('settings-repair').click();await settle();
+  assert.equal($('settings-confirm').hidden,false);
+  p=inst([link('desktop','other','C:\\Old\\a.exe'),link('startmenu','other','C:\\Elsewhere\\b.exe')]); // changes meanwhile
+  $('nav-settings').click();await settle();                                                          // reload
+  $('settings-replace').click();await settle();
+  assert.deepEqual(calls.filter(c=>c.method==='repairAppLinks').map(c=>c.params),[['desktop']]);
+});
+
+test('S3: two "other" shortcuts get one choice each',async t=>{
+  const p=inst([link('desktop','other','C:\\Old\\a.exe'),link('startmenu','other','C:\\Elsewhere\\b.exe')]);
+  const {$,calls,count}=await setup(t,{reportRefresh:()=>report('C:\\WoW','1.5.6',installed),appPlacement:()=>p,repairAppLinks:()=>p});
+  $('nav-settings').click();await settle();
+  $('settings-repair').click();await settle();
+  assert.ok($('replace-desktop'));assert.ok($('replace-startmenu'));
+  assert.equal($('replace-desktop').checked,false,'nothing is chosen for the player');
+  assert.equal($('settings-replace').disabled,true,'nothing chosen yet');
+  $('replace-startmenu').click();await settle();
+  assert.equal($('settings-replace').disabled,false);
+  $('settings-replace').click();await settle();
+  assert.deepEqual(calls.filter(c=>c.method==='repairAppLinks').map(c=>c.params),[['startmenu']]);
+  assert.equal(count('repairAppLinks'),1);
+});
+
+test('notes: open locks only on State "opened"; a failed reopen brings Open back',async t=>{
+  const {$}=await setup(t,{reportRefresh:()=>report('C:\\WoW','1.5.6',installed),appPlacement:()=>offer,
+    installAppCopy:()=>({...other(true),State:'copied',Message:'Relax Coach was copied to '+T+'.'}),
+    openInstalledApp:()=>({State:'other-copy'})});
+  $('setup-app-install').click();await settle();await settle();
+  assert.match($('setup-app-status').textContent,/could not reopen from its folder \(it did not start\)/);
+  assert.equal($('setup-app-open').hidden,false,'Open is offered again');
+  assert.equal($('setup-app-open').disabled,false,'not locked');
+  assert.equal($('setup-app-install').hidden,true);
+});
