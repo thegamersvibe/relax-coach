@@ -29,12 +29,15 @@ func (b *nativeBridge) appFirst(release AddonReleaseInfo) bool {
 	if !b.services.selfUpdate() {
 		return false
 	}
-	// Likewise when this process checked for an app update and none was
-	// offered: the chain must not loop on "app first" (manual link instead).
+	// Likewise when the app check answered for this same release and had
+	// nothing to install (no app asset or checksum entry): the chain must not
+	// loop on "app first" (manual link instead). An answer for another
+	// version (an earlier check, or a draft/pre-release/unparsable tag, which
+	// carry no version) keeps the gate.
 	b.mu.Lock()
-	failed, notOffered := b.appApplyFailed, b.appNotOffered
+	failed, notOfferedFor := b.appApplyFailed, b.appNotOfferedFor
 	b.mu.Unlock()
-	if failed || notOffered {
+	if failed || (notOfferedFor != "" && notOfferedFor == release.Version) {
 		return false
 	}
 	if !appNewerThanThis(release) {

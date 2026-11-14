@@ -221,7 +221,7 @@ button:focus-visible,a:focus-visible,.smallprint:focus-visible,input:focus-visib
 <p id="app-update-status" class="status" role="status" aria-live="polite">{{if .UpdatesDisabled}}Updates are disabled by -no-update.{{else}}Check first, then click Update App. Relax Coach will restart. WoW can stay open; your addons follow when WoW is closed.{{end}}</p>
 <p id="app-last-result" class="status" role="status" aria-live="polite">{{.AppUpdateStatus}}</p>
 <h3 id="app-release-name">App release notes</h3><div id="app-release-notes" class="notes">No automatic downloads or installations.</div>
-<p class="scope">Replaces only this application after checksum verification and backup. Startup is checked before committing; a failed startup rolls back. No game folder or account is required. Addons, Journey, guides, settings and saves are unchanged.</p>
+<p class="scope">Replaces only this application after checksum verification and backup. Startup is checked before committing; a failed startup rolls back. No game folder or account is required. Addons, Journey, guides, settings and saves are not changed by this step; your addons follow when WoW is closed.</p>
 </div>
 <div class="card updatecard"><h3>Coach, Journey, Relax Quest Planner and guide content</h3><dl class="versions"><div><dt>Installed Coach</dt><dd id="installed-version">{{.InstalledVersion}}</dd></div><div><dt>Offered addon bundle</dt><dd id="offered-version">Not checked</dd></div></dl>
 <div class="actions"><button id="check-update" class="secondary"{{if .UpdatesDisabled}} disabled{{end}}>Check</button><button id="apply-update" class="primary" disabled>{{if eq .InstalledVersion "0.0.0"}}Install{{else}}Update{{end}}</button><a id="release-link" hidden>View on GitHub ↗</a></div>

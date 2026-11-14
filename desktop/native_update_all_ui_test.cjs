@@ -12,6 +12,7 @@ const partial={...installed,state:'partial',present:['ForeverCoach','Journey','J
 const report=(game,version,bundle=installed)=>({HTML:'<p>report</p>',Game:game,Account:'',Accounts:[],InstalledVersion:version,AppVersion:'1.6.0',AppUpdateStatus:'',Bundle:bundle});
 const UPDATE=['checkApp','applyApp','checkAddon','applyAddon','extraList','checkExtra','applyExtra'];
 const noApp={Version:'1.6.0',InstalledVersion:'1.6.0',Available:false};
+const current={...noApp,Bundle:installed};
 const bundle=(over={})=>({Version:'1.6.1',InstalledVersion:'1.6.0',Available:true,Install:false,Repair:false,Bundle:installed,...over});
 const extras=[
   {ID:'rankup',Name:'RankUp',InstalledVersion:'1.0.0'},
@@ -63,7 +64,7 @@ test('no app update: bundle, then only installed More addons, in list order',asy
   assert.match($('ua-bundle').textContent,/1\.6\.1: updated · backup C:\\WoW\\RelaxCoachBackups\\x/);
   assert.ok($('ua-extra-rankup'));
   assert.equal($('ua-extra-maps'),null,'a More addon that is not installed is not touched');
-  assert.equal($('ua-extra-odd'),null,'an unrecognised folder is not touched');
+  assert.match($('ua-extra-odd').textContent,/2\.0\.0: skipped \(not this addon\)/,'an unrecognised folder is named, not touched');
 });
 
 test('a failing applyAddon stops the chain: no More addons are checked',async t=>{
@@ -161,9 +162,6 @@ test('automatic run: each unmet condition installs nothing and marks Update ever
     ['gameState error',{gameState:()=>{throw Error('x')},checkAddon:()=>bundle()},/could not tell whether WoW is running/],
     ['no game folder',{reportRefresh:()=>report('','0.0.0'),gameState:()=>'closed',checkAddon:()=>bundle()},/Choose your game folder/],
     ['Coach not installed',{reportRefresh:()=>report('C:\\WoW','0.0.0'),gameState:()=>'closed',checkAddon:()=>bundle({Install:true})},/not installed/],
-    ['Repair offer',{gameState:()=>'closed',checkAddon:()=>bundle({Repair:true,Install:true,Version:'1.6.0'})},/were not updated: they need a repair; use Repair below/],
-    ['replaced Journey',{gameState:()=>'closed',checkAddon:()=>bundle({Bundle:replaced})},/were not updated: Journey is not Relax Journey/],
-    ['partial bundle',{gameState:()=>'closed',checkAddon:()=>bundle({Bundle:partial})},/were not updated: an addon folder is missing: RelaxQuestPlanner; use Repair below/],
     ['NeedsApp',{gameState:()=>'closed',checkAddon:()=>bundle({NeedsApp:true,Version:'1.7.0'})},/were not updated: this release needs app 1\.7\.0 first.*releases\/latest/],
     ['check fails',{gameState:()=>'closed',checkAddon:()=>{throw Error('offline')}},/addon check failed \(offline\)/],
   ];
@@ -178,8 +176,63 @@ test('automatic run: each unmet condition installs nothing and marks Update ever
   }
 });
 
+test('R4: a held bundle is marked and named, never "up to date"; the More addons still update',async t=>{
+  const cases=[
+    ['Repair offer',bundle({Repair:true,Install:true,Version:'1.6.0'}),/they need a repair; use Repair below/],
+    ['replaced Journey, update offered',bundle({Bundle:replaced}),/Journey is not Relax Journey; use Repair below/],
+    ['partial, update offered',bundle({Bundle:partial}),/an addon folder is missing: RelaxQuestPlanner; use Repair below/],
+    ['partial, nothing offered',{...noApp,Bundle:partial},/an addon folder is missing: RelaxQuestPlanner; use Repair below/],
+    ['replaced, nothing offered',{...noApp,Bundle:replaced},/Journey is not Relax Journey; use Repair below/],
+  ];
+  for (const [name,offer,why] of cases) {
+    const {$,count,updates}=await setup(t,base({afterAppUpdate:()=>after,gameState:()=>'closed',checkAddon:()=>offer,
+      extraList:()=>extras,checkExtra:id=>extraOffer(id),applyExtra:a=>({message:a})}));
+    await settle();await settle();await settle();
+    assert.equal(count('applyAddon'),0,name);
+    assert.deepEqual(updates().filter(m=>m.startsWith('applyExtra')),['applyExtra(rankup@9.9.9)','applyExtra(ahp@9.9.9)'],name+': More addons still update');
+    assert.match($('global-status').textContent,new RegExp('Your Relax Coach addons were not updated: '+why.source+'\\. Checking your More addons…'),name);
+    assert.match($('ua-bundle').textContent,why,name);
+    assert.doesNotMatch($('ua-bundle').textContent+$('global-status').textContent,/up to date/,name+': no up-to-date claim');
+    assert.equal($('update-all').dataset.new,'true',name+': button marked');
+    assert.equal($('nav-update').dataset.new,'true',name+': nav marked');
+  }
+});
+
+test('R3: a new run and a folder change clear every old line; a Problem addon is named',async t=>{
+  let list=extras;
+  const {$}=await setup(t,base({checkApp:()=>noApp,checkAddon:()=>bundle(),applyAddon:v=>({message:'ok'}),
+    extraList:()=>list,checkExtra:id=>extraOffer(id),applyExtra:a=>({message:a}),chooseGame:()=>report('D:\\Other','1.6.0')}));
+  $('nav-update').click();await settle();
+  $('update-all').click();await settle();await settle();await settle();
+  assert.match($('ua-extra-odd').textContent,/skipped \(not this addon\)/);
+  assert.match($('update-all-status').textContent,/Skipped: Odd \(see above\)/);
+  assert.doesNotMatch($('update-all-status').textContent,/Everything is up to date/);
+  // a new run: RankUp is gone from the list, so its old line must go too
+  list=[extras[3]];
+  $('update-all').click();await settle();await settle();await settle();
+  assert.equal($('ua-extra-rankup'),null,'old line cleared at the start of a run');
+  assert.equal($('ua-extra-odd'),null);
+  assert.ok($('ua-extra-ahp'));
+  // a folder change clears the bundle and app lines too
+  $('browse-folder').click();await settle();await settle();
+  assert.equal($('ua-extra-ahp'),null);
+  assert.match($('ua-bundle').textContent,/not checked yet/);
+  assert.match($('ua-app').textContent,/not checked yet/);
+  // only a Problem addon installed: never "Everything is up to date"
+  const p=await setup(t,base({checkApp:()=>noApp,checkAddon:()=>({...current}),extraList:()=>[extras[2]]}));
+  p.$('nav-update').click();await settle();
+  p.$('update-all').click();await settle();await settle();
+  assert.equal(p.$('update-all-status').textContent,'Done: the app is up to date. Skipped: Odd (see above).');
+});
+
+test('R2: the app card no longer says addons are unchanged without the follow-up',async t=>{
+  const {$}=await setup(t,base());
+  const scope=[...$('app-update-status').parentElement.querySelectorAll('.scope')].map(e=>e.textContent).join(' ');
+  assert.match(scope,/Addons, Journey, guides, settings and saves are not changed by this step; your addons follow when WoW is closed\./);
+});
+
 test('automatic run: bundle already current still updates the installed More addons',async t=>{
-  const {$,updates,count}=await setup(t,base({afterAppUpdate:()=>after,gameState:()=>'closed',checkAddon:()=>({...noApp}),
+  const {$,updates,count}=await setup(t,base({afterAppUpdate:()=>after,gameState:()=>'closed',checkAddon:()=>({...current}),
     extraList:()=>extras, checkExtra:id=>extraOffer(id), applyExtra:a=>({message:a})}));
   await settle();await settle();
   assert.equal(count('applyAddon'),0,'the bundle is current');
@@ -191,8 +244,8 @@ test('automatic run: bundle already current still updates the installed More add
 });
 
 test('automatic run: bundle and More addons all current',async t=>{
-  const {$,count}=await setup(t,base({afterAppUpdate:()=>after,gameState:()=>'closed',checkAddon:()=>({...noApp}),
-    extraList:()=>extras, checkExtra:id=>({...extraOffer(id),Available:false,Version:'1.0.0'})}));
+  const {$,count}=await setup(t,base({afterAppUpdate:()=>after,gameState:()=>'closed',checkAddon:()=>({...current}),
+    extraList:()=>extras.filter(e=>e.ID!=='odd'), checkExtra:id=>({...extraOffer(id),Available:false,Version:'1.0.0'})}));
   await settle();await settle();
   assert.equal(count('applyAddon')+count('applyExtra'),0);
   assert.equal($('update-all-status').textContent,'Everything is up to date.');
@@ -200,7 +253,7 @@ test('automatic run: bundle and More addons all current',async t=>{
 });
 
 test('automatic run: bundle current but WoW open updates nothing',async t=>{
-  const {$,count}=await setup(t,base({afterAppUpdate:()=>after,gameState:()=>'open',checkAddon:()=>({...noApp}),
+  const {$,count}=await setup(t,base({afterAppUpdate:()=>after,gameState:()=>'open',checkAddon:()=>({...current}),
     extraList:()=>extras, checkExtra:id=>extraOffer(id), applyExtra:a=>({message:a})}));
   await settle();await settle();
   assert.equal(count('checkExtra')+count('applyExtra'),0);
@@ -268,7 +321,7 @@ test('not started by an app update: the normal launch check runs, nothing instal
 });
 
 test('an installed More addon offered as Install (a repair) is left to its own button',async t=>{
-  const {$,updates}=await setup(t,base({checkApp:()=>noApp, checkAddon:()=>({...noApp}), extraList:()=>[extras[0]],
+  const {$,updates}=await setup(t,base({checkApp:()=>noApp, checkAddon:()=>({...current}), extraList:()=>[extras[0]],
     checkExtra:id=>({...extraOffer(id),Install:true})}));
   $('nav-update').click();await settle();
   $('update-all').click();await settle();await settle();
@@ -284,10 +337,10 @@ test('F1: a partial bundle goes to its own button, never Update everything',asyn
   $('update-all').click();await settle();await settle();
   assert.equal(count('applyAddon'),0);
   assert.match($('ua-bundle').textContent,/left to its own button below \(an addon folder is missing: RelaxQuestPlanner; use Repair below\)/);
-  // automatic: nothing installed, button marked
-  const a=await setup(t,base({afterAppUpdate:()=>after,gameState:()=>'closed',checkAddon:()=>bundle({Bundle:partial}),extraList:()=>extras,checkExtra:id=>extraOffer(id)}));
-  await settle();await settle();
-  assert.equal(a.count('applyAddon')+a.count('applyExtra'),0);
+  // automatic: the bundle is not installed, the button is marked (More addons: see R4)
+  const a=await setup(t,base({afterAppUpdate:()=>after,gameState:()=>'closed',checkAddon:()=>bundle({Bundle:partial}),extraList:()=>extras,checkExtra:id=>extraOffer(id),applyExtra:x=>({message:x})}));
+  await settle();await settle();await settle();
+  assert.equal(a.count('applyAddon'),0);
   assert.equal(a.$('update-all').dataset.new,'true');
   // a bundle offer without a Bundle state is not trusted either
   const n=await setup(t,base({checkApp:()=>noApp, checkAddon:()=>bundle({Bundle:undefined}), extraList:()=>[]}));
@@ -306,7 +359,7 @@ test('F2: WoW started during a slow check stops the automatic install',async t=>
   assert.equal($('update-all').dataset.new,'true');
   // a slow More addon check during which WoW starts
   let w2='closed';
-  const m=await setup(t,base({afterAppUpdate:()=>after,gameState:()=>w2,checkAddon:()=>({...noApp}),extraList:()=>extras,
+  const m=await setup(t,base({afterAppUpdate:()=>after,gameState:()=>w2,checkAddon:()=>({...current}),extraList:()=>extras,
     checkExtra:id=>new Promise(r=>setTimeout(()=>{w2='open';r(extraOffer(id));},60))}));
   for (let i=0;i<8;i++) await settle();
   assert.equal(m.count('applyExtra'),0);
@@ -315,14 +368,14 @@ test('F2: WoW started during a slow check stops the automatic install',async t=>
 
 test('F4: unavailable checks read skipped, applyExtra messages are kept, a folder change clears the lines',async t=>{
   const offers={rankup:{...extraOffer('rankup'),Available:false,Version:'',Status:'No release is published yet.'},ahp:extraOffer('ahp')};
-  const {$}=await setup(t,base({checkApp:()=>noApp, checkAddon:()=>({...noApp}), extraList:()=>extras, checkExtra:id=>offers[id],
+  const {$}=await setup(t,base({checkApp:()=>noApp, checkAddon:()=>({...current}), extraList:()=>extras, checkExtra:id=>offers[id],
     applyExtra:()=>({message:'AH Profit 9.9.9 is installed. Restart WoW to load it.'}),
     chooseGame:()=>report('D:\\Other','1.6.0')}));
   $('nav-update').click();await settle();
   $('update-all').click();await settle();await settle();await settle();
   assert.match($('ua-extra-rankup').textContent,/1\.0\.0: skipped \(No release is published yet\.\)/);
   assert.match($('ua-extra-ahp').textContent,/9\.9\.9: updated — AH Profit 9\.9\.9 is installed\. Restart WoW to load it\./);
-  assert.match($('update-all-status').textContent,/^Done: the app is up to date; AH Profit 9\.9\.9\. Skipped: RankUp \(see above\)\./);
+  assert.match($('update-all-status').textContent,/^Done: the app is up to date; AH Profit 9\.9\.9\. Skipped: Odd, RankUp \(see above\)\./);
   $('browse-folder').click();await settle();await settle();
   assert.equal($('ua-extra-rankup'),null,'old lines cleared');
   assert.equal($('ua-extra-ahp'),null);

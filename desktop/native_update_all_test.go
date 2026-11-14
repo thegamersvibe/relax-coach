@@ -289,9 +289,10 @@ func TestAppFirstOpensWhenNoAppUpdateIsOffered(t *testing.T) {
 	if o, _ := b.Call("checkAddon", nil); !o.(nativeOffer).NeedsApp {
 		t.Fatalf("an offered app update opened the gate: %+v", o)
 	}
-	// Nothing to install: the escape opens, so the chain cannot loop.
+	// Nothing to install for this same release (for example no app asset):
+	// the escape opens, so the chain cannot loop.
 	b.services.checkApp = func(context.Context, string) (AppReleaseInfo, error) {
-		return AppReleaseInfo{Version: Version, Available: false}, nil
+		return AppReleaseInfo{Version: "1.7.0", Available: false}, nil
 	}
 	b.Call("checkApp", nil)
 	if o, _ := b.Call("checkAddon", nil); o.(nativeOffer).NeedsApp || !o.(nativeOffer).Available {
@@ -328,5 +329,31 @@ func TestAddonFailureAfterTheEscapeNamesTheManualDownload(t *testing.T) {
 	c.Call("checkAddon", nil)
 	if _, err := c.Call("applyAddon", nativeArgs("1.7.0")); err == nil || strings.Contains(err.Error(), "download") {
 		t.Fatalf("%v", err)
+	}
+}
+
+// From the B2 round-2 review: the app has been open since before a release.
+// The launch app check found nothing (latest was this app); later a newer
+// release with the exe appears and the player uses the addon card only. That
+// stale answer must not open the escape.
+func TestStaleNoOfferKeepsTheGateForALaterRelease(t *testing.T) {
+	rel := AddonReleaseInfo{Version: "1.7.0", Available: true, HasApp: true, AssetURL: "a", ChecksumURL: "c"}
+	for name, answer := range map[string]AppReleaseInfo{
+		"latest was this app":     {Available: false, Version: Version},
+		"draft or pre-release":    {Available: false},
+		"an older public release": {Available: false, Version: "1.6.9"},
+	} {
+		b, applied := appFirstBridge(t, rel, "")
+		b.services.checkApp = func(context.Context, string) (AppReleaseInfo, error) { return answer, nil }
+		if _, err := b.Call("checkApp", nil); err != nil {
+			t.Fatal(err)
+		}
+		o, err := b.Call("checkAddon", nil)
+		if err != nil || !o.(nativeOffer).NeedsApp {
+			t.Fatalf("%s: gate opened: %+v %v", name, o, err)
+		}
+		if _, err := b.Call("applyAddon", nativeArgs("1.7.0")); err == nil || *applied != 0 {
+			t.Fatalf("%s: installed with the old app: %v %d", name, err, *applied)
+		}
 	}
 }

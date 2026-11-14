@@ -47,7 +47,8 @@ type nativeBridge struct {
 	release                                                           *AddonReleaseInfo
 	checkedGame, checkedVersion                                       string
 	extra                                                             map[string]nativeExtraState
-	afterAppAnswered, appApplyFailed, appNotOffered                   bool
+	afterAppAnswered, appApplyFailed                                  bool
+	appNotOfferedFor                                                  string
 }
 
 type nativeReport struct {

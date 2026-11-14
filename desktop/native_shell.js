@@ -693,8 +693,11 @@ $('apply-app-update').addEventListener('click',async()=>{
 // flag from start to end (so the 5-second refresh does not run), stops at the
 // first failure, and never installs something the player has not installed.
 // Results belong to one game folder: a folder change clears them.
+// A new run or a game folder change starts from clean lines.
 function clearUpdateAllLines() {
   for (const li of [...$('update-all-lines').querySelectorAll('li[id^="ua-extra-"]')]) li.remove();
+  uaLine('ua-app','App','not checked yet');
+  uaLine('ua-bundle','Relax Coach addons','not checked yet');
   uaStatus('');
   delete $('update-all').dataset.new;
 }
@@ -733,7 +736,8 @@ const appManualDownload = 'https://github.com/thegamersvibe/relax-coach/releases
 async function updateAll(opts = {}) {
   if (busy || document.body.dataset.updatesDisabled === 'true') return;
   busy = true; offer = null; appOffer = null; for (const k in extraOffers) delete extraOffers[k]; updateButtons();
-  delete $('update-all').dataset.new;
+  clearUpdateAllLines();
+  if (opts.skipApp) uaLine('ua-app','App',(opts.appVersion || '')+': updated');
   const done = [], left = [], skipped = [];
   // The automatic run asks again whether WoW is closed right before each
   // install; anything but "closed" stops it (unknown never installs).
@@ -793,12 +797,21 @@ async function updateAll(opts = {}) {
       stop('the Relax Coach addons', new Error(bundleHold(o)+'.'), ['More addons']); return;
     } else if (o.Available) {
       uaLine('ua-bundle','Relax Coach addons',installedText+': left to its own button below ('+bundleHold(o)+')');
-    } else {
+      if (opts.auto) markUpdateAll();
+    } else if (o.Bundle && o.Bundle.state === 'installed') {
       uaLine('ua-bundle','Relax Coach addons',installedText+': up to date');
+    } else {
+      // No update offered, but not a complete install either: never "up to date".
+      uaLine('ua-bundle','Relax Coach addons',installedText+': left to its own button below ('+bundleHold(o)+')');
+      if (opts.auto) markUpdateAll();
     }
     // 3. More addons the player installed, in list order.
     let list = [];
     try { list = await rc.extraList(); } catch(err) { stop('More addons', err, ['More addons']); return; }
+    // An installed folder that is not this addon is named, never silently dropped.
+    for (const item of list.filter(item => item.InstalledVersion !== '0.0.0' && item.Problem)) {
+      uaLine('ua-extra-'+item.ID,item.Name,item.InstalledVersion+': skipped ('+item.Problem+')'); skipped.push(item.Name);
+    }
     const todo = list.filter(item => item.InstalledVersion !== '0.0.0' && !item.Problem);
     for (let i = 0; i < todo.length; i++) {
       const item = todo[i], line = 'ua-extra-'+item.ID, rest = todo.slice(i+1).map(x => x.Name);
@@ -851,11 +864,16 @@ async function autoUpdate() {
   if (state !== 'closed') { why('Relax Coach could not tell whether WoW is running, so your addons were not updated. Close WoW, then click Update everything.'); return; }
   if (err) { why('The addon check failed ('+err.message+'). Click Update everything to try again.'); return; }
   // Bundle already current: the installed More addons still update by themselves.
-  const current = !o.Available && !o.NeedsApp;
-  if (!current && !plainBundleUpdate(o)) { why('Your Relax Coach addons were not updated: '+bundleHold(o)+'. Open Updates and use the buttons there.'); return; }
-  message('Relax Coach was updated to '+version+'. '+(current ? 'Your Relax Coach addons are up to date; checking your More addons…' : 'Updating your addons…'));
+  // "Current" means a complete install with nothing offered. NeedsApp stops
+  // everything (app first); a bundle that needs its own button (partial,
+  // replaced, repair) is marked and named, and the More addons still update.
+  const current = !o.Available && !o.NeedsApp && !!o.Bundle && o.Bundle.state === 'installed';
+  if (o.NeedsApp) { why('Your Relax Coach addons were not updated: '+bundleHold(o)+'. Open Updates and use the buttons there.'); return; }
+  const held = !current && !plainBundleUpdate(o);
+  message('Relax Coach was updated to '+version+'. '+(current ? 'Your Relax Coach addons are up to date; checking your More addons…'
+    : held ? 'Your Relax Coach addons were not updated: '+bundleHold(o)+'. Checking your More addons…' : 'Updating your addons…'));
   if (!userNavigated) show('update');
-  await updateAll({skipApp:true, offer:o, auto:true});
+  await updateAll({skipApp:true, offer:o, auto:true, appVersion:version});
 }
 // Keep every link inside the document or route it through native allowlist validation.
 function interceptLink(event) {
