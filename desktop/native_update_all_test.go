@@ -23,7 +23,8 @@ func appFirstBridge(t *testing.T, release AddonReleaseInfo, lastState string) (*
 	nativeInstalled(t, a, "1.6.0")
 	applied := 0
 	b := newNativeBridge(a, false, nativeServices{
-		check: func(context.Context, string) (AddonReleaseInfo, error) { return release, nil },
+		selfUpdate: func() bool { return true },
+		check:      func(context.Context, string) (AddonReleaseInfo, error) { return release, nil },
 		apply: func(_ context.Context, _ string, r AddonReleaseInfo) (AddonUpdateResult, error) {
 			applied++
 			return AddonUpdateResult{Version: r.Version}, nil
@@ -47,7 +48,7 @@ func TestAppFirstRefusesABundleNewerThanTheApp(t *testing.T) {
 			t.Fatalf("last %q: offer %+v", last, o)
 		}
 		_, err = b.Call("applyAddon", nativeArgs("1.7.0"))
-		if err == nil || !strings.Contains(err.Error(), "Update the app first") || *applied != 0 {
+		if err == nil || !strings.Contains(err.Error(), "Update the app first") || !strings.Contains(err.Error(), "https://github.com/thegamersvibe/relax-coach/releases/latest") || *applied != 0 {
 			t.Fatalf("last %q: apply %v, installs %d", last, err, *applied)
 		}
 	}
@@ -211,7 +212,65 @@ func TestAppLastResultStateReadsTheFile(t *testing.T) {
 // Release rule for 1.6.0: the Coach file set must not change, so a 1.5.6 app
 // that presses Update Addon before Update App still installs the 1.6.0 bundle.
 func TestCoachFileSetUnchangedFrom156To160(t *testing.T) {
-	if !reflect.DeepEqual(addonPublicFilesForVersion("1.6.0"), addonPublicFilesForVersion("1.5.6")) {
-		t.Fatal("1.6.0 changes the Coach file set; apps 1.5.6 and older would refuse the bundle")
+	// The Coach file set of 1.5.6, copied from v1.5.6 (62ecfa9). A 1.5.6 app
+	// accepts exactly this set; 1.6.0 must ship it unchanged.
+	want := map[string]bool{}
+	for _, name := range []string{
+		"ForeverCoach.toc", "Core.lua", "Rules.lua", "Route.lua", "Session.lua", "Gear.lua",
+		"Talents.lua", "Dungeons.lua", "Audit.lua", "Macros.lua", "UI.lua", "ForeverCoach.tga",
+		"Reactions.lua",
+		"Media/Reactions/bags_1.mp3", "Media/Reactions/bags_2.mp3", "Media/Reactions/death.mp3",
+		"Media/Reactions/level_up.mp3", "Media/Reactions/level_up.tga",
+		"Media/Reactions/campfire_1.mp3", "Media/Reactions/campfire_2.mp3",
+	} {
+		want[name] = true
+	}
+	for _, v := range []string{"1.5.6", "1.6.0"} {
+		if got := addonPublicFilesForVersion(v); !reflect.DeepEqual(got, want) {
+			t.Fatalf("%s Coach file set differs from 1.5.6's (apps 1.5.6 and older would refuse the bundle): %v", v, got)
+		}
+	}
+}
+
+func TestAppFirstNeverHoldsBackAnAppThatCannotUpdateItself(t *testing.T) {
+	release := AddonReleaseInfo{Version: "1.7.0", AssetURL: "a", ChecksumURL: "c", Available: true, HasApp: true}
+	// Self-update unavailable in this process (appRuntime nil): no gate.
+	b, applied := appFirstBridge(t, release, "")
+	b.services.selfUpdate = func() bool { return false }
+	if o, _ := b.Call("checkAddon", nil); o.(nativeOffer).NeedsApp || !o.(nativeOffer).Available {
+		t.Fatalf("no self-update: %+v", o)
+	}
+	if _, err := b.Call("applyAddon", nativeArgs("1.7.0")); err != nil || *applied != 1 {
+		t.Fatalf("no self-update: %v %d", err, *applied)
+	}
+	// An app update that fails in this process before it has a transaction
+	// (bad checksum entry, staging) writes no last-result: the escape applies.
+	for _, cause := range []string{"the app checksum is missing from SHA256SUMS.txt", "could not stage the update"} {
+		b, applied := appFirstBridge(t, release, "")
+		b.services.checkApp = func(context.Context, string) (AppReleaseInfo, error) {
+			return AppReleaseInfo{Version: "1.7.0", Available: true}, nil
+		}
+		b.services.applyApp = func(context.Context, AppReleaseInfo) (AppUpdateResult, error) {
+			return AppUpdateResult{}, errors.New(cause)
+		}
+		if o, _ := b.Call("checkAddon", nil); !o.(nativeOffer).NeedsApp {
+			t.Fatalf("%s: gate missing before the failure: %+v", cause, o)
+		}
+		b.Call("checkApp", nil)
+		if _, err := b.Call("applyApp", nativeArgs("1.7.0")); err == nil {
+			t.Fatal("app update did not fail")
+		}
+		if o, _ := b.Call("checkAddon", nil); o.(nativeOffer).NeedsApp || !o.(nativeOffer).Available {
+			t.Fatalf("%s: still held back: %+v", cause, o)
+		}
+		if _, err := b.Call("applyAddon", nativeArgs("1.7.0")); err != nil || *applied != 1 {
+			t.Fatalf("%s: %v %d", cause, err, *applied)
+		}
+	}
+	// A refused click (no checked app release) is not a failed update: the gate stays.
+	b, _ = appFirstBridge(t, release, "")
+	b.Call("applyApp", nativeArgs("1.7.0"))
+	if o, _ := b.Call("checkAddon", nil); !o.(nativeOffer).NeedsApp {
+		t.Fatalf("a refused click opened the escape: %+v", o)
 	}
 }

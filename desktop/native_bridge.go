@@ -27,9 +27,10 @@ type nativeServices struct {
 	place func() appPlacementEnv
 	// appLast reads this executable's last app update result (ID, State);
 	// startup is this process's app update transaction, if it was started by one.
-	appLast  func() (id, state string, err error)
-	startup  func() (id, from string, ok bool)
-	gameOpen func(context.Context) (bool, error)
+	appLast    func() (id, state string, err error)
+	startup    func() (id, from string, ok bool)
+	gameOpen   func(context.Context) (bool, error)
+	selfUpdate func() bool
 }
 
 type nativeBridge struct {
@@ -46,7 +47,7 @@ type nativeBridge struct {
 	release                                                           *AddonReleaseInfo
 	checkedGame, checkedVersion                                       string
 	extra                                                             map[string]nativeExtraState
-	afterAppAnswered                                                  bool
+	afterAppAnswered, appApplyFailed                                  bool
 }
 
 type nativeReport struct {
@@ -137,6 +138,9 @@ func newNativeBridge(a *App, disabled bool, s nativeServices) *nativeBridge {
 	}
 	if s.gameOpen == nil {
 		s.gameOpen = addonGameRunning
+	}
+	if s.selfUpdate == nil {
+		s.selfUpdate = appSelfUpdateAvailable
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &nativeBridge{app: a, services: s, ctx: ctx, cancel: cancel, disabled: disabled}
@@ -391,7 +395,7 @@ func (b *nativeBridge) apply(expected string) (AddonUpdateResult, error) {
 	// App first: this app never installs a bundle newer than itself while the
 	// same release has a new app; the new app knows the new bundle's file set.
 	if b.appFirst(release) {
-		return AddonUpdateResult{}, errors.New("Update the app first: Relax Coach " + release.Version + " needs app " + release.Version + ". Click Update App (or Update everything); the addons follow.")
+		return AddonUpdateResult{}, errors.New("Update the app first: Relax Coach " + release.Version + " needs app " + release.Version + ". Click Update App (or Update everything); the addons follow. If the app cannot update itself, download RelaxCoach.exe from " + appManualDownload)
 	}
 	ctx, cancel := context.WithTimeout(b.ctx, 5*time.Minute)
 	defer cancel()

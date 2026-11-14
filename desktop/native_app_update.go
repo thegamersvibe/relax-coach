@@ -78,6 +78,13 @@ func (b *nativeBridge) applyApp(expected string) (AppUpdateResult, error) {
 	defer cancel()
 	result, err := b.services.applyApp(ctx, *r)
 	if err != nil {
+		// A failure before the app update had a transaction leaves no
+		// last-result; remember it so the addons are not held back (appFirst).
+		if b.ctx.Err() == nil {
+			b.mu.Lock()
+			b.appApplyFailed = true
+			b.mu.Unlock()
+		}
 		return AppUpdateResult{}, err
 	}
 	if result.RestartReady {

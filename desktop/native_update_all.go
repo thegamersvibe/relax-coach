@@ -23,6 +23,18 @@ func (b *nativeBridge) appFirst(release AddonReleaseInfo) bool {
 	if !release.HasApp {
 		return false
 	}
+	// An app that cannot update itself must not lose addon updates: no gate
+	// when self-update is unavailable in this process, or after an app update
+	// failed here before it had a transaction (no last-result is written then).
+	if !b.services.selfUpdate() {
+		return false
+	}
+	b.mu.Lock()
+	failed := b.appApplyFailed
+	b.mu.Unlock()
+	if failed {
+		return false
+	}
 	remote, err := parseAddonVersion(release.Version)
 	if err != nil {
 		return false
@@ -36,6 +48,13 @@ func (b *nativeBridge) appFirst(release AddonReleaseInfo) bool {
 	}
 	return true
 }
+
+// appManualDownload is where a player downloads the app by hand.
+const appManualDownload = "https://github.com/thegamersvibe/relax-coach/releases/latest"
+
+// appSelfUpdateAvailable is false when this process could not set up app
+// self-update (ApplyAppRelease would refuse).
+func appSelfUpdateAvailable() bool { return appRuntime != nil }
 
 // appLastResultState reads ID and State from last-result.json next to target.
 func appLastResultState(target string) (id, state string, err error) {
