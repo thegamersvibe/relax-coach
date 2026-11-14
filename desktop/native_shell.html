@@ -42,7 +42,7 @@ button:disabled{opacity:.5;cursor:default;box-shadow:none}
 .sidebar .smallprint .fine{display:block}
 .nb{white-space:nowrap}
 .workspace{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding:18px 0 0;max-width:none;margin:0;--gx:36px;--sb:10px;--mw:1340px;--edge:max(var(--gx),calc((100% - var(--sb) - var(--mw))/2))}
-.workspace>.folder,.workspace>#global-status,.workspace>section>.pagehead,.workspace>section>.account-panel{flex:none;max-width:none;margin-left:var(--edge);margin-right:calc(var(--edge) + var(--sb))}
+.workspace>.folder,.workspace>#global-status,.workspace>#update-notice,.workspace>section>.pagehead,.workspace>section>.account-panel{flex:none;max-width:none;margin-left:var(--edge);margin-right:calc(var(--edge) + var(--sb))}
 .workspace>section{flex:1;min-height:0;display:flex;flex-direction:column}
 #report-body,#farm-body,.pane{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;scrollbar-gutter:stable;padding:14px var(--gx) 36px;border-top:1px solid var(--line)}
 #report-body>*,#farm-body>*,.pane>*{max-width:var(--mw);margin-left:auto;margin-right:auto}
@@ -188,6 +188,7 @@ button:focus-visible,a:focus-visible,.smallprint:focus-visible,input:focus-visib
 <form id="game-form"><input id="game-path" aria-label="WoW Forever game folder" value="{{.View.Game}}" placeholder="D:\World of Warcraft\_forever_"><button id="browse-folder" class="secondary" type="button">Browse…</button><button id="use-folder" class="secondary" type="submit">Use this folder</button></form>
 <p>Choose or paste your _forever_ folder. This selection is remembered for the next launch.</p></details>
 <div id="global-status" class="note status" role="status" aria-live="polite"></div>
+<div id="update-notice" class="note status" role="status" aria-live="polite" hidden></div>
 <section id="setup-view" hidden><header class="pagehead"><div><h2>Get started</h2><p class="subtle">Install the app on this PC, choose the game folder, click Install, then start (or restart) WoW. Nothing is installed until you click.</p></div></header>
 <div class="pane"><ol class="steps">
 <li class="card step" id="step-app"><h3>1. Install Relax Coach on this PC</h3><p id="setup-app-text" class="status">Checking where Relax Coach runs from…</p><div class="actions"><button id="setup-app-install" class="primary" type="button" hidden>Install and add shortcuts</button><button id="setup-app-open" class="primary" type="button" hidden>Open the installed Relax Coach</button><button id="setup-app-repair" class="secondary" type="button" hidden>Repair shortcuts</button></div><p id="setup-app-links" class="status" hidden></p><p id="setup-app-status" class="status" role="status" aria-live="polite"></p></li>
@@ -213,25 +214,25 @@ button:focus-visible,a:focus-visible,.smallprint:focus-visible,input:focus-visib
 <ul id="update-all-lines" class="links"><li id="ua-app"><b>App</b> <span class="ua-text">{{.AppVersion}}</span></li><li id="ua-bundle"><b>Relax Coach addons</b> <span class="ua-text">{{if eq .InstalledVersion "0.0.0"}}Not installed{{else}}{{.InstalledVersion}}{{end}}</span></li></ul>
 <div class="actions"><button id="update-all" class="primary"{{if .UpdatesDisabled}} disabled{{end}}>Update everything</button></div>
 <p id="update-all-status" class="status" role="status" aria-live="polite">{{if .UpdatesDisabled}}Updates are disabled by -no-update.{{end}}</p>
-<p class="scope">Never installs anything you have not installed. A first install, a Repair, or a Journey that is not Relax Journey is left to its own button below.</p>
+<p class="scope">Never installs anything you have not installed, and leaves a first install, a Repair or a Journey that is not Relax Journey to its own button below.</p>
 </div>
 <div class="card updatecard"><h3>Relax Coach app</h3>
-<dl class="versions"><div><dt>Installed app</dt><dd id="installed-app-version">{{.AppVersion}}</dd></div><div><dt>Offered app</dt><dd id="offered-app-version">Not checked</dd></div></dl>
+<dl class="versions"><div><dt>Installed app</dt><dd id="installed-app-version">{{.AppVersion}}</dd></div><div><dt>Latest app</dt><dd id="offered-app-version">Not checked</dd></div></dl>
 <div class="actions"><button id="check-app-update" class="secondary"{{if .UpdatesDisabled}} disabled{{end}}>Check App Update</button><button id="apply-app-update" class="primary" disabled>Update App</button><a id="app-release-link" hidden>View app release on GitHub ↗</a></div>
 <p id="app-update-status" class="status" role="status" aria-live="polite">{{if .UpdatesDisabled}}Updates are disabled by -no-update.{{else}}Check first, then click Update App. Relax Coach will restart. WoW can stay open; your addons follow when WoW is closed.{{end}}</p>
 <p id="app-last-result" class="status" role="status" aria-live="polite">{{.AppUpdateStatus}}</p>
 <h3 id="app-release-name">App release notes</h3><div id="app-release-notes" class="notes">No automatic downloads or installations.</div>
-<p class="scope">Replaces only this application after checksum verification and backup. Startup is checked before committing; a failed startup rolls back. No game folder or account is required. Addons, Journey, guides, settings and saves are not changed by this step; your addons follow when WoW is closed.</p>
+<p class="scope">Replaces only this app, checked and backed up first; if the new version does not start, the old one comes back. This step does not touch addons, settings or saves; your addons follow when WoW is closed.</p>
 </div>
-<div class="card updatecard"><h3>Coach, Journey, Relax Quest Planner and guide content</h3><dl class="versions"><div><dt>Installed Coach</dt><dd id="installed-version">{{.InstalledVersion}}</dd></div><div><dt>Offered addon bundle</dt><dd id="offered-version">Not checked</dd></div></dl>
+<div class="card updatecard"><h3>Coach, Journey, Relax Quest Planner and guide content</h3><dl class="versions"><div><dt>Installed Coach</dt><dd id="installed-version">{{.InstalledVersion}}</dd></div><div><dt>Latest addons</dt><dd id="offered-version">Not checked</dd></div></dl>
 <div class="actions"><button id="check-update" class="secondary"{{if .UpdatesDisabled}} disabled{{end}}>Check</button><button id="apply-update" class="primary" disabled>{{if eq .InstalledVersion "0.0.0"}}Install{{else}}Update{{end}}</button><a id="release-link" hidden>View on GitHub ↗</a></div>
 <p id="update-status" class="status" role="status" aria-live="polite">{{if .UpdatesDisabled}}Updates are disabled by -no-update.{{else}}Click Check first. Nothing is downloaded until you click {{if eq .InstalledVersion "0.0.0"}}Install{{else}}Update{{end}} or Update everything, or after an app update, when WoW is closed. WoW can stay open.{{end}}</p>
 <h3 id="release-name">Release notes</h3><div id="release-notes" class="notes">Check to see the latest release notes.</div>
-<p class="scope">Install and Update use the same verified transaction. From 1.4.2 they install <strong>ForeverCoach</strong>, <strong>Journey</strong> and <strong>Journey-Content</strong> together, with verified backups. From 1.5.0 it also installs <strong>RelaxQuestPlanner</strong> (Relax Quest Planner); an existing RelaxQuestPlanner folder, such as a manually installed test version, is moved into the backup in RelaxCoachBackups, not deleted. The addons remain independent. Settings, saves, progress and unrelated addons are preserved. The bundled EXE and installers are never installed or run. Update App remains separate. Legacy packages below 1.4.2 update Coach only.</p>
+<p class="scope">Installs <strong>ForeverCoach</strong>, <strong>Journey</strong>, <strong>Journey-Content</strong> and <strong>RelaxQuestPlanner</strong> together, verified; folders already there are moved into RelaxCoachBackups, not deleted, and settings, saves and other addons are not touched.</p>
 </div>
 <div class="card updatecard"><h3>More addons</h3><p class="subtle">Optional addons made for WoW Forever. Each one installs into its own folder and updates separately from Coach.</p>
 <div id="extra-list"></div>
-<p class="scope">Install and Update download only the stable GitHub release of that addon, verify its SHA256 checksum, check the archive and TOC, and keep a backup of the previous version in RelaxCoachBackups, like the Relax Coach addons above. WoW can stay open. Settings, saves and other addons are not touched.</p>
+<p class="scope">Each addon comes from its own stable GitHub release, verified, with the previous version kept in RelaxCoachBackups; settings, saves and other addons are not touched.</p>
 </div></div></section>
 <section id="settings-view" hidden><header class="pagehead"><div><h2>Settings</h2><p class="subtle">Where Relax Coach is installed, and its shortcuts.</p></div></header>
 <div class="pane"><div class="card updatecard"><h3>App location</h3>

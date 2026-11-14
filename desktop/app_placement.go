@@ -275,6 +275,11 @@ func appLinkProblem(label string, err error) string {
 	if errors.Is(err, os.ErrPermission) {
 		return "Windows blocked writing to the " + label + ", so that shortcut was not added."
 	}
+	var method int
+	var code uint32
+	if _, scanErr := fmt.Sscanf(err.Error(), "COM method %d failed (HRESULT 0x%08x)", &method, &code); scanErr == nil {
+		return fmt.Sprintf("Windows could not save the %s shortcut (error 0x%08X). Try Settings → Repair shortcuts later.", label, code)
+	}
 	return "The " + label + " shortcut could not be created (" + err.Error() + ")."
 }
 

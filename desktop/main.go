@@ -140,6 +140,10 @@ func main() {
 		os.Exit(1)
 	}
 	if !*once && !*headless && !*noOpen {
+		// One window at a time; a second start brings the open one forward.
+		if !nativeSingleInstance(mode, nativeAcquireInstance, nativeFocusOther) {
+			return
+		}
 		initAppUpdateRuntime(guiArgs)
 		if mode == "start" {
 			if err := initAppStartup(id); err != nil {

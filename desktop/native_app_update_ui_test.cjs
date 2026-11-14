@@ -86,11 +86,11 @@ test('startup check announces a new app on Updates without installing; -no-updat
  assert.equal($('nav-update').textContent,'Updates');
  assert.equal($('offered-app-version').textContent,'1.5.0');
  assert.equal($('apply-app-update').disabled,false,'one click to update');
- assert.match($('global-status').textContent,/1\.5\.0 is available/);
+ assert.match($('update-notice').textContent,/1\.5\.0 is available/); assert.equal($('update-notice').hidden,false); assert.equal($('global-status').textContent,'','the notice has its own line (U7)');
  assert.equal(calls.some(c=>c.method==='applyApp'),false,'never installs by itself');
  const quiet=await setup(t,{checkApp:()=>({...offer,Available:false})});
  assert.equal(quiet.$('nav-update').dataset.new,undefined);
- assert.equal(quiet.$('global-status').textContent,'');
+ assert.equal(quiet.$('global-status').textContent,''); assert.equal(quiet.$('update-notice').hidden,true);
  const off=await setup(t,{checkApp:()=>offer},true);
  assert.equal(off.calls.some(c=>/^checkApp/.test(c.method)),false);
  const down=await setup(t,{checkApp:()=>{throw Error('offline')}});

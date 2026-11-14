@@ -136,7 +136,7 @@ test('results and errors survive the timer and manual refreshes',async t=>{
 test('U4: the bundle card asks for Check first; the launch notice says Update everything',async t=>{
   const {$}=await setup(t,base({checkAppStartup:()=>({Version:'1.6.1',InstalledVersion:'1.6.0',Available:true})}));
   assert.match($('update-status').textContent,/^Click Check first\./);
-  assert.match($('global-status').textContent,/Open Updates and click Update everything/);
+  assert.match($('update-notice').textContent,/Open Updates and click Update everything/);
 });
 
 // Automatic run after an app update.
@@ -228,7 +228,7 @@ test('R3: a new run and a folder change clear every old line; a Problem addon is
 test('R2: the app card no longer says addons are unchanged without the follow-up',async t=>{
   const {$}=await setup(t,base());
   const scope=[...$('app-update-status').parentElement.querySelectorAll('.scope')].map(e=>e.textContent).join(' ');
-  assert.match(scope,/Addons, Journey, guides, settings and saves are not changed by this step; your addons follow when WoW is closed\./);
+  assert.match(scope,/This step does not touch addons, settings or saves; your addons follow when WoW is closed\./);
 });
 
 test('automatic run: bundle already current still updates the installed More addons',async t=>{

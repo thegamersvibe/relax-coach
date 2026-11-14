@@ -610,3 +610,16 @@ func TestAppPlacementOneDriveDesktop(t *testing.T) {
 		t.Fatalf("%+v %v", got, err)
 	}
 }
+
+func TestAppLinkProblemSaysWhatToDo(t *testing.T) {
+	got := appLinkProblem("Desktop", errors.New("COM method 6 failed (HRESULT 0x80004005)"))
+	if got != "Windows could not save the Desktop shortcut (error 0x80004005). Try Settings → Repair shortcuts later." {
+		t.Fatalf("%q", got)
+	}
+	if strings.Contains(got, "COM method") {
+		t.Fatal("raw COM text reached the player")
+	}
+	if got := appLinkProblem("Start menu", errors.New("disk full")); got != "The Start menu shortcut could not be created (disk full)." {
+		t.Fatalf("%q", got)
+	}
+}

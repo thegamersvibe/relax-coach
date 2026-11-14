@@ -78,7 +78,7 @@ func (b *nativeBridge) applyApp(expected string) (AppUpdateResult, error) {
 	current := b.checkedAppVersion
 	b.mu.Unlock()
 	if r == nil || !r.Available || r.Version != expected || current != Version {
-		return AppUpdateResult{}, errors.New("check app updates again and confirm the offered version")
+		return AppUpdateResult{}, errors.New("this app update is no longer ready: click Check App Update, then Update App again")
 	}
 	ctx, cancel := context.WithTimeout(b.ctx, 5*time.Minute)
 	defer cancel()

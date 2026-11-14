@@ -19,6 +19,10 @@ An older app without these controls cannot update itself. Download `RelaxCoach.e
 
 Keep the app in a folder writable by your Windows user. The updater does not request elevation or install a service. If permissions or another running Relax Coach instance prevent replacement, it fails safely instead of changing permissions or terminating unrelated processes.
 
+## One window at a time (from 1.6.0)
+
+Only one Relax Coach window runs per Windows session: a downloaded copy and the installed copy never run together. A second start waits up to 5 seconds for the other copy to close (the downloaded copy closes right after "Open the installed Relax Coach"), then brings the open window forward and exits. The new app of an app update always runs, so its startup health is never blocked. The guard only checks whether the session-wide name `Local\RelaxCoach.Window` exists; any error lets the app run.
+
 ## App first, then addons (from 1.6.0)
 
 App and addon bundle always come from the same release, so a bundle newer than the app means an app update exists. From 1.6.0 the app never installs a bundle newer than itself while that release also carries `RelaxCoach.exe`: `checkAddon` then returns `NeedsApp` with `Available` false, and `applyAddon` refuses with "Update the app first" before anything is downloaded. The app that installs bundle N is therefore always app N, which knows N's pinned Coach file set. Escape: when this executable's last app update result (`last-result.json`) is `failed`, `rolled-back` or `recovery`, the bundle may be tried directly; the pinned file set still refuses an unknown set before any disk change. Apps 1.5.6 and older cannot be changed and still need their own Update App once; 1.6.0 does not change the Coach file set, so their Update Addon also still works.

@@ -72,7 +72,24 @@ let renderedReport = {
   Game: $('report-body').dataset.game,
   Account: $('report-body').dataset.account
 };
-function message(text) { $('global-status').textContent = text; }
+// Short confirmations clear after a few seconds; errors stay until the next
+// message. The app update notice has its own line, so nothing overwrites it.
+let messageTimer = 0;
+function message(text, short = false) {
+  clearTimeout(messageTimer);
+  $('global-status').textContent = text;
+  if (short) messageTimer = setTimeout(()=>{ $('global-status').textContent = ''; }, 6000);
+}
+function updateNotice(text) { $('update-notice').textContent = text; $('update-notice').hidden = !text; }
+// Release notes are Markdown on GitHub; show them as plain text (still inert).
+function plainNotes(text) {
+  return String(text || '').split('\n').map(line => line
+    .replace(/^\s{0,3}#{1,6}\s+/,'')
+    .replace(/^(\s*)[-*+]\s+/,'$1• ')
+    .replace(/\*\*(.+?)\*\*/g,'$1').replace(/__(.+?)__/g,'$1')
+    .replace(/`([^`]+)`/g,'$1')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g,'$1')).join('\n');
+}
 let userNavigated = false, initialViewChosen = false, placement = null, pendingReplace = [];
 const autoChecked = new Set();
 function show(view) {
@@ -107,11 +124,26 @@ function updateButtons() {
   $('settings-replace').disabled = busy || !replaceChoice().length;
   $('settings-repair').disabled = busy || !linksNeedRepair();
   $('update-all').disabled = busy || disabled;
+  explainDisabled(disabled);
   renderBundleLabels();
   for (const b of document.querySelectorAll('#extra-list button')) {
     const o = extraOffers[b.dataset.id];
     b.disabled = busy || disabled || (b.dataset.role === 'apply' && !(o && o.Available));
   }
+}
+// U20: a disabled main button says why (title, read by screen readers too).
+function why(id, reason) {
+  const b = $(id);
+  if (b.disabled && reason) b.title = reason; else b.removeAttribute('title');
+}
+function explainDisabled(disabled) {
+  const wait = busy ? 'Wait for the current step to finish.' : '', off = disabled ? 'Updates are disabled by -no-update.' : '';
+  const game = lastReport && lastReport.Game;
+  why('apply-update', wait || off || (!offer ? 'Click Check first.' : offer.NeedsApp ? 'Update the app first.' : 'No newer version to install.'));
+  why('setup-install', wait || off || (!game ? 'Choose your game folder first (step 2).' : !offer ? 'Checking the latest release…' : 'No newer version to install.'));
+  why('apply-app-update', wait || off || (!appOffer ? 'Click Check App Update first.' : 'No newer app version.'));
+  why('update-all', wait || off);
+  why('settings-repair', wait || (canLink() ? 'Every shortcut is in place.' : 'Install Relax Coach first (Get started, step 1).'));
 }
 const extraOffers = {};
 function extraRow(item) {
@@ -122,7 +154,7 @@ function extraRow(item) {
     const h = document.createElement('h4'); h.className = 'extra-name';
     const p = document.createElement('p'); p.className = 'subtle extra-blurb';
     const dl = document.createElement('dl'); dl.className = 'versions';
-    for (const [k,label] of [['installed','Installed'],['offered','Offered']]) {
+    for (const [k,label] of [['installed','Installed'],['offered','Latest']]) {
       const d = document.createElement('div'); const dt = document.createElement('dt'); dt.textContent = label;
       const dd = document.createElement('dd'); dd.className = 'extra-'+k; d.append(dt,dd); dl.append(d);
     }
@@ -203,7 +235,7 @@ function displayAccount(result) {
     ? 'Selected account output is unavailable. Refresh will not switch accounts.' : '');
 }
 function setReportFilter(filters,button) {
-  filters.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===button));
+  filters.querySelectorAll('button').forEach(b=>{ b.classList.toggle('on',b===button); b.setAttribute('aria-pressed',String(b===button)); });
   filters.closest('.card').querySelectorAll('.more .fix').forEach(row=>{row.hidden=button.dataset.f!=='all'&&row.dataset.area!==button.dataset.f;});
 }
 // Farming page: shown only when the selected account has an AH Profit save.
@@ -300,7 +332,7 @@ async function refresh(manual = false) {
     displayReport(result);
     chooseInitialView(result);
     acknowledgeRenderedShell();
-    if (manual) message('Report refreshed. The game must save before new data appears.');
+    if (manual) message('Report refreshed. The game must save before new data appears.', true);
   }
   catch (err) { if (generation === reportGeneration) message('Could not refresh the report: '+err.message); }
   finally { refreshing = false; updateButtons(); }
@@ -330,7 +362,7 @@ async function changeFolder(select) {
       folder = result.Game;
       clearUpdateAllLines();
       displayReport(result,true);
-      message('Game folder saved.');
+      message('Game folder saved.', true);
     }
   }
   catch(err) { message(err.message); }
@@ -448,7 +480,7 @@ async function checkBundle() {
     $('setup-installed').textContent = $('installed-version').textContent;
     $('offered-version').textContent = $('setup-offered').textContent = offer.Available ? offer.Version : 'None';
     $('release-name').textContent = offer.Name || 'Release notes';
-    $('release-notes').textContent = offer.Notes || 'No release notes provided.';
+    $('release-notes').textContent = plainNotes(offer.Notes) || 'No release notes provided.';
     $('release-link').href = offer.HTMLURL;
     $('release-link').hidden = !offer.HTMLURL;
     bundleStatus(offer.NeedsApp
@@ -646,7 +678,7 @@ async function startupAppCheck() {
     showAppOffer(appOffer); updateButtons();
     $('nav-update').dataset.new = 'true';
     $('nav-update').title = 'Relax Coach '+appOffer.Version+' is available';
-    message('Relax Coach '+appOffer.Version+' is available. Open Updates and click Update everything. No re-download needed.');
+    updateNotice('Relax Coach '+appOffer.Version+' is available. Open Updates and click Update everything. No re-download needed.');
   } catch(_) { /* offline: the manual check still works */ }
   finally { busy = false; updateButtons(); maybeAutoCheck(); }
 }
@@ -654,7 +686,7 @@ function showAppOffer(o) {
   $('installed-app-version').textContent = o.InstalledVersion;
   $('offered-app-version').textContent = o.Version || 'Unavailable';
   $('app-release-name').textContent = o.Name || 'App release notes';
-  $('app-release-notes').textContent = o.Notes || 'No release notes provided.';
+  $('app-release-notes').textContent = plainNotes(o.Notes) || 'No release notes provided.';
   $('app-release-link').href = o.HTMLURL;
   $('app-release-link').hidden = !o.HTMLURL;
   $('app-update-status').textContent = o.Available
@@ -680,7 +712,7 @@ $('check-app-update').addEventListener('click',async()=>{
 $('apply-app-update').addEventListener('click',async()=>{
   if (busy || !appOffer || !appOffer.Available || document.body.dataset.updatesDisabled === 'true') return;
   busy = true; updateButtons();
-  $('app-update-status').textContent = 'Downloading and verifying the app. Relax Coach will restart when the trusted worker is ready. Close normally to cancel before handoff; do not force-close.';
+  $('app-update-status').textContent = 'Downloading and verifying the app… Relax Coach will close and reopen by itself. Don\'t close it.';
   try {
     const result = await rc.applyApp(appOffer.Version);
     restarting = result.restartReady === true;
@@ -761,7 +793,7 @@ async function updateAll(opts = {}) {
       try { app = await rc.checkApp(); } catch(err) { stop('the app', err, ['Relax Coach addons','More addons']); return; }
       if (app.Available) {
         uaLine('ua-app','App',app.InstalledVersion+' → '+app.Version+': updating…');
-        uaStatus('Relax Coach will close and reopen by itself, then update your addons. Do not close it.');
+        uaStatus('Downloading and verifying the app… Relax Coach will close and reopen by itself, then update your addons. Don\'t close it.');
         let result;
         try { result = await rc.applyApp(app.Version); } catch(err) { uaLine('ua-app','App',app.InstalledVersion+': update failed'); stop('the app', err, ['Relax Coach addons','More addons']); return; }
         restarting = result.restartReady === true;
@@ -896,7 +928,13 @@ document.addEventListener('click',event=>{
   const button = event.target.closest('.filters button');
   if (button) setReportFilter(button.closest('.filters'),button);
   const slot = event.target.closest('.slot');
-  if (slot) slot.classList.toggle('open');
+  if (slot) toggleSlot(slot);
+});
+function toggleSlot(slot) { slot.setAttribute('aria-expanded', String(slot.classList.toggle('open'))); }
+// Gear slots open with Enter or Space too, like a button.
+document.addEventListener('keydown',event=>{
+  const slot = event.target.closest && event.target.closest('.slot');
+  if (slot && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); toggleSlot(slot); }
 });
 // A convenience refresh, not a heartbeat. No timer can close the native window.
 setInterval(()=>{if (!document.hidden && !busy) refresh();},5000);

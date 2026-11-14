@@ -388,7 +388,7 @@ func (b *nativeBridge) apply(expected string) (AddonUpdateResult, error) {
 	r := b.release
 	if r == nil || !r.Available || r.Version != expected || b.checkedGame != game || b.checkedVersion != current {
 		b.mu.Unlock()
-		return AddonUpdateResult{}, errors.New("check again and confirm the offered version")
+		return AddonUpdateResult{}, errors.New("this update is no longer ready: click Check, then try again")
 	}
 	release := *r
 	b.release = nil // A failed install requires a fresh explicit check too.
