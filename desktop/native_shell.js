@@ -814,9 +814,10 @@ async function autoUpdate() {
   if (state === 'open') { why('WoW is open, so your addons were not updated. Close WoW, then click Update everything.'); return; }
   if (state !== 'closed') { why('Relax Coach could not tell whether WoW is running, so your addons were not updated. Close WoW, then click Update everything.'); return; }
   if (err) { why('The addon check failed ('+err.message+'). Click Update everything to try again.'); return; }
-  if (!o.Available && !o.NeedsApp) { message('Relax Coach was updated to '+version+'. Your Relax Coach addons are up to date.'); uaStatus('Relax Coach was updated to '+version+'. Your Relax Coach addons are up to date.'); return; }
-  if (!plainBundleUpdate(o)) { why('Your Relax Coach addons need attention (a repair, or a Journey that is not Relax Journey): open Updates and use the buttons there.'); return; }
-  message('Relax Coach was updated to '+version+'. Updating your addons…');
+  // Bundle already current: the installed More addons still update by themselves.
+  const current = !o.Available && !o.NeedsApp;
+  if (!current && !plainBundleUpdate(o)) { why('Your Relax Coach addons need attention (a repair, or a Journey that is not Relax Journey): open Updates and use the buttons there.'); return; }
+  message('Relax Coach was updated to '+version+'. '+(current ? 'Your Relax Coach addons are up to date; checking your More addons…' : 'Updating your addons…'));
   if (!userNavigated) show('update');
   await updateAll({skipApp:true, offer:o});
 }

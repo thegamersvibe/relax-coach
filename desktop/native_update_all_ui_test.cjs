@@ -175,12 +175,33 @@ test('automatic run: each unmet condition installs nothing and marks Update ever
   }
 });
 
-test('automatic run: addons already current is said, not marked',async t=>{
-  const {$,count}=await setup(t,base({afterAppUpdate:()=>after,gameState:()=>'closed',checkAddon:()=>({...noApp})}));
+test('automatic run: bundle already current still updates the installed More addons',async t=>{
+  const {$,updates,count}=await setup(t,base({afterAppUpdate:()=>after,gameState:()=>'closed',checkAddon:()=>({...noApp}),
+    extraList:()=>extras, checkExtra:id=>extraOffer(id), applyExtra:a=>({message:a})}));
   await settle();await settle();
-  assert.equal(count('applyAddon'),0);
+  assert.equal(count('applyAddon'),0,'the bundle is current');
+  assert.deepEqual(updates().filter(m=>/Extra/.test(m)),['checkExtra(rankup)','applyExtra(rankup@9.9.9)','checkExtra(ahp)','applyExtra(ahp@9.9.9)'],'installed, recognised More addons only');
+  assert.match($('global-status').textContent,/Your Relax Coach addons are up to date; checking your More addons…/);
+  assert.match($('ua-bundle').textContent,/up to date/);
+  assert.match($('update-all-status').textContent,/^Done: RankUp 9\.9\.9; AH Profit 9\.9\.9\./);
+  assert.equal($('update-all').dataset.new,undefined,'nothing to mark');
+});
+
+test('automatic run: bundle and More addons all current',async t=>{
+  const {$,count}=await setup(t,base({afterAppUpdate:()=>after,gameState:()=>'closed',checkAddon:()=>({...noApp}),
+    extraList:()=>extras, checkExtra:id=>({...extraOffer(id),Available:false})}));
+  await settle();await settle();
+  assert.equal(count('applyAddon')+count('applyExtra'),0);
+  assert.equal($('update-all-status').textContent,'Everything is up to date.');
   assert.equal($('update-all').dataset.new,undefined);
-  assert.match($('global-status').textContent,/Your Relax Coach addons are up to date/);
+});
+
+test('automatic run: bundle current but WoW open updates nothing',async t=>{
+  const {$,count}=await setup(t,base({afterAppUpdate:()=>after,gameState:()=>'open',checkAddon:()=>({...noApp}),
+    extraList:()=>extras, checkExtra:id=>extraOffer(id), applyExtra:a=>({message:a})}));
+  await settle();await settle();
+  assert.equal(count('checkExtra')+count('applyExtra'),0);
+  assert.match($('update-all-status').textContent,/WoW is open/);
 });
 
 test('updates disabled: no afterAppUpdate call and nothing runs',async t=>{
