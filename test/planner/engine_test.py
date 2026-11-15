@@ -236,7 +236,11 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(route.issues[1][1], "unknownQuest")
         h.lua.execute("TEST_SNAPSHOT.level={secret=true}; TEST_SNAPSHOT.raceID={secret=true}; C_QuestLog.GetTrivialRange=function() return {secret=true} end")
         secret_p = h.player()
-        self.assertEqual(secret_p.level, 0)
+        # A later unreadable API value must not erase the session's already observed level.
+        self.assertEqual(secret_p.level, p.level)
+        unknown = Harness()
+        unknown.lua.execute("TEST_SNAPSHOT.level={secret=true}")
+        self.assertEqual(unknown.player().level, 0)
         self.assertEqual(secret_p.raceMask, 0)
         self.assertEqual(secret_p.trivial, 7)
 

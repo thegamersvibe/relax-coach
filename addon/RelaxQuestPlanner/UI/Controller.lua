@@ -56,15 +56,7 @@ function UI.Plan(show, force)
   UI.UpdateStatus()
   local snapOK, player = pcall(RQP.Player.Snapshot)
   if not snapOK then planFailed(player); return end
-  -- a level-up: plan for the level the event named when the client still reports the old one
-  local up = UI.levelUp
-  UI.levelUp = nil
-  if type(up) == "number" then
-    if RQP.Number(player.level, 0) < up then player.level = up end
-    UI.levelPlanned = math.max(UI.levelPlanned or 0, up)
-  end
-  -- this plan is built from the current state: a hidden-window catch-up has nothing left to do
-  UI.dirty, UI.lastFingerprint = nil, UI.QuestFingerprint(player)
+  UI.lastFingerprint = UI.QuestFingerprint(player)
   local callback = RQP.Safe(function(route)
     if generation ~= routeGeneration then return end
     UI.busy = false
@@ -226,57 +218,10 @@ function UI.QuestFingerprint(P)
   return table.concat({tostring(P.level), RQP.GetDB().mode, tostring(done), table.concat(log, ",")}, "|")
 end
 
--- Hidden window: nothing is planned or snapshotted on events; the window is marked dirty and catches up once when
--- shown (OnShow). Only the automatic map pin keeps following the route, and only when the cheap LogKey (level, map,
--- zone, quest log, ready flags) differs from the one taken at hide or at the last hidden render: then one snapshot
--- renders the current step. A forced refresh (mode change,
--- login restore) runs at once.
-function UI.TrackHidden()
-  if not (UI.route and RQP.GetDB().autoPin ~= false and RQP.Player.LogKey) then return end
-  local key = RQP.Player.LogKey()
-  if key == UI.hiddenKey then return end
-  UI.hiddenKey = key
-  UI.RenderRoute(RQP.Player.Snapshot())
-end
-
 function UI.Refresh(force)
   if not UI.frame then return end
-  if not force and not UI.frame:IsShown() then
-    UI.dirty = true
-    -- a level-up while hidden: one plan through the async job, so Journey gets the new quests (the window stays
-    -- hidden; the catch-up on show still runs, as the plan's fingerprint is recorded)
-    if UI.levelUp and RQP.GetDB().selection then
-      UI.Plan(false)
-    else
-      UI.levelUp = nil
-      UI.TrackHidden()
-    end
-    return
-  end
-  UI.RefreshNow(force)
-end
-
--- full: skip the key gate (the catch-up on show) without forcing a replan
-UI.HEAL = 15 -- seconds: at most this long between full refreshes while the window is visible
-function UI.RefreshNow(force, full)
-  if not UI.frame then return end
-  UI.dirty = nil
   UI.modeButton:SetText(MODE_LABELS[RQP.GetDB().mode])
   UI.UpdateStatus()
-  -- a log tick or zone event with the cheap key unchanged: nothing the route depends on moved (a quest becomes done
-  -- only through a turn-in, which sets questChanged)
-  local key = RQP.Player.LogKey and RQP.Player.LogKey()
-  local now = GetTime and RQP.Number(GetTime()) or 0
-  local changed = force or full or UI.questChanged or UI.levelUp
-    or not UI.fullAt or now < UI.fullAt or now - UI.fullAt >= UI.HEAL
-  UI.questChanged = nil
-  if not changed and key and key == UI.visibleKey and UI.lastFingerprint then return end
-  -- a full refresh (the old path); a quest done with no event is picked up within UI.HEAL seconds
-  UI.visibleKey, UI.fullAt = key, now
-  -- a level-up plans even if the client still reports the old level (the plan uses the event's level)
-  if UI.levelUp then
-    if RQP.GetDB().selection then UI.lastFingerprint = nil else UI.levelUp = nil end
-  end
   local P = RQP.Player.Snapshot()
   local fp = UI.QuestFingerprint(P)
   if UI.route then UI.RenderRoute(P) end
@@ -313,8 +258,7 @@ SlashCmdList.RELAXQUESTPLANNER = RQP.Safe(function(message)
   elseif command == "autopin" then
     local db = RQP.GetDB(); db.autoPin = db.autoPin == false
     RQP.Print("Automatic map pin " .. (db.autoPin and "on" or "off") .. ".")
-    -- on again: the pin goes to the current step at once
-    if db.autoPin and UI.route then UI.lastPinned = nil; UI.RenderRoute(RQP.Player.Snapshot()) end
+    if db.autoPin then UI.lastPinned = nil; UI.Refresh() end
   elseif command == "autojourney" then
     local db = RQP.GetDB(); db.autoJourney = db.autoJourney == false
     RQP.Print("Open new routes in Journey " .. (db.autoJourney and "on" or "off") .. ".")

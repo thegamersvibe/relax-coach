@@ -116,25 +116,12 @@ local function onEvent(_, event, ...)
   elseif event == "QUEST_TURNED_IN" then
     safeRecord("turnin", (select(1, ...)))
   end
-  -- a quest event or a level-up always refreshes in full; other events (log ticks, zones) may be skipped while the
-  -- cheap log key is unchanged (UI.RefreshNow)
-  if event == "QUEST_ACCEPTED" or event == "QUEST_TURNED_IN" or event == "QUEST_REMOVED" or event == "PLAYER_LEVEL_UP" then
-    RQP.UI.questChanged = true
-  end
   if event == "PLAYER_LEVEL_UP" then
-    -- the level the event names (UnitLevel can still return the old one): planned for even while hidden, once per
-    -- level reached (an event naming a level at or below the last one planned is ignored)
-    local level = RQP.Number((select(1, ...)))
-    local planned = RQP.UI.levelPlanned
-    if not (level and planned and level <= planned) then RQP.UI.levelUp = level and level > 0 and level or true end
-  end
-  if event == "QUEST_TURNED_IN" then
-    -- the completed list can update after the 0.2 s refresh: look again at +1 s and +3 s
+    RQP.Player.ObserveLevel((select(1, ...))) -- max aggregation also covers out-of-order debounced events
+  elseif event == "QUEST_TURNED_IN" then
+    -- Best-effort checks for a late completed list, not an eventless recovery guarantee.
     for _, delay in ipairs({1, 3}) do
-      RQP.After(delay, function()
-        RQP.UI.questChanged, RQP.UI.hiddenKey = true, nil
-        if RQP.UI.Refresh then RQP.UI.Refresh() end
-      end)
+      RQP.After(delay, function() if RQP.UI.Refresh then RQP.UI.Refresh() end end)
     end
   end
   RQP.RequestRefresh()
