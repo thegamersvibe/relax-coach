@@ -56,6 +56,8 @@ function UI.Plan(show, force)
   UI.UpdateStatus()
   local snapOK, player = pcall(RQP.Player.Snapshot)
   if not snapOK then planFailed(player); return end
+  -- this plan is built from the current state: a hidden-window catch-up has nothing left to do
+  UI.dirty, UI.lastFingerprint = nil, UI.QuestFingerprint(player)
   local callback = RQP.Safe(function(route)
     if generation ~= routeGeneration then return end
     UI.busy = false
@@ -217,8 +219,32 @@ function UI.QuestFingerprint(P)
   return table.concat({tostring(P.level), RQP.GetDB().mode, tostring(done), table.concat(log, ",")}, "|")
 end
 
+-- Hidden window: nothing is planned or snapshotted on events; the window is marked dirty and catches up once when
+-- shown (OnShow). Only the automatic map pin keeps following the route, and only when the cheap LogKey (level, map,
+-- zone, quest log, ready flags) differs from the one taken at hide or at the last hidden render: then one snapshot
+-- renders the current step. A forced refresh (mode change,
+-- login restore) runs at once.
+function UI.TrackHidden()
+  if not (UI.route and RQP.GetDB().autoPin ~= false and RQP.Player.LogKey) then return end
+  local key = RQP.Player.LogKey()
+  if key == UI.hiddenKey then return end
+  UI.hiddenKey = key
+  UI.RenderRoute(RQP.Player.Snapshot())
+end
+
 function UI.Refresh(force)
   if not UI.frame then return end
+  if not force and not UI.frame:IsShown() then
+    UI.dirty = true
+    UI.TrackHidden()
+    return
+  end
+  UI.RefreshNow(force)
+end
+
+function UI.RefreshNow(force)
+  if not UI.frame then return end
+  UI.dirty = nil
   UI.modeButton:SetText(MODE_LABELS[RQP.GetDB().mode])
   UI.UpdateStatus()
   local P = RQP.Player.Snapshot()

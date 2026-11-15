@@ -168,9 +168,17 @@ R.Data = {
   Dungeons=function() return DUNGEONS end,
   Quest=function(q) return {id=q,name="Quest "..q} end,
 }
+SNAPSHOTS, LOGKEYS = 0, 0
 R.Player = {Snapshot=function()
+  SNAPSHOTS=SNAPSHOTS+1
   return {level=STATE.level,done=STATE.done,log=STATE.log,ready=STATE.ready,trivial=7,
     raceMask=4,classMask=1,faction="Alliance",professions={}}
+end, LogKey=function()
+  LOGKEYS=LOGKEYS+1
+  local ids={}
+  for q in pairs(STATE.log) do ids[#ids+1]=tostring(q)..(STATE.ready[q] and "r" or "") end
+  table.sort(ids)
+  return tostring(STATE.level).."|"..table.concat(ids,",")
 end}
 local function route(title)
   return {title=title,level=30,floor=23,steps={
@@ -700,6 +708,54 @@ class UIShellTests(unittest.TestCase):
           assert(#BUILD_CALLS==2)
           RelaxQuestPlanner.After(0,function() error("fallback timer sentinel") end); DRAIN()
           assert(RelaxQuestPlannerDB.lastError:find("fallback timer sentinel"))
+        ''')
+
+    def test_hidden_window_refresh_costs_nothing_until_shown(self):
+        """Hidden: an event storm never snapshots or plans; the pin follows a real
+        quest change cheaply; showing the window catches up once."""
+        lua = client()
+        lua.execute(r'''
+          SlashCmdList.RELAXQUESTPLANNER("dungeon alpha keep"); DRAIN()
+          local U=RelaxQuestPlanner.UI
+          assert(U.current.q==12 and WP.x==0.4)
+          SlashCmdList.RELAXQUESTPLANNER("hide"); DRAIN()
+          local builds, snaps=#BUILD_CALLS, SNAPSHOTS
+          for i=1,30 do FIRE("QUEST_LOG_UPDATE"); TICK(2) end
+          FIRE("ZONE_CHANGED"); FIRE("PLAYER_ENTERING_WORLD"); DRAIN()
+          assert(SNAPSHOTS==snaps, "hidden storm snapshotted "..(SNAPSHOTS-snaps).." times")
+          assert(#BUILD_CALLS==builds, "hidden storm planned")
+          -- a real change while hidden: the map pin moves on, one snapshot, no plan
+          STATE.log[12]=true; FIRE("QUEST_ACCEPTED",1,12); DRAIN()
+          assert(U.current.kind=="complete" and WP.x==0.45, "pin follows the route while hidden")
+          assert(SNAPSHOTS-snaps<=1 and #BUILD_CALLS==builds, (SNAPSHOTS-snaps).." snapshots, "..(#BUILD_CALLS-builds).." plans")
+          for i=1,10 do FIRE("QUEST_LOG_UPDATE"); TICK(2) end
+          assert(SNAPSHOTS-snaps<=1, "unchanged ticks after the change")
+          -- autopin off: nothing at all while hidden
+          RelaxQuestPlannerDB.autoPin=false; local keys=LOGKEYS
+          STATE.ready[12]=true; FIRE("QUEST_LOG_UPDATE"); DRAIN()
+          assert(LOGKEYS==keys and SNAPSHOTS-snaps<=1, "no tracking without the pin")
+          RelaxQuestPlannerDB.autoPin=nil
+          -- show: one catch-up refresh replans the changed state
+          SlashCmdList.RELAXQUESTPLANNER("show"); DRAIN()
+          assert(#BUILD_CALLS==builds+1, "show catches up with one plan: "..(#BUILD_CALLS-builds))
+          assert(U.current.kind=="turnin", "and renders the current step")
+          local b2=#BUILD_CALLS
+          for i=1,5 do FIRE("QUEST_LOG_UPDATE"); DRAIN() end
+          assert(#BUILD_CALLS==b2, "visible unchanged ticks do not replan")
+          assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
+        ''')
+
+    def test_select_while_dirty_plans_once(self):
+        lua = client()
+        lua.execute(r'''
+          SlashCmdList.RELAXQUESTPLANNER("hide"); STATE.level=31
+          for i=1,3 do FIRE("QUEST_LOG_UPDATE"); TICK(2) end
+          local builds=#BUILD_CALLS
+          SlashCmdList.RELAXQUESTPLANNER("dungeon alpha keep"); DRAIN()
+          assert(#BUILD_CALLS==builds+1, "selecting while dirty plans once: "..(#BUILD_CALLS-builds))
+          for i=1,3 do FIRE("QUEST_LOG_UPDATE"); DRAIN() end
+          assert(#BUILD_CALLS==builds+1, "and the next ticks do not replan")
+          assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
         ''')
 
     def test_saved_selection_restores_without_unhiding_window(self):

@@ -61,7 +61,16 @@ function UI.BuildWindow()
   end)
   local hint = UI.Text(f, "GameFontHighlightSmall", 91, -250, 365, 16); hint:SetText("Quest ID, or focus here then shift-click a quest link."); hint:SetTextColor(unpack(UI.THEME.muted))
   UI.Tooltip(UI.goalBox, "Enter a quest ID, or focus this box then shift-click a quest link in chat. Press Enter to plan.")
-  f:SetScript("OnHide", RQP.Safe(function() UI.goalBox:ClearFocus(); RQP.GetDB().hidden = true end))
+  f:SetScript("OnHide", RQP.Safe(function()
+    UI.goalBox:ClearFocus(); RQP.GetDB().hidden = true
+    -- the state the last visible render saw, for the hidden-window pin (UI.TrackHidden)
+    UI.hiddenKey = RQP.Player.LogKey and RQP.Player.LogKey() or nil
+  end))
+  -- events while hidden only marked the window dirty: catch up once, on the next frame (a Plan that opened the
+  -- window builds from the current state itself and clears the mark first)
+  f:SetScript("OnShow", RQP.Safe(function()
+    if UI.dirty then RQP.After(0, function() if UI.dirty and UI.frame:IsShown() then UI.RefreshNow() end end) end
+  end))
   UI.title:SetText("Choose a dungeon or a quest")
   UI.line1:SetText("Pick a dungeon, or let Pick my guide choose.")
   UI.line2:SetText("Routes open in Journey; this window keeps the current quest.")
@@ -71,5 +80,6 @@ function UI.Initialize()
   UI.BuildWindow()
   UI.InstallLinkHooks()
   if RQP.GetDB().hidden then UI.frame:Hide() end
-  UI.Refresh()
+  -- login: restore the saved route (and Journey's copy of it) even while the window is hidden
+  UI.RefreshNow()
 end
