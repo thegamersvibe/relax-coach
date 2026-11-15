@@ -116,6 +116,14 @@ local function onEvent(_, event, ...)
   elseif event == "QUEST_TURNED_IN" then
     safeRecord("turnin", (select(1, ...)))
   end
+  if event == "PLAYER_LEVEL_UP" then
+    RQP.Player.ObserveLevel((select(1, ...))) -- max aggregation also covers out-of-order debounced events
+  elseif event == "QUEST_TURNED_IN" then
+    -- Best-effort checks for a late completed list, not an eventless recovery guarantee.
+    for _, delay in ipairs({1, 3}) do
+      RQP.After(delay, function() if RQP.UI.Refresh then RQP.UI.Refresh() end end)
+    end
+  end
   RQP.RequestRefresh()
 end
 

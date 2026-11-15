@@ -14,12 +14,20 @@ local function safe(fn,...)
     if ok then return a,b,c,d,e,f,g,h end
     if RQP.Data then RQP.Data.Error(a) end
 end
+-- UnitLevel can lag PLAYER_LEVEL_UP. Keep the highest observed level for this session;
+-- all snapshots (including async callback renders) use the same value.
+local observedLevel = 0
+function Player.ObserveLevel(level)
+    level = Player.Number(level, 0)
+    observedLevel = math.max(observedLevel, level)
+    return observedLevel
+end
 function Player.Snapshot()
     local n=Player.Number
     local _,race,raceID=safe(UnitRace,"player")
     local _,class=safe(UnitClass,"player")
     local enum=RQP.Data.Enums()
-    local p={level=n(safe(UnitLevel,"player"),0),raceMask=0,classMask=0,
+    local p={level=Player.ObserveLevel(safe(UnitLevel,"player")),raceMask=0,classMask=0,
         faction=safe(UnitFactionGroup,"player"),race=race,class=class,
         done={},log={},ready={},professions={},reputation={},trivial=7}
     raceID=n(raceID)

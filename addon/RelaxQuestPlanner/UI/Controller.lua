@@ -56,6 +56,7 @@ function UI.Plan(show, force)
   UI.UpdateStatus()
   local snapOK, player = pcall(RQP.Player.Snapshot)
   if not snapOK then planFailed(player); return end
+  UI.lastFingerprint = UI.QuestFingerprint(player)
   local callback = RQP.Safe(function(route)
     if generation ~= routeGeneration then return end
     UI.busy = false
@@ -257,6 +258,7 @@ SlashCmdList.RELAXQUESTPLANNER = RQP.Safe(function(message)
   elseif command == "autopin" then
     local db = RQP.GetDB(); db.autoPin = db.autoPin == false
     RQP.Print("Automatic map pin " .. (db.autoPin and "on" or "off") .. ".")
+    if db.autoPin then UI.lastPinned = nil; UI.Refresh() end
   elseif command == "autojourney" then
     local db = RQP.GetDB(); db.autoJourney = db.autoJourney == false
     RQP.Print("Open new routes in Journey " .. (db.autoJourney and "on" or "off") .. ".")

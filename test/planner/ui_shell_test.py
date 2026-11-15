@@ -168,9 +168,14 @@ R.Data = {
   Dungeons=function() return DUNGEONS end,
   Quest=function(q) return {id=q,name="Quest "..q} end,
 }
+SNAPSHOTS = 0
 R.Player = {Snapshot=function()
-  return {level=STATE.level,done=STATE.done,log=STATE.log,ready=STATE.ready,trivial=7,
+  SNAPSHOTS=SNAPSHOTS+1
+  return {level=RelaxQuestPlanner.Player.ObserveLevel(STATE.level),done=STATE.done,log=STATE.log,ready=STATE.ready,trivial=7,
     raceMask=4,classMask=1,faction="Alliance",professions={}}
+end, ObserveLevel=function(level)
+  OBSERVED_LEVEL=math.max(OBSERVED_LEVEL or 0, type(level)=="number" and level or 0)
+  return OBSERVED_LEVEL
 end}
 local function route(title)
   return {title=title,level=30,floor=23,steps={
@@ -257,9 +262,35 @@ class UIShellTests(unittest.TestCase):
           assert(U.current.kind=="turnin")
           STATE.done[12]=true; STATE.log[12]=nil; FIRE("QUEST_TURNED_IN",12); DRAIN()
           assert(U.current.q==13 and U.current.kind=="accept")
-          STATE.done[13]=true; FIRE("QUEST_LOG_UPDATE"); DRAIN()
+          STATE.done[13]=true; FIRE("QUEST_TURNED_IN",13); DRAIN()
           assert(U.current.q==11)
-          STATE.done[11]=true; FIRE("QUEST_LOG_UPDATE"); DRAIN()
+          STATE.done[11]=true; FIRE("QUEST_TURNED_IN",11); DRAIN()
+          assert(U.current==nil and U.line1:GetText():find("All done"))
+          assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
+        ''')
+
+    def test_completion_on_log_update_without_turnin(self):
+        lua = client()
+        lua.execute(r'''
+          SlashCmdList.RELAXQUESTPLANNER("dungeon alpha keep"); DRAIN()
+          local U=RelaxQuestPlanner.UI
+          assert(U.current and U.current.q==12, "pick first actionable step in this zone")
+          assert(U.current.kind=="accept")
+          assert(U.title:GetText():find("Alpha Keep"))
+          assert(U.tags:GetText():find("FDJ") and U.tags:GetText():find("observed"))
+          assert(U.note:GetText():find("Your choice") and U.note:GetText():find("unlocks 1"))
+          assert(U.stepStripe and U.stepStripe.color and U.stepStripe.color[1]==1, "accept stripe is gold")
+          SlashCmdList.RELAXQUESTPLANNER("map")
+          assert(WP.map==101 and WP.x==0.4 and WP.y==0.5 and SUPERTRACK==true)
+          STATE.log[12]=true; FIRE("QUEST_ACCEPTED",1,12); DRAIN()
+          assert(U.current.kind=="complete")
+          STATE.ready[12]=true; FIRE("QUEST_LOG_UPDATE"); DRAIN()
+          assert(U.current.kind=="turnin")
+          STATE.done[12]=true; STATE.log[12]=nil; FIRE("QUEST_LOG_UPDATE",12); DRAIN()
+          assert(U.current.q==13 and U.current.kind=="accept")
+          STATE.done[13]=true; FIRE("QUEST_LOG_UPDATE",13); DRAIN()
+          assert(U.current.q==11)
+          STATE.done[11]=true; FIRE("QUEST_LOG_UPDATE",11); DRAIN()
           assert(U.current==nil and U.line1:GetText():find("All done"))
           assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
         ''')
@@ -700,6 +731,96 @@ class UIShellTests(unittest.TestCase):
           assert(#BUILD_CALLS==2)
           RelaxQuestPlanner.After(0,function() error("fallback timer sentinel") end); DRAIN()
           assert(RelaxQuestPlannerDB.lastError:find("fallback timer sentinel"))
+        ''')
+
+    def test_hidden_level_up_replans_once_for_journey(self):
+        lua = client()
+        lua.execute(r'''
+          SlashCmdList.RELAXQUESTPLANNER("dungeon alpha keep"); DRAIN()
+          local U=RelaxQuestPlanner.UI
+          SlashCmdList.RELAXQUESTPLANNER("hide"); DRAIN()
+          local builds=#BUILD_CALLS
+          local handoffs=0; local handoff=U.HandoffJourney
+          U.HandoffJourney=function(...) handoffs=handoffs+1; return handoff(...) end
+          STATE.level=31; FIRE("PLAYER_LEVEL_UP",31); FIRE("QUEST_LOG_UPDATE"); DRAIN()
+          assert(#BUILD_CALLS==builds+1 and BUILD_CALLS[#BUILD_CALLS].level==31, "one hidden plan on level-up: "..(#BUILD_CALLS-builds))
+          assert(handoffs==1, "the new route goes to Journey")
+          assert(not U.frame:IsShown(), "still hidden")
+          for i=1,10 do FIRE("QUEST_LOG_UPDATE"); TICK(2) end
+          assert(#BUILD_CALLS==builds+1, "no more plans while hidden")
+          -- UnitLevel can lag the event: the level the event names is planned for
+          FIRE("PLAYER_LEVEL_UP",32); DRAIN()
+          assert(#BUILD_CALLS==builds+2 and BUILD_CALLS[#BUILD_CALLS].level==32, "level from the event: "..tostring(BUILD_CALLS[#BUILD_CALLS].level))
+          -- no selection: nothing to plan
+          RelaxQuestPlannerDB.selection=nil; FIRE("PLAYER_LEVEL_UP",33); DRAIN()
+          assert(#BUILD_CALLS==builds+2)
+          assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
+        ''')
+
+    def test_turn_in_with_a_late_completed_flag_refreshes_at_1_and_3_s(self):
+        lua = client()
+        lua.execute(r'''
+          SlashCmdList.RELAXQUESTPLANNER("dungeon alpha keep"); DRAIN()
+          local U=RelaxQuestPlanner.UI
+          STATE.log[12]=true; FIRE("QUEST_ACCEPTED",1,12); DRAIN()
+          STATE.ready[12]=true; FIRE("QUEST_LOG_UPDATE"); DRAIN()
+          -- turned in, but the completed list catches up 0.8 s later
+          STATE.log[12]=nil; FIRE("QUEST_TURNED_IN",12); TICK(0.25); TICK(0.25)
+          TICK(0.3); STATE.done[12]=true; TICK(0.5)
+          assert(U.current.q==13, "the +1 s refresh sees the late flag")
+          -- and 2.5 s late: the +3 s refresh
+          STATE.log[13]=true; FIRE("QUEST_ACCEPTED",1,13); DRAIN()
+          STATE.log[13]=nil; FIRE("QUEST_TURNED_IN",13); TICK(0.25); TICK(0.25); TICK(0.75)   -- refresh, its plan, +1 s
+          STATE.done[13]=true; TICK(1)
+          assert(U.current.q==13, "nothing has looked since the flag arrived")
+          TICK(1)
+          assert(U.current.q==11, "the +3 s refresh sees it")
+          -- hidden: the pin follows the late flag too
+          SlashCmdList.RELAXQUESTPLANNER("hide"); DRAIN()
+          STATE.log[11]=true; FIRE("QUEST_ACCEPTED",1,11); DRAIN()
+          STATE.log[11]=nil; FIRE("QUEST_TURNED_IN",11); TICK(0.5); STATE.done[11]=true; TICK(1); TICK(3)
+          assert(U.current==nil, "hidden: re-rendered after the late flag")
+          assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
+        ''')
+
+    def test_autopin_on_again_moves_the_pin_at_once(self):
+        lua = client()
+        lua.execute(r'''
+          SlashCmdList.RELAXQUESTPLANNER("dungeon alpha keep"); DRAIN()
+          local U=RelaxQuestPlanner.UI
+          SlashCmdList.RELAXQUESTPLANNER("autopin"); assert(RelaxQuestPlannerDB.autoPin==false)
+          STATE.log[12]=true; FIRE("QUEST_ACCEPTED",1,12); DRAIN()
+          assert(U.current.kind=="complete" and WP.x==0.4, "pin left alone while off")
+          SlashCmdList.RELAXQUESTPLANNER("autopin")
+          assert(WP.x==0.45, "pin follows the current step as soon as it is on again")
+          assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
+        ''')
+
+    def test_level_up_plans_once_per_level_reached(self):
+        lua = client()
+        lua.execute(r'''
+          SlashCmdList.RELAXQUESTPLANNER("dungeon alpha keep"); DRAIN()
+          SlashCmdList.RELAXQUESTPLANNER("hide"); DRAIN()
+          local builds=#BUILD_CALLS
+          STATE.level=31; FIRE("PLAYER_LEVEL_UP",31); DRAIN()
+          FIRE("PLAYER_LEVEL_UP",31); DRAIN(); FIRE("PLAYER_LEVEL_UP",30); DRAIN()
+          assert(#BUILD_CALLS==builds+1, "a repeated or lower level plans nothing more: "..(#BUILD_CALLS-builds))
+          STATE.level=32; FIRE("PLAYER_LEVEL_UP",32); DRAIN()
+          assert(#BUILD_CALLS==builds+2)
+          assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
+        ''')
+
+    def test_select_after_hidden_state_change_plans_once(self):
+        lua = client()
+        lua.execute(r'''
+          SlashCmdList.RELAXQUESTPLANNER("hide"); STATE.level=31
+          for i=1,3 do FIRE("QUEST_LOG_UPDATE"); TICK(2) end
+          local builds=#BUILD_CALLS
+          SlashCmdList.RELAXQUESTPLANNER("dungeon alpha keep"); DRAIN()
+          assert(#BUILD_CALLS==builds+1, "selection plans once despite Show refresh: "..(#BUILD_CALLS-builds))
+          for i=1,3 do FIRE("QUEST_LOG_UPDATE"); DRAIN() end
+          assert(#BUILD_CALLS==builds+1, "and the next ticks do not replan")
+          assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
         ''')
 
     def test_saved_selection_restores_without_unhiding_window(self):
