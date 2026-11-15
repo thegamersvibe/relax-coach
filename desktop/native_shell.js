@@ -152,7 +152,15 @@ function extraRow(item) {
     row = document.createElement('div');
     row.id = 'extra-'+item.ID; row.className = 'extra';
     const h = document.createElement('h4'); h.className = 'extra-name';
+    const title = document.createElement('span'); title.className = 'extra-title';
+    const badge = document.createElement('span'); badge.className = 'extra-badge'; badge.textContent = 'Alpha';
+    badge.title = 'Alpha: new and only lightly tested in game'; badge.hidden = true;
+    h.append(title, badge);
     const p = document.createElement('p'); p.className = 'subtle extra-blurb';
+    const blurb = document.createElement('span'); blurb.className = 'extra-blurb-text';
+    const alpha = document.createElement('span'); alpha.className = 'extra-alpha';
+    alpha.textContent = 'Alpha: new and only lightly tested in game'; alpha.hidden = true;
+    p.append(blurb, alpha);
     const dl = document.createElement('dl'); dl.className = 'versions';
     for (const [k,label] of [['installed','Installed'],['offered','Latest']]) {
       const d = document.createElement('div'); const dt = document.createElement('dt'); dt.textContent = label;
@@ -170,8 +178,11 @@ function extraRow(item) {
     check.addEventListener('click',()=>checkExtra(item.ID));
     apply.addEventListener('click',()=>applyExtra(item.ID));
   }
-  row.querySelector('.extra-name').textContent = item.Name;
-  row.querySelector('.extra-blurb').textContent = item.Blurb || '';
+  row.querySelector('.extra-title').textContent = item.Name;
+  row.querySelector('.extra-blurb-text').textContent = item.Blurb || '';
+  // Alpha: display only (a badge and one note line); install and update are unchanged
+  row.querySelector('.extra-badge').hidden = !item.Alpha;
+  row.querySelector('.extra-alpha').hidden = !item.Alpha;
   row.dataset.problem = item.Problem ? '1' : '';
   row.querySelector('.extra-installed').textContent = item.Problem ? 'Unrecognized' : (item.InstalledVersion === '0.0.0' ? 'Not installed' : item.InstalledVersion);
   if (item.Problem && !extraOffers[item.ID]) row.querySelector('.extra-status').textContent = 'A '+item.Name+' folder exists but is not '+item.Name+' ('+item.Problem+'). It will not be replaced.';

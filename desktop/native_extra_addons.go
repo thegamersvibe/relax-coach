@@ -12,7 +12,7 @@ import (
 type nativeExtraOffer struct {
 	ID, Name, Blurb, InstalledVersion, Version, Notes, HTMLURL, Status string
 	Problem                                                            string
-	Available, Install                                                 bool
+	Available, Install, Alpha                                          bool
 }
 
 type nativeExtraState struct {
@@ -55,7 +55,7 @@ func (b *nativeBridge) extraList() ([]nativeExtraOffer, error) {
 		if game != "" {
 			v = InstalledExtraVersion(game, a)
 		}
-		out = append(out, nativeExtraOffer{ID: a.ID, Name: a.Name, Blurb: a.Blurb, InstalledVersion: v, Problem: ExtraInstalledProblem(game, a)})
+		out = append(out, nativeExtraOffer{ID: a.ID, Name: a.Name, Blurb: a.Blurb, InstalledVersion: v, Problem: ExtraInstalledProblem(game, a), Alpha: a.Alpha})
 	}
 	return out, nil
 }
@@ -75,7 +75,7 @@ func (b *nativeBridge) checkExtra(id string) (nativeExtraOffer, error) {
 	b.mu.Unlock()
 	current := InstalledExtraVersion(game, a)
 	if p := ExtraInstalledProblem(game, a); p != "" {
-		return nativeExtraOffer{ID: a.ID, Name: a.Name, Blurb: a.Blurb, InstalledVersion: current, Problem: p,
+		return nativeExtraOffer{ID: a.ID, Name: a.Name, Blurb: a.Blurb, InstalledVersion: current, Problem: p, Alpha: a.Alpha,
 			Status: "Unrecognized " + a.Folder + " folder: " + p + ". Nothing will be replaced."}, nil
 	}
 	ctx, cancel := context.WithTimeout(b.ctx, 45*time.Second)
@@ -100,7 +100,7 @@ func (b *nativeBridge) checkExtra(id string) (nativeExtraOffer, error) {
 		link = ""
 	}
 	return nativeExtraOffer{ID: a.ID, Name: a.Name, Blurb: a.Blurb, InstalledVersion: current, Version: info.Version, Notes: info.Notes,
-		HTMLURL: link, Status: info.Status, Available: info.Available, Install: info.Install}, nil
+		HTMLURL: link, Status: info.Status, Available: info.Available, Install: info.Install, Alpha: a.Alpha}, nil
 }
 
 // arg is "<id>@<version>": the version the user saw and confirmed.
