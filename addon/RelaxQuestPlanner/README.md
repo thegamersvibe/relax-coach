@@ -1,12 +1,26 @@
-# Relax Quest Planner — 0.2.1
+# Relax Quest Planner — 0.2.2
 
 Quest planner for **WoW Forever** (Interface 16001), shipped in the Relax Coach
 bundle from **v1.5.0**. It plans dungeon quest chains and individual quest goals
 without accepting, completing or turning in quests for you.
 
-**Validation status:** version 0.2.1 has passed the offline test suites only. It
+**Validation status:** version 0.2.2 has passed the offline test suites only. It
 has not been validated in the native Forever client yet; please report anything
 that misbehaves in game.
+
+## What's new in 0.2.2
+
+- Keep quest-state checks and changed-route replanning active while the planner
+  is hidden, including map pins and the Journey handoff.
+- Recheck current state when opening the planner without rebuilding an unchanged
+  route. Turning auto-pin on also checks current state.
+- Keep the highest observed session level when duplicate or out-of-order
+  level-up events arrive while the client level API lags.
+- Retry quest-state checks 1 and 3 seconds after turn-in. These are best effort:
+  silent changes after the retries can remain unseen until another game event or
+  opening the planner. There is no periodic recovery timer.
+
+These are correctness fixes, not a performance improvement claim.
 
 ## Install
 
