@@ -56,6 +56,10 @@ function UI.Plan(show, force)
   UI.UpdateStatus()
   local snapOK, player = pcall(RQP.Player.Snapshot)
   if not snapOK then planFailed(player); return end
+  -- a level-up: plan for the level the event named when the client still reports the old one
+  local up = UI.levelUp
+  UI.levelUp = nil
+  if type(up) == "number" and RQP.Number(player.level, 0) < up then player.level = up end
   -- this plan is built from the current state: a hidden-window catch-up has nothing left to do
   UI.dirty, UI.lastFingerprint = nil, UI.QuestFingerprint(player)
   local callback = RQP.Safe(function(route)
@@ -236,7 +240,14 @@ function UI.Refresh(force)
   if not UI.frame then return end
   if not force and not UI.frame:IsShown() then
     UI.dirty = true
-    UI.TrackHidden()
+    -- a level-up while hidden: one plan through the async job, so Journey gets the new quests (the window stays
+    -- hidden; the catch-up on show still runs, as the plan's fingerprint is recorded)
+    if UI.levelUp and RQP.GetDB().selection then
+      UI.Plan(false)
+    else
+      UI.levelUp = nil
+      UI.TrackHidden()
+    end
     return
   end
   UI.RefreshNow(force)
@@ -247,6 +258,17 @@ function UI.RefreshNow(force)
   UI.dirty = nil
   UI.modeButton:SetText(MODE_LABELS[RQP.GetDB().mode])
   UI.UpdateStatus()
+  -- a log tick or zone event with the cheap key unchanged: nothing the route depends on moved (a quest becomes done
+  -- only through a turn-in, which sets questChanged)
+  local key = RQP.Player.LogKey and RQP.Player.LogKey()
+  local changed = force or UI.questChanged or UI.levelUp
+  UI.questChanged = nil
+  if not changed and key and key == UI.visibleKey and UI.lastFingerprint then return end
+  UI.visibleKey = key
+  -- a level-up plans even if the client still reports the old level (the plan uses the event's level)
+  if UI.levelUp then
+    if RQP.GetDB().selection then UI.lastFingerprint = nil else UI.levelUp = nil end
+  end
   local P = RQP.Player.Snapshot()
   local fp = UI.QuestFingerprint(P)
   if UI.route then UI.RenderRoute(P) end

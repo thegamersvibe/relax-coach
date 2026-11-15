@@ -175,7 +175,7 @@ R.Player = {Snapshot=function()
     raceMask=4,classMask=1,faction="Alliance",professions={}}
 end, LogKey=function()
   LOGKEYS=LOGKEYS+1
-  local ids={}
+  local ids={rawequal(STATE.map,SECRET) and "" or tostring(STATE.map), tostring(STATE.zone)}
   for q in pairs(STATE.log) do ids[#ids+1]=tostring(q)..(STATE.ready[q] and "r" or "") end
   table.sort(ids)
   return tostring(STATE.level).."|"..table.concat(ids,",")
@@ -265,9 +265,10 @@ class UIShellTests(unittest.TestCase):
           assert(U.current.kind=="turnin")
           STATE.done[12]=true; STATE.log[12]=nil; FIRE("QUEST_TURNED_IN",12); DRAIN()
           assert(U.current.q==13 and U.current.kind=="accept")
-          STATE.done[13]=true; FIRE("QUEST_LOG_UPDATE"); DRAIN()
+          -- (a quest only becomes done through a turn-in, which the client announces)
+          STATE.done[13]=true; FIRE("QUEST_TURNED_IN",13); DRAIN()
           assert(U.current.q==11)
-          STATE.done[11]=true; FIRE("QUEST_LOG_UPDATE"); DRAIN()
+          STATE.done[11]=true; FIRE("QUEST_TURNED_IN",11); DRAIN()
           assert(U.current==nil and U.line1:GetText():find("All done"))
           assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
         ''')
@@ -742,6 +743,55 @@ class UIShellTests(unittest.TestCase):
           local b2=#BUILD_CALLS
           for i=1,5 do FIRE("QUEST_LOG_UPDATE"); DRAIN() end
           assert(#BUILD_CALLS==b2, "visible unchanged ticks do not replan")
+          assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
+        ''')
+
+    def test_hidden_level_up_replans_once_for_journey(self):
+        lua = client()
+        lua.execute(r'''
+          SlashCmdList.RELAXQUESTPLANNER("dungeon alpha keep"); DRAIN()
+          local U=RelaxQuestPlanner.UI
+          SlashCmdList.RELAXQUESTPLANNER("hide"); DRAIN()
+          local builds=#BUILD_CALLS
+          local handoffs=0; local handoff=U.HandoffJourney
+          U.HandoffJourney=function(...) handoffs=handoffs+1; return handoff(...) end
+          STATE.level=31; FIRE("PLAYER_LEVEL_UP",31); FIRE("QUEST_LOG_UPDATE"); DRAIN()
+          assert(#BUILD_CALLS==builds+1 and BUILD_CALLS[#BUILD_CALLS].level==31, "one hidden plan on level-up: "..(#BUILD_CALLS-builds))
+          assert(handoffs==1, "the new route goes to Journey")
+          assert(not U.frame:IsShown(), "still hidden")
+          for i=1,10 do FIRE("QUEST_LOG_UPDATE"); TICK(2) end
+          assert(#BUILD_CALLS==builds+1, "no more plans while hidden")
+          -- UnitLevel can lag the event: the level the event names is planned for
+          FIRE("PLAYER_LEVEL_UP",32); DRAIN()
+          assert(#BUILD_CALLS==builds+2 and BUILD_CALLS[#BUILD_CALLS].level==32, "level from the event: "..tostring(BUILD_CALLS[#BUILD_CALLS].level))
+          -- no selection: nothing to plan
+          RelaxQuestPlannerDB.selection=nil; FIRE("PLAYER_LEVEL_UP",33); DRAIN()
+          assert(#BUILD_CALLS==builds+2)
+          assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
+        ''')
+
+    def test_visible_ticks_with_an_unchanged_log_skip_the_snapshot(self):
+        lua = client()
+        lua.execute(r'''
+          SlashCmdList.RELAXQUESTPLANNER("dungeon alpha keep"); DRAIN()
+          local U=RelaxQuestPlanner.UI
+          FIRE("QUEST_LOG_UPDATE"); DRAIN()
+          local snaps=SNAPSHOTS
+          for i=1,10 do FIRE("QUEST_LOG_UPDATE"); DRAIN() end
+          assert(SNAPSHOTS==snaps, "unchanged visible ticks snapshotted "..(SNAPSHOTS-snaps).." times")
+          STATE.log[12]=true; FIRE("QUEST_LOG_UPDATE"); DRAIN()
+          assert(U.current.kind=="complete" and SNAPSHOTS>snaps, "a changed log renders")
+          snaps=SNAPSHOTS; STATE.zone="Away"; STATE.map=102; FIRE("ZONE_CHANGED_NEW_AREA"); DRAIN()
+          assert(SNAPSHOTS>snaps, "a zone change renders")
+          snaps=SNAPSHOTS; FIRE("QUEST_TURNED_IN",99); DRAIN()
+          assert(SNAPSHOTS>snaps, "a quest event always renders")
+          -- a visible level-up with UnitLevel still old: one plan for the new level, then quiet ticks again
+          local builds=#BUILD_CALLS; FIRE("PLAYER_LEVEL_UP",31); DRAIN()
+          assert(#BUILD_CALLS==builds+1 and BUILD_CALLS[#BUILD_CALLS].level==31, "visible level-up plans once")
+          snaps=SNAPSHOTS; for i=1,5 do FIRE("QUEST_LOG_UPDATE"); DRAIN() end
+          assert(SNAPSHOTS==snaps and #BUILD_CALLS==builds+1, "quiet again after the level-up")
+          snaps=SNAPSHOTS; SlashCmdList.RELAXQUESTPLANNER("mode strict"); DRAIN()
+          assert(SNAPSHOTS>snaps, "a forced refresh always renders")
           assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
         ''')
 

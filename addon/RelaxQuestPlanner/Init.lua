@@ -116,6 +116,16 @@ local function onEvent(_, event, ...)
   elseif event == "QUEST_TURNED_IN" then
     safeRecord("turnin", (select(1, ...)))
   end
+  -- a quest event or a level-up always refreshes in full; other events (log ticks, zones) may be skipped while the
+  -- cheap log key is unchanged (UI.RefreshNow)
+  if event == "QUEST_ACCEPTED" or event == "QUEST_TURNED_IN" or event == "QUEST_REMOVED" or event == "PLAYER_LEVEL_UP" then
+    RQP.UI.questChanged = true
+  end
+  if event == "PLAYER_LEVEL_UP" then
+    -- the level the event names (UnitLevel can still return the old one): planned for even while hidden
+    local level = RQP.Number((select(1, ...)))
+    RQP.UI.levelUp = level and level > 0 and level or true
+  end
   RQP.RequestRefresh()
 end
 
