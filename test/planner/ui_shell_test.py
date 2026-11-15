@@ -176,7 +176,7 @@ R.Player = {Snapshot=function()
 end, LogKey=function()
   LOGKEYS=LOGKEYS+1
   local ids={rawequal(STATE.map,SECRET) and "" or tostring(STATE.map), tostring(STATE.zone)}
-  for q in pairs(STATE.log) do ids[#ids+1]=tostring(q)..(STATE.ready[q] and "r" or "") end
+  for q in pairs(STATE.log) do ids[#ids+1]=tostring(q)..(STATE.ready[q] and "r" or "")..(STATE.complete and STATE.complete[q] and "c" or "") end
   table.sort(ids)
   return tostring(STATE.level).."|"..table.concat(ids,",")
 end}
@@ -775,10 +775,13 @@ class UIShellTests(unittest.TestCase):
         lua.execute(r'''
           SlashCmdList.RELAXQUESTPLANNER("dungeon alpha keep"); DRAIN()
           local U=RelaxQuestPlanner.UI
-          FIRE("QUEST_LOG_UPDATE"); DRAIN()
+          TICK(15); FIRE("QUEST_LOG_UPDATE"); TICK(1)        -- (a heal refresh here; the next 10 s are inside 15 s)
           local snaps=SNAPSHOTS
-          for i=1,10 do FIRE("QUEST_LOG_UPDATE"); DRAIN() end
+          for i=1,10 do FIRE("QUEST_LOG_UPDATE"); TICK(1) end
           assert(SNAPSHOTS==snaps, "unchanged visible ticks snapshotted "..(SNAPSHOTS-snaps).." times")
+          -- over a minute of ticks 2 s apart: one full refresh per 15 s at most (the heal)
+          snaps=SNAPSHOTS; for i=1,30 do FIRE("QUEST_LOG_UPDATE"); TICK(2) end
+          assert(SNAPSHOTS-snaps>=3 and SNAPSHOTS-snaps<=4, "heal refreshes in 60 s: "..(SNAPSHOTS-snaps))
           STATE.log[12]=true; FIRE("QUEST_LOG_UPDATE"); DRAIN()
           assert(U.current.kind=="complete" and SNAPSHOTS>snaps, "a changed log renders")
           snaps=SNAPSHOTS; STATE.zone="Away"; STATE.map=102; FIRE("ZONE_CHANGED_NEW_AREA"); DRAIN()
@@ -788,10 +791,120 @@ class UIShellTests(unittest.TestCase):
           -- a visible level-up with UnitLevel still old: one plan for the new level, then quiet ticks again
           local builds=#BUILD_CALLS; FIRE("PLAYER_LEVEL_UP",31); DRAIN()
           assert(#BUILD_CALLS==builds+1 and BUILD_CALLS[#BUILD_CALLS].level==31, "visible level-up plans once")
-          snaps=SNAPSHOTS; for i=1,5 do FIRE("QUEST_LOG_UPDATE"); DRAIN() end
+          snaps=SNAPSHOTS; for i=1,5 do FIRE("QUEST_LOG_UPDATE"); TICK(1) end
           assert(SNAPSHOTS==snaps and #BUILD_CALLS==builds+1, "quiet again after the level-up")
           snaps=SNAPSHOTS; SlashCmdList.RELAXQUESTPLANNER("mode strict"); DRAIN()
           assert(SNAPSHOTS>snaps, "a forced refresh always renders")
+          assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
+        ''')
+
+    def test_done_on_a_log_tick_without_a_turn_in_heals_within_15_s(self):
+        """The original completion-on-QUEST_LOG_UPDATE case (r: rqp-perf): a quest done with no
+        event is picked up by the visible 15 s full refresh."""
+        lua = client()
+        lua.execute(r'''
+          SlashCmdList.RELAXQUESTPLANNER("dungeon alpha keep"); DRAIN()
+          local U=RelaxQuestPlanner.UI
+          STATE.log[12]=true; FIRE("QUEST_ACCEPTED",1,12); DRAIN()
+          STATE.ready[12]=true; FIRE("QUEST_LOG_UPDATE"); DRAIN()
+          STATE.done[12]=true; STATE.log[12]=nil; FIRE("QUEST_TURNED_IN",12); DRAIN()
+          assert(U.current.q==13 and U.current.kind=="accept")
+          TICK(15); STATE.done[13]=true; FIRE("QUEST_LOG_UPDATE"); DRAIN()
+          assert(U.current.q==11, "done with no event: healed by the 15 s full refresh")
+          TICK(15); STATE.done[11]=true; FIRE("QUEST_LOG_UPDATE"); DRAIN()
+          assert(U.current==nil and U.line1:GetText():find("All done"))
+          -- inside the 15 s the tick stays cheap
+          local snaps=SNAPSHOTS; for i=1,5 do FIRE("QUEST_LOG_UPDATE"); TICK(2) end
+          assert(SNAPSHOTS==snaps, "no full refresh inside 15 s: "..(SNAPSHOTS-snaps))
+          assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
+        ''')
+
+    def test_turn_in_with_a_late_completed_flag_refreshes_at_1_and_3_s(self):
+        lua = client()
+        lua.execute(r'''
+          SlashCmdList.RELAXQUESTPLANNER("dungeon alpha keep"); DRAIN()
+          local U=RelaxQuestPlanner.UI
+          STATE.log[12]=true; FIRE("QUEST_ACCEPTED",1,12); DRAIN()
+          STATE.ready[12]=true; FIRE("QUEST_LOG_UPDATE"); DRAIN()
+          -- turned in, but the completed list catches up 0.8 s later
+          STATE.log[12]=nil; FIRE("QUEST_TURNED_IN",12); TICK(0.25); TICK(0.25)
+          TICK(0.3); STATE.done[12]=true; TICK(0.5)
+          assert(U.current.q==13, "the +1 s refresh sees the late flag")
+          -- and 2.5 s late: the +3 s refresh
+          STATE.log[13]=true; FIRE("QUEST_ACCEPTED",1,13); DRAIN()
+          STATE.log[13]=nil; FIRE("QUEST_TURNED_IN",13); TICK(0.25); TICK(0.25); TICK(0.75)   -- refresh, its plan, +1 s
+          STATE.done[13]=true; TICK(1)
+          assert(U.current.q==13, "nothing has looked since the flag arrived")
+          TICK(1)
+          assert(U.current.q==11, "the +3 s refresh sees it")
+          -- hidden: the pin follows the late flag too
+          SlashCmdList.RELAXQUESTPLANNER("hide"); DRAIN()
+          STATE.log[11]=true; FIRE("QUEST_ACCEPTED",1,11); DRAIN()
+          STATE.log[11]=nil; FIRE("QUEST_TURNED_IN",11); TICK(0.5); STATE.done[11]=true; TICK(1); TICK(3)
+          assert(U.current==nil, "hidden: re-rendered after the late flag")
+          assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
+        ''')
+
+    def test_show_catch_up_snapshots_even_with_the_key_unchanged(self):
+        lua = client()
+        lua.execute(r'''
+          SlashCmdList.RELAXQUESTPLANNER("dungeon alpha keep"); DRAIN()
+          local U=RelaxQuestPlanner.UI
+          -- (all inside 15 s of the last full refresh, so only the forced catch-up can see it)
+          TICK(15); FIRE("QUEST_LOG_UPDATE"); TICK(0.5)
+          SlashCmdList.RELAXQUESTPLANNER("hide"); TICK(0.5)
+          STATE.done[12]=true; FIRE("QUEST_LOG_UPDATE"); TICK(0.5)        -- done with no event, key unchanged
+          SlashCmdList.RELAXQUESTPLANNER("show"); TICK(0.25); TICK(0.25); TICK(0.25)
+          assert(U.current.q==13, "the catch-up on show is a full refresh")
+          DRAIN()
+          -- the catch-up clears the mark: showing again without events does nothing (also when the catch-up
+          -- found nothing to plan)
+          local snaps=SNAPSHOTS
+          SlashCmdList.RELAXQUESTPLANNER("hide"); SlashCmdList.RELAXQUESTPLANNER("show"); DRAIN()
+          assert(SNAPSHOTS==snaps, "no second catch-up: "..(SNAPSHOTS-snaps))
+          SlashCmdList.RELAXQUESTPLANNER("hide"); FIRE("QUEST_LOG_UPDATE"); DRAIN()
+          local builds=#BUILD_CALLS; SlashCmdList.RELAXQUESTPLANNER("show"); DRAIN()
+          assert(#BUILD_CALLS==builds, "an unchanged catch-up plans nothing")
+          snaps=SNAPSHOTS; SlashCmdList.RELAXQUESTPLANNER("hide"); SlashCmdList.RELAXQUESTPLANNER("show"); DRAIN()
+          assert(SNAPSHOTS==snaps, "and leaves no mark behind: "..(SNAPSHOTS-snaps))
+          assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
+        ''')
+
+    def test_autopin_on_again_moves_the_pin_at_once(self):
+        lua = client()
+        lua.execute(r'''
+          SlashCmdList.RELAXQUESTPLANNER("dungeon alpha keep"); DRAIN()
+          local U=RelaxQuestPlanner.UI
+          SlashCmdList.RELAXQUESTPLANNER("autopin"); assert(RelaxQuestPlannerDB.autoPin==false)
+          STATE.log[12]=true; FIRE("QUEST_ACCEPTED",1,12); DRAIN()
+          assert(U.current.kind=="complete" and WP.x==0.4, "pin left alone while off")
+          SlashCmdList.RELAXQUESTPLANNER("autopin")
+          assert(WP.x==0.45, "pin follows the current step as soon as it is on again")
+          assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
+        ''')
+
+    def test_objectives_complete_before_ready_changes_the_key(self):
+        lua = client()
+        lua.execute(r'''
+          STATE.complete={}
+          SlashCmdList.RELAXQUESTPLANNER("dungeon alpha keep"); DRAIN()
+          STATE.log[12]=true; FIRE("QUEST_ACCEPTED",1,12); DRAIN()
+          local snaps=SNAPSHOTS
+          STATE.complete[12]=true; FIRE("QUEST_LOG_UPDATE"); DRAIN()
+          assert(SNAPSHOTS>snaps, "IsComplete without ReadyForTurnIn refreshes")
+        ''')
+
+    def test_level_up_plans_once_per_level_reached(self):
+        lua = client()
+        lua.execute(r'''
+          SlashCmdList.RELAXQUESTPLANNER("dungeon alpha keep"); DRAIN()
+          SlashCmdList.RELAXQUESTPLANNER("hide"); DRAIN()
+          local builds=#BUILD_CALLS
+          STATE.level=31; FIRE("PLAYER_LEVEL_UP",31); DRAIN()
+          FIRE("PLAYER_LEVEL_UP",31); DRAIN(); FIRE("PLAYER_LEVEL_UP",30); DRAIN()
+          assert(#BUILD_CALLS==builds+1, "a repeated or lower level plans nothing more: "..(#BUILD_CALLS-builds))
+          STATE.level=32; FIRE("PLAYER_LEVEL_UP",32); DRAIN()
+          assert(#BUILD_CALLS==builds+2)
           assert(RelaxQuestPlannerDB.lastError==nil, RelaxQuestPlannerDB.lastError)
         ''')
 

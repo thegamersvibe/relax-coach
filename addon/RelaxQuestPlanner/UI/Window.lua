@@ -69,7 +69,7 @@ function UI.BuildWindow()
   -- events while hidden only marked the window dirty: catch up once, on the next frame (a Plan that opened the
   -- window builds from the current state itself and clears the mark first)
   f:SetScript("OnShow", RQP.Safe(function()
-    if UI.dirty then RQP.After(0, function() if UI.dirty and UI.frame:IsShown() then UI.RefreshNow() end end) end
+    if UI.dirty then RQP.After(0, function() if UI.dirty and UI.frame:IsShown() then UI.RefreshNow(false, true) end end) end
   end))
   UI.title:SetText("Choose a dungeon or a quest")
   UI.line1:SetText("Pick a dungeon, or let Pick my guide choose.")

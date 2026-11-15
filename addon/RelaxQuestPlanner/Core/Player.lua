@@ -14,8 +14,8 @@ local function safe(fn,...)
     if ok then return a,b,c,d,e,f,g,h end
     if RQP.Data then RQP.Data.Error(a) end
 end
--- LogKey(): a cheap key of what moves the current step while the window is hidden: level, map, zone, the quests
--- in the log and which are ready to turn in. No completed-quest table, skills or reputation (Snapshot reads those).
+-- LogKey(): a cheap key of what moves the current step: level, map, zone, the quests in the log, which are ready to
+-- turn in ("r") and which have their objectives done before that ("c"). No completed-quest table, skills or reputation (Snapshot reads those).
 function Player.LogKey()
     local n=Player.Number
     local parts={tostring(n(safe(UnitLevel,"player"),0))}
@@ -30,7 +30,12 @@ function Player.LogKey()
             local id=n(entry.questID)
             if id and id>0 then
                 local ready=safe(q.ReadyForTurnIn,id)
-                parts[#parts+1]=tostring(id)..((not secret(ready) and ready) and "r" or "")
+                local mark=""
+                if not secret(ready) and ready then mark="r" else
+                    local complete=safe(q.IsComplete,id)
+                    if not secret(complete) and complete then mark="c" end
+                end
+                parts[#parts+1]=tostring(id)..mark
             end
         end
     end

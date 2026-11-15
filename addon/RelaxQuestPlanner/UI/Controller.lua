@@ -59,7 +59,10 @@ function UI.Plan(show, force)
   -- a level-up: plan for the level the event named when the client still reports the old one
   local up = UI.levelUp
   UI.levelUp = nil
-  if type(up) == "number" and RQP.Number(player.level, 0) < up then player.level = up end
+  if type(up) == "number" then
+    if RQP.Number(player.level, 0) < up then player.level = up end
+    UI.levelPlanned = math.max(UI.levelPlanned or 0, up)
+  end
   -- this plan is built from the current state: a hidden-window catch-up has nothing left to do
   UI.dirty, UI.lastFingerprint = nil, UI.QuestFingerprint(player)
   local callback = RQP.Safe(function(route)
@@ -253,7 +256,9 @@ function UI.Refresh(force)
   UI.RefreshNow(force)
 end
 
-function UI.RefreshNow(force)
+-- full: skip the key gate (the catch-up on show) without forcing a replan
+UI.HEAL = 15 -- seconds: at most this long between full refreshes while the window is visible
+function UI.RefreshNow(force, full)
   if not UI.frame then return end
   UI.dirty = nil
   UI.modeButton:SetText(MODE_LABELS[RQP.GetDB().mode])
@@ -261,10 +266,13 @@ function UI.RefreshNow(force)
   -- a log tick or zone event with the cheap key unchanged: nothing the route depends on moved (a quest becomes done
   -- only through a turn-in, which sets questChanged)
   local key = RQP.Player.LogKey and RQP.Player.LogKey()
-  local changed = force or UI.questChanged or UI.levelUp
+  local now = GetTime and RQP.Number(GetTime()) or 0
+  local changed = force or full or UI.questChanged or UI.levelUp
+    or not UI.fullAt or now < UI.fullAt or now - UI.fullAt >= UI.HEAL
   UI.questChanged = nil
   if not changed and key and key == UI.visibleKey and UI.lastFingerprint then return end
-  UI.visibleKey = key
+  -- a full refresh (the old path); a quest done with no event is picked up within UI.HEAL seconds
+  UI.visibleKey, UI.fullAt = key, now
   -- a level-up plans even if the client still reports the old level (the plan uses the event's level)
   if UI.levelUp then
     if RQP.GetDB().selection then UI.lastFingerprint = nil else UI.levelUp = nil end
@@ -305,6 +313,8 @@ SlashCmdList.RELAXQUESTPLANNER = RQP.Safe(function(message)
   elseif command == "autopin" then
     local db = RQP.GetDB(); db.autoPin = db.autoPin == false
     RQP.Print("Automatic map pin " .. (db.autoPin and "on" or "off") .. ".")
+    -- on again: the pin goes to the current step at once
+    if db.autoPin and UI.route then UI.lastPinned = nil; UI.RenderRoute(RQP.Player.Snapshot()) end
   elseif command == "autojourney" then
     local db = RQP.GetDB(); db.autoJourney = db.autoJourney == false
     RQP.Print("Open new routes in Journey " .. (db.autoJourney and "on" or "off") .. ".")

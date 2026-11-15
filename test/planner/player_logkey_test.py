@@ -46,6 +46,12 @@ class LogKeyTests(unittest.TestCase):
         h.lua.execute('TEST_MAP, TEST_ZONE_TEXT = 1433, "Redridge Mountains"')
         self.assertEqual(key(), "30,1433,Redridge Mountains,11r")
 
+    def test_objectives_complete_before_ready_for_turn_in(self):
+        h = self.harness()
+        h.lua.execute("C_QuestLog.IsComplete=function(q) return q==11 end")
+        self.assertEqual(h.rqp.Player.LogKey(), "30,1429,Elwynn Forest,11c,12r",
+                         "IsComplete without ReadyForTurnIn changes the key")
+
     def test_key_never_reads_completed_skills_or_reputation(self):
         h = self.harness()
         h.lua.execute("""
