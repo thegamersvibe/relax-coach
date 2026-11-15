@@ -1,6 +1,6 @@
 package main
 
-// Optional companion addons (RankUp, Forever Maps, AH Profit). They are separate products
+// Optional companion addons (RankUp, Forever Maps, AH Profit, LayerEnemies). They are separate products
 // from separate GitHub repositories, installed and updated one at a time on an
 // explicit click. Each is a single addon folder; nothing else in the game folder,
 // no SavedVariables and no other addon is touched. The same trust rules as the
@@ -26,6 +26,9 @@ import (
 
 type extraAddon struct {
 	ID, Name, Repo, Folder, Title, Blurb string
+	// Alpha marks an addon that is new and only lightly tested in game. Display
+	// only: install, update and every trust check are the same as for the others.
+	Alpha bool
 }
 
 // Fixed list: the folder, TOC title and repository are never taken from a
@@ -37,6 +40,8 @@ var extraAddons = []extraAddon{
 		Blurb: "Directions to any place: running, flying and boat routes for your faction."},
 	{ID: "ahprofit", Name: "AH Profit", Repo: "buiden/AHProfit", Folder: "AHProfit", Title: "AH Profit",
 		Blurb: "Vendor price, auction house price and AH profit on every item tooltip."},
+	{ID: "layerenemies", Name: "LayerEnemies", Repo: "buiden/LayerEnemies", Folder: "LayerEnemies", Title: "LayerEnemies",
+		Blurb: "Enemy players seen by you and by War Effort, HeadHunter and Spy users, plus one-click layer hops.", Alpha: true},
 }
 
 func extraAddonByID(id string) (extraAddon, bool) {
@@ -80,6 +85,7 @@ type ExtraAddonInfo struct {
 	Available        bool   `json:"available"`
 	Install          bool   `json:"install"` // not installed yet: offer "Install" instead of "Update"
 	Status           string `json:"status"`
+	Alpha            bool   `json:"alpha"` // display only: new and only lightly tested in game
 }
 
 // InstalledExtraVersion reads <AddOns>/<Folder>/<Folder>.toc. Missing or
@@ -160,7 +166,7 @@ func (u *addonUpdater) checkExtra(ctx context.Context, id, current string) (Extr
 	if !ok {
 		return ExtraAddonInfo{}, errors.New("unknown addon")
 	}
-	info := ExtraAddonInfo{ID: a.ID, Name: a.Name, Blurb: a.Blurb, InstalledVersion: current}
+	info := ExtraAddonInfo{ID: a.ID, Name: a.Name, Blurb: a.Blurb, InstalledVersion: current, Alpha: a.Alpha}
 	local, err := parseAddonVersion(current)
 	if err != nil {
 		return info, errors.New("invalid installed version")

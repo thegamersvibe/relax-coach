@@ -70,3 +70,23 @@ test('More addons: a folder that is not the addon shows Unrecognized, not Instal
  assert.ok(rank.querySelector('[data-role=apply]').disabled,'no install offered');
  assert.equal($('extra-forevermaps').querySelector('.extra-installed').textContent,'Not installed');
 });
+test('More addons: an alpha addon shows an Alpha badge with its note; the others none',async t=>{
+ const {$}=await setup(t,{extraList:()=>[{ID:'layerenemies',Name:'LayerEnemies',Blurb:'Enemy players seen by you.',InstalledVersion:'0.0.0',Alpha:true},{ID:'rankup',Name:'RankUp',Blurb:'ranks',InstalledVersion:'0.0.0'}],
+  checkExtra:id=>({ID:id,Name:'LayerEnemies',InstalledVersion:'0.0.0',Version:'1.0.0',Available:true,Install:true,Status:'ready',Alpha:true})});
+ $('nav-update').click();await settle();
+ const le=$('extra-layerenemies'), badge=le.querySelector('.extra-badge');
+ assert.ok(badge,'badge shown'); assert.equal(badge.textContent,'Alpha'); assert.equal(badge.hidden,false);
+ assert.equal(badge.title,'Alpha: new and only lightly tested in game');
+ assert.equal(le.querySelector('.extra-title').textContent,'LayerEnemies');
+ assert.equal(le.querySelector('.extra-alpha').textContent,'Alpha: new and only lightly tested in game');
+ assert.equal(le.querySelector('.extra-alpha').hidden,false);
+ assert.match(le.querySelector('.extra-blurb').textContent,/^Enemy players seen by you\./);
+ const rank=$('extra-rankup');
+ assert.ok(!rank.querySelector('.extra-badge') || rank.querySelector('.extra-badge').hidden,'no badge for a stable addon');
+ assert.ok(!rank.querySelector('.extra-alpha') || rank.querySelector('.extra-alpha').hidden,'no alpha note');
+ assert.equal(rank.querySelector('.extra-title').textContent,'RankUp');
+ // a check keeps the badge and does not change Install
+ le.querySelector('[data-role=check]').click();await settle();
+ assert.equal($('extra-layerenemies').querySelector('.extra-badge').hidden,false);
+ assert.equal($('extra-layerenemies').querySelector('[data-role=apply]').textContent,'Install');
+});
