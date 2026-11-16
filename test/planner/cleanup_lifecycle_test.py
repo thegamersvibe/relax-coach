@@ -3,8 +3,21 @@ import sys,unittest
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 from cleanup_harness import policy
+from ui_shell_test import client as planner_client
 
 class CleanupLifecycleTests(unittest.TestCase):
+    def test_throwing_cleanup_event_still_records_planner_turnin(self):
+        # Review probe: a review-hook error must not skip the planner's handler.
+        planner_client().execute('''
+          RelaxQuestPlanner.Cleanup={OnEvent=function() error('review hook failed') end}
+          local before=#LEARN_CALLS
+          FIRE('QUEST_TURNED_IN',5,500,0); DRAIN()
+          assert(#LEARN_CALLS==before+1,'review error suppressed planner turn-in')
+          local record=LEARN_CALLS[#LEARN_CALLS]
+          assert(record.kind=='turnin' and record.q==5 and record.npc==901)
+          assert(RelaxQuestPlannerDB.lastError:find('review hook failed'))
+        ''')
+
     def runtime(self):
         lua=policy()
         self.assertIsNotNone(lua.globals().RelaxQuestPlanner.Cleanup.Open,'review lifecycle is missing')
