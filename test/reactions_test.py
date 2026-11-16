@@ -1505,6 +1505,38 @@ class TaxiTest(unittest.TestCase):
         self.assertEqual(c.sounds(), ['bags_1.mp3'])
         self.assertEqual(len(c.r.queue), 0)
 
+    def test_taxi_takeoff_stops_campfire_with_other_kinds_already_queued(self):
+        for synchronous in (False, True):
+            with self.subTest(synchronous=synchronous):
+                setup = 'local stop=StopSound; function StopSound(h) stop(h); FIRE("SOUNDKIT_FINISHED",h) end' if synchronous else ''
+                c = self.ground(setup=setup)
+                c.run('AURA_ON(); DIE(); LEVEL(21)')
+                self.assertEqual(len(c.r.queue), 2)
+                self.takeoff(c)
+                self.assertEqual(list(c.g.STOPS.values()), [100])
+                self.assertEqual(c.sounds(), ['campfire_1.mp3', 'death.mp3'])
+                self.assertIsNone(c.g.ACTIVE[100])
+                c.wait(80)
+                self.assertEqual(c.sounds(), ['campfire_1.mp3', 'death.mp3', 'level_up.mp3'])
+                self.assertEqual(len(c.r.queue), 0, 'waiting flight expires behind earlier short clips')
+
+    def test_taxi_status_reports_switch_independently_of_master_mute(self):
+        for master in (True, False):
+            for flight in (True, False):
+                with self.subTest(master=master, flight=flight):
+                    c = self.ground(db={'reactionsEnabled': master, 'flightSound': flight})
+                    c.run('CHAT={}; SlashCmdList.FOREVERCOACH("fun status")')
+                    self.assertIn('fun extras: ' + ('on' if master else 'off') + '; flight sound: '
+                                  + ('on' if flight else 'off'), ' '.join(c.g.CHAT.values()).lower())
+                    self.assertEqual(c.g.ForeverCoachDB.reactionsEnabled, master)
+                    self.assertEqual(c.g.ForeverCoachDB.flightSound, flight)
+
+    def test_taxi_invalid_flight_command_does_not_disable_enabled_switch(self):
+        c = self.ground()
+        c.run('SlashCmdList.FOREVERCOACH("fun flight banana")')
+        self.assertTrue(c.g.ForeverCoachDB.flightSound)
+        self.assertIn('/coach fun flight on|off', ' '.join(c.g.CHAT.values()))
+
     def test_taxi_flight_command_accepts_repeated_whitespace(self):
         for command in ('fun  flight  off', '  FUN   FLIGHT   OFF  ', 'fun\tflight\toff'):
             with self.subTest(command=command):
