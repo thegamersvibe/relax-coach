@@ -1505,6 +1505,50 @@ class TaxiTest(unittest.TestCase):
         self.assertEqual(c.sounds(), ['bags_1.mp3'])
         self.assertEqual(len(c.r.queue), 0)
 
+    def test_taxi_expiry_is_strict_at_three_seconds(self):
+        c = self.ground(); c.run('FULL_ERROR(); TAXI_ON()')
+        c.run('ForeverCoach.Reactions:Request("taxi", 99, 3); ADVANCE(3); ACTIVE[100]=nil; FIRE("SOUNDKIT_FINISHED",100)')
+        self.assertEqual(c.sounds(), ['bags_1.mp3'], 'expired at equality, with no extra grace')
+        self.assertIsNone(c.r.pending.taxi)
+
+    def test_taxi_coalesced_episode_gets_its_own_expiry(self):
+        c = self.ground(); c.run('FULL_ERROR(); TAXI_ON()')
+        c.run('ForeverCoach.Reactions:Request("taxi", 99, 3); ADVANCE(1); ForeverCoach.Reactions:Request("taxi",100,3)')
+        c.run('ADVANCE(2.01); ACTIVE[100]=nil; FIRE("SOUNDKIT_FINISHED",100)')
+        self.assertEqual(c.sounds(), ['bags_1.mp3', 'flight.mp3'])
+        self.assertEqual(c.r.active.token, 100)
+
+    def test_taxi_failed_token_cannot_be_requested_again(self):
+        c = self.ground(setup='STATE.soundFail=true'); self.takeoff(c); c.wait(3)
+        self.assertEqual(c.r.failed.taxi, c.r.taxiEpisode)
+        attempts = len(c.g.ATTEMPTS)
+        c.run('STATE.soundFail=false; ForeverCoach.Reactions:Request("taxi",ForeverCoach.Reactions.taxiEpisode,3)')
+        self.assertEqual(len(c.g.ATTEMPTS), attempts)
+        self.assertEqual(c.sounds(), [])
+
+    def test_taxi_only_saved_false_disables_the_switch(self):
+        for value in (True, 0, 1, 'invalid', {}):
+            with self.subTest(value=value):
+                c = self.ground(db={'flightSound': value})
+                self.assertTrue(c.g.ForeverCoachDB.flightSound)
+                self.takeoff(c)
+                self.assertEqual(c.sounds(), ['flight.mp3'])
+
+    def test_taxi_short_unknown_gap_breaks_false_continuity(self):
+        c = self.ground(setup='STATE.dead=true'); self.takeoff(c)
+        c.run('TAXI_OFF()'); c.wait(1.5)
+        c.run('STATE.taxiUnknown=true'); c.wait(0.4)
+        c.run('STATE.taxiUnknown=false'); c.wait(1)
+        self.assertEqual(len(c.g.STOPS), 0, 'even a sub-second unknown gap restarts confirmation')
+        c.wait(1.5)
+        self.assertEqual(list(c.g.STOPS.values()), [100])
+
+    def test_taxi_uninitialized_switch_status_is_off(self):
+        c = Client(login=False)
+        c.run('FIRE("ADDON_LOADED","ForeverCoach"); CHAT={}; SlashCmdList.FOREVERCOACH("fun status")')
+        self.assertIsNone(c.g.ForeverCoachDB.flightSound)
+        self.assertIn('flight sound: off', ' '.join(c.g.CHAT.values()).lower())
+
     def test_taxi_takeoff_stops_campfire_with_other_kinds_already_queued(self):
         for synchronous in (False, True):
             with self.subTest(synchronous=synchronous):
