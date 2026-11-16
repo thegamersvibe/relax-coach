@@ -98,7 +98,10 @@ class RealRefusalGateTests(unittest.TestCase):
         cls.bundle = ROOT / 'dist/RelaxCoach-Bundle-1.7.0.zip'
         if not cls.exe.is_file() or not cls.bundle.is_file():
             raise unittest.SkipTest('build the 1.7.0 release assets to exercise the real refusal gate')
-        cls.old = subprocess.check_output(['git', 'describe', '--tags', '--abbrev=0', '--match', 'v*', 'HEAD'], cwd=ROOT, text=True).strip()
+        # The last published app BEFORE 1.7.0: once v1.7.0 is tagged on HEAD, a plain
+        # describe would return 1.7.0 itself and the gate would compare 1.7.0 with itself.
+        cls.old = subprocess.check_output(['git', 'describe', '--tags', '--abbrev=0', '--match', 'v*',
+                                           '--exclude', 'v1.7.0', 'HEAD'], cwd=ROOT, text=True).strip()
         cls.gitdir = subprocess.check_output(['git', 'rev-parse', '--absolute-git-dir'], cwd=ROOT, text=True).strip()
 
     def run_gate(self, *, corrupt_exe=False, extra_path=False):

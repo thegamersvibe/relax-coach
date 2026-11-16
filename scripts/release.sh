@@ -12,7 +12,8 @@ python3 -I -B test/test_release_gate.py
 # older apps cannot install. Use the last published tag, never an override,
 # and require its real installer to refuse cleanly instead of skipping it.
 if [[ "$V" == "1.7.0" ]]; then
-    OLD_APP=$(git describe --tags --abbrev=0 --match 'v*' HEAD)
+    # Exclude v1.7.0 itself so a rebuild after tagging still checks the previous app.
+    OLD_APP=$(git describe --tags --abbrev=0 --match 'v*' --exclude 'v1.7.0' HEAD)
     scripts/check_old_app_refuses_bundle.sh "$OLD_APP" "dist/RelaxCoach-Bundle-$V.zip" "$V"
 else
     # Every other version keeps the existing acceptance check and override.
