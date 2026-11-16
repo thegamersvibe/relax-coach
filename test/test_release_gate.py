@@ -1,10 +1,13 @@
 """Exercise the real release entrypoint without building or publishing assets."""
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -90,19 +93,95 @@ class ReleaseGateTests(unittest.TestCase):
                 self.assertNotIn("Local release assets built.", result.stdout)
 
 
-class RealRefusalGateTests(unittest.TestCase):
-    """Run after building (release.sh does so); negatives exercise the real old Go code."""
+class RealGateSetupTests(unittest.TestCase):
+    def test_discovery_runs_the_current_release_gate_not_a_stale_bundle(self):
+        def test_ids(suite):
+            for test in suite:
+                if isinstance(test, unittest.TestSuite):
+                    yield from test_ids(test)
+                else:
+                    yield test.id()
+
+        for version in ('1.7.0', '1.7.1', '1.8.0'):
+            with self.subTest(version=version), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                (root / 'addon/ForeverCoach').mkdir(parents=True)
+                (root / 'addon/ForeverCoach/ForeverCoach.toc').write_text(f'## Version: {version}\n')
+                with mock.patch.object(sys.modules[__name__], 'ROOT', root):
+                    suite = unittest.defaultTestLoader.loadTestsFromModule(sys.modules[__name__])
+                real_ids = [name for name in test_ids(suite)
+                            if '.RealRefusalGateTests.' in name or '.RealAcceptanceGateTests.' in name]
+                selected = 'RealRefusalGateTests' if version == '1.7.0' else 'RealAcceptanceGateTests'
+                self.assertTrue(real_ids, 'CI must collect a real gate')
+                self.assertTrue(all(f'.{selected}.' in name for name in real_ids), real_ids)
+
+    def test_missing_release_assets_fail_in_ci(self):
+        for marker, version in ((m, v) for m in ('CI', 'GITHUB_ACTIONS')
+                                for v in ('1.7.0', '1.7.1')):
+            for missing in ('exe', 'bundle', 'both'):
+                with self.subTest(marker=marker, version=version, missing=missing), tempfile.TemporaryDirectory() as temp:
+                    root = Path(temp)
+                    (root / 'dist').mkdir()
+                    (root / 'addon/ForeverCoach').mkdir(parents=True)
+                    (root / 'addon/ForeverCoach/ForeverCoach.toc').write_text(f'## Version: {version}\n')
+                    if missing == 'exe':
+                        (root / f'dist/RelaxCoach-Bundle-{version}.zip').touch()
+                    if missing == 'bundle':
+                        (root / 'dist/RelaxCoach.exe').touch()
+                    with mock.patch.dict(os.environ, {marker: 'true'}, clear=True), \
+                            mock.patch.object(sys.modules[__name__], 'ROOT', root):
+                        try:
+                            with self.assertRaisesRegex(AssertionError, 'release assets missing'):
+                                case = RealRefusalGateTests if version == '1.7.0' else RealAcceptanceGateTests
+                                case.setUpClass()
+                        except unittest.SkipTest as exc:
+                            self.fail(f'CI must fail, not skip: {exc}')
+
+    def test_missing_release_assets_may_skip_outside_ci(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'addon/ForeverCoach').mkdir(parents=True)
+            for version in ('1.7.0', '1.7.1'):
+                (root / 'addon/ForeverCoach/ForeverCoach.toc').write_text(f'## Version: {version}\n')
+                with (self.subTest(version=version),
+                      mock.patch.dict(os.environ, {}, clear=True),
+                      mock.patch.object(sys.modules[__name__], 'ROOT', root)):
+                    with self.assertRaisesRegex(unittest.SkipTest, 'release assets missing'):
+                        case = RealRefusalGateTests if version == '1.7.0' else RealAcceptanceGateTests
+                        case.setUpClass()
+
+
+def release_version():
+    # The bundle contract also asserts that both build/release defaults match.
+    toc = (ROOT / 'addon/ForeverCoach/ForeverCoach.toc').read_text()
+    match = re.search(r'^## Version: (\d+\.\d+\.\d+)$', toc, re.M)
+    if match is None:
+        raise AssertionError('Coach release version missing or malformed')
+    return match.group(1)
+
+
+class RealGateAssets:
     @classmethod
     def setUpClass(cls):
+        cls.version = release_version()
         cls.exe = ROOT / 'dist/RelaxCoach.exe'
-        cls.bundle = ROOT / 'dist/RelaxCoach-Bundle-1.7.0.zip'
-        if not cls.exe.is_file() or not cls.bundle.is_file():
-            raise unittest.SkipTest('build the 1.7.0 release assets to exercise the real refusal gate')
-        # The last published app BEFORE 1.7.0: once v1.7.0 is tagged on HEAD, a plain
-        # describe would return 1.7.0 itself and the gate would compare 1.7.0 with itself.
-        cls.old = subprocess.check_output(['git', 'describe', '--tags', '--abbrev=0', '--match', 'v*',
-                                           '--exclude', 'v1.7.0', 'HEAD'], cwd=ROOT, text=True).strip()
+        cls.bundle = ROOT / f'dist/RelaxCoach-Bundle-{cls.version}.zip'
+        missing = [p.name for p in (cls.exe, cls.bundle) if not p.is_file()]
+        if missing:
+            message = 'release assets missing: ' + ', '.join(missing) + '; build before running the real old-app gate'
+            if os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS'):
+                raise AssertionError(message)
+            raise unittest.SkipTest(message)
+        # Match release.sh: only 1.7.0 excludes its own published tag.
+        describe = ['git', 'describe', '--tags', '--abbrev=0', '--match', 'v*']
+        if cls.version == '1.7.0':
+            describe += ['--exclude', 'v1.7.0']
+        cls.old = subprocess.check_output(describe + ['HEAD'], cwd=ROOT, text=True).strip()
         cls.gitdir = subprocess.check_output(['git', 'rev-parse', '--absolute-git-dir'], cwd=ROOT, text=True).strip()
+
+
+class RealRefusalGateTests(RealGateAssets, unittest.TestCase):
+    """Only 1.7.0 is app-first; preserve its real old-code negative controls."""
 
     def run_gate(self, *, corrupt_exe=False, extra_path=False):
         with tempfile.TemporaryDirectory() as temp:
@@ -145,6 +224,27 @@ class RealRefusalGateTests(unittest.TestCase):
         result = self.run_gate(extra_path=True)
         self.assertNotEqual(result.returncode, 0, 'first-error match hid a second unknown path')
         self.assertIn('unexpected old-app unknown path set', result.stdout)
+
+
+class RealAcceptanceGateTests(RealGateAssets, unittest.TestCase):
+    def test_real_old_app_accepts_current_bundle(self):
+        result = subprocess.run(
+            ['bash', str(ROOT / 'scripts/check_old_app_accepts_bundle.sh'),
+             self.old, str(self.bundle), self.version],
+            cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        # go test exits zero even if GOFLAGS filtered out every test.
+        self.assertIn('--- PASS: TestOldAppAcceptsRealBundle ', result.stdout)
+        self.assertIn(f'Old app {self.old} accepts {self.bundle.name}.', result.stdout)
+        print(result.stdout, end='')
+
+
+def load_tests(loader, tests, pattern):
+    # Explicit selection, not SkipTest: CI must run the real gate for the bundle
+    # it just built, without requiring the historical 1.7.0 assets forever.
+    real = RealRefusalGateTests if release_version() == '1.7.0' else RealAcceptanceGateTests
+    return unittest.TestSuite(loader.loadTestsFromTestCase(case) for case in
+                              (ReleaseGateTests, RealGateSetupTests, real))
 
 
 if __name__ == "__main__":
