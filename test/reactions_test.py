@@ -1340,6 +1340,19 @@ class TaxiTest(unittest.TestCase):
         self.assertEqual(c.sounds(), ['bags_1.mp3'])
         self.assertEqual(len(c.r.queue), 0)
 
+    def test_taxi_landed_while_waiting_behind_short_clip_is_discarded(self):
+        for completion_event in (True, False):
+            with self.subTest(completion_event=completion_event):
+                c = self.ground(setup='' if completion_event else 'STATE.noSoundFinished=true')
+                c.run('FULL_ERROR()'); self.takeoff(c)
+                self.assertIsNotNone(c.r.pending.taxi)
+                c.run('TAXI_OFF()'); c.wait(4)
+                self.assertEqual(c.sounds(), ['bags_1.mp3'], 'no flight start/stop blip after confirmed landing')
+                self.assertIsNone(c.r.pending.taxi)
+                self.assertEqual(len(c.r.queue), 0)
+                c.wait(2); self.takeoff(c)
+                self.assertEqual(c.sounds(), ['bags_1.mp3', 'flight.mp3'])
+
     def test_taxi_pending_never_delays_another_kind(self):
         # Real event repro: bags -> take-off -> death/level/campfire. Compare
         # with the same event schedule without a flight, including fallback.

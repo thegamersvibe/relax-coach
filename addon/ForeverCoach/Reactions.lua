@@ -275,8 +275,9 @@ function R:CheckTaxi()
             self.taxiOffSince = t
         end
         self.taxiOffPoll, self.taxiOffAt = taxiPoll, t
-        if self.active and self.active.kind == "taxi" and t - self.taxiOffSince >= TAXI_LAND then
-            self:StopActive()
+        if t - self.taxiOffSince >= TAXI_LAND then
+            self:DropPendingTaxi() -- never start a waiting clip after confirmed landing
+            if self.active and self.active.kind == "taxi" then self:StopActive() end
         end
         if t - self.taxiOffSince >= TAXI_REARM then
             self.taxiOn, self.store.taxiAloft = false, nil
