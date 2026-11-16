@@ -1,8 +1,9 @@
 -- First-party evidence adapter. Corrected getters only; nil is never a read failure.
 local RQP=RelaxQuestPlanner
+local _,ns=...
 local D={}
 RQP.CleanupData=D
-RQP.CleanupUses={}
+RQP.CleanupUses=ns or {}
 
 function D.Plain(v)
     if issecretvalue then
@@ -57,11 +58,11 @@ local questFields={name="string",questLevel="number",requiredLevel="number",requ
     exclusiveTo="table",parentQuest="number",childQuests="table",inGroupWith="table",
     nextQuestInChain="number",breadcrumbForQuestId="number",breadcrumbs="table",
     availableStartingWith="number",availableUntilCompleted="number",disabledByQuest="number",
-    questFlags="number",specialFlags="number",zoneOrSort="number",type="number",
+    questFlags="number",specialFlags="number",zoneOrSort="number",
     requiredSkill="table",requiredRanks="table",requiredMinRep="table",requiredMaxRep="table",
     requiredSpell="number",requiredSpecialization="number",requiredMaxLevel="number"}
 local itemFields={name="string",startQuest="number",relatedQuests="table",questRewards="table",
-    itemClass="number",flags="number",teachesSpell="number"}
+    class="number",flags="number",teachesSpell="number"}
 local function read(kind,id,p,checkpoint)
     p=p or D.Provider()
     local r={id=id,fields={},complete=false,source=p.source,version=p.version}

@@ -1,4 +1,13 @@
-# Third-party media
+# Third-party media and data
+
+| Component | Author | Imported material | Licence / source |
+|---|---|---|---|
+| Keep or Toss: Forever 1.7.0 | Aquary | data tables only, no code; positive KEEP evidence in `addon/RelaxQuestPlanner/Core/CleanupUses.lua` | No licence file in the package; included under the owner's ruling. [Pinned package](https://www.curseforge.com/wow/addons/keep-or-toss-forever/files/9575258). |
+
+Keep or Toss archive SHA-256: `03910d502a00f6912cb372f946873908ed7c9ed6f6261c5c645a49991a6fb33d`.
+Each generated block names the data file, file hash and build. The archive,
+verdict logic and English reason strings are not bundled. Regenerate/check with
+`python -I -B tools/gen_cleanup_uses.py /path/KeepOrToss-1.7.0.zip --check`.
 
 ## Travel supplication
 

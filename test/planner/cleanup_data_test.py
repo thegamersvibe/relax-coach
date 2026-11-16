@@ -40,6 +40,18 @@ class CleanupDataTests(unittest.TestCase):
           assert(not D.ReadQuest(-30).complete and not D.ReadQuest(404).complete)
         ''')
 
+    def test_only_canonical_provider_fields_are_queried(self):
+        lua=client()
+        lua.execute('''
+          QUEST(1); ITEM(1,{class=12})
+          local qget,iget=LibQuestieDB.Quest.Get,LibQuestieDB.Item.Get
+          LibQuestieDB.Quest.Get=function(id,key) assert(key~='type','not a QuestieDB field'); return qget(id,key) end
+          LibQuestieDB.Item.Get=function(id,key) assert(key~='itemClass','field is class'); return iget(id,key) end
+          local D=RelaxQuestPlanner.CleanupData
+          assert(D.ReadQuest(1).complete)
+          assert(D.ReadItem(1).complete and D.ReadItem(1).fields.class.value==12)
+        ''')
+
     def test_exact_ids_reverse_rewards_and_unreadable_values(self):
         lua=client()
         self.assertIsNotNone(lua.globals().RelaxQuestPlanner.CleanupData, 'cleanup adapter is missing')

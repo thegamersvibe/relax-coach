@@ -13,6 +13,8 @@ Core/Engine.lua
 Core/Learn.lua
 Core/CleanupData.lua
 Core/CleanupSnapshot.lua
+Core/CleanupUses.lua
+Core/Cleanup.lua
 Journey/Bridge.lua
 Journey/Picker.lua
 UI/Common.lua
