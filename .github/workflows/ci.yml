@@ -92,7 +92,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 0 # real old-app refusal/EXE probes archive the last published tag
+          fetch-depth: 0 # real old-app acceptance/refusal probes archive published tags
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: desktop/go.mod
@@ -113,7 +113,7 @@ jobs:
         run: python scripts/build_guild_bundle.py --exe dist/RelaxCoach.exe
       - name: Existing bundle contract tests
         run: python -I -B test/test_guild_bundle.py
-      - name: Version-pinned release gate selection tests
+      - name: Release gate selection and real current-bundle compatibility (fail closed)
         run: python -I -B test/test_release_gate.py
 
   required-ci:
