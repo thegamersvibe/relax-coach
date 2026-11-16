@@ -1251,6 +1251,29 @@ class TaxiTest(unittest.TestCase):
         self.takeoff(c)
         self.assertEqual(self.kits(c), [7197, 7197])
 
+    def test_taxi_unreadable_or_world_gap_cannot_complete_false_rearm(self):
+        gaps = [(f'STATE.{flag}=true', f'STATE.{flag}=false') for flag in
+                ('taxiUnknown', 'taxiSecret', 'taxiError', 'taxiNonBoolean')]
+        gaps += [('FIRE("PLAYER_LEAVING_WORLD")', 'FIRE("PLAYER_ENTERING_WORLD",false,false)'),
+                 ('STATE.inWorld=false', 'STATE.inWorld=true')]
+        for begin, end in gaps:
+            with self.subTest(gap=begin):
+                # Keep the unrelated Session.Tick taxi API consumer out of this failure probe.
+                c = self.ground(setup='STATE.dead=true')
+                self.takeoff(c); c.wait(5)
+                self.assertEqual(self.kits(c), [7197])
+                c.run('TAXI_OFF()'); c.wait(1)
+                previous = (c.r.taxiOn, c.r.taxiOffSince, c.c.reactions.taxiAloft)
+                c.run(begin); c.wait(6)
+                self.assertEqual((c.r.taxiOn, c.r.taxiOffSince, c.c.reactions.taxiAloft), previous,
+                                 'an unreadable/out-of-world read itself changes no taxi state')
+                c.run(end); c.wait(0.25)
+                self.takeoff(c); c.wait(5)
+                self.assertEqual(self.kits(c), [7197], 'unobserved time cannot prove unbroken false')
+                c.run('TAXI_OFF()'); c.wait(6)
+                self.takeoff(c)
+                self.assertEqual(self.kits(c), [7197, 7197])
+
     def test_taxi_saved_flag_is_per_character_and_only_exact_true(self):
         c = self.ground(); self.takeoff(c)
         self.assertEqual(self.kits(c), [7197])

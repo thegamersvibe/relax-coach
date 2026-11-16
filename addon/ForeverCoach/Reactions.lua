@@ -16,6 +16,7 @@ local CLIPS = {
 local CAMPFIRES, CAMPFIRE_COOLDOWN = { 1289723, 1229739 }, 1800
 local RETRIES, RETRY_DELAY, END_MARGIN = 3, 1, 0.15
 local TAXI_POLL, TAXI_REARM, TAXI_STALE = 0.2, 5, 2
+local taxiPoll = 0
 
 -- Do not compare, coerce, stringify or index secret values. Checks fail closed.
 local function readable(v)
@@ -240,7 +241,7 @@ function R:CheckTaxi()
     local on = taxiState()
     if on == nil then return end
     if on then
-        self.taxiOffSince = nil
+        self.taxiOffSince, self.taxiOffPoll = nil, nil
         if self.taxiOn == false then
             self.taxiEpisode = self.taxiEpisode + 1
             self:Request("taxi", self.taxiEpisode, TAXI_STALE)
@@ -251,7 +252,9 @@ function R:CheckTaxi()
     else
         local t = now()
         if not t then return end
-        self.taxiOffSince = self.taxiOffSince or t
+        -- Unknown/out-of-world polls preserve state, but cannot count as false time.
+        if self.taxiOffPoll ~= taxiPoll - 1 then self.taxiOffSince = t end
+        self.taxiOffPoll = taxiPoll
         if t - self.taxiOffSince >= TAXI_REARM then
             self.taxiOn, self.store.taxiAloft = false, nil
         end
@@ -347,7 +350,7 @@ function R:Init()
     self.store.taxiAloft = self.store.taxiAloft == true or nil
     self.queue, self.pending, self.failed = {}, {}, {}
     self.bagEpisode, self.deathEpisode, self.campEpisode = 0, 0, 0
-    self.taxiEpisode, self.taxiOn, self.taxiOffSince = 0, nil, nil
+    self.taxiEpisode, self.taxiOn, self.taxiOffSince, self.taxiOffPoll = 0, nil, nil, nil
     self.lastLevel = number(call(UnitLevel, "player"))
     self:SyncLife()
     self.ready, self.world = true, inWorld()
@@ -392,6 +395,7 @@ R.taxiFrame:SetScript("OnUpdate", function(_, elapsed)
     taxiElapsed = taxiElapsed + elapsed
     if taxiElapsed >= TAXI_POLL then
         taxiElapsed = taxiElapsed % TAXI_POLL
+        taxiPoll = taxiPoll + 1
         guarded("taxi", R.CheckTaxi, R)
     end
 end)
