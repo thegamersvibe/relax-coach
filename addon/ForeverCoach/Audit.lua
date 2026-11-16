@@ -136,6 +136,11 @@ function A:Run(c)
     if bi and bi.known and bi.slots > 0 and bi.free <= (T.bagFreeSlotsWarn or 3) then
         add(F, 40, "Next", "Bags almost full (" .. bi.free .. " free)", "Vendor grey items at the next town")
     end
+    -- Discovery only; inspect the optional service at evaluation time (either load order).
+    local planner = _G.RelaxQuestPlanner
+    if planner and planner.Cleanup and type(planner.Cleanup.Show) == "function" then
+        add(F, 20, "Next", "Quest and item review", "/rqp review (manual only)")
+    end
     if bi and (bi.bagSlotsEmpty or 0) > 0 and lvl >= 5 then
         add(F, 35, "Next", bi.bagSlotsEmpty .. " empty bag slot" .. (bi.bagSlotsEmpty > 1 and "s" or ""), "Buy or equip a bag; more space means fewer vendor trips")
     end

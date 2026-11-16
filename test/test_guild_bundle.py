@@ -179,6 +179,25 @@ class GuildBuilderExeTests(unittest.TestCase):
             p=self.root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(text,newline='')
         return files
 
+    def test_quest_review_files_follow_toc_into_existing_bundle_manifest(self):
+        self.flight_fixture('1.7.0')
+        planner=ROOT/'addon/RelaxQuestPlanner'
+        shutil.copytree(planner,self.root/'addon/RelaxQuestPlanner',dirs_exist_ok=True)
+        result=self.run_builder(self.exe,'1.7.0')
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        names=[line.strip().replace('\\\\','/') for line in (planner/'RelaxQuestPlanner.toc').read_text().splitlines() if line.endswith('.lua')]
+        expected={'Core/CleanupData.lua','Core/CleanupSnapshot.lua','Core/CleanupUses.lua','Core/Cleanup.lua','UI/Cleanup.lua'}
+        self.assertEqual(set(names)&expected,expected)
+        with zipfile.ZipFile(self.root/'dist/RelaxCoach-Bundle-1.7.0.zip') as z:
+            manifest=json.loads(z.read('manifest.json'))
+            rows={r['path']:r for r in manifest['files']}
+            for name in names:
+                path='Interface/AddOns/RelaxQuestPlanner/'+name
+                data=(planner/name).read_bytes()
+                self.assertEqual(z.read(path),data)
+                self.assertEqual(rows[path]['sha256'],hashlib.sha256(data).hexdigest())
+            self.assertFalse(any('KeepOrToss' in name or 'cleanup_' in name for name in z.namelist()))
+
     def test_150_bundle_packs_planner_under_new_asset_name(self):
         files=self.add_planner()
         (self.root/'addon/ForeverCoach/ForeverCoach.toc').write_text('## Title: Relax Coach\n## Version: 1.5.0\n')

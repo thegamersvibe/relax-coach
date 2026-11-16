@@ -11,6 +11,10 @@ Core/Data.lua
 Core/Player.lua
 Core/Engine.lua
 Core/Learn.lua
+Core/CleanupData.lua
+Core/CleanupSnapshot.lua
+Core/CleanupUses.lua
+Core/Cleanup.lua
 Journey/Bridge.lua
 Journey/Picker.lua
 UI/Common.lua
@@ -19,3 +23,4 @@ UI/Window.lua
 UI/Picker.lua
 UI/Guides.lua
 UI/Controller.lua
+UI/Cleanup.lua

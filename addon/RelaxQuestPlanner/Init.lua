@@ -89,6 +89,13 @@ end
 local safeRecord = RQP.Safe(record)
 
 local function onEvent(_, event, ...)
+  -- An optional review hook must never suppress the planner's own event work.
+  if RQP.Cleanup and RQP.Cleanup.OnEvent then
+    local ok, err = pcall(RQP.Cleanup.OnEvent, event, ...)
+    if not ok then RQP.SetError(err) end
+  end
+  -- Cleanup-only observations must not request a navigation replan.
+  if event == "BAG_UPDATE_DELAYED" or event == "PLAYER_REGEN_DISABLED" or event == "GET_ITEM_INFO_RECEIVED" then return end
   if event == "ADDON_LOADED" then
     if (...) == "RelaxQuestPlanner" then
       local db = RQP.GetDB()
@@ -131,5 +138,12 @@ for _, event in ipairs({ "ADDON_LOADED", "PLAYER_LOGIN", "QUEST_ACCEPTED", "QUES
   "QUEST_REMOVED", "QUEST_LOG_UPDATE", "ZONE_CHANGED", "ZONE_CHANGED_INDOORS", "ZONE_CHANGED_NEW_AREA",
   "PLAYER_LEVEL_UP", "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED" }) do
   events:RegisterEvent(event)
+end
+for _, event in ipairs({ "BAG_UPDATE_DELAYED", "PLAYER_REGEN_DISABLED", "GET_ITEM_INFO_RECEIVED" }) do
+  local ok = pcall(events.RegisterEvent, events, event)
+  if not ok then
+    RQP.cleanupEventFailures = RQP.cleanupEventFailures or {}
+    RQP.cleanupEventFailures[event] = true
+  end
 end
 events:SetScript("OnEvent", RQP.Safe(onEvent))

@@ -156,10 +156,13 @@ class RefreshCorrectness(unittest.TestCase):
         lua.execute(ui.WOW)
         lua.execute(API)
         lua.globals()["QA_MODE"] = "core"
+        namespace = lua.table()
         for line in (ADDON / "RelaxQuestPlanner.toc").read_text().splitlines():
             rel = line.strip().replace("\\", "/")
             if rel.endswith(".lua") and not rel.startswith("Journey/"):
-                lua.execute((ADDON / rel).read_text(), name=rel)
+                # WoW supplies the same addon-private namespace to every TOC chunk.
+                lua.execute('return function(...)\n' + (ADDON / rel).read_text() + '\nend', name=rel)(
+                    'RelaxQuestPlanner', namespace)
         lua.execute(HELPERS)
         lua.execute(SCENARIOS[name])
         records = lua.globals()["RECORDS"]

@@ -35,6 +35,15 @@ jobs:
         run: python -I -B test/reactions_test.py
       - name: Required CI gate regression tests
         run: python -I -B .github/tests/test_check_results.py
+      - name: Quest and item review (pinned data, no donor execution)
+        env:
+          CLEANUP_USES_ZIP: ${{ runner.temp }}/KeepOrToss-1.7.0.zip
+        run: |
+          curl --fail --location --retry 2 --max-time 90 -o "$CLEANUP_USES_ZIP" https://mediafilez.forgecdn.net/files/9575/258/KeepOrToss-1.7.0.zip
+          python -I -B tools/gen_cleanup_uses.py "$CLEANUP_USES_ZIP" --check
+          for t in cleanup_data_test cleanup_snapshot_test cleanup_uses_test cleanup_policy_test cleanup_lifecycle_test cleanup_ui_test cleanup_static_test cleanup_mutation_test; do
+            python -I -B test/planner/$t.py
+          done
       - name: Relax Quest Planner tests (private-data suites skip on CI)
         run: |
           for t in ui_shell_test bridge_skip_test journey_integration journey_picker engine_test journey_private nil_quest_test refresh_correctness_test; do
