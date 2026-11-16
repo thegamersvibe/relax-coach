@@ -76,6 +76,11 @@ class ReleaseGateTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stderr, "Refusal gate is pinned to 1.7.0 only.\n")
 
+    def test_bundle_ci_fetches_tags_for_real_old_app_probe(self):
+        workflow = (ROOT / '.github/workflows/ci.yml').read_text()
+        bundle_job = workflow.split('  bundle-contract:', 1)[1].split('  required-ci:', 1)[0]
+        self.assertIn('fetch-depth: 0', bundle_job, 'the real old-app gate needs published tag history in CI')
+
     def test_both_gates_fail_closed(self):
         for version in ("1.7.0", "1.7.1"):
             with self.subTest(version=version):
