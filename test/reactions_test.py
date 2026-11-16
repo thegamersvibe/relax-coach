@@ -1496,6 +1496,20 @@ class TaxiTest(unittest.TestCase):
         c.run('SlashCmdList.FOREVERCOACH("fun on")'); c.wait(80)
         self.assertEqual(c.sounds(), ['flight.mp3'])
 
+    def test_taxi_loading_without_update_ticks_cannot_finish_landing_or_rearm(self):
+        c = self.ground(); self.takeoff(c); c.wait(20)
+        c.run('TAXI_OFF()'); c.wait(1)
+        previous = (c.r.taxiOn, c.r.taxiOffSince, c.c.reactions.taxiAloft)
+        # A loading screen can suspend OnUpdate entirely, not merely its reads.
+        c.run('FIRE("PLAYER_LEAVING_WORLD"); ADVANCE(6); FIRE("PLAYER_ENTERING_WORLD",false,false)')
+        self.assertEqual((c.r.taxiOn, c.r.taxiOffSince, c.c.reactions.taxiAloft), previous)
+        c.wait(1)
+        self.assertEqual(len(c.g.STOPS), 0)
+        self.takeoff(c)
+        self.assertEqual(self.flights(c), ['flight.mp3'])
+        c.run('TAXI_OFF()'); c.wait(2.3)
+        self.assertEqual(list(c.g.STOPS.values()), [100])
+
     def test_taxi_24_asset_duration_matches_playback_and_fixture(self):
         asset = ADDON / 'Media/Reactions/flight.mp3'
         self.assertTrue(asset.is_file(), 'flight asset must ship with the Lua')

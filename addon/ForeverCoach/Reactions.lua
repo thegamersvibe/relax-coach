@@ -386,7 +386,9 @@ function R:OnEvent(event, first, second)
     if event == "PLAYER_LOGIN" then self:Init() return end
     if not self.ready then return end
     if event == "PLAYER_LOGOUT" then self:Stop(); self.ready = false
-    elseif event == "PLAYER_LEAVING_WORLD" then self.world = false
+    elseif event == "PLAYER_LEAVING_WORLD" then
+        self.world = false
+        self.taxiOffPoll = nil -- loading can suspend OnUpdate; its time is not confirmed false
     elseif event == "PLAYER_ENTERING_WORLD" then
         self.world = true; self:SyncLife(); self:CheckBags(); self:CheckCampfire()
     elseif event == "BAG_UPDATE_DELAYED" then self:CheckBags()
