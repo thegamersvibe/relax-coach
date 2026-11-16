@@ -386,14 +386,15 @@ end
 
 -- UI-owned lifecycle: no hidden polling, one bounded job, latest generation only.
 local pendingFrame=CreateFrame('Frame')
-local pendingDelay
+local pendingDelay,pendingPublish
 local function notify()
     if RQP.CleanupUI and RQP.CleanupUI.Render then RQP.CleanupUI.Render() end
 end
 function C.GetReport() return C.report,C.status or 'Not scanned' end
-local function cancel()
-    if C.indexJob then C.indexJob:Cancel(); C.indexJob=nil end
-    pendingDelay=nil; pendingFrame:SetScript('OnUpdate',nil)
+local function cancel(dropIndex)
+    -- Player observations invalidate snapshots, not the static provider work.
+    if C.indexJob and (dropIndex or not C.visible) then C.indexJob:Cancel(); C.indexJob=nil end
+    pendingDelay,pendingPublish=nil,nil; pendingFrame:SetScript('OnUpdate',nil)
 end
 local function stale(status)
     C.status=status
@@ -417,7 +418,7 @@ local function schedule()
     end)
 end
 function C.Invalidate(reason,dropIndex,rescan)
-    C.generation=C.generation+1; C.dirty=true; cancel()
+    C.generation=C.generation+1; C.dirty=true; cancel(dropIndex)
     if dropIndex then C.index=nil end
     stale(reason or 'State changed')
     if C.visible and rescan~=false then schedule() end
@@ -468,7 +469,18 @@ function C.Refresh(resetIndex)
     if C.index and D.SameProvider(C.index.provider,snapshot.provider) then publish(C.index)
     else
         C.report=C.Evaluate(snapshot,nil); C.status='Scanning'; C.report.status='Scanning; '..C.report.status; notify()
-        C.BuildIndexAsync(snapshot.provider,publish)
+        pendingPublish=publish
+        if not (C.indexJob and not C.indexJob.cancelled and D.SameProvider(C.indexJob.index.provider,snapshot.provider)) then
+            local job
+            job=C.BuildIndexAsync(snapshot.provider,function(index)
+                if C.indexJob~=job then return end
+                C.indexJob=nil; C.index=index
+                -- Completion may fall inside the debounce window. Cache the
+                -- index, but only publish through the latest valid snapshot.
+                local latest=pendingPublish; pendingPublish=nil
+                if latest then latest(index) end
+            end)
+        end
     end
 end
 function C.Open() C.visible=true; C.Refresh(false) end
@@ -478,8 +490,7 @@ local events={BAG_UPDATE_DELAYED=true,QUEST_LOG_UPDATE=true,QUEST_ACCEPTED=true,
     PLAYER_REGEN_DISABLED=true,ADDON_LOADED=true,GET_ITEM_INFO_RECEIVED=true}
 function C.OnEvent(event)
     if not events[event] then return end
-    local drop=event=='ADDON_LOADED' or event=='PLAYER_ENTERING_WORLD' or event=='QUEST_ACCEPTED'
-        or event=='QUEST_TURNED_IN' or event=='QUEST_REMOVED'
+    local drop=event=='ADDON_LOADED' or event=='PLAYER_ENTERING_WORLD'
     C.Invalidate(event,drop,event~='PLAYER_REGEN_DISABLED')
     if event=='PLAYER_REGEN_DISABLED' then stale('Paused in combat') end
 end

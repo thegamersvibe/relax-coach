@@ -46,6 +46,58 @@ class CleanupLifecycleTests(unittest.TestCase):
           C.Open(); C.Close(); DRAIN(); assert(not C.visible)
         ''')
 
+    def test_index_survives_frequent_snapshot_events_and_publishes_latest_labels(self):
+        # Adapted from the reviewer's 6,500-row starvation probe. A synthetic
+        # clock exercises the real 2 ms budget deterministically, not host speed.
+        for event in ('BAG_UPDATE_DELAYED', 'QUEST_LOG_UPDATE', 'GET_ITEM_INFO_RECEIVED',
+                      'QUEST_ACCEPTED', 'QUEST_TURNED_IN', 'QUEST_REMOVED'):
+            with self.subTest(event=event):
+                lua=self.runtime()
+                lua.execute('SNAPSHOT_EVENT=...',event)
+                lua.execute('''
+                  for i=1,1500 do
+                    QUEST(100000+i,{objectives={[3]={{200000+i}}},
+                      preQuestSingle={100000+math.max(1,i-1)},zoneOrSort=12})
+                  end
+                  for i=1,5000 do
+                    ITEM(200000+i,{relatedQuests={100000+(i%1500)+1},class=12,flags=0})
+                  end
+                  local enumerations=0
+                  for _,api in ipairs({LibQuestieDB.Quest,LibQuestieDB.Item}) do
+                    local ids=api.GetAllIds
+                    api.GetAllIds=function() enumerations=enumerations+1; return ids() end
+                  end
+                  local ticks=0
+                  debugprofilestop=function() ticks=ticks+0.01; return ticks end
+                  local C=RelaxQuestPlanner.Cleanup
+                  C.Open()
+                  local firstReady,latestCount,active=nil,1,false
+                  for frame=1,3600 do
+                    TICK(0.016)
+                    local report,status=C.GetReport()
+                    if status=='Ready' then
+                      firstReady=firstReady or frame
+                      local row=report.itemRows[1]
+                      assert(report.generation==C.generation,'stale snapshot generation published')
+                      assert(row.slots[1].count==latestCount,'stale bag count published')
+                      assert(row.reasonCodes[1]==(active and 'active-use' or 'no-use-found'),
+                        'labels do not reflect the latest quest snapshot')
+                    end
+                    if frame%300==0 and frame<3600 then
+                      latestCount=frame/300+1; active=not active
+                      BAGS[0][1].stackCount=latestCount
+                      LOG={}; DONE=active and {} or {1701}
+                      if active then CURRENT(1701) end
+                      FIRE(SNAPSHOT_EVENT,1701)
+                    end
+                  end
+                  assert(firstReady and firstReady<=1200,'index starved under snapshot events')
+                  assert(select(2,C.GetReport())=='Ready','latest snapshot did not settle')
+                  assert(C.GetReport().itemRows[1].disposition=='KEEP')
+                  assert(enumerations==2,'static provider was enumerated more than once')
+                  assert(RelaxQuestPlannerDB.lastError==nil,RelaxQuestPlannerDB.lastError)
+                ''')
+
     def test_generation_character_provider_and_native_changes_cannot_publish_stale_scan(self):
         for change in ("C.OnEvent('QUEST_LOG_UPDATE')", "UnitGUID=function() return 'Player-other' end",
                        "C_AddOns.GetAddOnMetadata=function() return 'new' end", "LibQuestieDB.Quest=API(Q)",
