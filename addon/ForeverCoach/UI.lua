@@ -241,11 +241,14 @@ SlashCmdList.FOREVERCOACH = function(msg)
     elseif cmd == "fun" then
         if arg == "on" or arg == "off" then
             FC.Reactions:SetEnabled(arg == "on")
+        elseif arg == "flight on" or arg == "flight off" then
+            FC.Reactions:SetFlightSound(arg == "flight on")
         elseif arg ~= "" and arg ~= "status" then
-            FC:Print("usage: /coach fun on|off|status")
+            FC:Print("usage: /coach fun on|off|status; /coach fun flight on|off")
             return
         end
-        FC:Print("fun extras: " .. (FC.Reactions:Enabled() and "on" or "off"))
+        FC:Print("fun extras: " .. (FC.Reactions:Enabled() and "on" or "off")
+            .. "; flight sound: " .. (ForeverCoachDB.flightSound and "on" or "off"))
     elseif cmd == "levelup" then
         if arg == "on" or arg == "off" then
             FC.LevelUp:SetEnabled(arg == "on")
@@ -257,7 +260,7 @@ SlashCmdList.FOREVERCOACH = function(msg)
             FC:Print("usage: /coach levelup [show|on|off]")
         end
     elseif cmd == "help" then
-        FC:Print("/coach (window), /coach top (top 3 in chat), /coach spec <id|auto>, /coach macros, /coach fun <on|off|status>, /coach levelup [show|on|off]")
+        FC:Print("/coach (window), /coach top (top 3 in chat), /coach spec <id|auto>, /coach macros, /coach fun <on|off|status>, /coach fun flight <on|off>, /coach levelup [show|on|off]")
     else
         UI:Toggle()
     end

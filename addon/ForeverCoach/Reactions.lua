@@ -9,13 +9,13 @@ local CLIPS = {
     level = { "level_up.mp3", 1.66 },
     bags1 = { "bags_1.mp3", 2.62 }, bags2 = { "bags_2.mp3", 1.27 },
     death = { "death.mp3", 2.12 },
-    taxi = { kit = 7197, 4.0 },
+    taxi = { "flight.mp3", 74.12 },
     campfire1 = { "campfire_1.mp3", 60.14 }, campfire2 = { "campfire_2.mp3", 63.34 },
 }
 -- Campfire songs take turns (1, 2, 1, ...); the next one is kept as reactions.campfireNext.
 local CAMPFIRES, CAMPFIRE_COOLDOWN = { 1289723, 1229739 }, 1800
 local RETRIES, RETRY_DELAY, END_MARGIN = 3, 1, 0.15
-local TAXI_POLL, TAXI_REARM, TAXI_STALE = 0.2, 5, 2
+local TAXI_POLL, TAXI_REARM, TAXI_STALE, TAXI_LAND = 0.2, 5, 3, 2
 local taxiPoll = 0
 
 -- Do not compare, coerce, stringify or index secret values. Checks fail closed.
@@ -120,10 +120,13 @@ end
 function R:Wake()
     self.frame:SetScript("OnUpdate", self.update)
 end
-function R:Stop()
+function R:StopActive()
     local a = self.active
     self.active = nil -- clear ownership before a stop can generate a completion event
     if a and a.handle and type(StopSound) == "function" then pcall(StopSound, a.handle) end
+end
+function R:Stop()
+    self:StopActive()
     self.queue, self.pending = {}, {}
     self.popupUntil = nil
     if self.popup then self.popup:Hide() end
@@ -145,11 +148,22 @@ function R:ShowPopup(t)
 end
 function R:Request(kind, token, ttl)
     if not self:Enabled() or self.failed[kind] == token then return end
+    if kind == "taxi" and ForeverCoachDB.flightSound ~= true then return end
     local expires
     if ttl then
         local t = now()
         if not t then return end
         expires = t + ttl
+    end
+    if self.active then
+        if self.active.kind == "taxi" then
+            if kind == "taxi" then return end -- never restart or queue over a flight
+            self:StopActive() -- flight audio must not delay any other reaction
+        elseif kind == "taxi" and self.active.kind == "campfire" then
+            self:StopActive() -- take-off leaves the campfire behind
+        elseif self.active.kind == kind and self.active.token == token then
+            return
+        end
     end
     local pending = self.pending[kind]
     if pending then
@@ -157,7 +171,6 @@ function R:Request(kind, token, ttl)
         pending.expires = expires
         return
     end
-    if self.active and self.active.kind == kind and self.active.token == token then return end
     local job = { kind = kind, token = token, tries = 0, expires = expires }
     self.pending[kind] = job
     self.queue[#self.queue + 1] = job
@@ -188,21 +201,15 @@ function R:Pump()
         or job.kind == "campfire" and ("campfire" .. campNext) or job.kind]
     if not clip then self:RemoveFirst() return end
     local ok, played, handle = false, false, nil
-    if type(StopSound) == "function" then
-        if clip.kit then
-            if type(PlaySound) == "function" then
-                ok, played, handle = pcall(PlaySound, clip.kit, "Master", false, true)
-            end
-        elseif type(PlaySoundFile) == "function" then
-            ok, played, handle = pcall(PlaySoundFile, MEDIA .. clip[1], "Master")
-        end
+    if type(StopSound) == "function" and type(PlaySoundFile) == "function" then
+        ok, played, handle = pcall(PlaySoundFile, MEDIA .. clip[1], "Master")
     end
     if ok and scalar(played, "boolean") == true then
         self:RemoveFirst()
         handle = number(handle)
         if handle and (handle <= 0 or handle % 1 ~= 0) then handle = nil end
         -- A success without a usable handle still must not be retried (could duplicate audio).
-        self.active = { kind = job.kind, token = job.token, handle = handle, ends = t + (clip.kit and clip[1] or clip[2]) + END_MARGIN }
+        self.active = { kind = job.kind, token = job.token, handle = handle, ends = t + clip[2] + END_MARGIN }
         if job.kind == "bags" then
             self.store.bagNext = self.store.bagNext == 1 and 2 or 1
             if self.full == true and self.bagEpisode == job.token then self.store.bagsAnnounced = true end
@@ -255,6 +262,9 @@ function R:CheckTaxi()
         -- Unknown/out-of-world polls preserve state, but cannot count as false time.
         if self.taxiOffPoll ~= taxiPoll - 1 then self.taxiOffSince = t end
         self.taxiOffPoll = taxiPoll
+        if self.active and self.active.kind == "taxi" and t - self.taxiOffSince >= TAXI_LAND then
+            self:StopActive()
+        end
         if t - self.taxiOffSince >= TAXI_REARM then
             self.taxiOn, self.store.taxiAloft = false, nil
         end
@@ -339,9 +349,24 @@ function R:SetEnabled(enabled)
     local level = number(call(UnitLevel, "player"))
     if level and (not self.lastLevel or level > self.lastLevel) then self.lastLevel = level end
 end
+function R:SetFlightSound(enabled)
+    if not self.ready then return end
+    enabled = enabled == true
+    if ForeverCoachDB.flightSound == enabled then return end
+    ForeverCoachDB.flightSound = enabled
+    if not enabled then
+        if self.active and self.active.kind == "taxi" then self:StopActive() end
+        for i = #self.queue, 1, -1 do
+            if self.queue[i].kind == "taxi" then table.remove(self.queue, i) end
+        end
+        self.pending.taxi = nil
+    end
+    -- The independent taxi poll keeps tracking; enabling never replays take-off.
+end
 function R:Init()
     if self.ready or type(ForeverCoachDB) ~= "table" then return end
     ForeverCoachDB.reactionsEnabled = ForeverCoachDB.reactionsEnabled ~= false
+    ForeverCoachDB.flightSound = ForeverCoachDB.flightSound ~= false
     local c = FC:Char()
     if type(c.reactions) ~= "table" then c.reactions = {} end
     self.store = c.reactions
