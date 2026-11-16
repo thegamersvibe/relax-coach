@@ -4,7 +4,11 @@ Run: python test/reactions_test.py (requires lupa with lua51).
 Game event delivery/audio/aura readability still require separate in-client QA.
 """
 import ast
+import hashlib
 import pathlib
+import re
+import shutil
+import subprocess
 import unittest
 from typing import Any
 import lupa.lua51 as lupa
@@ -1491,6 +1495,23 @@ class TaxiTest(unittest.TestCase):
         self.assertTrue(c.g.ForeverCoachDB.flightSound)
         c.run('SlashCmdList.FOREVERCOACH("fun on")'); c.wait(80)
         self.assertEqual(c.sounds(), ['flight.mp3'])
+
+    def test_taxi_24_asset_duration_matches_playback_and_fixture(self):
+        asset = ADDON / 'Media/Reactions/flight.mp3'
+        self.assertTrue(asset.is_file(), 'flight asset must ship with the Lua')
+        # ffprobe-recorded duration of these exact committed bytes, for hosts
+        # without ffprobe. When installed, also measure the file in this checkout.
+        self.assertEqual(hashlib.sha256(asset.read_bytes()).hexdigest(),
+                         'de2a0854910e7de8b5c9f205ebac6135fac475b1fdfcc55b5bcd33c41c3b4268')
+        measured = 74.12
+        if shutil.which('ffprobe'):
+            measured = float(subprocess.check_output(['ffprobe', '-v', 'error', '-show_entries',
+                'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', str(asset)], text=True))
+        match = re.search(r'taxi = \{ "flight.mp3", ([0-9.]+) \}', (ADDON/'Reactions.lua').read_text())
+        assert match is not None, 'flight clip declaration is missing'
+        self.assertLessEqual(abs(float(match.group(1)) - measured), 0.05)
+        c = self.make()
+        self.assertLessEqual(abs(c.g.DURATIONS['flight.mp3'] - measured), 0.05)
 
 
 if __name__ == '__main__':

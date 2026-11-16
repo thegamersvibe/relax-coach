@@ -35,6 +35,10 @@ var campfireSongsFixtureFiles = []string{
 
 func funModeFilesFor(version string) []string {
 	v, err := parseAddonVersion(version)
+	flight, _ := parseAddonVersion("1.7.0")
+	if err == nil && !flight.newerThan(v) {
+		return append(append([]string{}, campfireSongsFixtureFiles...), "Media/Reactions/flight.mp3")
+	}
 	songs, _ := parseAddonVersion("1.5.6")
 	if err == nil && !songs.newerThan(v) {
 		return campfireSongsFixtureFiles
@@ -65,7 +69,7 @@ func funModeZip(t *testing.T, entries []addonZipEntry, version string) []byte {
 }
 
 func TestGuildFunModeExtractsExactCoachRuntime(t *testing.T) {
-	for _, version := range []string{"1.4.3", "1.4.3+reviewed", "1.4.4", "1.4.5", "1.5.0", "1.5.1", "1.5.2", "1.5.3", "1.5.4", "1.5.5", "1.5.6", "1.6.0", "1.6.1", "1.4.10", "2.0.0"} {
+	for _, version := range []string{"1.4.3", "1.4.3+reviewed", "1.4.4", "1.4.5", "1.5.0", "1.5.1", "1.5.2", "1.5.3", "1.5.4", "1.5.5", "1.5.6", "1.6.0", "1.6.1", "1.7.0", "1.4.10", "2.0.0"} {
 		t.Run(version, func(t *testing.T) {
 			entries := funModeEntries(version)
 			stage := filepath.Join(t.TempDir(), "staged")
