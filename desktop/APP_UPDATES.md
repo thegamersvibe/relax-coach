@@ -29,6 +29,18 @@ App and addon bundle always come from the same release, so a bundle newer than t
 
 `afterAppUpdate()` (no argument, read-only) returns `{Updated, From, Game}`. `Updated` is true only when this process was started by an app update and `last-result.json` records `committed` for that transaction's ID, waiting up to 15 seconds for the worker to write it; until then the worker owns the new process and stops it on any failure, so nothing may start earlier. It answers true at most once per process. `gameState()` (no argument, read-only) returns `open`, `closed` or `unknown` (the process check failed).
 
+## App-first release 1.7.0
+
+Apps older than 1.7.0 must run **Check App Update → Update App** first, then **Update Addon** (**Updates → Check → Update** on recent apps). The new `Media/Reactions/flight.mp3` is outside older apps' fixed file lists. App 1.6.0 normally blocks at its app-first guard before download. If an earlier app update failed and its fallback permits a direct addon attempt, the real installer still refuses the unknown file.
+
+`scripts/release.sh` has one exact-version exception: **1.7.0 only** runs `check_old_app_refuses_bundle.sh` against the last published tag and the real built ZIP. It verifies an error with the exact old bridge/UI wording, an unchanged installed version, and identical whole-game before/after snapshots including existing backup files and all directories; no partial install, transaction, staging directory or lock may remain. The fallback fixture models an app-installed bundle with an existing retained backup. All other versions keep `check_old_app_accepts_bundle.sh`; there is no skip flag or environment-controlled refusal mode.
+
+**Old-app wording caveat:** v1.6.0's fallback does not say "Update the app first". Its Updates card shows this exact text (pinned by the probe):
+
+> Update failed: archive path is outside the fixed guild allowlist: Interface/AddOns/ForeverCoach/Media/Reactions/flight.mp3. This release comes with app 1.7.0; if updating the app here does not work, download RelaxCoach.exe from https://github.com/thegamersvibe/relax-coach/releases/latest Check again before retrying.
+
+The normal app-first refusal and the fallback are checked separately; a normal guard-only test would never exercise the old installer against the new file.
+
 ## Trust boundary
 
 Only the stable, non-draft latest release at

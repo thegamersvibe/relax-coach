@@ -103,6 +103,8 @@ jobs:
         run: python scripts/build_guild_bundle.py --exe dist/RelaxCoach.exe
       - name: Existing bundle contract tests
         run: python -I -B test/test_guild_bundle.py
+      - name: Version-pinned release gate selection tests
+        run: python -I -B test/test_release_gate.py
 
   required-ci:
     # Keep this check name stable: the main ruleset requires its GitHub Actions result.
