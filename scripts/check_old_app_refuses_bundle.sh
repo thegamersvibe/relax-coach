@@ -16,5 +16,12 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 git archive "refs/tags/$OLD" desktop | tar -x -C "$WORK"
 cp scripts/old_app_refusal_test.go "$WORK/desktop/zz_old_app_refusal_test.go"
-(cd "$WORK/desktop" && RC_BUNDLE="$BUNDLE" RC_EXE="$EXE" RC_VERSION=1.7.0 RC_OLD="$OLD" go test -count=1 -run '^TestOldAppRefus' -v .)
+LOG="$WORK/probe.log"
+(cd "$WORK/desktop" && RC_BUNDLE="$BUNDLE" RC_EXE="$EXE" RC_VERSION=1.7.0 RC_OLD="$OLD" go test -count=1 -run '^TestOldAppRefus' -v .) 2>&1 | tee "$LOG"
+# Zero tests must not pass (e.g. an inherited -skip in GOFLAGS): require every real proof by name.
+for name in TestOldAppRefusalAssertions TestOldAppRefusalReplacementExecutable TestOldAppRefusalStrippedBundleInstalls TestOldAppRefusesRealBundle \
+    'TestOldAppRefusesRealBundle/prior-backup=true/app-first' 'TestOldAppRefusesRealBundle/prior-backup=true/installer-fallback' \
+    'TestOldAppRefusesRealBundle/prior-backup=false/app-first' 'TestOldAppRefusesRealBundle/prior-backup=false/installer-fallback'; do
+    grep -qF -- "--- PASS: $name " "$LOG" || { printf 'Refusal gate: missing PASS for %s\n' "$name" >&2; exit 1; }
+done
 printf 'Old app %s refuses the 1.7.0 bundle without file changes and accepts the replacement executable; app update required.\n' "$OLD"

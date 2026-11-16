@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -191,6 +192,92 @@ func TestOldAppRefusalReplacementExecutable(t *testing.T) {
 		t.Fatalf("old app rejected replacement executable: %v", err)
 	}
 	t.Logf("old app accepted replacement executable sha256=%x", sha256.Sum256(data))
+}
+
+// Condition 1 proves the FIRST refusal; this proves it is the ONLY one. The
+// real bundle with just the new media file and its manifest row removed must
+// install cleanly through the same published installer, so nothing else in
+// 1.7.0 (a stray file, a bad hash, a changed root) hides behind flight.mp3.
+func TestOldAppRefusalStrippedBundleInstalls(t *testing.T) {
+	payload, err := os.ReadFile(os.Getenv("RC_BUNDLE"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const newFile = "Interface/AddOns/ForeverCoach/Media/Reactions/flight.mp3"
+	reader, err := zip.NewReader(bytes.NewReader(payload), int64(len(payload)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	w := zip.NewWriter(&out)
+	removedFile, removedRow, kept := false, false, 0
+	for _, f := range reader.File {
+		if f.Name == newFile {
+			removedFile = true
+			continue
+		}
+		rc, err := f.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := io.ReadAll(rc)
+		rc.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if f.Name == "manifest.json" {
+			var m map[string]json.RawMessage
+			if err := json.Unmarshal(data, &m); err != nil {
+				t.Fatal(err)
+			}
+			var files []map[string]any
+			if err := json.Unmarshal(m["files"], &files); err != nil {
+				t.Fatal(err)
+			}
+			var keep []map[string]any
+			for _, row := range files {
+				if row["path"] == newFile {
+					removedRow = true
+					continue
+				}
+				keep = append(keep, row)
+			}
+			if m["files"], err = json.Marshal(keep); err != nil {
+				t.Fatal(err)
+			}
+			if data, err = json.MarshalIndent(m, "", "  "); err != nil {
+				t.Fatal(err)
+			}
+		}
+		h := f.FileHeader
+		h.CompressedSize64, h.UncompressedSize64, h.CRC32 = 0, 0, 0
+		dst, err := w.CreateHeader(&h)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := dst.Write(data); err != nil {
+			t.Fatal(err)
+		}
+		kept++
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if !removedFile || !removedRow {
+		t.Fatalf("real bundle must carry %s and its manifest row (file=%t row=%t)", newFile, removedFile, removedRow)
+	}
+	game := guildGame(t)
+	installed := strings.TrimPrefix(os.Getenv("RC_OLD"), "v")
+	addonPut(t, game, "Interface/AddOns/ForeverCoach/ForeverCoach.toc", "## Title: Relax Coach\n## Version: "+installed+"\n## SavedVariables: ForeverCoachDB\nCore.lua\n")
+	stripped := out.Bytes()
+	result, err := guildUpdaterForVersion(t, stripped, "1.7.0").apply(context.Background(), game, guildInfoForVersion("1.7.0"))
+	if err != nil || result.Version != "1.7.0" {
+		t.Fatalf("old app refused the 1.7.0 bundle even without %s: %+v %v", newFile, result, err)
+	}
+	if got := InstalledCoachVersion(game); got != "1.7.0" {
+		t.Fatalf("installed version after stripped install = %q", got)
+	}
+	t.Logf("old app installed the stripped 1.7.0 bundle (%d archive entries, %d files updated); %s is the only refusal", kept, result.UpdatedFiles, newFile)
 }
 
 func TestOldAppRefusesRealBundle(t *testing.T) {
