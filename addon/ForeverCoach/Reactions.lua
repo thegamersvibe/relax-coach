@@ -9,11 +9,13 @@ local CLIPS = {
     level = { "level_up.mp3", 1.66 },
     bags1 = { "bags_1.mp3", 2.62 }, bags2 = { "bags_2.mp3", 1.27 },
     death = { "death.mp3", 2.12 },
+    taxi = { kit = 7197, 4.0 },
     campfire1 = { "campfire_1.mp3", 60.14 }, campfire2 = { "campfire_2.mp3", 63.34 },
 }
 -- Campfire songs take turns (1, 2, 1, ...); the next one is kept as reactions.campfireNext.
 local CAMPFIRES, CAMPFIRE_COOLDOWN = { 1289723, 1229739 }, 1800
 local RETRIES, RETRY_DELAY, END_MARGIN = 3, 1, 0.15
+local TAXI_POLL, TAXI_REARM, TAXI_STALE = 0.2, 5, 2
 
 -- Do not compare, coerce, stringify or index secret values. Checks fail closed.
 local function readable(v)
@@ -42,6 +44,7 @@ end
 local function now() return number(call(GetTime)) end
 local function epoch() return number(call(time)) end -- one clock basis for persisted stamps
 local function aliveState() return scalar(call(UnitIsDeadOrGhost, "player"), "boolean") end
+local function taxiState() return scalar(call(UnitOnTaxi, "player"), "boolean") end
 local function inWorld()
     if type(IsPlayerInWorld) ~= "function" then return true end
     return scalar(call(IsPlayerInWorld), "boolean") == true
@@ -139,15 +142,22 @@ function R:ShowPopup(t)
     self.popup:Show()
     self.popupUntil = t + 3
 end
-function R:Request(kind, token)
+function R:Request(kind, token, ttl)
     if not self:Enabled() or self.failed[kind] == token then return end
+    local expires
+    if ttl then
+        local t = now()
+        if not t then return end
+        expires = t + ttl
+    end
     local pending = self.pending[kind]
     if pending then
         pending.token = token -- latest episode, same FIFO position; one pending reaction per kind
+        pending.expires = expires
         return
     end
     if self.active and self.active.kind == kind and self.active.token == token then return end
-    local job = { kind = kind, token = token, tries = 0 }
+    local job = { kind = kind, token = token, tries = 0, expires = expires }
     self.pending[kind] = job
     self.queue[#self.queue + 1] = job
     self:Wake()
@@ -163,7 +173,9 @@ function R:Pump()
     local t = now()
     if not t then return end
     local job = self.queue[1]
-    if not job or (job.retryAt and t < job.retryAt) then return end
+    if not job then return end
+    if job.expires and t >= job.expires then self:RemoveFirst() return end
+    if job.retryAt and t < job.retryAt then return end
     local campStamp = job.kind == "campfire" and epoch() or nil
     if job.kind == "campfire" and (not campStamp or not self:CampfireEligible(campStamp)) then
         self:RemoveFirst()
@@ -175,15 +187,21 @@ function R:Pump()
         or job.kind == "campfire" and ("campfire" .. campNext) or job.kind]
     if not clip then self:RemoveFirst() return end
     local ok, played, handle = false, false, nil
-    if type(PlaySoundFile) == "function" and type(StopSound) == "function" then
-        ok, played, handle = pcall(PlaySoundFile, MEDIA .. clip[1], "Master")
+    if type(StopSound) == "function" then
+        if clip.kit then
+            if type(PlaySound) == "function" then
+                ok, played, handle = pcall(PlaySound, clip.kit, "Master", false, true)
+            end
+        elseif type(PlaySoundFile) == "function" then
+            ok, played, handle = pcall(PlaySoundFile, MEDIA .. clip[1], "Master")
+        end
     end
     if ok and scalar(played, "boolean") == true then
         self:RemoveFirst()
         handle = number(handle)
         if handle and (handle <= 0 or handle % 1 ~= 0) then handle = nil end
         -- A success without a usable handle still must not be retried (could duplicate audio).
-        self.active = { kind = job.kind, token = job.token, handle = handle, ends = t + clip[2] + END_MARGIN }
+        self.active = { kind = job.kind, token = job.token, handle = handle, ends = t + (clip.kit and clip[1] or clip[2]) + END_MARGIN }
         if job.kind == "bags" then
             self.store.bagNext = self.store.bagNext == 1 and 2 or 1
             if self.full == true and self.bagEpisode == job.token then self.store.bagsAnnounced = true end
@@ -216,6 +234,28 @@ function R:Tick()
     end
     self:Pump()
     if not self.active and #self.queue == 0 and not self.popupUntil then self.frame:SetScript("OnUpdate", nil) end
+end
+function R:CheckTaxi()
+    if not self.ready or not self.world or not inWorld() then return end
+    local on = taxiState()
+    if on == nil then return end
+    if on then
+        self.taxiOffSince = nil
+        if self.taxiOn == false then
+            self.taxiEpisode = self.taxiEpisode + 1
+            self:Request("taxi", self.taxiEpisode, TAXI_STALE)
+        end
+        self.taxiOn, self.store.taxiAloft = true, true
+    elseif self.taxiOn == nil and self.store.taxiAloft ~= true then
+        self.taxiOn = false
+    else
+        local t = now()
+        if not t then return end
+        self.taxiOffSince = self.taxiOffSince or t
+        if t - self.taxiOffSince >= TAXI_REARM then
+            self.taxiOn, self.store.taxiAloft = false, nil
+        end
+    end
 end
 function R:CheckBags()
     if not self.world then return end
@@ -304,8 +344,10 @@ function R:Init()
     self.store = c.reactions
     if self.store.bagNext ~= 1 and self.store.bagNext ~= 2 then self.store.bagNext = 1 end
     self.store.bagsAnnounced = self.store.bagsAnnounced == true
+    self.store.taxiAloft = self.store.taxiAloft == true or nil
     self.queue, self.pending, self.failed = {}, {}, {}
     self.bagEpisode, self.deathEpisode, self.campEpisode = 0, 0, 0
+    self.taxiEpisode, self.taxiOn, self.taxiOffSince = 0, nil, nil
     self.lastLevel = number(call(UnitLevel, "player"))
     self:SyncLife()
     self.ready, self.world = true, inWorld()
@@ -342,6 +384,17 @@ function R:OnEvent(event, first, second)
         end
     end
 end
+
+-- Keep observing while muted or while the dispatcher has no work.
+R.taxiFrame = CreateFrame("Frame")
+local taxiElapsed = 0
+R.taxiFrame:SetScript("OnUpdate", function(_, elapsed)
+    taxiElapsed = taxiElapsed + elapsed
+    if taxiElapsed >= TAXI_POLL then
+        taxiElapsed = taxiElapsed % TAXI_POLL
+        guarded("taxi", R.CheckTaxi, R)
+    end
+end)
 
 R.frame = CreateFrame("Frame")
 R.update = function() guarded("tick", R.Tick, R) end

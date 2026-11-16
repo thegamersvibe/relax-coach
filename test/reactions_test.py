@@ -88,6 +88,15 @@ local oldTime = time
 function time() return oldTime() + STATE.epochShift end
 function GetServerTime() return time() end
 function IsPlayerInWorld() return STATE.inWorld ~= false end
+STATE.taxi = false
+function UnitOnTaxi(unit)
+  assert(unit == 'player', 'unexpected taxi unit')
+  if STATE.taxiError then error('taxi unavailable') end
+  if STATE.taxiSecret then return SECRET end
+  if STATE.taxiUnknown then return nil end
+  if STATE.taxiNonBoolean then return 1 end
+  return STATE.taxi
+end
 STATE.containers = {[0]={slots=16,free=10,family=0}}
 C_Container.GetContainerNumSlots = function(b)
   if STATE.bagError then error('inventory unavailable') end
@@ -115,20 +124,29 @@ end}
 ERR_INV_FULL = 'localized inventory-full text'
 SOUNDS, ATTEMPTS, STOPS, ACTIVE = {}, {}, {}, {}
 DURATIONS = {['level_up.mp3']=1.66,['bags_1.mp3']=2.62,['bags_2.mp3']=1.27,['death.mp3']=2.12,['campfire_1.mp3']=60.13,['campfire_2.mp3']=63.33}
-function PlaySoundFile(path,channel)
-  local file = path:match('([^\\]+)$')
-  assert(DURATIONS[file], 'unexpected asset '..tostring(path))
-  assert(channel == 'Master', 'unexpected sound channel')
-  ATTEMPTS[#ATTEMPTS+1] = {file=file,time=GetTime()}
+local function playSound(entry,duration)
+  assert(entry.channel == 'Master', 'unexpected sound channel')
+  entry.time = GetTime()
+  ATTEMPTS[#ATTEMPTS+1] = entry
   if STATE.soundThrows then error('audio unavailable') end
   if STATE.soundSecret then return SECRET,SECRET end
   if STATE.soundFail then return false,nil end
   for _,a in pairs(ACTIVE) do assert(GetTime() >= a.ends, 'owned audio overlaps') end
   local handle = #SOUNDS+100
-  local entry = {file=file,handle=handle,time=GetTime(),ends=GetTime()+DURATIONS[file]}
+  entry.handle,entry.ends = handle,GetTime()+duration
   SOUNDS[#SOUNDS+1] = entry
   ACTIVE[handle] = entry
   return true,handle
+end
+function PlaySoundFile(path,channel)
+  local file = path:match('([^\\]+)$')
+  assert(DURATIONS[file], 'unexpected asset '..tostring(path))
+  return playSound({file=file,channel=channel},DURATIONS[file])
+end
+function PlaySound(kit,channel,noDuplicates,handleRequested)
+  assert(kit == 7197, 'unexpected sound kit')
+  assert(noDuplicates == false and handleRequested == true, 'unexpected kit arguments')
+  return playSound({kit=kit,channel=channel,noDuplicates=noDuplicates,handleRequested=handleRequested},4.0)
 end
 function StopSound(handle)
   assert(type(handle)=='number','invalid owned sound handle')
@@ -167,6 +185,8 @@ function FULL() SET_FREE(0); FIRE('BAG_UPDATE_DELAYED') end
 function ROOM() SET_FREE(1); FIRE('BAG_UPDATE_DELAYED') end
 function FULL_ERROR() FIRE('UI_ERROR_MESSAGE',17,ERR_INV_FULL) end
 function LEVEL(n) STATE.level=n; FIRE('PLAYER_LEVEL_UP',n) end
+function TAXI_ON() STATE.taxi=true end
+function TAXI_OFF() STATE.taxi=false end
 '''
 
 
@@ -996,6 +1016,281 @@ class ReactionsTest(unittest.TestCase):
         self.assertIn('Reactions.lua',toc)
         self.assertLess(toc.index('Reactions.lua'),toc.index('UI.lua'))
         self.assertNotIn('SoundyFun',toc)
+
+
+class TaxiTest(unittest.TestCase):
+    def make(self, **kwargs):
+        c = Client(**kwargs)
+        self.addCleanup(lambda: self.assertIsNone(c.c.lastError, 'addon exception: '+str(c.c.lastError)))
+        return c
+
+    def kits(self, c):
+        return [s.kit for s in c.g.SOUNDS.values() if s.kit is not None]
+
+    def ground(self, **kwargs):
+        c = self.make(**kwargs)
+        c.wait(0.25)  # first confirmed false poll; dispatcher is otherwise idle
+        return c
+
+    def takeoff(self, c):
+        started = c.g.GetTime()
+        c.run('TAXI_ON()')
+        c.wait(0.25)
+        return started
+
+    def test_taxi_01_ground_to_air_plays_within_quarter_second(self):
+        c = self.ground()
+        started = self.takeoff(c)
+        self.assertEqual(self.kits(c), [7197])
+        sound = c.g.SOUNDS[1]
+        self.assertGreaterEqual(sound.time, started)
+        self.assertLessEqual(sound.time - started, 0.25)
+        self.assertEqual(sound.channel, 'Master')
+        self.assertFalse(sound.noDuplicates)
+        self.assertTrue(sound.handleRequested)
+        self.assertIsNone(sound.file)
+
+    def test_taxi_04_short_false_blip_cannot_rearm_but_six_seconds_can(self):
+        c = self.ground()
+        self.takeoff(c)
+        self.assertEqual(self.kits(c), [7197])
+        c.wait(5)
+        c.run('TAXI_OFF()'); c.wait(1)
+        self.takeoff(c)
+        c.wait(5)
+        self.assertEqual(self.kits(c), [7197], 'a connecting-node blip is not a new flight')
+        c.run('TAXI_OFF()'); c.wait(6)
+        self.takeoff(c)
+        self.assertEqual(self.kits(c), [7197, 7197])
+
+    def test_taxi_07_saved_airborne_flag_covers_reload_false_blip(self):
+        c = self.ground()
+        self.takeoff(c)
+        self.assertEqual(self.kits(c), [7197])
+        reloaded = self.make(db=c.save(), setup='TAXI_OFF()')
+        reloaded.wait(1)
+        self.takeoff(reloaded)
+        reloaded.wait(6)
+        self.assertEqual(self.kits(reloaded), [], 'loading false blip must not replay a saved flight')
+        self.assertTrue(reloaded.c.reactions.taxiAloft)
+        reloaded.run('TAXI_OFF()'); reloaded.wait(6)
+        self.assertIsNone(reloaded.c.reactions.taxiAloft)
+        self.takeoff(reloaded)
+        self.assertEqual(self.kits(reloaded), [7197])
+
+    def test_taxi_11_request_expires_behind_campfire_without_overlap(self):
+        c = self.ground()
+        c.run('AURA_ON()')
+        self.takeoff(c)
+        self.assertEqual(c.sounds(), ['campfire_1.mp3'])
+        self.assertEqual(len(c.r.queue), 1, 'takeoff should enter the shared dispatcher')
+        c.wait(70)
+        self.assertEqual(self.kits(c), [], 'an old takeoff must never play after the song')
+        self.assertEqual(len(c.r.queue), 0)
+        self.assertEqual(len(c.g.ATTEMPTS), 1)
+        c.run('TAXI_OFF()'); c.wait(6)
+        self.takeoff(c)
+        self.assertEqual(self.kits(c), [7197])
+
+    def test_taxi_02_selection_control_loss_and_mounts_are_not_takeoff(self):
+        c = self.ground()
+        for event in ('TAXIMAP_OPENED', 'TAXIMAP_CLOSED', 'PLAYER_CONTROL_LOST'):
+            c.g.FIRE(event)
+            c.wait(0.25)
+            self.assertEqual(self.kits(c), [])
+            self.assertFalse(bool(c.r.frame.events[event]), 'no additional taxi event registration')
+        c.run('STATE.mounted=true; IsMounted=function() return true end')
+        c.wait(6)
+        self.assertEqual(len(c.g.ATTEMPTS), 0)
+        self.takeoff(c)
+        self.assertEqual(self.kits(c), [7197])
+
+    def test_taxi_03_staying_aloft_for_two_minutes_plays_only_once(self):
+        c = self.ground()
+        self.takeoff(c)
+        c.wait(120)
+        self.assertEqual(self.kits(c), [7197])
+        self.assertEqual(len(c.g.ATTEMPTS), 1)
+        self.assertEqual(len(c.r.queue), 0)
+
+    def test_taxi_05_login_aloft_is_silent_until_landing_and_next_flight(self):
+        c = self.make(setup='TAXI_ON()')
+        c.wait(6)
+        self.assertEqual(self.kits(c), [], 'the first confirmed true is not a takeoff')
+        c.run('TAXI_OFF()'); c.wait(6)
+        self.takeoff(c)
+        self.assertEqual(self.kits(c), [7197])
+
+    def test_taxi_06_reload_aloft_does_not_replay(self):
+        c = self.ground()
+        self.takeoff(c)
+        self.assertEqual(self.kits(c), [7197])
+        c.run('FIRE("PLAYER_LOGOUT")')
+        self.assertEqual(list(c.g.STOPS.values()), [100])
+        reloaded = self.make(db=c.save(), setup='TAXI_ON()')
+        reloaded.wait(6)
+        self.assertEqual(self.kits(reloaded), [])
+        self.assertEqual(len(reloaded.g.ATTEMPTS), 0)
+        self.assertTrue(reloaded.c.reactions.taxiAloft)
+
+    def test_taxi_08_saved_aloft_but_landed_rearms_on_ground(self):
+        c = self.make(setup='TAXI_ON()')
+        c.wait(0.25)
+        self.assertTrue(c.c.reactions.taxiAloft)
+        reloaded = self.make(db=c.save(), setup='TAXI_OFF()')
+        reloaded.wait(6)
+        self.assertIsNone(reloaded.c.reactions.taxiAloft)
+        self.takeoff(reloaded)
+        self.assertEqual(self.kits(reloaded), [7197])
+
+    def test_taxi_09_unknown_reads_neither_play_nor_rearm(self):
+        for flag in ('taxiUnknown', 'taxiSecret', 'taxiError', 'taxiNonBoolean'):
+            with self.subTest(flag=flag):
+                # Session.Tick independently calls UnitOnTaxi without pcall. Its
+                # existing dead-state branch isolates these reaction API failures.
+                c = self.ground(setup='STATE.dead=true')
+                c.run(f'STATE.{flag}=true; TAXI_ON()'); c.wait(6)
+                self.assertEqual(self.kits(c), [])
+                c.run(f'STATE.{flag}=false')
+                c.wait(0.25)
+                self.assertEqual(self.kits(c), [7197], 'retain confirmed false through unknown reads')
+                c.wait(5)
+                c.run(f'STATE.{flag}=true; TAXI_OFF()'); c.wait(6)
+                c.run(f'STATE.{flag}=false; TAXI_ON()'); c.wait(0.25)
+                self.assertEqual(self.kits(c), [7197], 'unknown is not confirmed ground')
+                c.run('TAXI_OFF()'); c.wait(6)
+                self.takeoff(c)
+                self.assertEqual(self.kits(c), [7197, 7197])
+
+    def test_taxi_10_muted_takeoff_is_tracked_and_never_replayed(self):
+        c = self.ground()
+        c.run('SlashCmdList.FOREVERCOACH("fun off")')
+        self.takeoff(c)
+        c.wait(6)
+        self.assertEqual(self.kits(c), [])
+        self.assertEqual(len(c.r.queue), 0)
+        self.assertEqual(len(c.g.ATTEMPTS), 0)
+        c.run('SlashCmdList.FOREVERCOACH("fun on")'); c.wait(6)
+        self.assertEqual(self.kits(c), [], 'unmuting mid-flight cannot replay takeoff')
+        c.run('TAXI_OFF()'); c.wait(6)
+        self.takeoff(c)
+        self.assertEqual(self.kits(c), [7197])
+
+    def test_taxi_12_failed_playback_attempts_end_at_two_second_expiry(self):
+        for flag in ('soundFail', 'soundThrows', 'soundSecret'):
+            with self.subTest(flag=flag):
+                c = self.ground(setup=f'STATE.{flag}=true')
+                started = self.takeoff(c)
+                c.wait(5)
+                attempts = list(c.g.ATTEMPTS.values())
+                self.assertGreaterEqual(len(attempts), 2, 'a failed start should retry within its lifetime')
+                self.assertLessEqual(len(attempts), 3)
+                self.assertTrue(all(a.kit == 7197 for a in attempts))
+                self.assertTrue(all(a.time - attempts[0].time < 2 for a in attempts))
+                self.assertLessEqual(attempts[0].time - started, 0.25)
+                self.assertGreaterEqual(attempts[1].time - attempts[0].time, 1)
+                self.assertEqual(self.kits(c), [])
+                self.assertEqual(len(c.r.queue), 0)
+                c.run(f'STATE.{flag}=false'); c.wait(6)
+                self.assertEqual(len(c.g.ATTEMPTS), len(attempts), 'no retry after expiry')
+                c.run('TAXI_OFF()'); c.wait(6)
+                self.takeoff(c)
+                self.assertEqual(self.kits(c), [7197])
+
+    def test_taxi_13_missing_playsound_is_quiet_and_next_flight_recovers(self):
+        c = self.ground(setup='savedPlaySound=PlaySound; PlaySound=nil')
+        self.takeoff(c); c.wait(6)
+        self.assertEqual(len(c.g.ATTEMPTS), 0)
+        self.assertEqual(self.kits(c), [])
+        self.assertEqual(len(c.r.queue), 0)
+        self.assertIsNone(c.c.lastError)
+        c.run('PlaySound=savedPlaySound; TAXI_OFF()'); c.wait(6)
+        self.takeoff(c)
+        self.assertEqual(self.kits(c), [7197])
+
+    def test_taxi_14_world_return_preserves_last_confirmed_edge(self):
+        # Rule: leaving-world freezes observations, NOT taxiOn. A confirmed
+        # false before leaving still makes return-to-true a new edge; nil/true do not.
+        for initial in ('ground', 'unknown', 'air'):
+            with self.subTest(initial=initial):
+                setup = {'ground': '', 'unknown': 'STATE.taxiUnknown=true', 'air': 'TAXI_ON()'}[initial]
+                c = self.make(setup=setup); c.wait(0.25)
+                c.run('FIRE("PLAYER_LEAVING_WORLD"); STATE.taxiUnknown=false; TAXI_ON()')
+                c.wait(6)
+                self.assertEqual(self.kits(c), [])
+                c.run('FIRE("PLAYER_ENTERING_WORLD",false,false)'); c.wait(0.25)
+                expected = [7197] if initial == 'ground' else []
+                self.assertEqual(self.kits(c), expected)
+                c.run('TAXI_OFF()'); c.wait(6)
+                self.takeoff(c)
+                self.assertEqual(self.kits(c), expected + [7197])
+
+    def test_taxi_15_file_clips_keep_the_existing_playback_path(self):
+        c = self.ground()
+        c.run('DIE()'); c.wait(0.5)
+        self.takeoff(c)
+        c.wait(6)
+        self.assertEqual(self.kits(c), [7197], 'short earlier audio may finish before taxi expires')
+        self.assertEqual(c.sounds(), ['death.mp3', None])
+        first, second = c.g.SOUNDS[1], c.g.SOUNDS[2]
+        self.assertIsNone(first.kit)
+        # WAIT delivers completion with a 1e-7 floating-point tolerance.
+        self.assertGreaterEqual(second.time + 1e-7, first.ends)
+        c.run('FULL_ERROR()'); c.wait(3)
+        c.run('LEVEL(21)'); c.wait(4)
+        self.assertEqual(c.sounds(), ['death.mp3', None, 'bags_1.mp3', 'level_up.mp3'])
+
+    def test_taxi_rearm_requires_five_seconds_and_true_restarts_delay(self):
+        c = self.ground(); self.takeoff(c); c.wait(5)
+        self.assertEqual(self.kits(c), [7197])
+        for _ in range(2):
+            c.run('TAXI_OFF()'); c.wait(4.8)
+            self.takeoff(c)
+            self.assertEqual(self.kits(c), [7197])
+        c.run('TAXI_OFF()'); c.wait(5.5)  # first false sample + 5 s + poll rounding
+        self.takeoff(c)
+        self.assertEqual(self.kits(c), [7197, 7197])
+
+    def test_taxi_saved_flag_is_per_character_and_only_exact_true(self):
+        c = self.ground(); self.takeoff(c)
+        self.assertEqual(self.kits(c), [7197])
+        other = self.ground(db=c.save(), setup='function UnitName() return "OtherCharacter" end')
+        self.takeoff(other)
+        self.assertEqual(self.kits(other), [7197], 'one character must not suppress another')
+        for bad in ('nil', 'false', '1', '"true"', '{}'):
+            with self.subTest(bad=bad):
+                c.run(f'ForeverCoach:Char().reactions.taxiAloft={bad}')
+                reloaded = self.ground(db=c.save())
+                self.assertIsNone(reloaded.c.reactions.taxiAloft)
+                self.takeoff(reloaded)
+                self.assertEqual(self.kits(reloaded), [7197])
+
+    def test_taxi_inworld_api_and_missing_state_api_fail_closed(self):
+        c = self.ground()
+        c.run('STATE.inWorld=false; TAXI_ON()'); c.wait(6)
+        self.assertEqual(self.kits(c), [])
+        c.run('STATE.inWorld=true'); c.wait(0.25)
+        self.assertEqual(self.kits(c), [7197])
+        missing = self.make(setup='savedUnitOnTaxi=UnitOnTaxi; UnitOnTaxi=nil; TAXI_ON()')
+        missing.wait(6)
+        self.assertEqual(self.kits(missing), [])
+        missing.run('UnitOnTaxi=savedUnitOnTaxi'); missing.wait(0.25)
+        self.assertEqual(self.kits(missing), [], 'first readable true remains silent')
+        missing.run('TAXI_OFF()'); missing.wait(6)
+        self.takeoff(missing)
+        self.assertEqual(self.kits(missing), [7197])
+
+    def test_taxi_kit_duration_fallback_and_master_stop_own_handle(self):
+        c = self.ground(setup='STATE.noSoundFinished=true')
+        self.takeoff(c)
+        self.assertEqual(self.kits(c), [7197])
+        c.run('DIE()'); c.wait(5)
+        self.assertEqual(c.sounds(), [None, 'death.mp3'])
+        self.assertEqual(list(c.g.STOPS.values()), [100])
+        c.run('SlashCmdList.FOREVERCOACH("fun off")')
+        self.assertEqual(list(c.g.STOPS.values()), [100, 101])
+        c.run('SlashCmdList.FOREVERCOACH("fun on")'); c.wait(6)
+        self.assertEqual(self.kits(c), [7197])
 
 
 if __name__ == '__main__':
