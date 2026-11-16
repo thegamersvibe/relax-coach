@@ -15,6 +15,38 @@ def runtime(before=''):
     return lua
 
 class CleanupUITests(unittest.TestCase):
+    def test_review_slash_and_cleanup_alias_open_same_window(self):
+        runtime().execute('''
+          local frame
+          for _,command in ipairs({'review','cleanup','REVIEW'}) do
+            SlashCmdList.RELAXQUESTPLANNER(command); DRAIN()
+            local U=RelaxQuestPlanner.CleanupUI
+            assert(U.frame and U.frame:IsShown(),command..' did not open review')
+            assert(U.title:GetText()=='Quest and item review')
+            assert(not frame or frame==U.frame,'aliases opened different windows')
+            frame=U.frame; U.close:Click()
+          end
+          assert(RelaxQuestPlanner.UI.frame==nil,'review must not open navigation')
+          assert(RelaxQuestPlannerDB.lastError==nil,RelaxQuestPlannerDB.lastError)
+        ''')
+
+    def test_review_name_in_header_and_help(self):
+        checks=('''
+          RelaxQuestPlanner.UI.BuildWindow()
+          local button=RelaxQuestPlanner.UI.cleanupButton
+          assert(button:GetText()=='Review','header uses the wrong feature name')
+          button.scripts.OnEnter(button)
+          assert(GameTooltip:GetText():find('Quest and item review',1,true))
+          assert(GameTooltip:GetText():find('/rqp review',1,true))
+        ''', '''
+          SlashCmdList.RELAXQUESTPLANNER('help')
+          local help=table.concat(OUT,' | ')
+          assert(help:find('Quest and item review',1,true),'help omits the feature name')
+          assert(help:find('/rqp review',1,true),'help omits the review command')
+        ''')
+        for surface,check in zip(('header','help'),checks):
+            with self.subTest(surface=surface): runtime().execute(check)
+
     def test_slash_works_without_route_journey_or_coach_and_explains_limits(self):
         lua=runtime()
         self.assertIsNotNone(lua.globals().RelaxQuestPlanner.Cleanup.Show,'review UI is missing')
@@ -164,7 +196,7 @@ class CleanupUITests(unittest.TestCase):
         lua.execute('''
           local function hints()
             local n=0 for _,row in ipairs(FC.Audit:Run(CHAR)) do
-              if row.text:find('Quest/item review') then n=n+1; assert(row.fix=='/rqp cleanup (manual only)') end
+              if row.text:find('Quest and item review',1,true) then n=n+1; assert(row.fix=='/rqp review (manual only)') end
             end return n
           end
           assert(hints()==0)

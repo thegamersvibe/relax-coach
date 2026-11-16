@@ -234,7 +234,8 @@ function UI.Refresh(force)
 end
 
 local function help()
-  RQP.Print("/rqp dungeon <name> | guide | goal <questID> | cleanup | mode [strict|game|all] | map | skip | unskip | autopin | autojourney | hide | show | error [clear]")
+  RQP.Print("/rqp dungeon <name> | guide | goal <questID> | review | mode [strict|game|all] | map | skip | unskip | autopin | autojourney | hide | show | error [clear]")
+  RQP.Print("/rqp review opens Quest and item review (read-only); /rqp cleanup is an alias.")
   RQP.Print("/rqp mode cycles the level filter when no argument is given.")
   RQP.Print("/rqp guide shows the top 3 guides; click one to jump to your first undone step.")
 end
@@ -249,7 +250,7 @@ SlashCmdList.RELAXQUESTPLANNER = RQP.Safe(function(message)
     if arg ~= "" then UI.SelectDungeon(arg) else UI.ShowPicker() end
   elseif command == "map" then UI.SetWaypoint()
   elseif command == "goal" then UI.SelectGoal(arg)
-  elseif command == "cleanup" then
+  elseif command == "review" or command == "cleanup" then
     if RQP.Cleanup and RQP.Cleanup.Show then RQP.Cleanup.Show() end
   elseif command == "guide" then UI.PickGuide()
   elseif command == "mode" then

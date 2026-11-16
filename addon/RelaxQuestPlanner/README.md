@@ -24,8 +24,9 @@ These are correctness fixes, not a performance improvement claim.
 
 ## Quest and item review (unreleased)
 
-Open **Cleanup** in the planner header or type **`/rqp cleanup`**. This separate
-window needs no active route, Journey or Coach. It reads only backpack + four
+Open **Review** in the planner header or type **`/rqp review`** for **Quest and
+item review**. **`/rqp cleanup`** remains an alias. This separate window needs no
+active route, Journey or Coach. It reads only backpack + four
 carried bags and current quests. It lists quest-class/quest-associated items and
 grey quests (also unresolved greyness); other items, keyring, reagent bag, bank,
 equipment, mail and alts **were not assessed**. Use Quests / Quest items, page
@@ -55,15 +56,17 @@ up to 100 quest + 100 item pins per character, and window position are stored in
 `RelaxQuestPlannerDB.cleanup`. Newer preference schemas are left untouched. No
 verdict, inventory, provider record or character identity is persisted. Closing
 cancels scanning; hidden events only mark it dirty. Explicit Refresh rebuilds the
-session index; visible events coalesce for 250 ms, combat pauses scans, and stale
-async generations cannot publish. A snapshot changing without a corresponding
-event during scanning asks for Refresh rather than looping endlessly.
+session index; visible player-state events coalesce for 250 ms and retake only
+the snapshot without restarting an in-progress static index. Combat pauses scans,
+and stale snapshot generations cannot publish. A snapshot changing without a
+corresponding event during scanning asks for Refresh rather than looping endlessly.
 
 QuestieDB contract 4 corrected getters are optional. Provider absence/failure is
 visible limited data, not an empty-success result. Unknown revision is not treated
-as a version guarantee: explicit refresh, quest membership and addon/world changes
-invalidate the session cache. Dungeon and future protections do not use navigation
-mode, skipped quests or today's selected route. All known faction/class paths are
+as a version guarantee: explicit refresh and addon/world changes invalidate the
+session index; quest membership changes invalidate only the player snapshot.
+Dungeon and future protections do not use navigation mode, skipped quests or
+today's selected route. All known faction/class paths are
 retained conservatively, even when eligibility cannot be established. Optional
 supplements add protection; negative FDJ placeholders are never queried as real IDs.
 
@@ -131,6 +134,7 @@ still works; guide picking is disabled.
 - `/rqp goal <questID>` — plan a quest and its prerequisites. You can also focus
   the quest box and shift-click a quest link.
 - `/rqp guide` — shows the top 3 guides; click one to jump to your first undone step.
+- `/rqp review` — open Quest and item review (read-only); `/rqp cleanup` is an alias.
 - `/rqp mode [strict|game|all]` — choose a level filter. With no argument, cycle
   Game → Strict → All → Game. Strict hides quests more than five levels below
   you; Game hides grey quests; All includes lower-level quests. Required low-level
