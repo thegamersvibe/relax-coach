@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -82,6 +83,60 @@ class ReleaseGateTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 23)
                 self.assertEqual(len(log), 1)
                 self.assertNotIn("Local release assets built.", result.stdout)
+
+
+class RealRefusalGateTests(unittest.TestCase):
+    """Run after building (release.sh does so); negatives exercise the real old Go code."""
+    @classmethod
+    def setUpClass(cls):
+        cls.exe = ROOT / 'dist/RelaxCoach.exe'
+        cls.bundle = ROOT / 'dist/RelaxCoach-Bundle-1.7.0.zip'
+        if not cls.exe.is_file() or not cls.bundle.is_file():
+            raise unittest.SkipTest('build the 1.7.0 release assets to exercise the real refusal gate')
+        cls.old = subprocess.check_output(['git', 'describe', '--tags', '--abbrev=0', '--match', 'v*', 'HEAD'], cwd=ROOT, text=True).strip()
+        cls.gitdir = subprocess.check_output(['git', 'rev-parse', '--absolute-git-dir'], cwd=ROOT, text=True).strip()
+
+    def run_gate(self, *, corrupt_exe=False, extra_path=False):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'scripts').mkdir()
+            (root / 'dist').mkdir()
+            for name in ('check_old_app_refuses_bundle.sh', 'old_app_refusal_test.go'):
+                shutil.copy2(ROOT / 'scripts' / name, root / 'scripts' / name)
+            exe = bytearray(self.exe.read_bytes())
+            if corrupt_exe:
+                exe[:2] = b'ZZ'  # preserve size, but not a Windows PE
+            (root / 'dist/RelaxCoach.exe').write_bytes(exe)
+            bundle = self.bundle
+            if extra_path:
+                bundle = root / 'dist/second-unknown.zip'
+                shutil.copy2(self.bundle, bundle)
+                with zipfile.ZipFile(bundle, 'a') as z:
+                    z.writestr('Interface/AddOns/ForeverCoach/unexpected.lua', '-- not shipped')
+            # The script archives the real tag from this repository, not mocked
+            # installer code. All script writes and game fixtures stay isolated.
+            env = dict(os.environ, GIT_DIR=self.gitdir)
+            return subprocess.run(['bash', 'scripts/check_old_app_refuses_bundle.sh',
+                                   self.old, str(bundle), '1.7.0'], cwd=root, env=env,
+                                  text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+    def test_real_gate_covers_backup_states_and_accepts_executable(self):
+        result = self.run_gate()
+        self.assertEqual(result.returncode, 0, result.stdout)
+        for prior in ('true', 'false'):
+            for route in ('app-first', 'installer-fallback'):
+                self.assertIn('--- PASS: TestOldAppRefusesRealBundle/prior-backup=' + prior + '/' + route, result.stdout)
+        self.assertIn('old app accepted replacement executable sha256=', result.stdout)
+
+    def test_real_gate_rejects_invalid_replacement_executable(self):
+        result = self.run_gate(corrupt_exe=True)
+        self.assertNotEqual(result.returncode, 0, 'gate skipped old-app executable validation')
+        self.assertIn('old app rejected replacement executable', result.stdout)
+
+    def test_real_gate_rejects_a_second_unknown_archive_path(self):
+        result = self.run_gate(extra_path=True)
+        self.assertNotEqual(result.returncode, 0, 'first-error match hid a second unknown path')
+        self.assertIn('unexpected old-app unknown path set', result.stdout)
 
 
 if __name__ == "__main__":
