@@ -1515,6 +1515,25 @@ class TaxiTest(unittest.TestCase):
         c.run('SlashCmdList.FOREVERCOACH("fun on")'); c.wait(80)
         self.assertEqual(c.sounds(), ['flight.mp3'])
 
+    def test_taxi_frozen_frames_without_world_event_do_not_stop_or_rearm(self):
+        for muted in (False, True):
+            with self.subTest(muted=muted):
+                c = self.ground(db={'flightSound': not muted}); self.takeoff(c)
+                c.run('TAXI_OFF()'); c.wait(0.25)
+                # No world event and no OnUpdate for six seconds. Two false
+                # observations do not prove the unobserved interval was false.
+                c.run('ADVANCE(6)'); c.wait(0.25)
+                self.assertEqual((len(c.g.STOPS), c.r.taxiOn, c.c.reactions.taxiAloft), (0, True, True))
+                self.takeoff(c)
+                self.assertEqual(self.flights(c), [] if muted else ['flight.mp3'])
+                c.run('TAXI_OFF()'); c.wait(1.9)
+                self.assertEqual(len(c.g.STOPS), 0)
+                c.wait(0.6)  # include poll phase and floating clock boundary
+                self.assertEqual(list(c.g.STOPS.values()), [] if muted else [100])
+                self.assertTrue(c.r.taxiOn, 'landing confirmation is not rearm')
+                c.wait(3); self.takeoff(c)
+                self.assertEqual(self.flights(c), [] if muted else ['flight.mp3', 'flight.mp3'])
+
     def test_taxi_loading_without_update_ticks_cannot_finish_landing_or_rearm(self):
         c = self.ground(); self.takeoff(c); c.wait(20)
         c.run('TAXI_OFF()'); c.wait(1)

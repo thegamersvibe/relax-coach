@@ -16,6 +16,7 @@ local CLIPS = {
 local CAMPFIRES, CAMPFIRE_COOLDOWN = { 1289723, 1229739 }, 1800
 local RETRIES, RETRY_DELAY, END_MARGIN = 3, 1, 0.15
 local TAXI_POLL, TAXI_REARM, TAXI_STALE, TAXI_LAND = 0.2, 5, 3, 2
+local TAXI_MAX_GAP = 1 -- longer unobserved intervals are not continuous ground time
 local taxiPoll = 0
 
 -- Do not compare, coerce, stringify or index secret values. Checks fail closed.
@@ -257,7 +258,7 @@ function R:CheckTaxi()
     local on = taxiState()
     if on == nil then return end
     if on then
-        self.taxiOffSince, self.taxiOffPoll = nil, nil
+        self.taxiOffSince, self.taxiOffPoll, self.taxiOffAt = nil, nil, nil
         if self.taxiOn == false then
             self.taxiEpisode = self.taxiEpisode + 1
             self:Request("taxi", self.taxiEpisode, TAXI_STALE)
@@ -269,8 +270,11 @@ function R:CheckTaxi()
         local t = now()
         if not t then return end
         -- Unknown/out-of-world polls preserve state, but cannot count as false time.
-        if self.taxiOffPoll ~= taxiPoll - 1 then self.taxiOffSince = t end
-        self.taxiOffPoll = taxiPoll
+        if self.taxiOffPoll ~= taxiPoll - 1 or not self.taxiOffAt
+            or t < self.taxiOffAt or t - self.taxiOffAt > TAXI_MAX_GAP then
+            self.taxiOffSince = t
+        end
+        self.taxiOffPoll, self.taxiOffAt = taxiPoll, t
         if self.active and self.active.kind == "taxi" and t - self.taxiOffSince >= TAXI_LAND then
             self:StopActive()
         end
@@ -381,7 +385,7 @@ function R:Init()
     self.store.taxiAloft = self.store.taxiAloft == true or nil
     self.queue, self.pending, self.failed = {}, {}, {}
     self.bagEpisode, self.deathEpisode, self.campEpisode = 0, 0, 0
-    self.taxiEpisode, self.taxiOn, self.taxiOffSince, self.taxiOffPoll = 0, nil, nil, nil
+    self.taxiEpisode, self.taxiOn, self.taxiOffSince, self.taxiOffPoll, self.taxiOffAt = 0, nil, nil, nil, nil
     self.lastLevel = number(call(UnitLevel, "player"))
     self:SyncLife()
     self.ready, self.world = true, inWorld()
