@@ -9,11 +9,13 @@ Three **separate WoW Forever addons**, plus a native Windows report app:
 
 ## Download
 
-**[Download release v1.7.0](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.7.0)**:
+**[Download release v1.7.1](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.7.1)**:
 
-- `RelaxCoach-Bundle-1.7.0.zip` — the three independent addons (Coach, Journey, Relax Quest Planner 0.2.2), Journey guide content **4.00.08**, the Windows app and optional installer/restore scripts. From v1.5.0 the combined download has this new name; earlier releases used `RelaxCoach-Guild-<version>.zip`.
+- `RelaxCoach-Bundle-1.7.1.zip` — the three independent addons (Coach, Journey, Relax Quest Planner 0.3.0), Journey guide content **4.00.08**, the Windows app and optional installer/restore scripts. From v1.5.0 the combined download has this new name; earlier releases used `RelaxCoach-Guild-<version>.zip`.
 - `RelaxCoach.exe` — app-only download, for updating the application separately.
 - `SHA256SUMS.txt` — checksums for these release assets.
+
+**On app 1.7.0?** Use **Updates → Check → Update**. App 1.7.0 accepts the 1.7.1 bundle; updating the app first is not required. After updating, follow the app's restart advice for the new planner files.
 
 **On an app older than 1.7.0?** Run **Check App Update → Update App** first, then **Update Addon** (**Updates → Check → Update** on recent apps). App 1.6.0/1.6.1 also offers **Updates → Update everything**, which does the app first. Older apps' safety lists do not recognize the new media file and refuse the addon bundle without changing any addon files. A first updater attempt may leave an empty `RelaxCoachBackups` folder. Update the app even if an earlier app-update failure lets you try the addon update directly.
 
@@ -21,7 +23,15 @@ Three **separate WoW Forever addons**, plus a native Windows report app:
 
 **On app 1.4.x?** Use **Check App Update → Update App** first, then close WoW and use **Check for updates → Update Addon**. Apps before 1.5.0 cannot install the bundle (from 1.5.0) and report it as an app-only release until the app is updated. App 1.4.0 needs one manual EXE replacement with Relax Coach closed before it can update itself.
 
-There is deliberately no Coach-only `RelaxCoach-1.7.0.zip`: older apps must not report a completed addon update while leaving the guide content behind. The previous app-only v1.4.1 release remains unchanged.
+There is deliberately no Coach-only `RelaxCoach-1.7.1.zip`: older apps must not report a completed addon update while leaving the guide content behind. The previous app-only v1.4.1 release remains unchanged.
+
+## What's new in v1.7.1
+
+- **Relax Quest Planner 0.3.0 — Quest and item review:** open **Review** in the planner header or type `/rqp review`. The separate window reviews current quests and quest-associated items in your carried bags; no active route, Journey or Coach is required.
+- **Read-only:** rows show **KEEP** or **UNCERTAIN-KEEP**, with reasons and source details. Missing or incomplete data is not permission to remove anything. The window never deletes items, abandons quests or takes action for you.
+- **Update:** on app 1.7.0 use **Updates → Check → Update**; an app update is not required first. The release gate checks that the real published app **v1.7.0 accepts this bundle**. On older apps, use **Check App Update → Update App** first as before. Follow the app's restart advice for the new planner files.
+- Coach and the Windows app move to **1.7.1**. Relax Journey (`4.00.04`) and guide content (`4.00.08`) are unchanged. The flight sound already shipped in 1.7.0; it is not new in this release.
+- **Not tested in game: alpha, owner's decision.** Offline tests do not validate native Forever behavior or the Windows update flow.
 
 ## What's new in v1.7.0
 

@@ -1,12 +1,22 @@
-# Relax Quest Planner — 0.2.2
+# Relax Quest Planner — 0.3.0
 
 Quest planner for **WoW Forever** (Interface 16001), shipped in the Relax Coach
 bundle from **v1.5.0**. It plans dungeon quest chains and individual quest goals
 without accepting, completing or turning in quests for you.
 
-**Validation status:** version 0.2.2 has passed the offline test suites only. It
-has not been validated in the native Forever client yet; please report anything
-that misbehaves in game.
+**Validation status:** version 0.3.0 has passed the offline test suites only.
+**Not tested in game: alpha, owner's decision.** Please report anything that
+misbehaves in the native Forever client.
+
+## What's new in 0.3.0
+
+- **Quest and item review:** `/rqp review` opens a separate, read-only window with
+  **KEEP** / **UNCERTAIN-KEEP** reasons and source details. It never deletes items
+  or abandons quests; missing data is not permission to remove anything.
+- Shipped in Relax Coach **1.7.1**. App **1.7.0** accepts the bundle, so an app
+  update is not required first. Use **Updates → Check → Update**, then follow the
+  app's restart advice for the new planner files. Older apps need **Update App**
+  first as before.
 
 ## What's new in 0.2.2
 
@@ -22,7 +32,7 @@ that misbehaves in game.
 
 These are correctness fixes, not a performance improvement claim.
 
-## Quest and item review (unreleased)
+## Quest and item review
 
 Open **Review** in the planner header or type **`/rqp review`** for **Quest and
 item review**. **`/rqp cleanup`** remains an alias. This separate window needs no
@@ -109,7 +119,7 @@ Journey and the guide content. It is no longer a separate patch zip and needs no
 Journey files merged by hand.
 
 - **Windows app:** use **Check App Update → Update App** first if the app is older
-  than 1.5.0, then close WoW and use **Updates → Check → Update** (labelled
+  than 1.7.0, then use **Updates → Check → Update** (labelled
   **Check for updates → Update Addon** in app 1.5.0). From app 1.5.1 a new
   player can also use **Get started → Install** with only `RelaxCoach.exe`. An
   existing `Interface/AddOns/RelaxQuestPlanner` folder (for example an earlier
