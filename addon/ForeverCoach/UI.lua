@@ -248,7 +248,7 @@ SlashCmdList.FOREVERCOACH = function(msg)
             return
         end
         FC:Print("fun extras: " .. (FC.Reactions:Enabled() and "on" or "off")
-            .. "; flight sound: " .. (ForeverCoachDB.flightSound and "on" or "off"))
+            .. "; flight sound: " .. (ForeverCoachDB and ForeverCoachDB.flightSound and "on" or "off"))
     elseif cmd == "levelup" then
         if arg == "on" or arg == "off" then
             FC.LevelUp:SetEnabled(arg == "on")

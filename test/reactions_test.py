@@ -208,7 +208,7 @@ def python_value(obj):
 
 
 class Client:
-    def __init__(self, setup='', db=None):
+    def __init__(self, setup='', db=None, login=True):
         self.L: Any = lupa.LuaRuntime(unpack_returned_tuples=True)
         self.L.execute(BASE_MOCK + '\n' + STRICT_MOCK)
         self.g: Any = self.L.globals()
@@ -219,12 +219,13 @@ class Client:
         for stem in FILES:
             src = (ADDON / (stem + '.lua')).read_text(encoding='utf-8')
             self.L.execute('return function(...)\n' + src + '\nend')('ForeverCoach', ns)
-        self.g.FIRE('ADDON_LOADED', 'ForeverCoach')
-        self.g.FIRE('PLAYER_LOGIN')
-        self.g.FIRE('PLAYER_ENTERING_WORLD', True, False)
+        if login:
+            self.g.FIRE('ADDON_LOADED', 'ForeverCoach')
+            self.g.FIRE('PLAYER_LOGIN')
+            self.g.FIRE('PLAYER_ENTERING_WORLD', True, False)
         self.fc = self.g.ForeverCoach
         self.r = self.fc.Reactions
-        self.c = self.fc.Char(self.fc)
+        self.c: Any = self.fc.Char(self.fc) if login else None
 
     def run(self, code):
         return self.L.execute(code)
@@ -1503,6 +1504,16 @@ class TaxiTest(unittest.TestCase):
         c.wait(4)
         self.assertEqual(c.sounds(), ['bags_1.mp3'])
         self.assertEqual(len(c.r.queue), 0)
+
+    def test_taxi_status_before_saved_variables_load_is_safe(self):
+        for command in ('fun status', 'fun off', 'fun flight off'):
+            with self.subTest(command=command):
+                c = Client(login=False)
+                self.assertIsNone(c.g.ForeverCoachDB)
+                ok, error = c.run('local ok,err=pcall(SlashCmdList.FOREVERCOACH, "' + command + '"); return ok,err')
+                self.assertTrue(ok, error)
+                self.assertIsNone(c.g.ForeverCoachDB, 'status must not initialize saved data')
+                self.assertIn('fun extras: off; flight sound: off', ' '.join(c.g.CHAT.values()).lower())
 
     def test_taxi_22_status_and_invalid_flight_options_do_not_toggle(self):
         c = self.ground()
