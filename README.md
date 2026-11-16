@@ -15,7 +15,7 @@ Three **separate WoW Forever addons**, plus a native Windows report app:
 - `RelaxCoach.exe` — app-only download, for updating the application separately.
 - `SHA256SUMS.txt` — checksums for these release assets.
 
-**On app 1.7.0?** Use **Updates → Check → Update**. App 1.7.0 accepts the 1.7.1 bundle; updating the app first is not required. After updating, follow the app's restart advice for the new planner files.
+**On app 1.7.0?** Use **Updates → Update everything**, or **Check App Update → Update App** first and then **Updates → Check → Update**. Because this release includes a new app, app 1.7.0 updates itself before it installs the newer addons. After the addon update, follow the app's restart advice for the new planner files.
 
 **On an app older than 1.7.0?** Run **Check App Update → Update App** first, then **Update Addon** (**Updates → Check → Update** on recent apps). App 1.6.0/1.6.1 also offers **Updates → Update everything**, which does the app first. Older apps' safety lists do not recognize the new media file and refuse the addon bundle without changing any addon files. A first updater attempt may leave an empty `RelaxCoachBackups` folder. Update the app even if an earlier app-update failure lets you try the addon update directly.
 
@@ -29,7 +29,7 @@ There is deliberately no Coach-only `RelaxCoach-1.7.1.zip`: older apps must not 
 
 - **Relax Quest Planner 0.3.0 — Quest and item review:** open **Review** in the planner header or type `/rqp review`. The separate window reviews current quests and quest-associated items in your carried bags; no active route, Journey or Coach is required.
 - **Read-only:** rows show **KEEP** or **UNCERTAIN-KEEP**, with reasons and source details. Missing or incomplete data is not permission to remove anything. The window never deletes items, abandons quests or takes action for you.
-- **Update:** on app 1.7.0 use **Updates → Check → Update**; an app update is not required first. The release gate checks that the real published app **v1.7.0 accepts this bundle**. On older apps, use **Check App Update → Update App** first as before. Follow the app's restart advice for the new planner files.
+- **Update:** on app 1.7.0 use **Updates → Update everything**, or update the app first (**Check App Update → Update App**) and then the addons. App 1.7.0 asks for the app update first because this release includes a new app. The release gate also checks that the published app **v1.7.0's installer accepts this bundle**, the fallback if an app update fails. On older apps, use **Check App Update → Update App** first as before. Follow the app's restart advice for the new planner files.
 - Coach and the Windows app move to **1.7.1**. Relax Journey (`4.00.04`) and guide content (`4.00.08`) are unchanged. The flight sound already shipped in 1.7.0; it is not new in this release.
 - **Not tested in game: alpha, owner's decision.** Offline tests do not validate native Forever behavior or the Windows update flow.
 
@@ -182,7 +182,7 @@ Use the included `Restore-RelaxCoach.ps1 -Backup <backup-folder>` with WoW close
 ## Coverage and known limits
 
 - Optional installed providers: GearQuest Forever for comparable item scores, ForeverDungeonJournal for dungeon information. Unknown or incomparable gear is shown as unscored, not assigned an invented score.
-- Included Journey code: `4.00.04`; Relax package/Coach version: `1.7.0`; guide-content version: `4.00.08`. The original signed catalog and guide bytes are retained. The content's existing validity date is **18 December 2026**; this release does not remove expiry checks.
+- Included Journey code: `4.00.04`; Relax package/Coach version: `1.7.1`; guide-content version: `4.00.08`. The original signed catalog and guide bytes are retained. The content's existing validity date is **18 December 2026**; this release does not remove expiry checks.
 - This is not a claim of complete coverage for every custom Forever class/spec/item or every leveling route. Some route entries are stubs.
 - An intermittent blank native window occurred during development. The final local candidate passed ten restart/Refresh cycles and a more-than-three-minute minimize/restore test, but the earlier root cause was not conclusively identified. If the window is blank, close and reopen it and report the issue.
 

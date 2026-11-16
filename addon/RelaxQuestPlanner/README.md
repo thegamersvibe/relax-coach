@@ -13,10 +13,10 @@ misbehaves in the native Forever client.
 - **Quest and item review:** `/rqp review` opens a separate, read-only window with
   **KEEP** / **UNCERTAIN-KEEP** reasons and source details. It never deletes items
   or abandons quests; missing data is not permission to remove anything.
-- Shipped in Relax Coach **1.7.1**. App **1.7.0** accepts the bundle, so an app
-  update is not required first. Use **Updates → Check → Update**, then follow the
-  app's restart advice for the new planner files. Older apps need **Update App**
-  first as before.
+- Shipped in Relax Coach **1.7.1**. On app **1.7.0** use **Updates → Update
+  everything**, or **Update App** first and then **Updates → Check → Update**;
+  the app updates itself before the addons. Then follow the app's restart advice
+  for the new planner files. Older apps need **Update App** first as before.
 
 ## What's new in 0.2.2
 
