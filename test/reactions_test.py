@@ -1340,6 +1340,25 @@ class TaxiTest(unittest.TestCase):
         self.assertEqual(c.sounds(), ['bags_1.mp3'])
         self.assertEqual(len(c.r.queue), 0)
 
+    def test_taxi_pending_never_delays_another_kind(self):
+        # Real event repro: bags -> take-off -> death/level/campfire. Compare
+        # with the same event schedule without a flight, including fallback.
+        for event, file in (('DIE()', 'death.mp3'), ('LEVEL(21)', 'level_up.mp3'), ('AURA_ON()', 'campfire_1.mp3')):
+            for completion_event in (True, False):
+                with self.subTest(event=event, completion_event=completion_event):
+                    setup = '' if completion_event else 'STATE.noSoundFinished=true'
+                    control = self.ground(setup=setup)
+                    control.run('FULL_ERROR()'); control.wait(0.25); control.run(event)
+                    control.wait(90)
+                    c = self.ground(setup=setup)
+                    c.run('FULL_ERROR()'); self.takeoff(c); c.run(event)
+                    self.assertIsNone(c.r.pending.taxi, 'another kind discards a waiting flight')
+                    c.wait(90)
+                    self.assertEqual(c.sounds(), ['bags_1.mp3', file])
+                    self.assertEqual(c.sounds(), control.sounds())
+                    self.assertAlmostEqual(c.g.SOUNDS[2].time, control.g.SOUNDS[2].time, places=5)
+                    self.assertEqual(len(c.r.queue), 0)
+
     def test_taxi_18_other_reactions_preempt_flight_and_never_resume(self):
         for event, file in (('DIE()', 'death.mp3'), ('LEVEL(21)', 'level_up.mp3'), ('FULL_ERROR()', 'bags_1.mp3'), ('AURA_ON()', 'campfire_1.mp3')):
             with self.subTest(event=event):

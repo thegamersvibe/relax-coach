@@ -146,6 +146,12 @@ function R:ShowPopup(t)
     self.popup:Show()
     self.popupUntil = t + 3
 end
+function R:DropPendingTaxi()
+    for i = #self.queue, 1, -1 do
+        if self.queue[i].kind == "taxi" then table.remove(self.queue, i) end
+    end
+    self.pending.taxi = nil
+end
 function R:Request(kind, token, ttl)
     if not self:Enabled() or self.failed[kind] == token then return end
     if kind == "taxi" and ForeverCoachDB.flightSound ~= true then return end
@@ -155,6 +161,9 @@ function R:Request(kind, token, ttl)
         if not t then return end
         expires = t + ttl
     end
+    -- A different kind discards a waiting flight just as it stops an active
+    -- one: flight audio never takes FIFO priority over another Coach sound.
+    if kind ~= "taxi" then self:DropPendingTaxi() end
     if self.active then
         if self.active.kind == "taxi" then
             if kind == "taxi" then return end -- never restart or queue over a flight
@@ -356,10 +365,7 @@ function R:SetFlightSound(enabled)
     ForeverCoachDB.flightSound = enabled
     if not enabled then
         if self.active and self.active.kind == "taxi" then self:StopActive() end
-        for i = #self.queue, 1, -1 do
-            if self.queue[i].kind == "taxi" then table.remove(self.queue, i) end
-        end
-        self.pending.taxi = nil
+        self:DropPendingTaxi()
     end
     -- The independent taxi poll keeps tracking; enabling never replays take-off.
 end
