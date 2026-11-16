@@ -52,6 +52,18 @@ class CleanupDataTests(unittest.TestCase):
           assert(D.ReadItem(1).complete and D.ReadItem(1).fields.class.value==12)
         ''')
 
+    def test_unreadable_provider_method_lookup_is_not_a_crash(self):
+        lua=client()
+        lua.execute('''
+          QUEST(1); ITEM(1)
+          local D=RelaxQuestPlanner.CleanupData
+          LibQuestieDB.Quest=setmetatable({}, {__index=function() error('unreadable') end})
+          local ok,row=pcall(D.ReadQuest,1)
+          assert(ok and not row.complete,'method lookup must fail closed')
+          local ids,state=D.Ids(LibQuestieDB.Quest)
+          assert(ids==nil and state=='unknown')
+        ''')
+
     def test_exact_ids_reverse_rewards_and_unreadable_values(self):
         lua=client()
         self.assertIsNotNone(lua.globals().RelaxQuestPlanner.CleanupData, 'cleanup adapter is missing')

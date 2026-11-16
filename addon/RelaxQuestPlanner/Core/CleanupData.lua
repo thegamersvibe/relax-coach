@@ -35,6 +35,12 @@ local function copy(v,seen,depth,budget)
     seen[v]=nil
     return out
 end
+-- Guard method resolution too: foreign namespaces may be missing/restricted.
+function D.Function(api,key)
+    if not D.Plain(api) or type(api)~="table" then return nil end
+    local ok,fn=pcall(function() return api[key] end)
+    if ok and D.Plain(fn) and type(fn)=="function" then return fn end
+end
 function D.Call(fn,...)
     if type(fn)~="function" then return nil,"unknown" end
     local results={pcall(fn,...)}
@@ -49,7 +55,7 @@ function D.Provider()
     return p
 end
 function D.SameProvider(a,b)
-    return a and b and a.handle==b.handle and a.available==b.available and a.version==b.version and a.flavor==b.flavor
+    return a and b and a.handle==b.handle and a.quest==b.quest and a.item==b.item and a.available==b.available and a.version==b.version and a.flavor==b.flavor
 end
 
 local questFields={name="string",questLevel="number",requiredLevel="number",requiredRaces="number",
@@ -68,14 +74,14 @@ local function read(kind,id,p,checkpoint)
     local r={id=id,fields={},complete=false,source=p.source,version=p.version}
     if not D.ID(id) or not p.available then return r end
     local api=kind=="Quest" and p.quest or p.item
-    local exists,state=D.Call(api.Exists,id)
+    local exists,state=D.Call(D.Function(api,"Exists"),id)
     if checkpoint then checkpoint() end
     if state~="known" or exists~=true then return r end
     r.complete=true
     for key,want in pairs(kind=="Quest" and questFields or itemFields) do
-        local fn=api.Get
+        local fn=D.Function(api,"Get")
         local v,s
-        if type(fn)=="function" then v,s=D.Call(fn,id,key) else v,s=D.Call(api[key],id) end
+        if type(fn)=="function" then v,s=D.Call(fn,id,key) else v,s=D.Call(D.Function(api,key),id) end
         if s=="known" and v~=nil and type(v)~=want then s="unknown"; v=nil end
         r.fields[key]={value=v,state=s,source=p.source,version=p.version}
         if s~="known" then r.complete=false end
@@ -88,7 +94,7 @@ function D.ReadQuest(id,p,checkpoint) return read("Quest",id,p,checkpoint) end
 function D.ReadItem(id,p,checkpoint) return read("Item",id,p,checkpoint) end
 function D.Value(r,key) return r and r.fields[key] and r.fields[key].value end
 function D.Ids(api)
-    local ids,state=D.Call(api and api.GetAllIds)
+    local ids,state=D.Call(D.Function(api,"GetAllIds"))
     if state~="known" or type(ids)~="table" then return nil,"unknown" end
     local seen,count={},0
     for k,id in pairs(ids) do

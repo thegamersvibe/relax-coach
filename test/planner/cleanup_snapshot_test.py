@@ -58,6 +58,16 @@ class CleanupSnapshotTests(unittest.TestCase):
                   local s=RelaxQuestPlanner.Cleanup.Capture(); assert(not s.complete and s.reads.bags~='known')
                 ''')
 
+    def test_malformed_or_unreadable_api_namespaces_are_unknown(self):
+        for namespace in ('C_QuestLog','C_Container','C_Item'):
+            for replacement in ('7','setmetatable({}, {__index=function() error("restricted namespace") end})'):
+                with self.subTest(namespace=namespace,replacement=replacement):
+                    self.runtime().execute('CURRENT(512); BAG(6842); '+namespace+'='+replacement+'''
+                      local ok,s=pcall(RelaxQuestPlanner.Cleanup.Capture)
+                      assert(ok,'namespace lookup must be guarded')
+                      assert(not s.complete and next(s.failures),'must fail closed')
+                    ''')
+
     def test_empty_slot_requires_consistent_free_slot_enumeration(self):
         self.runtime().execute('''
           C_Container.GetContainerNumSlots=function(b) return b==0 and 1 or 0 end

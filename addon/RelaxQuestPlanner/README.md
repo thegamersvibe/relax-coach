@@ -22,6 +22,82 @@ that misbehaves in game.
 
 These are correctness fixes, not a performance improvement claim.
 
+## Quest and item review (unreleased)
+
+Open **Cleanup** in the planner header or type **`/rqp cleanup`**. This separate
+window needs no active route, Journey or Coach. It reads only backpack + four
+carried bags and current quests. It lists quest-class/quest-associated items and
+grey quests (also unresolved greyness); other items, keyring, reagent bag, bank,
+equipment, mail and alts **were not assessed**. Use Quests / Quest items, page
+controls and click a row for scrollable **Details**. Hover the status for the full
+read-success/failure list. No candidate count or disposal recommendation exists.
+
+Only two labels are possible:
+
+- **KEEP**: a known open/future quest use, starter, repeatable, dungeon/higher-level
+  path, Keep pin or positive item-use fact. All stacks of an ID stay together.
+- **UNCERTAIN-KEEP**, with exactly one of:
+  - **New in Forever, no use data** — outside the imported vanilla ID ranges.
+  - **Quest state could not be resolved** — incomplete/unreadable state or graph.
+  - **No use found in our data** — all represented quest uses recorded turned in,
+    no imported positive-use fact, inside the vanilla list, with readable inputs.
+    These rows sort first. This is information, **not permission to remove it**.
+
+Details identify exact IDs, linked quests, relation types, sources/versions and
+snapshot time. They explicitly do not certify destroy side effects, reacquisition
+or uses added after data build 70888. Furen's Instructions (6842) is covered by the
+synthetic completed-history regression as **UNCERTAIN-KEEP / No use found in our
+data**, never disposable. Native quest-log and bag decisions remain entirely
+manual; this feature cannot act on quests/items or send messages.
+
+**Keep pinned** adds protection; Unpin only removes that pin. Only schema version,
+up to 100 quest + 100 item pins per character, and window position are stored in
+`RelaxQuestPlannerDB.cleanup`. Newer preference schemas are left untouched. No
+verdict, inventory, provider record or character identity is persisted. Closing
+cancels scanning; hidden events only mark it dirty. Explicit Refresh rebuilds the
+session index; visible events coalesce for 250 ms, combat pauses scans, and stale
+async generations cannot publish. A snapshot changing without a corresponding
+event during scanning asks for Refresh rather than looping endlessly.
+
+QuestieDB contract 4 corrected getters are optional. Provider absence/failure is
+visible limited data, not an empty-success result. Unknown revision is not treated
+as a version guarantee: explicit refresh, quest membership and addon/world changes
+invalidate the session cache. Dungeon and future protections do not use navigation
+mode, skipped quests or today's selected route. All known faction/class paths are
+retained conservatively, even when eligibility cannot be established. Optional
+supplements add protection; negative FDJ placeholders are never queried as real IDs.
+
+**Data provenance:** `Core/CleanupUses.lua` contains only generated positive facts
+from Keep or Toss: Forever 1.7.0 (Aquary), not its code or verdict logic. See
+`THIRD_PARTY.md`. Main data build 1.60.1.70888, known-use notes 1.60.1.70790, vanilla
+ID ranges 1.13.7.38704. Absence cannot clear an item; non-hunter pet-food evidence
+keeps a generic other-class-use protection without showing a pet-food reason.
+Profession names are read from the client, falling back to exact profession IDs.
+
+**Offline verification:** pinned `lupa==2.8`, explicitly `lupa.lua51`, with authored
+API/provider stubs based on Gethe/wow-ui-source `bebcb6bf309cf41b41bd74f8ca651e6a105b2676`
+(Forever 1.60.1.70938). No native tests/captures are requested or needed for this
+scope. Actual client API behavior, full-bag frame time and layout at the owner's UI
+scale remain unverified. No cleanup profiles or capture command are built.
+
+```sh
+# Inside an isolated checkout with .venv installed from .github/requirements-ci.txt
+export TMPDIR="$PWD/.git/tmp"
+mkdir -p "$TMPDIR"
+export CLEANUP_USES_ZIP="$TMPDIR/KeepOrToss-1.7.0.zip"
+curl --fail --location -o "$CLEANUP_USES_ZIP" https://mediafilez.forgecdn.net/files/9575/258/KeepOrToss-1.7.0.zip
+.venv/bin/python -I -B tools/gen_cleanup_uses.py "$CLEANUP_USES_ZIP" --check
+.venv/bin/python -I -B -m unittest discover -s test/planner -p 'cleanup_*_test.py'
+```
+
+The generator verifies the pinned archive hash **before** parsing; its first-party
+literal parser never executes donor modules. CI checks literal-only data after a
+fixed namespace binding, every provenance header, counts and byte-identical
+regeneration. Static tests reject destructive/action/send API names (including
+aliases) in feature and integration files. In-memory mutants must fail when
+"no use found" becomes a disposal label/wording or imported tool evidence is lost.
+The bundle manifest already admits these Lua files; no app/updater change is needed.
+
 ## Install
 
 From **Relax Coach v1.5.0**, Relax Quest Planner ships inside the combined Relax

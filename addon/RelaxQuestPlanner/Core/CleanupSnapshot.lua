@@ -30,7 +30,7 @@ function C.Capture()
     if bs=="known" and br and D.Plain(br[3]) and stringValue(br[3]) then s.build=br[3] else fail("build") end
     s.capturedAt=read("time",time,D.Number)
     local q=C_QuestLog or {}
-    local done=read("history",q.GetAllCompletedQuestIDs,function(v) return type(v)=="table" end)
+    local done=read("history",D.Function(q,"GetAllCompletedQuestIDs"),function(v) return type(v)=="table" end)
     if done then
         s.done={}
         local count=0
@@ -41,18 +41,18 @@ function C.Capture()
         for i=1,count do if not done[i] then fail("history") end end
         if s.reads.history~="known" then s.done=nil end
     end
-    local n=read("log",q.GetNumQuestLogEntries,function(v) return integer(v,0,1000) end)
+    local n=read("log",D.Function(q,"GetNumQuestLogEntries"),function(v) return integer(v,0,1000) end)
     if n then
         s.log={}
         for i=1,n do
-            local entry=read("log entry "..i,q.GetInfo,function(v) return type(v)=="table" and boolean(v.isHeader) end,i)
+            local entry=read("log entry "..i,D.Function(q,"GetInfo"),function(v) return type(v)=="table" and boolean(v.isHeader) end,i)
             if entry and entry.isHeader==false then
                 if D.ID(entry.questID) then
                     local id=entry.questID
                     local row={id=id,name=type(entry.title)=="string" and entry.title or nil}
-                    row.trivial,row.trivialState=read("trivial "..id,q.IsQuestTrivial,boolean,id)
-                    row.ready,row.readyState=read("readiness "..id,q.ReadyForTurnIn,boolean,id)
-                    row.repeatable,row.repeatableState=read("repeatable "..id,q.IsRepeatableQuest,boolean,id)
+                    row.trivial,row.trivialState=read("trivial "..id,D.Function(q,"IsQuestTrivial"),boolean,id)
+                    row.ready,row.readyState=read("readiness "..id,D.Function(q,"ReadyForTurnIn"),boolean,id)
+                    row.repeatable,row.repeatableState=read("repeatable "..id,D.Function(q,"IsRepeatableQuest"),boolean,id)
                     if s.log[id] then fail("log") end
                     s.log[id]=row
                 else fail("log entry "..i) end
@@ -65,15 +65,15 @@ function C.Capture()
     local function bad(label) bagOK=false; fail(label) end
     for bag=0,4 do
         local prefix="bag "..bag
-        local slots=read(prefix.." slots",bags.GetContainerNumSlots,function(v) return integer(v,0,100) end,bag)
-        local free=read(prefix.." free",bags.GetContainerNumFreeSlots,function(v) return integer(v,0,100) end,bag)
+        local slots=read(prefix.." slots",D.Function(bags,"GetContainerNumSlots"),function(v) return integer(v,0,100) end,bag)
+        local free=read(prefix.." free",D.Function(bags,"GetContainerNumFreeSlots"),function(v) return integer(v,0,100) end,bag)
         if not slots or not free then bagOK=false end
         local empty=0
         for slot=1,slots or 0 do
             local label=prefix.." slot "..slot
             -- Nil is permitted here only for the cross-checked empty-slot path.
-            local info,state=D.Call(bags.GetContainerItemInfo,bag,slot)
-            local id,idState=D.Call(bags.GetContainerItemID,bag,slot)
+            local info,state=D.Call(D.Function(bags,"GetContainerItemInfo"),bag,slot)
+            local id,idState=D.Call(D.Function(bags,"GetContainerItemID"),bag,slot)
             if state~="known" or idState~="known" then bad(label.." info") end
             if info==nil and id==nil and state=="known" and idState=="known" then empty=empty+1
             else
@@ -87,17 +87,17 @@ function C.Capture()
                     r.valid=state=="known" and idState=="known" and D.ID(id) and id==r.itemID
                         and r.count~=nil and r.locked==false
                 elseif D.ID(id) then r.itemID=id end
-                local qi,qs=read(label.." quest info",bags.GetContainerItemQuestInfo,function(v)
+                local qi,qs=read(label.." quest info",D.Function(bags,"GetContainerItemQuestInfo"),function(v)
                     return type(v)=="table" and boolean(v.isQuestItem) and boolean(v.isActive)
                         and (v.questID==nil or D.ID(v.questID))
                 end,bag,slot)
                 if qi then r.questFlag=qi.isQuestItem; r.questID=qi.questID; r.questActive=qi.isActive end
                 if r.itemID then
-                    local _,st,all=read(label.." item class",C_Item and C_Item.GetItemInfoInstant,D.ID,r.itemID)
+                    local _,st,all=read(label.." item class",D.Function(C_Item,"GetItemInfoInstant"),D.ID,r.itemID)
                     if st=="known" and all and D.Plain(all[7]) and integer(all[7],0,30) then r.classID=all[7]
                     else bad(label.." item class") end
                 end
-                local again,as=D.Call(bags.GetContainerItemInfo,bag,slot)
+                local again,as=D.Call(D.Function(bags,"GetContainerItemInfo"),bag,slot)
                 if as~="known" or type(again)~="table" or again.itemID~=r.itemID
                     or again.stackCount~=r.count or again.isLocked~=r.locked then r.valid=false end
                 if qs~="known" or not r.classID then r.valid=false end

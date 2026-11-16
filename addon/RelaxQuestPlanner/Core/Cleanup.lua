@@ -305,7 +305,7 @@ function C.Evaluate(s,index)
     local uses=RQP.CleanupUses or {}
     local report={generation=s.generation,providerRevision=index.provider and index.provider.revision,
         provider=s.provider,complete=s.complete and index.complete,questRows={},itemRows={},
-        capturedAt=s.capturedAt,identity=s.identity,counts={KEEP=0,['UNCERTAIN-KEEP']=0}}
+        capturedAt=s.capturedAt,identity=s.identity,build=s.build,counts={KEEP=0,['UNCERTAIN-KEEP']=0}}
     local function finish(row)
         row.relatedIDs=sortedKeys(row.relatedIDs)
         row.source='QuestieDB '..(s.provider.version or 'unknown')..'; Keep or Toss 1.7.0'
@@ -382,4 +382,145 @@ function C.Evaluate(s,index)
         ..'; QuestieDB '..(s.provider.version or 'unknown')..'; Keep or Toss 1.7.0 data build 70888 (known uses 70790; vanilla 38704).'
     if #failed>0 then report.status=report.status..' Failed: '..table.concat(failed,', ') end
     return report
+end
+
+-- UI-owned lifecycle: no hidden polling, one bounded job, latest generation only.
+local pendingFrame=CreateFrame('Frame')
+local pendingDelay
+local function notify()
+    if RQP.CleanupUI and RQP.CleanupUI.Render then RQP.CleanupUI.Render() end
+end
+function C.GetReport() return C.report,C.status or 'Not scanned' end
+local function cancel()
+    if C.indexJob then C.indexJob:Cancel(); C.indexJob=nil end
+    pendingDelay=nil; pendingFrame:SetScript('OnUpdate',nil)
+end
+local function stale(status)
+    C.status=status
+    if C.report then
+        C.report.complete=false
+        C.report.status='Limited data: '..status
+        for _,rows in ipairs({C.report.questRows,C.report.itemRows}) do
+            for _,row in ipairs(rows) do uncertain(row,'state-unresolved') end
+        end
+    end
+    notify()
+end
+local function schedule()
+    pendingDelay=0.25
+    pendingFrame:SetScript('OnUpdate',function(_,elapsed)
+        pendingDelay=pendingDelay-elapsed
+        if pendingDelay<=0 then
+            pendingDelay=nil; pendingFrame:SetScript('OnUpdate',nil)
+            if C.visible then C.Refresh(false) end
+        end
+    end)
+end
+function C.Invalidate(reason,dropIndex,rescan)
+    C.generation=C.generation+1; C.dirty=true; cancel()
+    if dropIndex then C.index=nil end
+    stale(reason or 'State changed')
+    if C.visible and rescan~=false then schedule() end
+end
+local function fingerprint(s)
+    -- Snapshot values are owned copies; no live/native reads in this comparison.
+    local out={s.identity or '?',s.build or '?',tostring(s.level),tostring(s.classID),s.faction or '?',tostring(s.complete)}
+    for _,id in ipairs(sortedKeys(s.log)) do
+        local q=s.log[id]; out[#out+1]='q'..id..':'..tostring(q.trivial)..':'..tostring(q.ready)..':'..tostring(q.repeatable)
+    end
+    for _,id in ipairs(sortedKeys(s.done)) do out[#out+1]='d'..id end
+    for _,slot in ipairs(s.slots) do
+        out[#out+1]=table.concat({slot.bag,slot.slot,tostring(slot.itemID),tostring(slot.count),tostring(slot.locked),
+            tostring(slot.valid),tostring(slot.questFlag),tostring(slot.questID),tostring(slot.questActive),tostring(slot.classID)},':')
+    end
+    for _,id in ipairs(sortedKeys(s.goals)) do out[#out+1]='g'..id end
+    for kind,pins in pairs(s.pins) do for _,id in ipairs(sortedKeys(pins)) do out[#out+1]=kind..id end end
+    for _,read in ipairs(sortedKeys(s.reads)) do out[#out+1]=read..'='..s.reads[read] end
+    return table.concat(out,'|')
+end
+function C.Refresh(resetIndex)
+    if not C.visible then C.dirty=true; return end
+    C.Invalidate('Scanning',resetIndex~=false,false)
+    local generation=C.generation
+    local snapshot=C.Capture()
+    if RQP.cleanupEventFailures then
+        for name in pairs(RQP.cleanupEventFailures) do
+            snapshot.complete=false; snapshot.failures['event '..name]=true
+        end
+    end
+    local combat=C.Combat()
+    if combat~=false then
+        snapshot.complete=false; snapshot.failures['combat read']=true
+        C.report=C.Evaluate(snapshot,C.index)
+        stale(combat and 'Paused in combat' or 'Limited data'); return
+    end
+    local key=fingerprint(snapshot)
+    local function publish(index)
+        if not C.visible or generation~=C.generation then return end
+        local current=C.Capture()
+        if C.Combat()~=false or not D.SameProvider(snapshot.provider,D.Provider())
+            or not D.SameProvider(snapshot.provider,index.provider) or key~=fingerprint(current) then
+            C.Invalidate('Snapshot changed; Refresh to rescan',true,false); return
+        end
+        C.index=index; C.report=C.Evaluate(snapshot,index); C.indexJob=nil; C.dirty=false
+        C.status=C.report.complete and 'Ready' or 'Limited data'; notify()
+    end
+    if C.index and D.SameProvider(C.index.provider,snapshot.provider) then publish(C.index)
+    else
+        C.report=C.Evaluate(snapshot,nil); C.status='Scanning'; C.report.status='Scanning; '..C.report.status; notify()
+        C.BuildIndexAsync(snapshot.provider,publish)
+    end
+end
+function C.Open() C.visible=true; C.Refresh(false) end
+function C.Close() C.visible=false; C.Invalidate('Closed',false,false) end
+local events={BAG_UPDATE_DELAYED=true,QUEST_LOG_UPDATE=true,QUEST_ACCEPTED=true,QUEST_TURNED_IN=true,
+    QUEST_REMOVED=true,PLAYER_LEVEL_UP=true,PLAYER_ENTERING_WORLD=true,PLAYER_REGEN_ENABLED=true,
+    PLAYER_REGEN_DISABLED=true,ADDON_LOADED=true,GET_ITEM_INFO_RECEIVED=true}
+function C.OnEvent(event)
+    if not events[event] then return end
+    local drop=event=='ADDON_LOADED' or event=='PLAYER_ENTERING_WORLD' or event=='QUEST_ACCEPTED'
+        or event=='QUEST_TURNED_IN' or event=='QUEST_REMOVED'
+    C.Invalidate(event,drop,event~='PLAYER_REGEN_DISABLED')
+    if event=='PLAYER_REGEN_DISABLED' then stale('Paused in combat') end
+end
+function C.SelectionChanged()
+    local db=type(RelaxQuestPlannerDB)=='table' and RelaxQuestPlannerDB or {}
+    local s=type(db.selection)=='table' and db.selection or {}
+    local key=tostring(s.kind)..':'..tostring(s.q)..':'..tostring(s.name)
+    if key~=C.selectionKey then C.selectionKey=key; C.Invalidate('Selection changed',false) end
+end
+
+-- Per-character SavedVariables already isolate characters. Only 200 exact-ID
+-- pins (100 per kind), schema and position are stored, never evidence/verdicts.
+function C.Preferences()
+    if type(RelaxQuestPlannerDB)~='table' then RelaxQuestPlannerDB={} end
+    local old=RelaxQuestPlannerDB.cleanup
+    if type(old)=='table' and D.Number(old.schema) and old.schema>1 then return nil end
+    local prefs={schema=1,pins={quest={},item={}}}
+    if type(old)=='table' then
+        for _,kind in ipairs({'quest','item'}) do
+            local pins=type(old.pins)=='table' and old.pins[kind]
+            local ids={}
+            for id,v in pairs(type(pins)=='table' and pins or {}) do if D.ID(id) and v==true then ids[#ids+1]=id end end
+            table.sort(ids)
+            for i=1,math.min(100,#ids) do prefs.pins[kind][ids[i]]=true end
+        end
+        local pos=old.position
+        local anchors={CENTER=true,TOP=true,TOPLEFT=true,TOPRIGHT=true,LEFT=true,RIGHT=true,BOTTOM=true,BOTTOMLEFT=true,BOTTOMRIGHT=true}
+        if type(pos)=='table' and anchors[pos.point] and anchors[pos.relativePoint] and D.Number(pos.x) and D.Number(pos.y)
+            and math.abs(pos.x)<=10000 and math.abs(pos.y)<=10000 then
+            prefs.position={point=pos.point,relativePoint=pos.relativePoint,x=pos.x,y=pos.y}
+        end
+    end
+    RelaxQuestPlannerDB.cleanup=prefs
+    return prefs
+end
+function C.SetPin(kind,id,on)
+    if (kind~='quest' and kind~='item') or not D.ID(id) or type(on)~='boolean' then return false end
+    local prefs=C.Preferences(); if not prefs then return false end
+    local pins=prefs.pins[kind]
+    if on and not pins[id] and #sortedKeys(pins)>=100 then return false end
+    pins[id]=on or nil
+    C.Invalidate(on and 'Keep pin added' or 'Keep pin removed',false)
+    return true
 end
