@@ -1505,6 +1505,20 @@ class TaxiTest(unittest.TestCase):
         self.assertEqual(c.sounds(), ['bags_1.mp3'])
         self.assertEqual(len(c.r.queue), 0)
 
+    def test_taxi_flight_command_accepts_repeated_whitespace(self):
+        for command in ('fun  flight  off', '  FUN   FLIGHT   OFF  ', 'fun\tflight\toff'):
+            with self.subTest(command=command):
+                c = self.ground(); self.takeoff(c)
+                c.g.SlashCmdList.FOREVERCOACH(command)
+                self.assertFalse(c.g.ForeverCoachDB.flightSound)
+                self.assertTrue(c.g.ForeverCoachDB.reactionsEnabled)
+                self.assertEqual(list(c.g.STOPS.values()), [100])
+                self.assertIn('flight sound: off', ' '.join(c.g.CHAT.values()).lower())
+                c.g.SlashCmdList.FOREVERCOACH('fun  flight  on')
+                self.assertTrue(c.g.ForeverCoachDB.flightSound)
+                c.wait(4)
+                self.assertEqual(c.sounds(), ['flight.mp3'], 'on does not replay airborne audio')
+
     def test_taxi_status_before_saved_variables_load_is_safe(self):
         for command in ('fun status', 'fun off', 'fun flight off'):
             with self.subTest(command=command):

@@ -239,6 +239,7 @@ SlashCmdList.FOREVERCOACH = function(msg)
         FC:Print("Open /macro, Character Specific tab, and drag them to a bar that doesn't swap with stance.")
         if ShowMacroFrame then pcall(ShowMacroFrame) end
     elseif cmd == "fun" then
+        arg = arg:gsub("%s+", " ")
         if arg == "on" or arg == "off" then
             FC.Reactions:SetEnabled(arg == "on")
         elseif arg == "flight on" or arg == "flight off" then
