@@ -359,7 +359,8 @@ func TestAddonFailureAfterTheEscapeNamesTheManualDownload(t *testing.T) {
 func TestStaleNoOfferKeepsTheGateForALaterRelease(t *testing.T) {
 	rel := AddonReleaseInfo{Version: "1.7.0", Available: true, HasApp: true, AssetURL: "a", ChecksumURL: "c"}
 	for name, answer := range map[string]AppReleaseInfo{
-		"latest was this app":     {Available: false, Version: Version},
+		// appFirstBridge fixes the running app at 1.6.0, not the release build's Version.
+		"latest was this app":     {Available: false, Version: "1.6.0"},
 		"draft or pre-release":    {Available: false},
 		"an older public release": {Available: false, Version: "1.6.9"},
 	} {
