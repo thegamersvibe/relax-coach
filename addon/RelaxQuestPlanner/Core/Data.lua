@@ -21,6 +21,28 @@ local function keys(t)
 end
 D.Keys = keys
 D.Present = present
+
+-- Cleanup reads the corrected public provider directly, never navigation's
+-- normalized/filtering cache. Version identifies data, not a mutation revision.
+function D.CleanupProvider()
+    local p={available=false,source="QuestieDB",revisionKnown=false}
+    local ok=pcall(function()
+        local candidate=_G.LibQuestieDB
+        if type(candidate)~="table" or type(candidate.RequireContract)~="function" then return end
+        if candidate.RequireContract(4)~=true then return end
+        if type(candidate.flavor)~="table" or candidate.flavor.expansion~="Forever" then return end
+        p.handle=candidate; p.contract=candidate.contractVersion; p.flavor="Forever"
+        p.quest=candidate.Quest or _G.QuestDB; p.item=candidate.Item or _G.ItemDB
+        p.available=type(p.quest)=="table" and type(p.item)=="table"
+        local metadata=C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata
+        if type(metadata)=="function" then
+            local good,v=pcall(metadata,candidate.addonName or "QuestieDB","Version")
+            if good and type(v)=="string" and not (issecretvalue and issecretvalue(v)) then p.version=v end
+        end
+    end)
+    if not ok then p.available=false end
+    return p
+end
 local function copyList(v, selfID)
     local out={}
     for _,x in ipairs(tbl(v)) do if x and (not selfID or type(x)~="number" or math.abs(x)~=selfID) then out[#out+1]=x end end

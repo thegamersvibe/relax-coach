@@ -847,6 +847,10 @@ class UIShellTests(unittest.TestCase):
         self.assertEqual(metadata["OptionalDeps"].split(", "), [
             "QuestieDB", "Questie", "ForeverDungeonJournal", "DungeonGuideForever", "Journey"])
         scripts = [line.replace("\\", "/") for line in toc if line.endswith(".lua")]
+        # The review service is isolated from the original route load order.
+        review = [s for s in scripts if s.startswith('Core/Cleanup') or s == 'UI/Cleanup.lua']
+        self.assertEqual(review[:2], ['Core/CleanupData.lua', 'Core/CleanupSnapshot.lua'])
+        scripts = [s for s in scripts if s not in review]
         self.assertEqual(scripts[:7], ["Init.lua", "Core/Data.lua", "Core/Player.lua", "Core/Engine.lua",
                                      "Core/Learn.lua", "Journey/Bridge.lua", "Journey/Picker.lua"])
         self.assertTrue(all(name.startswith("UI/") for name in scripts[7:]))
