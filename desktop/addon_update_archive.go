@@ -53,6 +53,11 @@ func addonPublicFilesForVersion(version string) map[string]bool {
 		files["Media/Reactions/campfire_1.mp3"] = true
 		files["Media/Reactions/campfire_2.mp3"] = true
 	}
+	// A flight clip joins the exact required set from 1.7.0 only.
+	flight, _ := parseAddonVersion("1.7.0")
+	if !flight.newerThan(v) {
+		files["Media/Reactions/flight.mp3"] = true
+	}
 	return files
 }
 

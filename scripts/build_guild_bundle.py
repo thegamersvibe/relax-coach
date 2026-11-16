@@ -6,7 +6,9 @@ ROOT=Path(__file__).resolve().parents[1]
 REACTION_AUDIO={'Interface/AddOns/ForeverCoach/Media/Reactions/'+name+'.mp3' for name in ('level_up','bags_1','bags_2','death','campfire')}
 # 1.5.6 replaced the one campfire song with two that take turns.
 REACTION_AUDIO_156=(REACTION_AUDIO-{'Interface/AddOns/ForeverCoach/Media/Reactions/campfire.mp3'})|{'Interface/AddOns/ForeverCoach/Media/Reactions/campfire_'+n+'.mp3' for n in ('1','2')}
+REACTION_AUDIO_170=REACTION_AUDIO_156|{'Interface/AddOns/ForeverCoach/Media/Reactions/flight.mp3'}
 def reaction_audio_for(version):
+    if tuple(map(int,version.split('.'))) >= (1,7,0):return REACTION_AUDIO_170
     return REACTION_AUDIO_156 if tuple(map(int,version.split('.'))) >= (1,5,6) else REACTION_AUDIO
 
 def digest(p):return hashlib.sha256(p.read_bytes()).hexdigest()
@@ -14,7 +16,7 @@ def digest(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument('--exe',type=Path,required=True)
-    ap.add_argument('--version',default='1.6.1')
+    ap.add_argument('--version',default='1.7.0')
     a=ap.parse_args()
     if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+',a.version):raise SystemExit('Invalid version')
     if not a.exe.is_file() or a.exe.read_bytes()[:2]!=b'MZ':raise SystemExit('Provide the verified Windows EXE')
@@ -52,6 +54,9 @@ def main():
         reaction_audio=name in reaction_audio_for(a.version) and tuple(map(int,a.version.split('.'))) >= (1,4,3)
         if name.startswith('Interface/AddOns/') and not reaction_audio and p.suffix.lower() not in {'.lua','.toc','.tga','.blp','.xml','.txt','.md','.ttf','.otf','.html','.png'}:raise SystemExit('Unexpected addon file: '+name)
         names.add(name)
+    if tuple(map(int,a.version.split('.'))) >= (1,7,0):
+        missing=reaction_audio_for(a.version)-names
+        if missing:raise SystemExit('Missing reaction audio: '+', '.join(sorted(missing)))
     rows=[{'path':name,'sha256':digest(p),'bytes':p.stat().st_size} for p,name in inputs]
     manifest={'project':'Relax Coach','kind':'guild-combined','version':a.version,'journeyVersion':'4.00.04','contentVersion':'4.00.08'}
     if planner_version:manifest['plannerVersion']=planner_version

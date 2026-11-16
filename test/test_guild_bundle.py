@@ -116,6 +116,62 @@ class GuildBuilderExeTests(unittest.TestCase):
         result=self.run_builder(self.exe,'1.5.5')
         self.assertNotEqual(result.returncode,0); self.assertIn('Unexpected addon file:',result.stderr)
 
+    def flight_fixture(self, version, flight=True):
+        self.add_planner()
+        (self.root/'addon/ForeverCoach/ForeverCoach.toc').write_text('## Title: Relax Coach\n## Version: '+version+'\nReactions.lua\n')
+        base={'Reactions.lua':b'-- synthetic reaction module\n','Media/Reactions/level_up.tga':b'synthetic artwork'}
+        clips=['level_up','bags_1','bags_2','death','campfire_1','campfire_2']
+        if flight: clips.append('flight')
+        base.update({'Media/Reactions/'+name+'.mp3':b'ID3synthetic audio '+name.encode() for name in clips})
+        for name,data in base.items():
+            p=self.root/'addon/ForeverCoach'/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(data)
+        return base
+
+    def test_flight_audio_new_version_has_complete_hash_inventory(self):
+        base=self.flight_fixture('1.7.0')
+        result=self.run_builder(self.exe,'1.7.0')
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        with zipfile.ZipFile(self.root/'dist/RelaxCoach-Bundle-1.7.0.zip') as z:
+            rows={r['path']:r for r in json.loads(z.read('manifest.json'))['files']}
+            self.assertEqual(set(rows),set(z.namelist())-{'manifest.json'})
+            for name,data in base.items():
+                path='Interface/AddOns/ForeverCoach/'+name
+                self.assertEqual(z.read(path),data)
+                self.assertEqual(rows[path],{'path':path,'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)})
+
+    def test_flight_audio_is_required_as_a_regular_file_from_170(self):
+        self.flight_fixture('1.7.0',flight=False)
+        flight=self.root/'addon/ForeverCoach/Media/Reactions/flight.mp3'
+        for directory in (False,True):
+            with self.subTest(directory=directory):
+                if directory: flight.mkdir()
+                result=self.run_builder(self.exe,'1.7.0')
+                self.assertNotEqual(result.returncode,0)
+                self.assertIn('Missing reaction audio:',result.stderr)
+                self.assertFalse(self.standalone.exists())
+                self.assertFalse((self.root/'dist/guild-package').exists())
+
+    def test_flight_audio_is_refused_in_older_versions(self):
+        self.flight_fixture('1.6.1')
+        result=self.run_builder(self.exe,'1.6.1')
+        self.assertNotEqual(result.returncode,0)
+        self.assertIn('Unexpected addon file:',result.stderr)
+        self.assertFalse(self.standalone.exists())
+        (self.root/'addon/ForeverCoach/Media/Reactions/flight.mp3').unlink()
+        result=self.run_builder(self.exe,'1.6.1')
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+
+    def test_flight_audio_does_not_authorize_other_media(self):
+        self.flight_fixture('1.7.0')
+        for name in ('FLIGHT.mp3','flight.ogg','other.mp3'):
+            with self.subTest(name=name):
+                p=self.root/'addon/ForeverCoach/Media/Reactions'/name;p.write_bytes(b'synthetic audio')
+                result=self.run_builder(self.exe,'1.7.0')
+                self.assertNotEqual(result.returncode,0)
+                self.assertIn('Unexpected addon file:',result.stderr)
+                self.assertFalse(self.standalone.exists())
+                p.unlink()
+
     def add_planner(self,title='Relax Quest Planner',version='0.2.0'):
         files={'addon/RelaxQuestPlanner/RelaxQuestPlanner.toc':'## Title: '+title+'\r\n## Version: '+version+'\r\nInit.lua\r\n',
                'addon/RelaxQuestPlanner/Init.lua':'-- synthetic planner\n','addon/RelaxQuestPlanner/Media/relax-icon.tga':'tga'}

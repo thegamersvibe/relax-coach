@@ -83,6 +83,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0 # real old-app refusal/EXE probes archive the last published tag
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: desktop/go.mod
@@ -103,6 +104,8 @@ jobs:
         run: python scripts/build_guild_bundle.py --exe dist/RelaxCoach.exe
       - name: Existing bundle contract tests
         run: python -I -B test/test_guild_bundle.py
+      - name: Version-pinned release gate selection tests
+        run: python -I -B test/test_release_gate.py
 
   required-ci:
     # Keep this check name stable: the main ruleset requires its GitHub Actions result.

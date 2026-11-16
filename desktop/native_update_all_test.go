@@ -232,6 +232,26 @@ func TestCoachFileSetUnchangedFrom156To160(t *testing.T) {
 	}
 }
 
+func TestCoach170AddsOnlyFlightTo161FileSet(t *testing.T) {
+	want := map[string]bool{}
+	for _, name := range []string{
+		"ForeverCoach.toc", "Core.lua", "Rules.lua", "Route.lua", "Session.lua", "Gear.lua",
+		"Talents.lua", "Dungeons.lua", "Audit.lua", "Macros.lua", "UI.lua", "ForeverCoach.tga",
+		"Reactions.lua", "Media/Reactions/bags_1.mp3", "Media/Reactions/bags_2.mp3",
+		"Media/Reactions/death.mp3", "Media/Reactions/level_up.mp3", "Media/Reactions/level_up.tga",
+		"Media/Reactions/campfire_1.mp3", "Media/Reactions/campfire_2.mp3",
+	} {
+		want[name] = true
+	}
+	if got := addonPublicFilesForVersion("1.6.1"); !reflect.DeepEqual(got, want) {
+		t.Fatalf("historical file set changed: %v", got)
+	}
+	want["Media/Reactions/flight.mp3"] = true
+	if got := addonPublicFilesForVersion("1.7.0"); !reflect.DeepEqual(got, want) {
+		t.Fatalf("1.7.0 must add only flight: %v", got)
+	}
+}
+
 func TestAppFirstNeverHoldsBackAnAppThatCannotUpdateItself(t *testing.T) {
 	release := AddonReleaseInfo{Version: "1.7.0", AssetURL: "a", ChecksumURL: "c", Available: true, HasApp: true}
 	// Self-update unavailable in this process (appRuntime nil): no gate.
@@ -339,7 +359,8 @@ func TestAddonFailureAfterTheEscapeNamesTheManualDownload(t *testing.T) {
 func TestStaleNoOfferKeepsTheGateForALaterRelease(t *testing.T) {
 	rel := AddonReleaseInfo{Version: "1.7.0", Available: true, HasApp: true, AssetURL: "a", ChecksumURL: "c"}
 	for name, answer := range map[string]AppReleaseInfo{
-		"latest was this app":     {Available: false, Version: Version},
+		// appFirstBridge fixes the running app at 1.6.0, not the release build's Version.
+		"latest was this app":     {Available: false, Version: "1.6.0"},
 		"draft or pre-release":    {Available: false},
 		"an older public release": {Available: false, Version: "1.6.9"},
 	} {
