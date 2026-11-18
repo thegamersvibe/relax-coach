@@ -10708,7 +10708,7 @@
     ]
   },
   "raids": {
-    "notes": "Raid drops are advice only for raids listed in open (F4). Forever raids are not open yet (first raid 9 December); one entry opens one.",
+    "notes": "Raid loot is advice only for raids listed in open (F4). zones are raid instances; bosses and quests map raid sources whose record names an outdoor zone to their raid. Forever raids are not open yet (first raid 9 December); one entry in open opens one.",
     "zones": [
       "Molten Core",
       "Onyxia's Lair",
@@ -10719,6 +10719,26 @@
       "Ahn'Qiraj",
       "Naxxramas"
     ],
+    "bosses": {
+      "Ragnaros": "Molten Core",
+      "Onyxia": "Onyxia's Lair",
+      "Nefarian": "Blackwing Lair",
+      "Hakkar": "Zul'Gurub",
+      "Ossirian the Unscarred": "Ruins of Ahn'Qiraj",
+      "Ouro": "Temple of Ahn'Qiraj",
+      "C'Thun": "Temple of Ahn'Qiraj",
+      "Sapphiron": "Naxxramas",
+      "Kel'Thuzad": "Naxxramas"
+    },
+    "quests": {
+      "The Lord of Blackrock": "Blackwing Lair",
+      "Treasure of the Timeless One": "Temple of Ahn'Qiraj",
+      "Imperial Qiraji Armaments": "Temple of Ahn'Qiraj",
+      "Imperial Qiraji Regalia": "Temple of Ahn'Qiraj",
+      "Victory for the Alliance": "Onyxia's Lair",
+      "Victory for the Horde": "Onyxia's Lair",
+      "The Fall of Ossirian": "Ruins of Ahn'Qiraj"
+    },
     "open": []
   }
 }

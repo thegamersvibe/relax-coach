@@ -165,7 +165,8 @@ function G:Eligibility(f, snap)
     -- A vendor with no seller and no place is not somewhere you can go.
     if f.sourceType == "vendor" and (not f.npc or f.npc == "") and (not f.zone or f.zone == "") then return "no named source" end
     -- Raid drops only for raids marked open in Forever.
-    if FC.Route:Raid(f.zone) and not FC.Route:RaidOpen(f.zone) then return "raid not open in Forever yet" end
+    local raid = FC.Route:Raid(f.zone, f)
+    if raid and not FC.Route:RaidOpen(raid) then return "raid not open in Forever yet" end
     local notes = {}
     if type(f.reqRep) == "table" then
         for _, rr in ipairs(f.reqRep) do

@@ -135,6 +135,7 @@ def all_text(c):
 
 
 BOW, SHOTGUN, BEHIND_GUN, RAID_AXE, SOURCELESS, MARAUDON_GUN = 900001, 900002, 900003, 900004, 900005, 900006
+OUTDOOR_RAID, RAID_QUEST = 900007, 900008
 FACTS = {
     BOW: dict(name="Twin Outrunner's Bow", reqLevel=48, sourceType="vendor", npc="Illiyana Moonblaze",
               zone="Ashenvale", instructions="Bought from Illiyana Moonblaze."),
@@ -145,6 +146,10 @@ FACTS = {
     RAID_AXE: dict(name="Raid Axe", reqLevel=60, sourceType="boss_drop", zone="Naxxramas",
                    instructions="Drops from a raid boss."),
     SOURCELESS: dict(name="Mystery Plate", reqLevel=55, sourceType="vendor", instructions="Bought from a vendor."),
+    OUTDOOR_RAID: dict(name="Glyph Trinket", reqLevel=60, sourceType="boss_drop", npc="Sapphiron",
+                       zone="Eastern Plaguelands", instructions="Drops from Sapphiron."),
+    RAID_QUEST: dict(name="Dragonslayer Neck", reqLevel=60, sourceType="quest_reward", zone="Stormwind City",
+                     instructions="Reward from the quest 'The Lord of Blackrock'. Starts in Stormwind City."),
     MARAUDON_GUN: dict(name="Maraudon Gun", reqLevel=45, sourceType="boss_drop", zone="Maraudon",
                        instructions="Drops from a dungeon boss."),
 }
@@ -220,8 +225,13 @@ FACTS[BEHIND_GUN]['reqLevel'] = 40
 print('== F4 level 60')
 rows = equipped_rows(60) + [(SOURCELESS, 'Chest', 55, 60, 400.0, 'Alliance', 'protection'),
                             (RAID_AXE, 'MainHand', 60, 60, 400.0, 'Alliance', 'protection'),
-                            (BEHIND_GUN, 'Ranged', 40, 60, 90.0, 'Alliance', 'protection')]
+                            (BEHIND_GUN, 'Ranged', 40, 60, 90.0, 'Alliance', 'protection'),
+                            (OUTDOOR_RAID, 'Trinket', 60, 60, 400.0, 'Alliance', 'protection'),
+                            (RAID_QUEST, 'Neck', 60, 60, 400.0, 'Alliance', 'protection')]
 L, G, FC, c = client(60, rows, FACTS, zone='Winterspring')
+check(not any(c.gear.slots[i].best and c.gear.slots[i].best.id == OUTDOOR_RAID for i in (13, 14)),
+      'raid boss drop filed under an outdoor zone not suggested')
+check(not (c.gear.slots[2].best and c.gear.slots[2].best.id == RAID_QUEST), 'raid-kill reward quest not suggested')
 txt = all_text(c)
 check('your route' not in txt and 'behind you' not in txt and 'off your route' not in txt, 'no route wording at 60')
 check(not (c.gear.slots[5].best and c.gear.slots[5].best.id == SOURCELESS), 'sourceless vendor item not suggested')

@@ -343,8 +343,28 @@ ForeverCoach_Rules = {
     },
   },
   ["raids"] = {
-    ["notes"] = "Raid drops are advice only for raids listed in open (F4). Forever raids are not open yet (first raid 9 December); one entry opens one.",
+    ["bosses"] = {
+      ["C'Thun"] = "Temple of Ahn'Qiraj",
+      ["Hakkar"] = "Zul'Gurub",
+      ["Kel'Thuzad"] = "Naxxramas",
+      ["Nefarian"] = "Blackwing Lair",
+      ["Onyxia"] = "Onyxia's Lair",
+      ["Ossirian the Unscarred"] = "Ruins of Ahn'Qiraj",
+      ["Ouro"] = "Temple of Ahn'Qiraj",
+      ["Ragnaros"] = "Molten Core",
+      ["Sapphiron"] = "Naxxramas",
+    },
+    ["notes"] = "Raid loot is advice only for raids listed in open (F4). zones are raid instances; bosses and quests map raid sources whose record names an outdoor zone to their raid. Forever raids are not open yet (first raid 9 December); one entry in open opens one.",
     ["open"] = {
+    },
+    ["quests"] = {
+      ["Imperial Qiraji Armaments"] = "Temple of Ahn'Qiraj",
+      ["Imperial Qiraji Regalia"] = "Temple of Ahn'Qiraj",
+      ["The Fall of Ossirian"] = "Ruins of Ahn'Qiraj",
+      ["The Lord of Blackrock"] = "Blackwing Lair",
+      ["Treasure of the Timeless One"] = "Temple of Ahn'Qiraj",
+      ["Victory for the Alliance"] = "Onyxia's Lair",
+      ["Victory for the Horde"] = "Onyxia's Lair",
     },
     ["zones"] = {
       "Molten Core",

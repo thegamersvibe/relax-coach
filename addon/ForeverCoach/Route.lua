@@ -66,13 +66,22 @@ function R:QuestDungeon(q)
 end
 
 local function raidList() return (FC:Rules().raids or {}) end
-function R:Raid(zone)
-    if not zone then return false end
-    for _, z in ipairs(raidList().zones or {}) do if z == zone then return true end end
-    return false
+-- The raid an item comes from (instance zone, raid boss, or raid quest), or nil.
+function R:Raid(zone, f)
+    local rl = raidList()
+    for _, z in ipairs(rl.zones or {}) do if z == zone then return zone end end
+    if type(f) ~= "table" then return nil end
+    local ins = type(f.instructions) == "string" and f.instructions or ""
+    for boss, raid in pairs(rl.bosses or {}) do
+        if f.npc == boss or ins:find("Drops from " .. boss, 1, true) then return raid end
+    end
+    for quest, raid in pairs(rl.quests or {}) do
+        if ins:find("quest '" .. quest .. "'", 1, true) then return raid end
+    end
+    return nil
 end
-function R:RaidOpen(zone)
-    for _, z in ipairs(raidList().open or {}) do if z == zone then return true end end
+function R:RaidOpen(raid)
+    for _, z in ipairs(raidList().open or {}) do if z == raid then return true end end
     return false
 end
 
@@ -99,7 +108,8 @@ function R:Place(f, snap, route)
     local here = snap.zone and snap.zone.parent
     local GA = FC:Rules().gearAdvice or {}
     local maxLevel = snap.level >= (GA.maxLevel or 60)
-    if self:Raid(zone) then return "raid", P.dungeon or 0.88, "raid: " .. zone, nil end
+    local raid = self:Raid(zone, f)
+    if raid then return "raid", P.dungeon or 0.88, "raid: " .. raid, nil end
     local dungeon = isDungeon(zone)
     if not dungeon and type(f.instructions) == "string" then
         -- quest rewards from dungeon quests name the dungeon only in the text

@@ -33,6 +33,10 @@ jobs:
         run: env -u SV_OUT python -I -B test/harness.py
       - name: Existing reaction tests
         run: python -I -B test/reactions_test.py
+      - name: Gear advice, both GearQuest layouts
+        run: python -I -B test/gear_test.py
+      - name: Gear advice mutants
+        run: python -I -B test/gear_mutants.py
       - name: Required CI gate regression tests
         run: python -I -B .github/tests/test_check_results.py
       - name: Quest and item review (pinned data, no donor execution)
