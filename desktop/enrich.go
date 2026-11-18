@@ -121,10 +121,13 @@ func enrich(cv *CharView, c, s, g map[string]any, sess []any) {
 		}
 		if b := M(e["best"]); b != nil {
 			sv.BestName, sv.BestHow, sv.BestSource, sv.BestWhere = S(b["name"]), S(b["how"]), S(b["source"]), S(b["where"])
-			if _, ok := e["gapPct"]; ok && sv.Status != "unknown" && sv.Status != "unreadable" {
-				sv.GapPct = max(0, min(100, int(N(e["gapPct"]))))
+			_, hasGap := e["gapPct"]
+			gap := max(0, int(N(e["gapPct"])))
+			// pctHidden: too few slots are scored to state a number; the pick still counts as an upgrade.
+			if hasGap && sv.Status != "unknown" && sv.Status != "unreadable" && e["pctHidden"] != true {
+				sv.GapPct = min(100, gap)
 			}
-			if sv.Equipped && sv.GapPct >= 12 {
+			if sv.Equipped && hasGap && sv.Status != "unknown" && sv.Status != "unreadable" && gap >= 12 {
 				cv.GearUpgrades++
 			}
 		}
@@ -143,6 +146,8 @@ func enrich(cv *CharView, c, s, g map[string]any, sess []any) {
 	switch cv.GearStatus {
 	case "missing":
 		cv.GearNote = "Gear checks are off: install GearQuest Forever."
+	case "layout":
+		cv.GearNote = "Gear checks are off: GearQuest changed its data format. Update Relax Coach."
 	case "classdata", "nodata":
 		cv.GearNote = "Gear checks are off: enable your class's GearQuest Forever module, then /reload."
 	}

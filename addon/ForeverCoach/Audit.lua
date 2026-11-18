@@ -31,7 +31,8 @@ local function raceOk(m, race)
     return false
 end
 
-local KIND_WEIGHT = { here = 1.0, route = 0.9, routePast = 0.8, dungeon = 0.75, craft = 0.7, unknown = 0.5, world = 0.4, offroute = 0.35 }
+local KIND_WEIGHT = { here = 1.0, zone = 0.9, route = 0.9, routePast = 0.8, dungeon = 0.75, raid = 0.75, craft = 0.7, unknown = 0.5,
+    world = 0.4, offroute = 0.35, behind = 0.3 }
 
 function A:Run(c)
     local snap, gear, T = c.snapshot, c.gear or {}, FC:Rules().thresholds or {}
@@ -98,6 +99,8 @@ function A:Run(c)
     -- Gear
     if gear.status == "missing" then
         add(F, 15, "Next", "Gear checks off: GearQuest Forever not installed", "Install GearQuest Forever to enable gear checks")
+    elseif gear.status == "layout" then
+        add(F, 15, "Next", "Gear checks off: GearQuest changed its data format", "Update Relax Coach")
     elseif gear.status == "classdata" or gear.status == "nodata" then
         add(F, 15, "Next", "Gear checks off: GearQuest has no " .. tostring(cls) .. " data", "Enable 'GearQuest Forever: " .. tostring(cls) .. "' in AddOns, then /reload")
     elseif gear.slots then
@@ -124,7 +127,8 @@ function A:Run(c)
                 if e.scoreStatus == "empty" and lvl >= 5 and not early then
                     add(F, 30 + 40 * w, "Gear", "Empty " .. e.label .. " slot", how, { where = b.where, kind = "gear" })
                 elseif e.scoreStatus ~= "empty" and e.scoreStatus ~= "unknown" and gap and gap >= (T.gearUpgradePct or 12) then
-                    add(F, (25 + math.min(gap, 60) / 2) * (0.5 + w / 2) + 10 * w, "Gear", e.label .. ": " .. bestName .. " is " .. gap .. "% better", how,
+                    local better = e.pctHidden and " is better" or (" is " .. gap .. "% better")
+                    add(F, (25 + math.min(gap, 60) / 2) * (0.5 + w / 2) + 10 * w, "Gear", e.label .. ": " .. bestName .. better, how,
                         { where = b.where, estimate = e.scoreStatus == "estimated" or nil, kind = "gear" })
                 end
             end

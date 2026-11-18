@@ -74,14 +74,51 @@ function G:Spec(snap)
     return TAB_SPEC[snap.class] and TAB_SPEC[snap.class][1], "default"
 end
 
-function G:Tables(class)
+-- GearQuest's packed pick list: slots, specs, and rows[faction] = one text line per pick,
+-- "item slotIdx lo hi rank specIdx score extraIdx". Read with our own parser (written from the format),
+-- once per table, faction and spec. Malformed lines are skipped and counted.
+local packedCache = setmetatable({}, { __mode = "k" })
+function G.Unpack(packed, faction, spec)
+    if type(packed) ~= "table" or type(packed.slots) ~= "table" or type(packed.specs) ~= "table"
+        or type(packed.rows) ~= "table" then return nil end
+    local cache = packedCache[packed]
+    if not cache then cache = {}; packedCache[packed] = cache end
+    local key = tostring(faction) .. "|" .. tostring(spec)
+    if cache[key] then return cache[key].rows, cache[key].bad end
+    local specIdx
+    for i, s in ipairs(packed.specs) do if s == spec then specIdx = i end end
+    local rows, bad = {}, 0
+    local text = packed.rows[faction]
+    if type(text) == "string" then
+        for line in text:gmatch("[^\r\n]+") do
+            local id, si, lo, hi, rank, sp, score = line:match("^(%d+) (%d+) (%d+) (%d+) (%d+) (%d+) (%d+%.?%d*) %d+$")
+            local slot = si and packed.slots[tonumber(si)]
+            if not (id and type(slot) == "string" and packed.specs[tonumber(sp)]) then bad = bad + 1
+            elseif specIdx and tonumber(sp) == specIdx then
+                rows[#rows + 1] = { tonumber(id), slot, tonumber(lo), tonumber(hi), tonumber(rank), spec, faction, tonumber(score) }
+            end
+        end
+    end
+    cache[key] = { rows = rows, bad = bad }
+    return rows, bad
+end
+
+-- pickTables, factTables, layout ("array" | "packed" | "layout": class data loaded in a shape we can't read), malformed
+function G:Tables(class, faction, spec)
     local GQ = _G.GearQuest
     local p = PREFIX[class]
     if not (GQ and GQ.Data and p) then return end
     if GQ.Data.EnsureClassLoaded then safe(GQ.Data.EnsureClassLoaded, GQ.Data, class) end
     local D = GQ.Data
     local facts = D[p .. "ItemFacts"] or (class == "PALADIN" and D.itemFacts)
-    return { D[p .. "Picks"], D[p .. "Early1to9"] }, { facts, D[p .. "Early1to9Facts"] }
+    local factTables = { facts, D[p .. "Early1to9Facts"] }
+    if type(D[p .. "Picks"]) == "table" then return { D[p .. "Picks"], D[p .. "Early1to9"] }, factTables, "array", 0 end
+    local packed = D[p .. "PicksPacked"]
+    if packed ~= nil then
+        local rows, bad = G.Unpack(packed, faction, spec)
+        if rows then return { rows, D[p .. "Early1to9"] }, factTables, "packed", bad end
+    end
+    if facts or packed ~= nil then return nil, nil, "layout" end
 end
 
 function G.Short(s)
@@ -118,6 +155,17 @@ function G:Eligibility(f, snap)
         if race ~= "Skyborne" and ins:find(pat, 1, true) then return why end
     end
     if f.sourceType == "unsourced" then return "no known source" end
+    -- Battleground and honor rewards are never trip advice (they need battleground reputation or honor).
+    local pvp = rules.pvpVendors or {}
+    for _, z in ipairs(pvp.zones or {}) do if f.zone == z then return "battleground reward" end end
+    for _, npc in ipairs(pvp.npcs or {}) do
+        if f.npc == npc or ins:find("Bought from " .. npc, 1, true) then return "battleground reward" end
+    end
+    for _, pat in ipairs(pvp.patterns or {}) do if ins:find(pat, 1, true) then return "battleground reward" end end
+    -- A vendor with no seller and no place is not somewhere you can go.
+    if f.sourceType == "vendor" and (not f.npc or f.npc == "") and (not f.zone or f.zone == "") then return "no named source" end
+    -- Raid drops only for raids marked open in Forever.
+    if FC.Route:Raid(f.zone) and not FC.Route:RaidOpen(f.zone) then return "raid not open in Forever yet" end
     local notes = {}
     if type(f.reqRep) == "table" then
         for _, rr in ipairs(f.reqRep) do
@@ -163,10 +211,11 @@ function G:Audit(snap)
     local spec, specSource = self:Spec(snap)
     out.spec, out.specSource = spec, specSource
     if out.status ~= "ok" then return out end
-    local pickTables, factTables = self:Tables(snap.class)
-    if not pickTables or type(pickTables[1]) ~= "table" then out.status = "classdata"; return out end
-
     local lvl, fac = snap.level, snap.faction and snap.faction:sub(1, 1) == "H" and "Horde" or "Alliance"
+    local pickTables, factTables, layout, malformed = self:Tables(snap.class, fac, spec)
+    out.layout, out.malformed = layout, malformed
+    if layout == "layout" then out.status = "layout"; return out end
+    if not pickTables or type(pickTables[1]) ~= "table" then out.status = "classdata"; return out end
     local route = FC.Route:ForPlayer(snap)
     out.routeZones = 0
     for _ in pairs(route) do out.routeZones = out.routeZones + 1 end
@@ -230,10 +279,25 @@ function G:Audit(snap)
         return nil, "unknown"
     end
 
+    -- A trip must be worth it: the gain must reach a share of the total score of the scored equipped items.
+    local GA = FC:Rules().gearAdvice or {}
+    local total, scored = 0, 0
+    for inv in pairs(self.SLOTS) do
+        local eq = snap.equipped[inv]
+        local s = eq and scoreOf[eq.id]
+        if s then total, scored = total + s, scored + 1 end
+    end
+    out.totalScore, out.scoredSlots = total, scored
+    local barOn = scored >= (GA.minScoredSlots or 8) and total > 0
+    local function worthIt(c, have, eqId)
+        if not barOn or c.id == eqId then return true end
+        local bar = (GA.tripPct or {})[c.kind] or GA.tripDefault or 5
+        return (c.score - (have or 0)) / total * 100 >= bar
+    end
     local taken = {}
-    local function pick(slot, exclude)
+    local function pick(slot, exclude, have, eqId)
         for _, c in ipairs(ranked[slot] or {}) do
-            if not (exclude and exclude[c.id]) then return c end
+            if not (exclude and exclude[c.id]) and worthIt(c, have, eqId) then return c end
         end
     end
 
@@ -261,7 +325,8 @@ function G:Audit(snap)
             local other = snap.equipped[inv + 1]
             if other then exclude[other.id] = true end
         end
-        local best = pick(slot, exclude)
+        local have = entry.score or (entry.scoreStatus == "empty" and 0) or nil
+        local best = pick(slot, exclude, have, eq and eq.id)
         if inv == 16 then mhBest = best end
         if inv == 17 then
             local mhLoc = (snap.equipped[16] and snap.equipped[16].loc)
@@ -273,7 +338,9 @@ function G:Audit(snap)
         if best and eq and eq.id == best.id then
             entry.gapPct = 0
         elseif best and entry.score then
-            entry.gapPct = math.max(0, math.floor((best.score - entry.score) / best.score * 100 + 0.5))
+            -- gain over the equipped item; shown only when enough slots are scored to judge the whole set
+            entry.gapPct = entry.score > 0 and math.max(0, math.floor((best.score - entry.score) / entry.score * 100 + 0.5)) or 100
+            entry.pctHidden = not barOn or nil
         elseif best and entry.scoreStatus == "empty" then
             entry.gapPct = 100
         end

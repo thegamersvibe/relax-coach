@@ -65,6 +65,17 @@ function R:QuestDungeon(q)
     return self._qd[q]
 end
 
+local function raidList() return (FC:Rules().raids or {}) end
+function R:Raid(zone)
+    if not zone then return false end
+    for _, z in ipairs(raidList().zones or {}) do if z == zone then return true end end
+    return false
+end
+function R:RaidOpen(zone)
+    for _, z in ipairs(raidList().open or {}) do if z == zone then return true end end
+    return false
+end
+
 -- Classify a GearQuest item fact for this player.
 -- Returns kind, factor (0..1 practicality multiplier), label (human text), blockedReason (or nil)
 function R:Place(f, snap, route)
@@ -86,6 +97,9 @@ function R:Place(f, snap, route)
         return "denied", 0, zone, "in a " .. (snap.faction == "Alliance" and "Horde" or "Alliance") .. " area"
     end
     local here = snap.zone and snap.zone.parent
+    local GA = FC:Rules().gearAdvice or {}
+    local maxLevel = snap.level >= (GA.maxLevel or 60)
+    if self:Raid(zone) then return "raid", P.dungeon or 0.88, "raid: " .. zone, nil end
     local dungeon = isDungeon(zone)
     if not dungeon and type(f.instructions) == "string" then
         -- quest rewards from dungeon quests name the dungeon only in the text
@@ -105,10 +119,15 @@ function R:Place(f, snap, route)
         if lo and snap.level < lo - 3 then
             return "denied", 0, zone, "dungeon is for level " .. lo .. "+"
         end
-        if route[parent] then return "dungeon", P.dungeon or 0.88, "dungeon: " .. zone .. where, nil end
+        if route[parent] or maxLevel then return "dungeon", P.dungeon or 0.88, "dungeon: " .. zone .. where, nil end
         return "offroute", P.offRoute or 0.65, "dungeon: " .. zone .. where .. " (off your route)", nil
     end
+    -- At max level route wording and route factors mean nothing: a zone is just a place.
+    if maxLevel then return "zone", P.here or 1, zone, nil end
     if rz then
+        if rz.to < snap.level - (GA.behindLevels or 6) then
+            return "behind", P.behind or 0.5, zone .. " (levels " .. rz.from .. "-" .. rz.to .. ", behind you)", nil
+        end
         if rz.from > snap.level then
             return "route", P.routeSoon or 0.97, zone .. " (your route, level " .. rz.from .. ")", nil
         end
