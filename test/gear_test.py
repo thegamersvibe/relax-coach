@@ -242,6 +242,25 @@ FC.Refresh(FC, 'test')
 mh = c.gear.slots[16].best
 check(mh and mh.id == RAID_AXE and mh.where == 'raid: Naxxramas', f'one rules entry opens a raid ({mh and mh.where})')
 
+# 4b. With the open-raids list empty, no pick at any level has a raid source; zero usable packed rows is nodata.
+print('== F4 raids closed at every level; F1 nodata')
+rows = equipped_rows(60) + [(RAID_AXE, 'MainHand', 1, 60, 900.0, 'Alliance', 'protection'),
+                            (OUTDOOR_RAID, 'Trinket', 1, 60, 900.0, 'Alliance', 'protection'),
+                            (RAID_QUEST, 'Neck', 1, 60, 900.0, 'Alliance', 'protection')]
+saved = {i: FACTS[i]['reqLevel'] for i in (RAID_AXE, OUTDOOR_RAID, RAID_QUEST)}
+for i in saved:
+    FACTS[i]['reqLevel'] = 1
+raid_picks = []
+for lvl in (10, 20, 35, 51, 59, 60):
+    _, _, _, c = client(lvl, rows, FACTS, zone='Tanaris')
+    raid_picks += [(lvl, inv) for inv in range(1, 19) if c.gear.slots[inv] and c.gear.slots[inv].best
+                   and c.gear.slots[inv].best.id in saved]
+for i, v in saved.items():
+    FACTS[i]['reqLevel'] = v
+check(not raid_picks, f'no raid pick at levels 10-60 with the list empty ({raid_picks})')
+_, _, _, c = client(51, [(SHOTGUN, 'Ranged', 50, 60, 30.0, 'Horde', 'protection')], FACTS)
+check(c.gear.status == 'nodata' and c.gear.layout == 'packed', f'packed with zero Alliance rows: nodata ({c.gear.status})')
+
 # 5. Real snapshot shape: level-51 warrior, protection, Un'Goro, packed data.
 print('== real snapshot shape')
 rows = equipped_rows(51) + [(BOW, 'Ranged', 48, 60, 24.9, 'Alliance', 'protection'),
