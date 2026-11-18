@@ -104,3 +104,22 @@ func TestGearViewLegacyStatEstimateIsNotComparable(t *testing.T) {
 		t.Fatalf("incomparable saved advice survived or valid advice lost: findings=%+v owned=%+v", c.Findings, c.Owned)
 	}
 }
+
+func TestGearViewLayoutStatusSaysFormatChanged(t *testing.T) {
+	c := gearTestChar(t, `snapshot={name="Probe",level=51,class="WARRIOR",xpMax=10000, equipped={}},
+		gear={status="layout",slots={}}`)
+	if !strings.Contains(c.GearNote, "GearQuest changed its data format") || strings.Contains(c.GearNote, "enable") {
+		t.Fatalf("layout status note = %q", c.GearNote)
+	}
+}
+
+func TestGearViewHiddenPercentStillCountsUpgrade(t *testing.T) {
+	c := gearTestChar(t, `snapshot={name="Probe",level=20,class="WARRIOR",xpMax=10000,
+		equipped={[5]={id=1001},[7]={id=1002}}, equipmentState={[5]="equipped",[7]="equipped"}},
+		gear={status="ok",slots={[5]={scoreStatus="known",score=10,gapPct=100,pctHidden=true,best={name="Test chest"}},
+			[7]={scoreStatus="known",score=10,gapPct=40,best={name="Test legs"}}}}`)
+	chest, legs := gearTestSlot(t, c, "Chest"), gearTestSlot(t, c, "Legs")
+	if chest.GapPct != -1 || legs.GapPct != 40 || c.GearUpgrades != 2 {
+		t.Fatalf("hidden percentage shown or upgrade lost: chest=%d legs=%d upgrades=%d", chest.GapPct, legs.GapPct, c.GearUpgrades)
+	}
+}
