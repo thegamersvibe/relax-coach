@@ -49,6 +49,8 @@ jobs:
           for t in ui_shell_test bridge_skip_test journey_integration journey_picker engine_test journey_private nil_quest_test refresh_correctness_test; do
             python -I -B test/planner/$t.py
           done
+      - name: Relax Raid modules (Lua and Python)
+        run: python -I -B tools/raidtest.py --all --kind lua,py
 
   desktop-go:
     name: Desktop Go and UI
@@ -75,6 +77,8 @@ jobs:
       - name: Go vet
         working-directory: desktop
         run: go vet ./...
+      - name: Relax Raid modules (Go)
+        run: python3 -I -B tools/raidtest.py --all --kind go
       - name: Install locked UI test dependencies without lifecycle scripts
         run: npm ci --prefix .github --ignore-scripts
       - name: Existing offline UI tests
