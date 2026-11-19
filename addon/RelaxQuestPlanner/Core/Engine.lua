@@ -586,7 +586,9 @@ local function journalStep(s,r,route,target)
         elseif s.kind=="turnin" and s.where=="inside" then note(s,"Turn in inside "..route.title) end
     end
     if s.where=="inside" then s.zone=route.title end
-    s.block=s.where=="outside" and 1 or 2
+    -- Unknown starts in block 1 and only inherits what it depends on (routeBlocks): a step whose
+    -- place is not confirmed must not push the route into a later run by itself.
+    s.block=s.where=="inside" and 2 or 1
 end
 local function preRunNotes(route)
     route.preRunNotes={}
@@ -625,7 +627,7 @@ local function routeBlocks(nodes,p,route,targets)
                 local parent=byKey[dep].step.block
                 block=math.max(block,parent)
                 if s.where=="outside" and parent==2 then block=math.max(block,3)
-                elseif s.where~="outside" and parent>=3 then block=4 end
+                elseif s.where=="inside" and parent>=3 then block=4 end -- unknown never raises
             end
             if block~=s.block then s.block=block; changed=true end
             tick()

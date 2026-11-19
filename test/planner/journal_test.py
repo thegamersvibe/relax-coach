@@ -410,9 +410,11 @@ class BlockTests(unittest.TestCase):
         h.r.Data.Reset()
         self.assertEqual(action(h.route(), 'accept').where, 'outside')
 
-    def test_unknown_goes_inside_with_unconfirmed_note(self):
+    def test_unknown_keeps_its_note_and_takes_the_block_it_depends_on(self):
+        # Review round 2 replaces PLAN 4 point 5 ("unknown -> inside block"): an unknown step takes
+        # the block of what it depends on and never raises it; with nothing before it, block 1.
         h = location_harness(); s = action(h.route(), 'accept')
-        self.assertEqual(s.where, 'unknown'); self.assertEqual(s.block, 2)
+        self.assertEqual(s.where, 'unknown'); self.assertEqual(s.block, 1)
         self.assertIn('pickup location not confirmed', s.note)
 
     def test_outside_chain_and_inside_turnin_unlock(self):

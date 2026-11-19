@@ -120,9 +120,13 @@ class Harness:
           hooksecurefunc=function() end; C_Timer=auto(); UIParent=auto(); L=auto()
         """)
         self.fdj_errors = []
+        # RQP_PRIVATE_FDJ: another ForeverDungeonJournal folder (e.g. a newer release) to run the
+        # private suites on; the references are derived from whichever journal is loaded.
+        fdj_dir = Path(os.environ["RQP_PRIVATE_FDJ"]) if os.environ.get("RQP_PRIVATE_FDJ") \
+            else PRIVATE / "installed-2026-11-09/AddOns/ForeverDungeonJournal"
         for f in ("Dungeons.lua", "QuestChains.lua", "QuestUpdates.lua", "QuestMaps.lua"):
             try:
-                self.addon(PRIVATE / "installed-2026-11-09/AddOns/ForeverDungeonJournal/Data" / f, self.g.FDJ)
+                self.addon(fdj_dir / "Data" / f, self.g.FDJ)
             except Exception as exc:
                 self.fdj_errors.append((f, str(exc)))
         self.lua.execute("CreateFrame=TEST_CREATE_FRAME")

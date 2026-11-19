@@ -112,6 +112,32 @@ class DungeonRouteTests(unittest.TestCase):
         h = Harness(rows, entries(rows), level=31, log=[dict(id=A, complete=False)])
         self.assertTrue(any(s.q == A for s in array(h.route().steps)))
 
+    # An unknown-location step takes the block of what it depends on and never raises it, so it
+    # cannot push the rest of the route into "Next run" by itself.
+    def test_unknown_location_never_raises_the_block(self):
+        rows = {
+            A: quest('Copper whisper', True, pickup=None, turnin=None, objectives={}, nextQuestInChain=B),
+            B: quest('Tin vault', True, preQuestGroup=[A], objectives={1: [[IN_NPC]]}),
+        }
+        h = Harness(rows, entries(rows), level=31)
+        route = self.check_route(h)
+        for kind in ('accept', 'turnin'):
+            s = action(route, kind, A)
+            self.assertEqual((s.where, s.block), ('unknown', 1), kind)
+            self.assertIn('location not confirmed', s.note)
+        self.assertEqual(action(route, 'accept', B).block, 1)
+        self.assertEqual(action(route, 'complete', B).block, 2, 'the inside work stays in this run')
+        self.assertEqual(action(route, 'turnin', B).block, 3)
+        self.assertFalse(any(s.block == 4 for s in array(route.steps)))
+
+    def test_unknown_location_inherits_an_inside_parent(self):
+        # Picked up inside, turn-in place unknown: the turn-in stays with the run (block 2), not after it.
+        rows = {A: quest('Copper relic', True, pickup=IN_NPC, turnin=None)}
+        route = self.check_route(Harness(rows, entries(rows), level=31))
+        self.assertEqual(action(route, 'complete', A).block, 2)
+        s = action(route, 'turnin', A)
+        self.assertEqual((s.where, s.block), ('unknown', 2))
+
     def test_t1a_active_inside_turnin_and_two_missing_starters(self):
         rows = {
             A: quest('Copper search', True, turnin=None),
