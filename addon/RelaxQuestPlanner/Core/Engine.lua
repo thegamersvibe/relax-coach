@@ -46,8 +46,8 @@ local function static(r,p,tailored)
     -- Without QuestieDB, FDJ's explicit faction/class metadata still applies.
     if (r.faction=="Alliance" or r.faction=="Horde") and r.faction~=p.faction then return "race" end
     if r.classOnly and p.class and string.upper(r.classOnly)~=p.class then return "class" end
-    if holidays[r.zone] then return "holiday" end -- before repeatable: a logged repeatable may stay, a holiday never
     if member(r.special,1) then return "repeatable" end
+    if holidays[r.zone] then return "holiday" end
 end
 local graphs=setmetatable({}, {__mode="k"})
 function E.Invalidate() graphs=setmetatable({}, {__mode="k"}) end
@@ -286,7 +286,9 @@ local function journalTargets(name,p,g,entries)
     for _,q in ipairs(D.AllQuestIds()) do
         local r=D.Quest(q); local j=listed[q]
         local exclusion=r and static(r,p,true)
-        if r and not p.done[q] and (not exclusion or (exclusion=="repeatable" and p.log[q])) then
+        -- A logged repeatable stays (it is being done); a holiday quest never enters the plan, even when
+        -- it is also repeatable. static() keeps its reason order: E.State must not change.
+        if r and not p.done[q] and (not exclusion or (exclusion=="repeatable" and p.log[q] and not holidays[r.zone])) then
             local st=state(q,p,p.done,p.log,60,g)
             local grey=g.floor>0 and r.qLevel>0 and r.qLevel<g.floor and not p.log[q]
             if not never[st] and not grey then
