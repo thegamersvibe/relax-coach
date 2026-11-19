@@ -34,7 +34,12 @@ def check_raid_path(name):
 
 def check_raid_toc(names):
     # Mirror addonTOCMetadata / addonCheckRaidTOC; keep legacy roots unchanged.
-    try:text=(ROOT/'addon/RelaxRaid/RelaxRaid.toc').read_bytes().decode('utf-8')
+    toc=ROOT/'addon/RelaxRaid/RelaxRaid.toc'
+    try:
+        if not toc.is_file() or toc.stat().st_size>64<<10:raise SystemExit('Relax Raid TOC is not a small regular file')
+        with toc.open('rb') as source:data=source.read((64<<10)+1)
+        if len(data)>64<<10:raise SystemExit('Relax Raid TOC is not a small regular file')
+        text=data.decode('utf-8')
     except (OSError,UnicodeError):raise SystemExit('Invalid Relax Raid TOC text or missing RelaxRaid.toc')
     if '\x00' in text:raise SystemExit('Invalid Relax Raid TOC text')
     meta={};loads=[]

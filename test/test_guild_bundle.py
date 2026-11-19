@@ -345,6 +345,19 @@ class GuildBuilderExeTests(unittest.TestCase):
                 toc.write_text(text)
                 self.assert_builder_refuses_without_writes(message)
 
+    def test_raid_toc_size_limit_matches_the_app(self):
+        toc=self.raid_fixture()
+        original=toc.read_bytes()
+        # addonReadSmallFile permits exactly 64 KiB, never one byte more.
+        boundary=original+b'\n#'+b'x'*((64<<10)-len(original)-2)
+        toc.write_bytes(boundary+b'x')
+        self.assert_builder_refuses_without_writes('Relax Raid TOC is not a small regular file')
+        toc.write_bytes(boundary)
+        result=self.run_builder(self.exe,'1.8.0')
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        with zipfile.ZipFile(self.root/'dist/RelaxCoach-RaidBundle-1.8.0.zip') as z:
+            self.assertEqual(z.read('Interface/AddOns/RelaxRaid/RelaxRaid.toc'),boundary)
+
     def test_raid_refuses_unsafe_load_names_even_when_present(self):
         toc=self.raid_fixture()
         original=toc.read_text()
