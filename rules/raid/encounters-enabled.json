@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "version": "1.0.0",
+  "source": "DESIGN REQ-ENC-01/02; PHASE1-BRIEF R4. No validated raid mechanics yet. Default counts encounter boss units only; multi-boss overrides require sourced creature selectors.",
+  "default_target_rule": "boss_only",
+  "encounters": []
+}

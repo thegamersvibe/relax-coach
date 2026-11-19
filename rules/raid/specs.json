@@ -1,0 +1,1813 @@
+{
+  "schema": 1,
+  "version": "1.0.0",
+  "source": "Our class-study reports: warrior-rogue.md, paladin-shaman.md, priest-druid.md, mage-warlock-hunter.md. Qualitative seed only; no spell IDs or talent mapping. Empty cast_signatures deliberately leave spec unknown.",
+  "profiles": [
+    {
+      "id": "WARRIOR.arms",
+      "class_name": "WARRIOR",
+      "spec": "arms",
+      "roles": [
+        "dps",
+        "tank"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": true,
+        "dots": true,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "rage_starvation"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Mortal Strike"
+        },
+        {
+          "name": "Rend"
+        },
+        {
+          "name": "Overpower"
+        },
+        {
+          "name": "Slam"
+        },
+        {
+          "name": "Sweeping Strikes"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "battle_shout",
+        "sunder_armor",
+        "thunder_clap",
+        "demoralizing_shout"
+      ],
+      "comparison": "Match two-handed build, target lifetime, cleave and melee access.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/warrior-rogue.md; WARRIOR - arms. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "WARRIOR.fury",
+      "class_name": "WARRIOR",
+      "spec": "fury",
+      "roles": [
+        "dps",
+        "tank"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": true,
+        "dots": false,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "rage_starvation"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Bloodthirst"
+        },
+        {
+          "name": "Whirlwind"
+        },
+        {
+          "name": "Death Wish"
+        },
+        {
+          "name": "Recklessness"
+        },
+        {
+          "name": "Execute"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "battle_shout",
+        "sunder_armor",
+        "thunder_clap",
+        "demoralizing_shout"
+      ],
+      "comparison": "Match dual-wield build, execute exposure, rage supply and melee access.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/warrior-rogue.md; WARRIOR - fury. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "WARRIOR.protection",
+      "class_name": "WARRIOR",
+      "spec": "protection",
+      "roles": [
+        "tank"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": true,
+        "dots": false,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "rage_starvation",
+        "off_tank_waiting"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Shield Slam"
+        },
+        {
+          "name": "Revenge"
+        },
+        {
+          "name": "Shield Block"
+        },
+        {
+          "name": "Shield Wall"
+        },
+        {
+          "name": "Last Stand"
+        },
+        {
+          "name": "Taunt"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "battle_shout",
+        "sunder_armor",
+        "thunder_clap",
+        "demoralizing_shout"
+      ],
+      "comparison": "Match assigned enemies and active tanking exposure; not idle off-tank intake.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/warrior-rogue.md; WARRIOR - protection. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "PALADIN.retribution",
+      "class_name": "PALADIN",
+      "spec": "retribution",
+      "roles": [
+        "dps",
+        "healer",
+        "tank"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": true,
+        "dots": false,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "mana_conservation"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Holy Strike"
+        },
+        {
+          "name": "Judgement"
+        },
+        {
+          "name": "Seal of Command"
+        },
+        {
+          "name": "Seal of Righteousness"
+        },
+        {
+          "name": "Consecration"
+        },
+        {
+          "name": "Hammer of Wrath"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "blessing_of_might",
+        "blessing_of_wisdom",
+        "blessing_of_kings",
+        "greater_blessing_of_might",
+        "greater_blessing_of_wisdom",
+        "greater_blessing_of_kings",
+        "devotion_aura",
+        "retribution_aura",
+        "concentration_aura",
+        "fire_resistance_aura",
+        "frost_resistance_aura",
+        "shadow_resistance_aura",
+        "judgement_of_light",
+        "judgement_of_wisdom",
+        "judgement_of_the_crusader"
+      ],
+      "comparison": "Keep deep Retribution separate from Shockadin; match creature type and melee access.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/paladin-shaman.md; PALADIN - retribution. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "PALADIN.holy",
+      "class_name": "PALADIN",
+      "spec": "holy",
+      "roles": [
+        "healer"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": false,
+        "dots": false,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "mana_conservation"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Oath of Light"
+        },
+        {
+          "name": "Flash of Light"
+        },
+        {
+          "name": "Holy Light"
+        },
+        {
+          "name": "Holy Shock"
+        },
+        {
+          "name": "Light's Vigil"
+        },
+        {
+          "name": "Cleanse"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "blessing_of_might",
+        "blessing_of_wisdom",
+        "blessing_of_kings",
+        "greater_blessing_of_might",
+        "greater_blessing_of_wisdom",
+        "greater_blessing_of_kings",
+        "devotion_aura",
+        "retribution_aura",
+        "concentration_aura",
+        "fire_resistance_aura",
+        "frost_resistance_aura",
+        "shadow_resistance_aura",
+        "judgement_of_light",
+        "judgement_of_wisdom",
+        "judgement_of_the_crusader"
+      ],
+      "comparison": "Match tank/party assignment, urgent healing opportunity and mana support.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/paladin-shaman.md; PALADIN - holy. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "PALADIN.protection",
+      "class_name": "PALADIN",
+      "spec": "protection",
+      "roles": [
+        "tank"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": true,
+        "dots": false,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "mana_conservation",
+        "off_tank_waiting"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Righteous Fury"
+        },
+        {
+          "name": "Seal of Fury"
+        },
+        {
+          "name": "Judgement of Fury"
+        },
+        {
+          "name": "Holy Shield"
+        },
+        {
+          "name": "Holy Strike"
+        },
+        {
+          "name": "Templar's Bulwark"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "blessing_of_might",
+        "blessing_of_wisdom",
+        "blessing_of_kings",
+        "greater_blessing_of_might",
+        "greater_blessing_of_wisdom",
+        "greater_blessing_of_kings",
+        "devotion_aura",
+        "retribution_aura",
+        "concentration_aura",
+        "fire_resistance_aura",
+        "frost_resistance_aura",
+        "shadow_resistance_aura",
+        "judgement_of_light",
+        "judgement_of_wisdom",
+        "judgement_of_the_crusader"
+      ],
+      "comparison": "Match active tanking exposure, enemies and incoming damage schools.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/paladin-shaman.md; PALADIN - protection. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "PALADIN.shockadin",
+      "class_name": "PALADIN",
+      "spec": "shockadin",
+      "roles": [
+        "dps",
+        "healer"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": true,
+        "dots": false,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "mana_conservation"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Holy Shock"
+        },
+        {
+          "name": "Holy Strike"
+        },
+        {
+          "name": "Judgement"
+        },
+        {
+          "name": "Seal of Righteousness"
+        },
+        {
+          "name": "Consecration"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "blessing_of_might",
+        "blessing_of_wisdom",
+        "blessing_of_kings",
+        "greater_blessing_of_might",
+        "greater_blessing_of_wisdom",
+        "greater_blessing_of_kings",
+        "devotion_aura",
+        "retribution_aura",
+        "concentration_aura",
+        "fire_resistance_aura",
+        "frost_resistance_aura",
+        "shadow_resistance_aura",
+        "judgement_of_light",
+        "judgement_of_wisdom",
+        "judgement_of_the_crusader"
+      ],
+      "comparison": "Separate hybrid cohort and actual damage/healing role; no cross-spec output floor.",
+      "uncalibrated": true,
+      "calibration_note": "Experimental or insufficiently established raid archetype; no calibrated Output comparison.",
+      "source": "class-study/paladin-shaman.md; PALADIN - shockadin. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "HUNTER.beast_mastery",
+      "class_name": "HUNTER",
+      "spec": "beast_mastery",
+      "roles": [
+        "dps"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": true,
+        "dots": false,
+        "pets": true
+      },
+      "resource_exceptions": [
+        "mana_conservation",
+        "auto_shot_waiting"
+      ],
+      "pets": "required",
+      "spells": [
+        {
+          "name": "Auto Shot"
+        },
+        {
+          "name": "Aimed Shot"
+        },
+        {
+          "name": "Serpent Sting"
+        },
+        {
+          "name": "Summon Hawk"
+        },
+        {
+          "name": "Bestial Wrath"
+        },
+        {
+          "name": "Feign Death"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "hunters_mark",
+        "furious_howl"
+      ],
+      "comparison": "Match pet/guardian access, build and useful target lifetime.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/mage-warlock-hunter.md; HUNTER - beast_mastery. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "HUNTER.marksmanship",
+      "class_name": "HUNTER",
+      "spec": "marksmanship",
+      "roles": [
+        "dps"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": true,
+        "dots": false,
+        "pets": true
+      },
+      "resource_exceptions": [
+        "mana_conservation",
+        "auto_shot_waiting"
+      ],
+      "pets": "optional",
+      "spells": [
+        {
+          "name": "Sniper Shot"
+        },
+        {
+          "name": "Aimed Shot"
+        },
+        {
+          "name": "Multi-Shot"
+        },
+        {
+          "name": "Serpent Sting"
+        },
+        {
+          "name": "Trueshot Aura"
+        },
+        {
+          "name": "Feign Death"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "hunters_mark",
+        "furious_howl",
+        "trueshot_aura"
+      ],
+      "comparison": "Separate Lone Wolf and pet builds; shared shot cooldown and target access.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/mage-warlock-hunter.md; HUNTER - marksmanship. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "HUNTER.survival",
+      "class_name": "HUNTER",
+      "spec": "survival",
+      "roles": [
+        "dps"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": true,
+        "dots": false,
+        "pets": true
+      },
+      "resource_exceptions": [
+        "mana_conservation",
+        "proc_waiting"
+      ],
+      "pets": "optional",
+      "spells": [
+        {
+          "name": "Raptor Strike"
+        },
+        {
+          "name": "Mongoose Bite"
+        },
+        {
+          "name": "Strider Kick"
+        },
+        {
+          "name": "Aspect of the Beast"
+        },
+        {
+          "name": "Feign Death"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "hunters_mark",
+        "furious_howl"
+      ],
+      "comparison": "Separate melee and explicitly identified ranged hybrids; actual pet/guardian talents.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/mage-warlock-hunter.md; HUNTER - survival. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "ROGUE.combat",
+      "class_name": "ROGUE",
+      "spec": "combat",
+      "roles": [
+        "dps"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": true,
+        "dots": false,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "energy_pooling",
+        "interrupt_reserve"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Slice and Dice"
+        },
+        {
+          "name": "Sinister Strike"
+        },
+        {
+          "name": "Backstab"
+        },
+        {
+          "name": "Shank"
+        },
+        {
+          "name": "Blade Flurry"
+        },
+        {
+          "name": "Adrenaline Rush"
+        },
+        {
+          "name": "Kick"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "expose_armor",
+        "hemorrhage",
+        "improved_kidney_shot"
+      ],
+      "comparison": "Match weapon/build, useful cleave and melee access.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/warrior-rogue.md; ROGUE - combat. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "ROGUE.assassination",
+      "class_name": "ROGUE",
+      "spec": "assassination",
+      "roles": [
+        "dps"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": true,
+        "dots": true,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "energy_pooling",
+        "interrupt_reserve"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Mutilate"
+        },
+        {
+          "name": "Shank"
+        },
+        {
+          "name": "Venom"
+        },
+        {
+          "name": "Slice and Dice"
+        },
+        {
+          "name": "Deadly Poison"
+        },
+        {
+          "name": "Rupture"
+        },
+        {
+          "name": "Kick"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "expose_armor",
+        "hemorrhage",
+        "improved_kidney_shot"
+      ],
+      "comparison": "Match poison susceptibility, target lifetime and switching cost.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/warrior-rogue.md; ROGUE - assassination. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "ROGUE.subtlety",
+      "class_name": "ROGUE",
+      "spec": "subtlety",
+      "roles": [
+        "dps"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": true,
+        "dots": true,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "energy_pooling",
+        "interrupt_reserve"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Garrote"
+        },
+        {
+          "name": "Rupture"
+        },
+        {
+          "name": "Hemorrhage"
+        },
+        {
+          "name": "Ghostly Strike"
+        },
+        {
+          "name": "Death Mark"
+        },
+        {
+          "name": "Shank"
+        },
+        {
+          "name": "Kick"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "expose_armor",
+        "hemorrhage",
+        "improved_kidney_shot"
+      ],
+      "comparison": "Match bleed susceptibility and hybrid versus deep build; long-lived targets.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/warrior-rogue.md; ROGUE - subtlety. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "PRIEST.shadow",
+      "class_name": "PRIEST",
+      "spec": "shadow",
+      "roles": [
+        "dps",
+        "healer"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": false,
+        "dots": true,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "mana_conservation"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Shadow Word: Pain"
+        },
+        {
+          "name": "Devouring Plague"
+        },
+        {
+          "name": "Mind Blast"
+        },
+        {
+          "name": "Mind Flay"
+        },
+        {
+          "name": "Vampiric Embrace"
+        },
+        {
+          "name": "Dark Inspiration"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "prayer_of_fortitude",
+        "prayer_of_spirit",
+        "prayer_of_shadow_protection",
+        "fear_ward",
+        "dark_inspiration",
+        "vampiric_embrace",
+        "shadow_weaving"
+      ],
+      "comparison": "Match useful-target lifetime, movement and party support; no shared Shadow Weaving credit.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/priest-druid.md; PRIEST - shadow. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "PRIEST.discipline",
+      "class_name": "PRIEST",
+      "spec": "discipline",
+      "roles": [
+        "healer"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": false,
+        "dots": false,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "mana_conservation"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Power Word: Shield"
+        },
+        {
+          "name": "Penance"
+        },
+        {
+          "name": "Divine Aegis"
+        },
+        {
+          "name": "Flash Heal"
+        },
+        {
+          "name": "Power Infusion"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "prayer_of_fortitude",
+        "prayer_of_spirit",
+        "prayer_of_shadow_protection",
+        "fear_ward",
+        "power_infusion"
+      ],
+      "comparison": "Match prevention/tank assignment; credit only consumed source-resolved absorbs.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/priest-druid.md; PRIEST - discipline. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "PRIEST.holy",
+      "class_name": "PRIEST",
+      "spec": "holy",
+      "roles": [
+        "healer"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": false,
+        "dots": false,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "mana_conservation"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Greater Heal"
+        },
+        {
+          "name": "Flash Heal"
+        },
+        {
+          "name": "Prayer of Healing"
+        },
+        {
+          "name": "Prayer of Mending"
+        },
+        {
+          "name": "Renew"
+        },
+        {
+          "name": "Holy Binding"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "prayer_of_fortitude",
+        "prayer_of_spirit",
+        "prayer_of_shadow_protection",
+        "fear_ward"
+      ],
+      "comparison": "Match Holy/hybrid build, tank versus party assignment and urgent deficits.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/priest-druid.md; PRIEST - holy. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "SHAMAN.elemental",
+      "class_name": "SHAMAN",
+      "spec": "elemental",
+      "roles": [
+        "dps",
+        "healer"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": false,
+        "dots": false,
+        "pets": true
+      },
+      "resource_exceptions": [
+        "mana_conservation",
+        "interrupt_reserve"
+      ],
+      "pets": "totems",
+      "spells": [
+        {
+          "name": "Lightning Bolt"
+        },
+        {
+          "name": "Chain Lightning"
+        },
+        {
+          "name": "Flame Shock"
+        },
+        {
+          "name": "Fire Nova"
+        },
+        {
+          "name": "Lightning Mastery"
+        },
+        {
+          "name": "Earth Shock"
+        },
+        {
+          "name": "Purge"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "windfury_totem",
+        "flametongue_totem",
+        "strength_of_earth_totem",
+        "grace_of_air_totem",
+        "fire_resistance_totem",
+        "frost_resistance_totem",
+        "nature_resistance_totem",
+        "mana_spring_totem",
+        "mana_tide_totem",
+        "healing_stream_totem",
+        "tremor_totem",
+        "grounding_totem",
+        "poison_cleansing_totem",
+        "disease_cleansing_totem",
+        "stoneskin_totem",
+        "windwall_totem",
+        "stormstrike",
+        "rage_of_the_farseer"
+      ],
+      "comparison": "Match target count/lifetime, mana support and utility assignment.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/paladin-shaman.md; SHAMAN - elemental. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "SHAMAN.enhancement",
+      "class_name": "SHAMAN",
+      "spec": "enhancement",
+      "roles": [
+        "dps",
+        "healer"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": true,
+        "dots": false,
+        "pets": true
+      },
+      "resource_exceptions": [
+        "mana_conservation",
+        "proc_waiting",
+        "interrupt_reserve"
+      ],
+      "pets": "totems",
+      "spells": [
+        {
+          "name": "Stormstrike"
+        },
+        {
+          "name": "Flame Shock"
+        },
+        {
+          "name": "Lightning Bolt"
+        },
+        {
+          "name": "Maelstrom Weapon"
+        },
+        {
+          "name": "Earth Shock"
+        },
+        {
+          "name": "Purge"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "windfury_totem",
+        "flametongue_totem",
+        "strength_of_earth_totem",
+        "grace_of_air_totem",
+        "fire_resistance_totem",
+        "frost_resistance_totem",
+        "nature_resistance_totem",
+        "mana_spring_totem",
+        "mana_tide_totem",
+        "healing_stream_totem",
+        "tremor_totem",
+        "grounding_totem",
+        "poison_cleansing_totem",
+        "disease_cleansing_totem",
+        "stoneskin_totem",
+        "windwall_totem",
+        "stormstrike",
+        "rage_of_the_farseer"
+      ],
+      "comparison": "Match weapon build and hotfix era; separate enhancement_tank.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/paladin-shaman.md; SHAMAN - enhancement. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "SHAMAN.enhancement_tank",
+      "class_name": "SHAMAN",
+      "spec": "enhancement_tank",
+      "roles": [
+        "tank"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": true,
+        "dots": false,
+        "pets": true
+      },
+      "resource_exceptions": [
+        "mana_conservation",
+        "interrupt_reserve"
+      ],
+      "pets": "totems",
+      "spells": [
+        {
+          "name": "Rockbiter Weapon"
+        },
+        {
+          "name": "Earth Shock"
+        },
+        {
+          "name": "Stormstrike"
+        },
+        {
+          "name": "Stoneskin Totem"
+        },
+        {
+          "name": "Grounding Totem"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "windfury_totem",
+        "flametongue_totem",
+        "strength_of_earth_totem",
+        "grace_of_air_totem",
+        "fire_resistance_totem",
+        "frost_resistance_totem",
+        "nature_resistance_totem",
+        "mana_spring_totem",
+        "mana_tide_totem",
+        "healing_stream_totem",
+        "tremor_totem",
+        "grounding_totem",
+        "poison_cleansing_totem",
+        "disease_cleansing_totem",
+        "stoneskin_totem",
+        "windwall_totem",
+        "stormstrike",
+        "rage_of_the_farseer"
+      ],
+      "comparison": "Experimental assignment/exposure cohort; small-group intent does not establish raid viability.",
+      "uncalibrated": true,
+      "calibration_note": "Experimental or insufficiently established raid archetype; no calibrated Output comparison.",
+      "source": "class-study/paladin-shaman.md; SHAMAN - enhancement_tank. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "SHAMAN.restoration",
+      "class_name": "SHAMAN",
+      "spec": "restoration",
+      "roles": [
+        "healer"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": false,
+        "dots": false,
+        "pets": true
+      },
+      "resource_exceptions": [
+        "mana_conservation"
+      ],
+      "pets": "totems",
+      "spells": [
+        {
+          "name": "Healing Wave"
+        },
+        {
+          "name": "Lesser Healing Wave"
+        },
+        {
+          "name": "Chain Heal"
+        },
+        {
+          "name": "Riptide"
+        },
+        {
+          "name": "Nature's Swiftness"
+        },
+        {
+          "name": "Mana Tide Totem"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "windfury_totem",
+        "flametongue_totem",
+        "strength_of_earth_totem",
+        "grace_of_air_totem",
+        "fire_resistance_totem",
+        "frost_resistance_totem",
+        "nature_resistance_totem",
+        "mana_spring_totem",
+        "mana_tide_totem",
+        "healing_stream_totem",
+        "tremor_totem",
+        "grounding_totem",
+        "poison_cleansing_totem",
+        "disease_cleansing_totem",
+        "stoneskin_totem",
+        "windwall_totem",
+        "stormstrike",
+        "rage_of_the_farseer"
+      ],
+      "comparison": "Match tank/raid assignment, party composition and actual healing demand.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/paladin-shaman.md; SHAMAN - restoration. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "MAGE.frost",
+      "class_name": "MAGE",
+      "spec": "frost",
+      "roles": [
+        "dps"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": false,
+        "dots": false,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "mana_conservation"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Frostbolt"
+        },
+        {
+          "name": "Ice Lance"
+        },
+        {
+          "name": "Cone of Cold"
+        },
+        {
+          "name": "Blizzard"
+        },
+        {
+          "name": "Ice Barrier"
+        },
+        {
+          "name": "Counterspell"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "arcane_intellect",
+        "arcane_brilliance",
+        "improved_scorch",
+        "winters_chill"
+      ],
+      "comparison": "Match talent variant, target access, proc opportunity and utility.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/mage-warlock-hunter.md; MAGE - frost. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "MAGE.arcane",
+      "class_name": "MAGE",
+      "spec": "arcane",
+      "roles": [
+        "dps"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": false,
+        "dots": false,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "mana_conservation"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Arcane Blast"
+        },
+        {
+          "name": "Arcane Missiles"
+        },
+        {
+          "name": "Arcane Wrath"
+        },
+        {
+          "name": "Arcane Power"
+        },
+        {
+          "name": "Counterspell"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "arcane_intellect",
+        "arcane_brilliance",
+        "improved_scorch",
+        "winters_chill"
+      ],
+      "comparison": "Match Arcane/hybrid build, mana budget and channel access.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/mage-warlock-hunter.md; MAGE - arcane. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "MAGE.fire",
+      "class_name": "MAGE",
+      "spec": "fire",
+      "roles": [
+        "dps"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": false,
+        "dots": true,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "mana_conservation"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Fireball"
+        },
+        {
+          "name": "Fire Blast"
+        },
+        {
+          "name": "Pyroblast"
+        },
+        {
+          "name": "Scorch"
+        },
+        {
+          "name": "Frostfire Bolt"
+        },
+        {
+          "name": "Combustion"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "arcane_intellect",
+        "arcane_brilliance",
+        "improved_scorch",
+        "winters_chill"
+      ],
+      "comparison": "Separate Deep Fire/Frostfire variants; source-owned Ignite and useful targets.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/mage-warlock-hunter.md; MAGE - fire. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "MAGE.battlemage_frost",
+      "class_name": "MAGE",
+      "spec": "battlemage_frost",
+      "roles": [
+        "dps"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": true,
+        "dots": false,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "mana_conservation",
+        "proc_waiting"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Frostbolt"
+        },
+        {
+          "name": "Ice Lance"
+        },
+        {
+          "name": "Cone of Cold"
+        },
+        {
+          "name": "Frost Nova"
+        },
+        {
+          "name": "Counterspell"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "arcane_intellect",
+        "arcane_brilliance",
+        "improved_scorch",
+        "winters_chill"
+      ],
+      "comparison": "Experimental matching build only; incidental melee does not prove Battle Mage.",
+      "uncalibrated": true,
+      "calibration_note": "Experimental or insufficiently established raid archetype; no calibrated Output comparison.",
+      "source": "class-study/mage-warlock-hunter.md; MAGE - battlemage_frost. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "MAGE.battlemage_fire",
+      "class_name": "MAGE",
+      "spec": "battlemage_fire",
+      "roles": [
+        "dps"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": true,
+        "dots": true,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "mana_conservation",
+        "proc_waiting"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Fireball"
+        },
+        {
+          "name": "Pyroblast"
+        },
+        {
+          "name": "Fire Blast"
+        },
+        {
+          "name": "Scorch"
+        },
+        {
+          "name": "Counterspell"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "arcane_intellect",
+        "arcane_brilliance",
+        "improved_scorch",
+        "winters_chill"
+      ],
+      "comparison": "Experimental matching build only; no calibrated output floor.",
+      "uncalibrated": true,
+      "calibration_note": "Experimental or insufficiently established raid archetype; no calibrated Output comparison.",
+      "source": "class-study/mage-warlock-hunter.md; MAGE - battlemage_fire. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "MAGE.battlemage_arcane",
+      "class_name": "MAGE",
+      "spec": "battlemage_arcane",
+      "roles": [
+        "dps"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": true,
+        "dots": false,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "mana_conservation",
+        "proc_waiting"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Arcane Blast"
+        },
+        {
+          "name": "Arcane Wrath"
+        },
+        {
+          "name": "Arcane Missiles"
+        },
+        {
+          "name": "Counterspell"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "arcane_intellect",
+        "arcane_brilliance",
+        "improved_scorch",
+        "winters_chill"
+      ],
+      "comparison": "Experimental matching build only; no known optimal melee/cast cadence.",
+      "uncalibrated": true,
+      "calibration_note": "Experimental or insufficiently established raid archetype; no calibrated Output comparison.",
+      "source": "class-study/mage-warlock-hunter.md; MAGE - battlemage_arcane. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "WARLOCK.affliction",
+      "class_name": "WARLOCK",
+      "spec": "affliction",
+      "roles": [
+        "dps"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": false,
+        "dots": true,
+        "pets": true
+      },
+      "resource_exceptions": [
+        "mana_conservation",
+        "health_for_mana"
+      ],
+      "pets": "optional",
+      "spells": [
+        {
+          "name": "Corruption"
+        },
+        {
+          "name": "Siphon Life"
+        },
+        {
+          "name": "Bane of Agony"
+        },
+        {
+          "name": "Wrack"
+        },
+        {
+          "name": "Life Tap"
+        },
+        {
+          "name": "Drain Life"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "curse_of_the_elements",
+        "curse_of_recklessness",
+        "curse_of_tongues",
+        "curse_of_weakness",
+        "blood_pact",
+        "improved_shadow_bolt"
+      ],
+      "comparison": "Match useful target lifetime, actual demon and mana/health costs.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/mage-warlock-hunter.md; WARLOCK - affliction. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "WARLOCK.demonology",
+      "class_name": "WARLOCK",
+      "spec": "demonology",
+      "roles": [
+        "dps"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": false,
+        "dots": true,
+        "pets": true
+      },
+      "resource_exceptions": [
+        "mana_conservation",
+        "health_for_mana"
+      ],
+      "pets": "required",
+      "spells": [
+        {
+          "name": "Demonic Sacrifice"
+        },
+        {
+          "name": "Searing Pain"
+        },
+        {
+          "name": "Demonic Brand"
+        },
+        {
+          "name": "Shadow Bolt"
+        },
+        {
+          "name": "Soul Link"
+        },
+        {
+          "name": "Health Funnel"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "curse_of_the_elements",
+        "curse_of_recklessness",
+        "curse_of_tongues",
+        "curse_of_weakness",
+        "blood_pact",
+        "improved_shadow_bolt"
+      ],
+      "comparison": "Match sacrifice plus active demon setup, pet access and utility tradeoffs.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/mage-warlock-hunter.md; WARLOCK - demonology. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "WARLOCK.destruction",
+      "class_name": "WARLOCK",
+      "spec": "destruction",
+      "roles": [
+        "dps"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": false,
+        "dots": true,
+        "pets": true
+      },
+      "resource_exceptions": [
+        "mana_conservation",
+        "health_for_mana"
+      ],
+      "pets": "optional",
+      "spells": [
+        {
+          "name": "Immolate"
+        },
+        {
+          "name": "Incinerate"
+        },
+        {
+          "name": "Conflagrate"
+        },
+        {
+          "name": "Shadowburn"
+        },
+        {
+          "name": "Bane of Havoc"
+        },
+        {
+          "name": "Life Tap"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "curse_of_the_elements",
+        "curse_of_recklessness",
+        "curse_of_tongues",
+        "curse_of_weakness",
+        "blood_pact",
+        "improved_shadow_bolt"
+      ],
+      "comparison": "Separate active-demon and valid no-pet sacrifice builds; useful cleave only.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/mage-warlock-hunter.md; WARLOCK - destruction. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "DRUID.feral",
+      "class_name": "DRUID",
+      "spec": "feral",
+      "roles": [
+        "dps",
+        "tank"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": true,
+        "dots": true,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "energy_pooling",
+        "mana_conservation"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Rake"
+        },
+        {
+          "name": "Rip"
+        },
+        {
+          "name": "Shred"
+        },
+        {
+          "name": "Claw"
+        },
+        {
+          "name": "Ferocious Bite"
+        },
+        {
+          "name": "Shifting Power"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "gift_of_the_wild",
+        "mark_of_the_wild",
+        "thorns",
+        "innervate",
+        "faerie_fire",
+        "leader_of_the_pack"
+      ],
+      "comparison": "Compare Cat windows and dedicated/hybrid build, weapon quality and useful targets.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/priest-druid.md; DRUID - feral. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "DRUID.bear",
+      "class_name": "DRUID",
+      "spec": "bear",
+      "roles": [
+        "tank",
+        "dps"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": true,
+        "dots": true,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "rage_starvation",
+        "off_tank_waiting"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Primal Bite"
+        },
+        {
+          "name": "Lacerate"
+        },
+        {
+          "name": "Maul"
+        },
+        {
+          "name": "Swipe"
+        },
+        {
+          "name": "Growl"
+        },
+        {
+          "name": "Barkskin"
+        },
+        {
+          "name": "Frenzied Regeneration"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "gift_of_the_wild",
+        "mark_of_the_wild",
+        "thorns",
+        "innervate",
+        "faerie_fire",
+        "leader_of_the_pack"
+      ],
+      "comparison": "Match active tanking, assigned mobs and exposure; separate Cat windows.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/priest-druid.md; DRUID - bear. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "DRUID.balance",
+      "class_name": "DRUID",
+      "spec": "balance",
+      "roles": [
+        "dps",
+        "healer"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": false,
+        "dots": true,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "mana_conservation"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Wrath"
+        },
+        {
+          "name": "Starfire"
+        },
+        {
+          "name": "Moonfire"
+        },
+        {
+          "name": "Insect Swarm"
+        },
+        {
+          "name": "Hurricane"
+        },
+        {
+          "name": "Innervate"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "gift_of_the_wild",
+        "mark_of_the_wild",
+        "thorns",
+        "innervate",
+        "faerie_fire",
+        "moonkin_aura",
+        "insect_swarm"
+      ],
+      "comparison": "Match movement, useful-target set, mana support and utility.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/priest-druid.md; DRUID - balance. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    },
+    {
+      "id": "DRUID.restoration",
+      "class_name": "DRUID",
+      "spec": "restoration",
+      "roles": [
+        "healer"
+      ],
+      "active_time": {
+        "casts": true,
+        "channels": true,
+        "gcd": true,
+        "auto_attacks": false,
+        "dots": false,
+        "pets": false
+      },
+      "resource_exceptions": [
+        "mana_conservation"
+      ],
+      "pets": "none",
+      "spells": [
+        {
+          "name": "Rejuvenation"
+        },
+        {
+          "name": "Regrowth"
+        },
+        {
+          "name": "Swiftmend"
+        },
+        {
+          "name": "Wild Growth"
+        },
+        {
+          "name": "Bloom"
+        },
+        {
+          "name": "Tranquility"
+        }
+      ],
+      "cast_signatures": [],
+      "support": [
+        "gift_of_the_wild",
+        "mark_of_the_wild",
+        "thorns",
+        "innervate",
+        "faerie_fire"
+      ],
+      "comparison": "Match HoT/party assignment; successful triage, not early refreshes suppressing Bloom.",
+      "uncalibrated": false,
+      "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
+      "source": "class-study/priest-druid.md; DRUID - restoration. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+    }
+  ]
+}

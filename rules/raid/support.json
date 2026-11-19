@@ -1,0 +1,836 @@
+{
+  "schema": 1,
+  "version": "1.0.0",
+  "source": "Our class-study/paladin-shaman.md scope matrix, roles-and-systems.md section 3 and class reports. Null stacks means unverified; personal effects earn no support credit. Duplicate non-stacking coverage is split equally between actual providers.",
+  "effects": [
+    {
+      "id": "battle_shout",
+      "spell": {
+        "name": "Battle Shout"
+      },
+      "scope": "raid",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/warrior-rogue.md cross-cutting",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "sunder_armor",
+      "spell": {
+        "name": "Sunder Armor"
+      },
+      "scope": "enemy",
+      "stacks": false,
+      "exclusive_group": "major_armor",
+      "credit": true,
+      "source": "class-study/roles-and-systems.md section 3",
+      "note": "Credit actual eligible recipients; no inferred damage gain."
+    },
+    {
+      "id": "thunder_clap",
+      "spell": {
+        "name": "Thunder Clap"
+      },
+      "scope": "enemy",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/roles-and-systems.md section 3",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "demoralizing_shout",
+      "spell": {
+        "name": "Demoralizing Shout"
+      },
+      "scope": "enemy",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/roles-and-systems.md section 3",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "expose_armor",
+      "spell": {
+        "name": "Expose Armor"
+      },
+      "scope": "enemy",
+      "stacks": false,
+      "exclusive_group": "major_armor",
+      "credit": true,
+      "source": "class-study/roles-and-systems.md section 3",
+      "note": "Credit actual eligible recipients; no inferred damage gain."
+    },
+    {
+      "id": "hemorrhage",
+      "spell": {
+        "name": "Hemorrhage"
+      },
+      "scope": "personal",
+      "stacks": false,
+      "exclusive_group": "",
+      "credit": false,
+      "source": "class-study/warrior-rogue.md cross-cutting",
+      "note": "Credit actual eligible recipients; no inferred damage gain."
+    },
+    {
+      "id": "improved_kidney_shot",
+      "spell": {
+        "name": "Improved Kidney Shot"
+      },
+      "scope": "personal",
+      "stacks": false,
+      "exclusive_group": "",
+      "credit": false,
+      "source": "class-study/warrior-rogue.md cross-cutting",
+      "note": "Credit actual eligible recipients; no inferred damage gain."
+    },
+    {
+      "id": "blessing_of_might",
+      "spell": {
+        "name": "Blessing of Might"
+      },
+      "scope": "single",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "blessing_of_wisdom",
+      "spell": {
+        "name": "Blessing of Wisdom"
+      },
+      "scope": "single",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "blessing_of_kings",
+      "spell": {
+        "name": "Blessing of Kings"
+      },
+      "scope": "single",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "greater_blessing_of_might",
+      "spell": {
+        "name": "Greater Blessing of Might"
+      },
+      "scope": "class",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "greater_blessing_of_wisdom",
+      "spell": {
+        "name": "Greater Blessing of Wisdom"
+      },
+      "scope": "class",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "greater_blessing_of_kings",
+      "spell": {
+        "name": "Greater Blessing of Kings"
+      },
+      "scope": "class",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "devotion_aura",
+      "spell": {
+        "name": "Devotion Aura"
+      },
+      "scope": "party",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "retribution_aura",
+      "spell": {
+        "name": "Retribution Aura"
+      },
+      "scope": "party",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "concentration_aura",
+      "spell": {
+        "name": "Concentration Aura"
+      },
+      "scope": "party",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "fire_resistance_aura",
+      "spell": {
+        "name": "Fire Resistance Aura"
+      },
+      "scope": "raid",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "frost_resistance_aura",
+      "spell": {
+        "name": "Frost Resistance Aura"
+      },
+      "scope": "raid",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "shadow_resistance_aura",
+      "spell": {
+        "name": "Shadow Resistance Aura"
+      },
+      "scope": "raid",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "judgement_of_light",
+      "spell": {
+        "name": "Judgement of Light"
+      },
+      "scope": "enemy",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Keep original applier distinct from a Sacred Arbiter refresher. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "judgement_of_wisdom",
+      "spell": {
+        "name": "Judgement of Wisdom"
+      },
+      "scope": "enemy",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Keep original applier distinct from a Sacred Arbiter refresher. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "judgement_of_the_crusader",
+      "spell": {
+        "name": "Judgement of the Crusader"
+      },
+      "scope": "enemy",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Keep original applier distinct from a Sacred Arbiter refresher. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "windfury_totem",
+      "spell": {
+        "name": "Windfury Totem"
+      },
+      "scope": "raid",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "flametongue_totem",
+      "spell": {
+        "name": "Flametongue Totem"
+      },
+      "scope": "raid",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "strength_of_earth_totem",
+      "spell": {
+        "name": "Strength of Earth Totem"
+      },
+      "scope": "raid",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "grace_of_air_totem",
+      "spell": {
+        "name": "Grace of Air Totem"
+      },
+      "scope": "raid",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "fire_resistance_totem",
+      "spell": {
+        "name": "Fire Resistance Totem"
+      },
+      "scope": "raid",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "frost_resistance_totem",
+      "spell": {
+        "name": "Frost Resistance Totem"
+      },
+      "scope": "raid",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "nature_resistance_totem",
+      "spell": {
+        "name": "Nature Resistance Totem"
+      },
+      "scope": "raid",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "mana_spring_totem",
+      "spell": {
+        "name": "Mana Spring Totem"
+      },
+      "scope": "party",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Provisional party interpretation of group wording; runtime scope unverified. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "mana_tide_totem",
+      "spell": {
+        "name": "Mana Tide Totem"
+      },
+      "scope": "party",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Provisional party interpretation of group wording; runtime scope unverified. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "healing_stream_totem",
+      "spell": {
+        "name": "Healing Stream Totem"
+      },
+      "scope": "party",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Provisional party interpretation of group wording; runtime scope unverified. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "tremor_totem",
+      "spell": {
+        "name": "Tremor Totem"
+      },
+      "scope": "party",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "grounding_totem",
+      "spell": {
+        "name": "Grounding Totem"
+      },
+      "scope": "party",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "poison_cleansing_totem",
+      "spell": {
+        "name": "Poison Cleansing Totem"
+      },
+      "scope": "party",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "disease_cleansing_totem",
+      "spell": {
+        "name": "Disease Cleansing Totem"
+      },
+      "scope": "party",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "stoneskin_totem",
+      "spell": {
+        "name": "Stoneskin Totem"
+      },
+      "scope": "party",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "windwall_totem",
+      "spell": {
+        "name": "Windwall Totem"
+      },
+      "scope": "party",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "stormstrike",
+      "spell": {
+        "name": "Stormstrike"
+      },
+      "scope": "personal",
+      "stacks": false,
+      "exclusive_group": "",
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain."
+    },
+    {
+      "id": "rage_of_the_farseer",
+      "spell": {
+        "name": "Rage of the Farseer"
+      },
+      "scope": "personal",
+      "stacks": false,
+      "exclusive_group": "",
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix",
+      "note": "Credit actual eligible recipients; no inferred damage gain."
+    },
+    {
+      "id": "prayer_of_fortitude",
+      "spell": {
+        "name": "Prayer of Fortitude"
+      },
+      "scope": "raid",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/priest-druid.md cross-cutting",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "prayer_of_spirit",
+      "spell": {
+        "name": "Prayer of Spirit"
+      },
+      "scope": "raid",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/priest-druid.md cross-cutting",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "prayer_of_shadow_protection",
+      "spell": {
+        "name": "Prayer of Shadow Protection"
+      },
+      "scope": "raid",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/priest-druid.md cross-cutting",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "fear_ward",
+      "spell": {
+        "name": "Fear Ward"
+      },
+      "scope": "single",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/priest-druid.md",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "dark_inspiration",
+      "spell": {
+        "name": "Dark Inspiration"
+      },
+      "scope": "party",
+      "stacks": false,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/priest-druid.md shadow",
+      "note": "Credit actual eligible recipients; no inferred damage gain."
+    },
+    {
+      "id": "vampiric_embrace",
+      "spell": {
+        "name": "Vampiric Embrace"
+      },
+      "scope": "party",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/priest-druid.md shadow",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "shadow_weaving",
+      "spell": {
+        "name": "Shadow Weaving"
+      },
+      "scope": "personal",
+      "stacks": false,
+      "exclusive_group": "",
+      "credit": false,
+      "source": "class-study/priest-druid.md shadow",
+      "note": "Credit actual eligible recipients; no inferred damage gain."
+    },
+    {
+      "id": "gift_of_the_wild",
+      "spell": {
+        "name": "Gift of the Wild"
+      },
+      "scope": "raid",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/priest-druid.md cross-cutting",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "mark_of_the_wild",
+      "spell": {
+        "name": "Mark of the Wild"
+      },
+      "scope": "single",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/priest-druid.md",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "thorns",
+      "spell": {
+        "name": "Thorns"
+      },
+      "scope": "single",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/priest-druid.md",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "innervate",
+      "spell": {
+        "name": "Innervate"
+      },
+      "scope": "single",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/priest-druid.md",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "faerie_fire",
+      "spell": {
+        "name": "Faerie Fire"
+      },
+      "scope": "enemy",
+      "stacks": false,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/priest-druid.md",
+      "note": "Credit actual eligible recipients; no inferred damage gain."
+    },
+    {
+      "id": "leader_of_the_pack",
+      "spell": {
+        "name": "Leader of the Pack"
+      },
+      "scope": "raid",
+      "stacks": false,
+      "exclusive_group": "druid_crit",
+      "credit": true,
+      "source": "class-study/priest-druid.md cross-cutting",
+      "note": "Credit actual eligible recipients; no inferred damage gain."
+    },
+    {
+      "id": "moonkin_aura",
+      "spell": {
+        "name": "Moonkin Aura"
+      },
+      "scope": "raid",
+      "stacks": false,
+      "exclusive_group": "druid_crit",
+      "credit": true,
+      "source": "class-study/priest-druid.md cross-cutting",
+      "note": "Credit actual eligible recipients; no inferred damage gain."
+    },
+    {
+      "id": "insect_swarm",
+      "spell": {
+        "name": "Insect Swarm"
+      },
+      "scope": "enemy",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/priest-druid.md balance",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "arcane_intellect",
+      "spell": {
+        "name": "Arcane Intellect"
+      },
+      "scope": "single",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/mage-warlock-hunter.md",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "arcane_brilliance",
+      "spell": {
+        "name": "Arcane Brilliance"
+      },
+      "scope": "raid",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/mage-warlock-hunter.md",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "improved_scorch",
+      "spell": {
+        "name": "Improved Scorch"
+      },
+      "scope": "personal",
+      "stacks": false,
+      "exclusive_group": "",
+      "credit": false,
+      "source": "class-study/mage-warlock-hunter.md cross-cutting",
+      "note": "Credit actual eligible recipients; no inferred damage gain."
+    },
+    {
+      "id": "winters_chill",
+      "spell": {
+        "name": "Winter's Chill"
+      },
+      "scope": "personal",
+      "stacks": false,
+      "exclusive_group": "",
+      "credit": false,
+      "source": "class-study/mage-warlock-hunter.md cross-cutting",
+      "note": "Credit actual eligible recipients; no inferred damage gain."
+    },
+    {
+      "id": "curse_of_the_elements",
+      "spell": {
+        "name": "Curse of the Elements"
+      },
+      "scope": "enemy",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/mage-warlock-hunter.md",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "curse_of_recklessness",
+      "spell": {
+        "name": "Curse of Recklessness"
+      },
+      "scope": "enemy",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/mage-warlock-hunter.md",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "curse_of_tongues",
+      "spell": {
+        "name": "Curse of Tongues"
+      },
+      "scope": "enemy",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/mage-warlock-hunter.md",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "curse_of_weakness",
+      "spell": {
+        "name": "Curse of Weakness"
+      },
+      "scope": "enemy",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/mage-warlock-hunter.md",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "blood_pact",
+      "spell": {
+        "name": "Blood Pact"
+      },
+      "scope": "party",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/mage-warlock-hunter.md",
+      "note": "Requires an active Imp; absent from no-pet builds. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "improved_shadow_bolt",
+      "spell": {
+        "name": "Improved Shadow Bolt"
+      },
+      "scope": "personal",
+      "stacks": false,
+      "exclusive_group": "",
+      "credit": false,
+      "source": "class-study/mage-warlock-hunter.md",
+      "note": "Credit actual eligible recipients; no inferred damage gain."
+    },
+    {
+      "id": "hunters_mark",
+      "spell": {
+        "name": "Hunter's Mark"
+      },
+      "scope": "enemy",
+      "stacks": false,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/mage-warlock-hunter.md",
+      "note": "Credit actual eligible recipients; no inferred damage gain."
+    },
+    {
+      "id": "furious_howl",
+      "spell": {
+        "name": "Furious Howl"
+      },
+      "scope": "unknown",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": false,
+      "source": "class-study/mage-warlock-hunter.md and roles-and-systems.md section 3.2 disagree",
+      "note": "Class report says party; systems report says party/raid from beta data. Withhold coverage credit until live scope is verified."
+    },
+    {
+      "id": "trueshot_aura",
+      "spell": {
+        "name": "Trueshot Aura"
+      },
+      "scope": "raid",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/mage-warlock-hunter.md",
+      "note": "Ranged AP only, and only when the actual build supplies it. Cross-provider stacking remains unverified."
+    },
+    {
+      "id": "power_infusion",
+      "spell": {
+        "name": "Power Infusion"
+      },
+      "scope": "single",
+      "stacks": null,
+      "exclusive_group": "",
+      "credit": true,
+      "source": "class-study/priest-druid.md discipline",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+    }
+  ],
+  "overlap": "split_equally"
+}
