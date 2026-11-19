@@ -1,0 +1,15 @@
+{
+  "kind": "go",
+  "source": "desktop/internal/raid/",
+  "test": [
+    "go",
+    "-C",
+    "desktop",
+    "test",
+    "-count=1",
+    "-run",
+    "^(TestImports|TestNoLargeLiterals)$",
+    "./internal/raid/"
+  ],
+  "depends": []
+}

@@ -27,6 +27,11 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.14'
+      # the Relax Raid runner tests build throwaway Go modules: the job's own Go, not the runner image's
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: desktop/go.mod
+          cache: false
       - name: Install pinned Lua harness dependency
         run: python -m pip install --disable-pip-version-check -r .github/requirements-ci.txt
       - name: Existing Coach harness
@@ -53,6 +58,8 @@ jobs:
           for t in ui_shell_test bridge_skip_test journey_integration journey_picker engine_test journey_private nil_quest_test refresh_correctness_test; do
             python -I -B test/planner/$t.py
           done
+      - name: Relax Raid modules (Lua and Python)
+        run: python -I -B tools/raidtest.py --all --kind lua,py
 
   desktop-go:
     name: Desktop Go and UI
@@ -79,6 +86,8 @@ jobs:
       - name: Go vet
         working-directory: desktop
         run: go vet ./...
+      - name: Relax Raid modules (Go)
+        run: python3 -I -B tools/raidtest.py --all --kind go
       - name: Install locked UI test dependencies without lifecycle scripts
         run: npm ci --prefix .github --ignore-scripts
       - name: Existing offline UI tests

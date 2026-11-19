@@ -1,0 +1,11 @@
+{
+  "kind": "py",
+  "source": "tools/raidtest.py",
+  "test": [
+    "python3",
+    "-I",
+    "-B",
+    "test/raid/_runner/test_raidtest.py"
+  ],
+  "depends": []
+}
