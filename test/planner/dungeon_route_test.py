@@ -73,9 +73,17 @@ class DungeonRouteTests(unittest.TestCase):
         self.assertEqual(action(route, 'accept', A).block, 2)
         self.assertEqual(action(route, 'turnin', A).block, 3)
 
-    def test_m2_outside_trigger_means_outside_work(self):
+    def test_m2_trigger_in_another_zone_decides_nothing(self):
+        # Pickup inside, turn-in outside, trigger outside: the talk fallback places it by its turn-in.
         s = action(self.m2(trigger=OUTSIDE), 'complete', A)
         self.assertEqual(s.where, 'outside')
+        # Escort shape: pickup and turn-in inside, end trigger in the outdoor entrance zone -> all inside, block 2.
+        rows = {A: quest('Copper escort', True, pickup=IN_NPC, turnin=IN_NPC, objectives={},
+                         triggerEnd=['Escort the copper keeper', {OUTSIDE: [[50, 50]]}])}
+        route = self.check_route(Harness(rows, entries(rows), level=31))
+        for kind in ('accept', 'complete', 'turnin'):
+            s = action(route, kind, A)
+            self.assertEqual((s.where, s.block), ('inside', 2), kind)
 
     def test_m2_inside_list_for_quests_without_rows_or_trigger(self):
         s = action(self.m2(listed='TEST_DUNGEON'), 'complete', A)
@@ -83,9 +91,9 @@ class DungeonRouteTests(unittest.TestCase):
         # Listed for another dungeon: not inside this one; the talk fallback places it by its turn-in.
         s = action(self.m2(listed='"Another Keep"'), 'complete', A)
         self.assertEqual(s.where, 'outside')
-        # A trigger wins over the list.
+        # A trigger in another zone decides nothing, so the list still applies.
         h_route = self.m2(trigger=OUTSIDE, listed='TEST_DUNGEON')
-        self.assertEqual(action(h_route, 'complete', A).where, 'outside')
+        self.assertEqual(action(h_route, 'complete', A).where, 'inside')
 
     def test_m2_talk_quest_fallback_unchanged(self):
         s = action(self.m2(), 'complete', A)

@@ -523,15 +523,12 @@ local function objectivePlace(r,dungeon,target)
             -- else a talk/delivery quest, placed where it is turned in.
             local here=D.CanonicalDungeon(dungeon)
             local zones=D.Trigger(r.id)
+            -- A trigger zone that is this dungeon means inside work. A trigger in another zone decides
+            -- nothing (an escort's end trigger can carry the outdoor entrance zone): fall through.
             if zones then
-                local known=false
                 for zone in pairs(zones) do
-                    if type(zone)=="number" and zone>0 then
-                        known=true
-                        if D.DungeonForArea(zone)==here then return "inside" end
-                    end
+                    if type(zone)=="number" and zone>0 and D.DungeonForArea(zone)==here then return "inside" end
                 end
-                if known then return "outside" end
             end
             local listed=D.PlaceInside(r.id)
             if listed and D.CanonicalDungeon(listed)==here then return "inside" end
