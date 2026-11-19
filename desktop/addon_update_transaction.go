@@ -173,8 +173,18 @@ func (u *addonUpdater) installTrees(ctx context.Context, game string, release Ad
 		return result, err
 	}
 	backups := filepath.Join(game, "RelaxCoachBackups")
-	if err := os.Mkdir(backups, 0700); err != nil && !os.IsExist(err) {
-		return result, err
+	mkErr := os.Mkdir(backups, 0700)
+	if mkErr != nil && !os.IsExist(mkErr) {
+		return result, mkErr
+	}
+	if mkErr == nil {
+		// A refused or failed install leaves no trace: the backup folder it created goes again when empty.
+		// Registered first, so it runs after the lock and the transaction folder are removed.
+		defer func() {
+			if err != nil {
+				_ = os.Remove(backups)
+			}
+		}()
 	}
 	backupIdentity, err := addonDirectoryIdentity(backups)
 	if err != nil {
@@ -556,6 +566,11 @@ func (u *addonUpdater) installTrees(ctx context.Context, game string, release Ad
 			}
 			break
 		}
+	}
+	if guild {
+		// Every managed folder is now verified at this manifest's version, so an earlier interrupted install
+		// is resolved. A marker that cannot be removed only keeps Repair offered.
+		_ = os.Remove(filepath.Join(backups, addonRepairMarkerName))
 	}
 	result.Version, result.UpdatedFiles = release.Version, len(digests)
 	result.Message = "Addon updated and every installed file verified. Journey and SavedVariables were not touched. The desktop helper was not updated."
