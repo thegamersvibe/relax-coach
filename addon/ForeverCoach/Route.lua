@@ -41,11 +41,12 @@ function R:Denied(zone, faction)
     return false
 end
 
--- Whole-word, plain-text find (Lua patterns escaped): "Lord Kri" never matches inside "Lord Kristoff".
+-- Whole-word, plain-text find (Lua patterns escaped): "Lord Kri" never matches inside "Lord Kristoff", and an
+-- apostrophe is part of a word, so "Hakkar" never matches inside "Atal'Hakkar".
 local function esc(s) return (s:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0")) end
 local function hasWord(text, name)
     if type(text) ~= "string" or type(name) ~= "string" or name == "" then return false end
-    return text:find("%f[%w]" .. esc(name) .. "%f[^%w]") ~= nil
+    return text:find("%f[%w']" .. esc(name) .. "%f[^%w']") ~= nil
 end
 R.HasWord = hasWord
 
@@ -102,9 +103,24 @@ function R:LearnRaidNpcs(factTables)
     end
     self._raidNpcs = out
 end
--- The raid (or "World bosses") an item comes from, or nil. Fails closed: any source naming a raid zone, raid boss,
--- raid mob, raid quest or world boss, in the record's zone, NPC or text (second sources included), or a sourceType
--- of "raid", makes it a raid item.
+-- The names a source text says something drops from, lower case: "Drops from A." and "The pattern drops from A in
+-- Uldaman, from B, C, and D in Zul'Farrak." give A, B, C and D (places and brackets removed).
+local function dropNames(text)
+    local out = {}
+    for seg in text:lower():gmatch("drops from ([^%.|]*)") do
+        seg = seg:gsub("%b()", ""):gsub(";", ","):gsub(" and ", ","):gsub(" or ", ",")
+        for part in (seg .. ","):gmatch("([^,]*),") do
+            part = part:gsub("^%s*from%s+", ""):gsub("%s+in%s+.*$", ""):gsub("^%s+", ""):gsub("%s+$", "")
+            if part ~= "" then out[part] = true end
+        end
+    end
+    return out
+end
+R.DropNames = dropNames
+-- The raid (or "World bosses") an item comes from, or nil. Fails closed on places: a raid zone or raid mob named
+-- anywhere in the record's zone, NPC or text (second sources included), a raid quest it rewards, or a sourceType of
+-- "raid". A boss, world boss or raid NPC counts only where it is the source: the record's NPC, or a name in a
+-- "drops from" list (so "Avatar of Hakkar" and the quest "The God Hakkar" are not Hakkar).
 function R:Raid(zone, f)
     local rl = raidList()
     for _, z in ipairs(rl.zones or {}) do if z == zone then return zone end end
@@ -112,12 +128,15 @@ function R:Raid(zone, f)
     local text = table.concat({ type(f.instructions) == "string" and f.instructions or "",
         type(f.npc) == "string" and f.npc or "", type(f.zone) == "string" and f.zone or "" }, " | ")
     for _, z in ipairs(rl.zones or {}) do if hasWord(text, z) then return z end end
+    local drops = dropNames(text)
+    local npc = type(f.npc) == "string" and f.npc:lower() or nil
+    local function source(name) name = name:lower(); return drops[name] or npc == name end
     for _, boss in ipairs(rl.worldBosses or {}) do
-        if hasWord(text, boss) then return rl.worldBossName or "World bosses" end
+        if source(boss) then return rl.worldBossName or "World bosses" end
     end
-    for boss, raid in pairs(rl.bosses or {}) do if hasWord(text, boss) then return raid end end
+    for boss, raid in pairs(rl.bosses or {}) do if source(boss) then return raid end end
     for mob, raid in pairs(rl.mobs or {}) do if hasWord(text, mob) then return raid end end
-    for npc, raid in pairs(self._raidNpcs or {}) do if hasWord(text, npc) then return raid end end
+    for name, raid in pairs(self._raidNpcs or {}) do if source(name) then return raid end end
     for quest, raid in pairs(rl.quests or {}) do
         if text:find("quest '" .. quest .. "'", 1, true) then return raid end
     end

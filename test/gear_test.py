@@ -446,6 +446,73 @@ rows = equipped_rows(51) + [(SHOTGUN, 'Ranged', 50, 60, SCORE[18] * 4, 'Alliance
 _, _, _, c = client(51, rows, FACTS)
 check(any('>100% better' in t for t in texts(c)), f'the addon says ">100% better" ({[t for t in texts(c) if "Ranged" in t]})')
 
+# 7. Review round 2: real GearQuest warrior records.
+REAL = {
+    20600: dict(name="Malfurion's Signet Ring", reqLevel=60, sourceType="quest_reward", zone="Moonglade",
+                instructions="Reward from the quest 'Waking Legends'."),
+    19852: dict(name="Ancient Hakkari Manslayer", reqLevel=60, sourceType="boss_drop", npc="Hakkar", zone="Zul'Gurub",
+                instructions="Drops from Hakkar."),
+    22384: dict(name="Persuader", reqLevel=58, sourceType="profession", profession="Blacksmithing",
+                instructions="Crafted with Blacksmithing (requires skill 300). The Blacksmithing pattern drops from Hakkari Shadow Hunter and Vekniss Stinger."),
+}
+NOT_RAID = {
+    10838: dict(name="Might of Hakkar", reqLevel=49, sourceType="boss_drop", npc="Avatar of Hakkar", zone="Sunken Temple",
+                instructions="Drops from Avatar of Hakkar."),
+    10845: dict(name="Warrior's Embrace", reqLevel=49, sourceType="boss_drop", npc="Avatar of Hakkar", zone="Sunken Temple",
+                instructions="Drops from Avatar of Hakkar."),
+    10846: dict(name="Bloodshot Greaves", reqLevel=49, sourceType="boss_drop", npc="Avatar of Hakkar", zone="Sunken Temple",
+                instructions="Drops from Avatar of Hakkar."),
+    10749: dict(name="Avenguard Helm", reqLevel=40, sourceType="quest_reward", zone="Sunken Temple",
+                instructions="Reward from the quest 'The God Hakkar'. Pick it over the other reward choices. Starts with Yeh'kinya in Tanaris. Objective: Bring the Filled Egg of Hakkar to Yeh'kinya in Tanaris."),
+    10750: dict(name="Lifeforce Dirk", reqLevel=40, sourceType="quest_reward", zone="Sunken Temple",
+                instructions="Reward from the quest 'The God Hakkar'. Pick it over the other reward choices. Starts with Yeh'kinya in Tanaris. Objective: Bring the Filled Egg of Hakkar to Yeh'kinya in Tanaris."),
+    10701: dict(name="Boots of Zua'tec", reqLevel=38, sourceType="quest_reward", zone="Dustwallow Marsh",
+                instructions="Reward from the quest 'The Brood of Onyxia'. Pick it over the other reward choices. Starts with Draz'Zilb in Dustwallow Marsh. Objective: Speak with Overlord Mok'Morokk in Brackenwall Village."),
+    250551: dict(name="Officer's Gloves", reqLevel=50, sourceType="profession", profession="Blacksmithing",
+                 instructions="Crafted with Blacksmithing (requires skill 250). The Blacksmithing pattern drops from Archaedas in Uldaman, from Chief Ukorz Sandscalp, Witch Doctor Zum'rah, Gahz'rilla, and Ruuzlu in Zul'Farrak, from Shade of Eranikus in The Temple of Atal'Hakkar, and from Celebras the Cursed, Razorlash, and Tinkerer Gizlock in Maraudon."),
+    252586: dict(name="Skirmisher's Mail Gauntlets", reqLevel=50, sourceType="profession", profession="Leatherworking",
+                 instructions="Crafted with Leatherworking (requires skill 250). The Leatherworking pattern drops from Chief Ukorz Sandscalp, Gahz'rilla, and Shadowpriest Sezz'ziz in Zul'Farrak, from Dreamscythe in The Temple of Atal'Hakkar, and from Lord Roccor in Blackrock Depths."),
+}
+FACTS.update(REAL); FACTS.update(NOT_RAID)
+RAID_REASONS = ('raid not open in Forever yet', 'world boss: not open in Forever yet')
+
+print('== round 2: Waking Legends is a world-boss quest; the raid match is not wider than its sources')
+L, G, FC, c = client(60, equipped_rows(60), FACTS, zone='Winterspring')
+eq_ = eligibility(G, FC, c, 20600)
+check(eq_ == 'world boss: not open in Forever yet', f"Malfurion's Signet Ring (Waking Legends) blocked as a world boss ({eq_})")
+check(eligibility(G, FC, c, 19852) == 'raid not open in Forever yet', 'Ancient Hakkari Manslayer (Hakkar, Zul\'Gurub) still blocked')
+check(eligibility(G, FC, c, 22384) == 'raid not open in Forever yet', 'Persuader (Hakkari/Vekniss pattern) still blocked')
+for lvl in (51, 60):
+    L, G, FC, c = client(lvl, equipped_rows(lvl), FACTS, zone="Un'Goro Crater")
+    for iid, f in NOT_RAID.items():
+        why = eligibility(G, FC, c, iid)
+        check(why not in RAID_REASONS, f'level {lvl}: {f["name"]} is not raid loot ({why})')
+check(FC.Route.Raid(FC.Route, 'Sunken Temple', FACTS[10838]) is None, 'Avatar of Hakkar is not Hakkar')
+check(FC.Route.HasWord("in The Temple of Atal'Hakkar", 'Hakkar') is False, "Atal'Hakkar is one word")
+check(FC.Route.HasWord('Drops from Hakkar.', 'Hakkar') is True, 'Hakkar alone is')
+names = FC.Route.DropNames(NOT_RAID[250551]['instructions'])
+for n in ('archaedas', 'chief ukorz sandscalp', "witch doctor zum'rah", "gahz'rilla", 'ruuzlu', 'shade of eranikus',
+          'celebras the cursed', 'razorlash', 'tinkerer gizlock'):
+    check(names[n] is True, f'drop list names {n}')
+check(names['hakkar'] is None and names["the temple of atal'hakkar"] is None, 'places are not sources')
+
+print("== round 2: Forever's own dungeons")
+for z in ('Alcaz Prison', 'Blackmaw Hold', 'The Drowned City', 'City of Dalaran', 'Ruins of Lordaeron', 'Hall of Thanes',
+          'Excavation Site', 'Excavation Site: Wetlands'):
+    check(FC.Route.IsDungeon(z), f'{z} is a dungeon without the Dungeon Journal')
+check(not FC.Route.IsDungeon('Dalaran') and not FC.Route.IsDungeon('Lordaeron'), 'the bare place names are not')
+# the review's case at 51: Alcaz Prison Waist 2.06% and Back 1.04% are under the 3% dungeon bar
+AW, AB = 900501, 900502
+FACTS[AW] = dict(name="Alcaz Twin Waist", reqLevel=45, sourceType="boss_drop", npc="Warden", zone="Alcaz Prison", instructions="Drops from Warden.")
+FACTS[AB] = dict(name="Alcaz Twin Back", reqLevel=45, sourceType="boss_drop", npc="Warden", zone="Alcaz Prison", instructions="Drops from Warden.")
+T51 = total_of(51, "Un'Goro Crater")
+rows = equipped_rows(51) + [(AW, 'Waist', 45, 60, SCORE[6] + 0.0206 * T51, 'Alliance', 'protection'),
+                            (AB, 'Back', 45, 60, SCORE[15] + 0.0104 * T51, 'Alliance', 'protection')]
+_, _, _, c = client(51, rows, FACTS, zone="Un'Goro Crater")
+for inv, iid, what in ((6, AW, 'Waist 2.06%'), (15, AB, 'Back 1.04%')):
+    b = c.gear.slots[inv].best
+    check(not (b and b.id == iid), f'Alcaz Prison {what} hidden under the dungeon bar ({b and b.name})')
+
 print()
 print(f'{len(fails)} failed' if fails else 'ALL PASS')
 sys.exit(1 if fails else 0)

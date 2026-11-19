@@ -10709,7 +10709,7 @@
     ]
   },
   "raids": {
-    "notes": "Raid and world-boss loot is advice only for raids listed in open (F4); fail closed. A record is a raid source when its zone is a raid zone, its sourceType is raid, or its text names a raid zone, a raid boss, a raid mob (mobs: name fragments), a raid quest, or a world boss; NPCs that drop loot inside raid zones in the GearQuest data count as raid mobs too. World bosses open together with the entry worldBossName in open. Forever raids are not open yet (first raid 9 December).",
+    "notes": "Raid and world-boss loot is advice only for raids listed in open (F4); fail closed. A record is a raid source when its zone is a raid zone, its sourceType is raid, its text names a raid zone or a raid mob (mobs: name fragments) anywhere, it rewards a raid quest (quests; 'World bosses' for world-boss quests), or a raid boss, world boss or raid NPC is its source: its NPC, or a name in a 'drops from' list (a boss named elsewhere, e.g. 'Avatar of Hakkar' or the quest 'The God Hakkar', is not). NPCs that drop loot inside raid zones in the GearQuest data count as raid NPCs. An apostrophe is part of a word (Atal'Hakkar is not Hakkar). World bosses open together with the entry worldBossName in open. Forever raids are not open yet (first raid 9 December).",
     "zones": [
       "Molten Core",
       "Onyxia's Lair",
@@ -10797,7 +10797,9 @@
       "Imperial Qiraji Regalia": "Temple of Ahn'Qiraj",
       "Victory for the Alliance": "Onyxia's Lair",
       "Victory for the Horde": "Onyxia's Lair",
-      "The Fall of Ossirian": "Ruins of Ahn'Qiraj"
+      "The Fall of Ossirian": "Ruins of Ahn'Qiraj",
+      "Waking Legends": "World bosses",
+      "The Fall of Kel'Thuzad": "Naxxramas"
     },
     "open": [],
     "mobs": {
@@ -10823,7 +10825,7 @@
     "worldBossName": "World bosses"
   },
   "dungeons": {
-    "notes": "Dungeon base names: a zone is a dungeon when it is one of these or contains one as whole words (Upper Blackrock Spire, Dire Maul East, Scarlet Monastery Armory). Independent of the Dungeon Journal addon.",
+    "notes": "Dungeon base names: a zone is a dungeon when it is one of these or contains one as whole words (Upper Blackrock Spire, Dire Maul East, Scarlet Monastery Armory). Independent of the Dungeon Journal addon. Forever's own dungeons are listed too (Excavation Site also matches \"Excavation Site: Wetlands\").",
     "names": [
       "Ragefire Chasm",
       "Wailing Caverns",
@@ -10844,7 +10846,14 @@
       "Blackrock Spire",
       "Dire Maul",
       "Stratholme",
-      "Scholomance"
+      "Scholomance",
+      "Alcaz Prison",
+      "Blackmaw Hold",
+      "The Drowned City",
+      "City of Dalaran",
+      "Ruins of Lordaeron",
+      "Hall of Thanes",
+      "Excavation Site"
     ]
   }
 }
