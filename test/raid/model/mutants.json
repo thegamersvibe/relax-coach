@@ -10,5 +10,179 @@
     "old": "e.DiedFlag.Present && ",
     "new": "",
     "killed_by": "TestIsDeath"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "s.Success, s.FightMs = model.Opt{}, model.Opt{}",
+    "new": "s.FightMs = model.Opt{}",
+    "killed_by": "TestEncounterLinesCarryTheirOwnFields"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "e.InstanceID = model.Opt{}",
+    "new": "_ = e",
+    "killed_by": "TestEncounterLinesCarryTheirOwnFields"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "Boss: enc.ID > 0,",
+    "new": "Boss: true,",
+    "killed_by": "TestEncounterLinesCarryTheirOwnFields"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "DurationMs: enc.FightMs,",
+    "new": "DurationMs: model.Some(1),",
+    "killed_by": "TestEncounterLinesCarryTheirOwnFields"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.e.Amount, b.e.Overheal = model.Some(amount), model.Some(overheal)",
+    "new": "b.e.Amount = model.Some(amount)",
+    "killed_by": "TestFightWithEveryNewField"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.e.Offset, b.e.Len = offset, length",
+    "new": "_, _ = offset, length",
+    "killed_by": "TestEventBuildersPinned"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.e.Offset, b.e.Len = offset, length",
+    "new": "b.e.Offset = offset; _ = length",
+    "killed_by": "TestEventBuildersPinned"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.e.SpellID, b.e.SpellName = id, name",
+    "new": "_, _ = id, name",
+    "killed_by": "TestEventBuildersPinned"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "Name: name, Difficulty: difficulty}",
+    "new": "Name: name}",
+    "killed_by": "TestEventBuildersPinned"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "model.Zone{InstanceID: instanceID,",
+    "new": "model.Zone{InstanceID: 0,",
+    "killed_by": "TestEventBuildersPinned"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "\tif len(events) > 0 {\n\t\tf.StartMs, f.EndMs = events[0].TimeMs, events[len(events)-1].TimeMs\n\t}",
+    "new": "\tif len(events) > 0 {\n\t\tf.StartMs, f.EndMs = events[0].TimeMs, events[len(events)-1].TimeMs\n\t\tif f.Boss && !f.DurationMs.Present {\n\t\t\tf.DurationMs = model.Some(f.EndMs - f.StartMs)\n\t\t}\n\t}",
+    "killed_by": "TestEventBuildersPinned"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "model.Some(cur), model.Some(max), model.Some(powerType)",
+    "new": "model.Some(cur), model.Some(max), model.Opt{V: powerType}",
+    "killed_by": "TestEventBuildersPinned"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.f.Offset, b.f.Len = first.Offset, last.Offset+last.Len-first.Offset",
+    "new": "b.f.Offset, b.f.Len = first.Offset, last.Offset-first.Offset",
+    "killed_by": "TestFightWithEveryNewField"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.f.Owners[pet.ID] = owner.ID",
+    "new": "b.f.Owners[owner.ID] = pet.ID",
+    "killed_by": "TestFightWithEveryNewField"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.d.OwnerKind, b.d.Owners = kind, names",
+    "new": "b.d.OwnerKind = kind",
+    "killed_by": "TestFightWithEveryNewField"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "StartMs: r.startMs, OffsetH: r.offsetH, Build: r.build, LogVersion: r.version, Advanced: r.advanced, Source: r.source}\n}\n\n// Dungeon",
+    "new": "StartMs: r.startMs, OffsetH: r.offsetH, Build: r.build, LogVersion: r.version, Advanced: r.advanced}\n}\n\n// Dungeon",
+    "killed_by": "TestFightWithEveryNewField"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "return model.Part{Name: name, Tenths: model.Some(tenths), Evidence: ev}",
+    "new": "return model.Part{Name: name, Tenths: model.Opt{V: tenths}, Evidence: ev}",
+    "killed_by": "TestResultTypesThroughBuilders"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.s.Rank = model.Some(r); return b",
+    "new": "b.s.Rank = model.Opt{V: r}; return b",
+    "killed_by": "TestResultTypesThroughBuilders"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.r.SenderClock, b.r.Stamped = sender, stamped",
+    "new": "b.r.SenderClock, b.r.Stamped = stamped, sender",
+    "killed_by": "TestResultTypesThroughBuilders"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.r.GearChecked, b.r.BetterGear = true, append(b.r.BetterGear, rows...)",
+    "new": "b.r.BetterGear = append(b.r.BetterGear, rows...)",
+    "killed_by": "TestResultTypesThroughBuilders"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "return model.Part{Name: name, Tenths: model.Some(tenths), Evidence: ev}",
+    "new": "return model.Part{Name: name, Tenths: model.Some(tenths), Evidence: model.Evidence{Text: ev.Text}}",
+    "killed_by": "TestResultTypesThroughBuilders"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "\tif len(counts)%2 != 0 {\n\t\tpanic(",
+    "new": "\tif false && len(counts)%2 != 0 {\n\t\tpanic(",
+    "killed_by": "TestEvidenceBuilderStrict"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "\t\treturn int64(r.Uint())",
+    "new": "\t\treturn 0",
+    "killed_by": "TestEvidenceBuilderStrict"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "model.PrepConsumable{Category: category, ItemID: itemID, Count: count}",
+    "new": "model.PrepConsumable{Category: category, Count: count}",
+    "killed_by": "TestResultTypesThroughBuilders"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "func (b *PrepBuilder) Reason(r string) *PrepBuilder { b.r.Reason = r; return b }",
+    "new": "func (b *PrepBuilder) Reason(r string) *PrepBuilder { return b }",
+    "killed_by": "TestResultTypesThroughBuilders"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "r.source = model.Source{SHA256: sha256, Bytes: bytes}",
+    "new": "r.source = model.Source{Bytes: bytes}",
+    "killed_by": "TestFightWithEveryNewField"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.e.Kind, b.e.Caster = model.Absorb, caster",
+    "new": "b.e.Kind = model.Absorb",
+    "killed_by": "TestFightWithEveryNewField"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.f.Classes[p.ID] = class",
+    "new": "b.f.Classes[p.ID] = \"\"",
+    "killed_by": "TestFightWithEveryNewField"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.r.GearChecked, b.r.NotScored = true, append(b.r.NotScored, slots...)",
+    "new": "b.r.NotScored = append(b.r.NotScored, slots...)",
+    "killed_by": "TestResultTypesThroughBuilders"
   }
 ]
