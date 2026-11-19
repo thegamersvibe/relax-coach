@@ -1,0 +1,38 @@
+[
+  {
+    "file": "desktop/internal/raid/fixture/fixture.go",
+    "old": "body + \"\\r\\n\"",
+    "new": "body + \"\\n\"",
+    "killed_by": "TestWriteReportedEscapingAndOffsets"
+  },
+  {
+    "file": "desktop/internal/raid/fixture/fixture.go",
+    "old": "Field(\"[\" + join(fields) + \"]\")",
+    "new": "Field(\"(\" + join(fields) + \")\")",
+    "killed_by": "TestWriteReportedEscapingAndOffsets"
+  },
+  {
+    "file": "desktop/internal/raid/fixture/fixture.go",
+    "old": "if err == nil && n != len(row) {",
+    "new": "if false && n != len(row) {",
+    "killed_by": "TestWriteRejectsShortWrite"
+  },
+  {
+    "file": "desktop/internal/raid/fixture/fields.go",
+    "old": "if a.Name != \"\" {",
+    "new": "if false {",
+    "killed_by": "TestTypedFixtureFields"
+  },
+  {
+    "file": "desktop/internal/raid/fixture/fields.go",
+    "old": "func optional(v model.Opt) Field {\n\tif !v.Present {",
+    "new": "func optional(v model.Opt) Field {\n\tif false {",
+    "killed_by": "TestAbsentFixtureFields"
+  },
+  {
+    "file": "desktop/internal/raid/fixture/fields.go",
+    "old": "position(e.X), position(e.Y)",
+    "new": "position(e.Y), position(e.X)",
+    "killed_by": "TestTypedFixtureFields"
+  }
+]

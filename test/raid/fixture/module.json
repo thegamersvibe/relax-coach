@@ -1,0 +1,16 @@
+{
+  "kind": "go",
+  "source": "desktop/internal/raid/fixture/",
+  "test": [
+    "go",
+    "-C",
+    "desktop",
+    "test",
+    "-race",
+    "-count=1",
+    "./internal/raid/fixture/..."
+  ],
+  "depends": [
+    "model"
+  ]
+}
