@@ -9,8 +9,8 @@ import (
 func TestIncompleteFightMarksRunPartial(t *testing.T) {
 	es := append(boss(7, 1000)[:4], modeltest.At(2000).Zone(0, "Outside", 0).Build())
 	r := only(t, build(t, es, params()))
-	if !r.Partial || !r.Fights[0].Partial {
-		t.Fatal("truncated boss not reflected on run")
+	if r.Partial || !r.Fights[0].Partial {
+		t.Fatal("truncated boss must not invent a missing run start")
 	}
 	es = append(boss(7, 1000), hit(100000), model.Event{Kind: model.Header, TimeMs: 100001})
 	r = only(t, build(t, es, params()))

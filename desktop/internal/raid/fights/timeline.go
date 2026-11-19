@@ -45,6 +45,17 @@ func makeDetail(f model.Fight, p Params) Detail {
 		if tl := d.Timelines[dst]; tl != nil && src != dst {
 			tl.Events = append(tl.Events, e)
 		}
+		if e.Kind == model.Absorb {
+			caster := owner(e.Caster.ID)
+			if tl := d.Timelines[caster]; tl != nil {
+				if caster != src && caster != dst {
+					tl.Events = append(tl.Events, e)
+				}
+				if e.Amount.Present {
+					tl.HealingDone += max(int64(0), e.Amount.V)
+				}
+			}
+		}
 		power, powerMax, powerType := e.Power, e.PowerMax, e.PowerType
 		if (powerMax.Present && powerMax.V == 0) || (powerType.Present && powerType.V == healthCostPowerType) {
 			power, powerMax, powerType = model.Opt{}, model.Opt{}, model.Opt{} // no bar, or a health-cost cast
@@ -65,7 +76,7 @@ func makeDetail(f model.Fight, p Params) Detail {
 			if e.Overkill.Present && e.Overkill.V > 0 {
 				amount = max(int64(0), amount-e.Overkill.V)
 			}
-			if tl := d.Timelines[src]; tl != nil {
+			if tl := d.Timelines[src]; tl != nil && !charmedFriendly(e) {
 				tl.DamageDone += amount
 			}
 			if tl := d.Timelines[e.Dst.ID]; tl != nil {
@@ -87,7 +98,7 @@ func makeDetail(f model.Fight, p Params) Detail {
 				tl.OverhealReceived += over
 			}
 		}
-		if e.Kind == model.Damage && e.Stream == model.SwingLanded && boss[e.Src.ID] {
+		if e.Kind == model.Damage && e.Stream == model.SwingLanded && (boss[e.Src.ID] || !f.Boss && creature(e.Src.ID) && !pet(e.Src)) {
 			total++
 			swings[e.Dst.ID]++
 		}
@@ -118,14 +129,19 @@ func makeDetail(f model.Fight, p Params) Detail {
 		if !p.HealerStrictlyGreater {
 			healer = float64(tl.HealingDone) >= ratio
 		}
-		role := "dps"
+		role := ""
+		if tl.DamageDone > 0 {
+			role = "dps"
+		}
 		if tank {
 			role = "tank"
 		}
-		if healer && (!p.HealerRequiresNotTank || !tank) {
+		if tl.HealingDone > 0 && healer && (!p.HealerRequiresNotTank || !tank) {
 			role = "healer"
 		}
-		f.Roles[a.ID] = role
+		if role != "" {
+			f.Roles[a.ID] = role
+		}
 	}
 	if p.InferSpecs != nil && len(p.Profiles) > 0 {
 		allowed := map[string]bool{}
@@ -158,3 +174,10 @@ func makeDetail(f model.Fight, p Params) Detail {
 // healthCostPowerType is the type the log writes on a health-cost cast; its current and maximum repeat the
 // health fields, so it is not a power sample.
 const healthCostPowerType = -2
+
+// Review round 1 / PROBES: 0x1248, 0x11248 and 0x1218 are Player GUIDs
+// with CONTROL_NPC (0x200). REACTION_FRIENDLY is 0x10; TYPE_PET is bit 12,
+// TYPE_GUARDIAN bit 13. Do not use reaction or pet bits to change identity.
+func charmedFriendly(e model.Event) bool {
+	return player(e.Src.ID) && e.Src.Flags&0x200 != 0 && e.Dst.Flags&0x10 != 0
+}

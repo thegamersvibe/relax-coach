@@ -1,4 +1,4 @@
-package fights
+package fights_test
 
 import (
 	"io"
@@ -9,22 +9,44 @@ import (
 	"strings"
 	"testing"
 
+	. "github.com/thegamersvibe/relax-coach/desktop/internal/raid/fights"
+	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/logfmt"
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/model"
 )
 
-// Local integration adapter only: provide these from an untracked test file once
-// R3 is integrated. Keep the private expected prefix out of the repository.
-// The hook must wrap the real decoder, not a replacement synthetic parser.
-var realLogDecoder Decoder
-var realLogParams func() Params
-var realLogExpectedNightPrefix string
+// Integration stays in the external test package: production fights imports
+// only model. TestImports explicitly excludes _test.go files.
+var realLogDecoder Decoder = func(r io.Reader, emit func(model.Event)) error {
+	var report logfmt.ParseReport
+	for e := range logfmt.Decode(r, &report) {
+		emit(e)
+	}
+	return report.ReadError
+}
+var realLogExpectedNightPrefix = os.Getenv("RELAX_RAID_NIGHT_PREFIX")
+
+func realLogParams() Params {
+	return Params{PullGapMs: 10000, TailMs: 2500, LowConfidenceFightMs: 45000, ReentryGapMs: 1800000,
+		TankMinBossSwingShare: .15, TankMinTopRatio: .5, HealerRequiresNotTank: true,
+		HealerMinHealingDamageRatio: 1, HealerStrictlyGreater: true,
+		BossUnitSelection: "highest_max_health_damaged_creature",
+		InstanceKind: func(id, size int64) (model.RunKind, bool) {
+			if id == 329 {
+				return model.RunDungeon, true
+			}
+			if size > 5 {
+				return model.RunRaid, false
+			}
+			return model.RunUnknown, false
+		}}
+}
 
 func TestRealLogsR4(t *testing.T) {
 	folder := os.Getenv("RELAX_RAID_REAL_LOGS")
 	if folder == "" {
 		t.Skip("RELAX_RAID_REAL_LOGS not set; private real logs not run")
 	}
-	if realLogDecoder == nil || realLogParams == nil {
+	if realLogDecoder == nil {
 		t.Skip("R3 decoder/config integration hook not installed; private real logs not run")
 	}
 	if len(realLogExpectedNightPrefix) != 8 {

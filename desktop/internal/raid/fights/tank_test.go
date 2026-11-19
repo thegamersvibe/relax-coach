@@ -58,7 +58,10 @@ func TestTankLandedShareAndTopRatio(t *testing.T) {
 			es, players := tankFight(tc.counts)
 			f := only(t, build(t, es, params())).Fights[0]
 			for i, a := range players {
-				want := "dps"
+				want := "" // No output evidence: a non-tank is not automatically DPS.
+				if i == 0 {
+					want = "dps"
+				}
 				if tc.tanks[i] {
 					want = "tank"
 				}
@@ -98,7 +101,7 @@ func TestTankTopTakerIsPlayerNotPet(t *testing.T) {
 		es = append(es, modeltest.At(int64(3000+i)).Src(giant).Dst(pet).Damage(10, -1).Landed().Build())
 	}
 	f := only(t, build(t, append(es, end), params())).Fights[0]
-	if f.Roles[players[0].ID] != "tank" || f.Roles[players[1].ID] != "dps" {
+	if f.Roles[players[0].ID] != "tank" || f.Roles[players[1].ID] != "" {
 		t.Fatal("pet swings must count in the total, not as a player or the top player")
 	}
 }

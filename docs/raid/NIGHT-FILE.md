@@ -53,6 +53,16 @@ group size, end-line success, end-line fight length in milliseconds, then the di
 ids from its `COMBATANT_INFO` lines in ascending byte order. Numbers are decimal. No timestamp,
 failed cast, or other logger-specific event enters this hash.
 
+When complete boss fights in the same file have every input above equal, the
+second and later in file order append one additional newline-separated value:
+`repeat 2`, `repeat 3`, and so on. The first appends nothing, preserving existing
+ids. The counter is file-local, crosses headers/run boundaries, and counts only
+complete bosses. A different server fight length (even by one millisecond) is a
+different input, not a repeat. `nightId` still hashes the sorted complete ids,
+including repeats. Reading the same file twice gives the same ids; a file that
+contains only the second pull necessarily gives it the original, unsuffixed id.
+No timestamp is added to the hash.
+
 Trash and partial fights have file-local ids: the preceding complete boss id (or `start`),
 a colon, and the one-based position after it. They are not matched between logs. Missing
 server numeric fields are `unknown`, never an invented zero. The normal complete boss
@@ -216,7 +226,7 @@ built the same way, from the run's sorted complete boss fight ids, excluding tra
 | File name | `dungeon-YYYYMMDD-<first 8 of the run's id>.json`, same date rule |
 | `kind` | `dungeon` |
 | `raid` | Absent; replaced by `instanceId` (integer) and `name` (string, the instance as logged) |
-| `partial` | Boolean at top level: the log starts or ends inside the run |
+| `partial` | Boolean at top level: the log starts mid-fight; an EOF/header cut affects the open fight, not this flag |
 | Fight `type` | `boss` or `pull`, as in the night file |
 | Player `night` | Replaced by `run`: `{"score": number or null, "coverage": number}`, no rank |
 | `wipes`, `assignments` | Absent |

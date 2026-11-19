@@ -15,8 +15,12 @@ type Source = model.Source
 // fights must never import logfmt. emit must be called synchronously, in file order.
 type Decoder func(io.Reader, func(model.Event)) error
 
-// Read hashes raw bytes as the caller's decoder reads them and buffers at most
-// one run's decoded events at a time. Returned detailed fights retain their events.
+// Read hashes raw bytes as the caller's decoder reads them. Segmentation buffers
+// only the active fight (including its configured tail). Closed index-only fights
+// discard events; selected details intentionally retain events in the result.
+// Run metadata, ownership facts, combatants and per-file repeat keys grow with
+// fights/actors, not the number of discarded event lines. There is no fixed byte
+// cap on one fight or on requested output; this is not a constant-memory API.
 // Errors return no result: a truncated hash must never name a complete source.
 func Read(raw io.Reader, decode Decoder, p Params) (Result, error) {
 	if raw == nil || decode == nil {

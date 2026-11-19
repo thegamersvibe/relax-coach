@@ -19,11 +19,19 @@ type raidLogFile struct {
 // The newest file is first; the remaining rotation/archive choices follow by
 // modification time. Equal timestamps use the path for deterministic ordering.
 func raidLogChoices(installation string) ([]raidLogFile, error) {
+	files, _, err := raidLogChoicesWithReadDir(installation, os.ReadDir)
+	return files, err
+}
+
+// The report counts failed metadata reads separately from an unreadable folder.
+// The injected read is local to the call; no process-global test hook is needed.
+func raidLogChoicesWithReadDir(installation string, readDir func(string) ([]os.DirEntry, error)) ([]raidLogFile, int, error) {
 	folder := filepath.Join(installation, "Logs")
-	entries, err := os.ReadDir(folder)
+	entries, err := readDir(folder)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
+	skipped := 0
 	var files []raidLogFile
 	for _, entry := range entries {
 		name := entry.Name()
@@ -32,7 +40,8 @@ func raidLogChoices(installation string) ([]raidLogFile, error) {
 		}
 		info, err := entry.Info()
 		if err != nil {
-			return nil, err
+			skipped++
+			continue
 		}
 		if !info.Mode().IsRegular() {
 			continue
@@ -45,7 +54,7 @@ func raidLogChoices(installation string) ([]raidLogFile, error) {
 		}
 		return files[i].Modified.After(files[j].Modified)
 	})
-	return files, nil
+	return files, skipped, nil
 }
 
 // openRaidLog returns a read-only stream; the caller closes it and adapts its

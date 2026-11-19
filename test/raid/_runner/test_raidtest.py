@@ -105,6 +105,20 @@ class RunnerTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.t = Tree(self.tmp.name)
 
+    def test_go_root_package_mutant(self):
+        self.t.write("desktop/go.mod", GO_MOD)
+        self.t.write("desktop/probe.go", GO_SRC)
+        self.t.write("desktop/probe_test.go", GO_TEST)
+        self.t.write("test/raid/g/module.json", json.dumps({
+            "kind": "go", "source": "desktop/",
+            "test": ["go", "-C", "desktop", "test", "-run", "^TestValue$", "."]}))
+        self.t.write("test/raid/g/mutants.json", json.dumps([{
+            "file": "desktop/probe.go", "old": "return 1", "new": "return 2",
+            "killed_by": "TestValue"}]))
+        rc, out = self.t.run("--mutants", "g")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("RESULT: 1/1 mutants killed", out)
+
     def test_finds_modules(self):
         three_modules(self.t)
         self.t.write("test/raid/notamodule/readme.txt", "no module.json here\n")

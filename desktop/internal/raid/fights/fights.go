@@ -36,28 +36,30 @@ type Params struct {
 
 // Result retains per-file metadata beside runs; it never names a local path.
 type Result struct {
-	Runs   []Run
-	Source Source
+	Runs                   []Run
+	Source                 Source
+	DuplicateEncounterEnds int64
 }
 
 // Run is a segmentation result, not a night-score input. Conversion to the two
 // model types is checked by kind. Unknown runs remain visible but unscored.
 type Run struct {
-	Kind           model.RunKind
-	InstanceID     int64
-	Listed         bool
-	NightID        string
-	StartMs, EndMs int64
-	OffsetH        int8
-	Partial        bool
-	Logger         model.Actor
-	Roster         []model.Actor
-	Fights         []model.Fight
-	Details        []Detail // same order as Fights; model intentionally unchanged
-	Build          string
-	LogVersion     int64
-	Advanced       bool
-	Source         model.Source
+	Kind                   model.RunKind
+	InstanceID             int64
+	Listed                 bool
+	NightID                string
+	StartMs, EndMs         int64
+	OffsetH                int8
+	Partial                bool
+	Logger                 model.Actor
+	Roster                 []model.Actor
+	Fights                 []model.Fight
+	Details                []Detail // same order as Fights; model intentionally unchanged
+	Build                  string
+	LogVersion             int64
+	Advanced               bool
+	Source                 model.Source
+	DuplicateEncounterEnds int64
 }
 
 // Build consumes decoded events in file order. Wall time is used for windows,
@@ -71,29 +73,88 @@ func collect(events iter.Seq[model.Event], p Params) (Result, error) {
 		return Result{}, err
 	}
 	var result Result
-	var segment []model.Event
+	repeats := map[string]int{}
 	var header []string
 	instance, difficulty := int64(0), int64(0)
-	enabled, knownZone := true, false
-	inferred := false
+	enabled, knownZone, inferred := true, false, false
 	pendingExit := false
-	var exitMs int64
+	var exitMs, lastMs, lastCombat int64
+	var r Run
+	var f *model.Fight
+	var facts []fightFacts
+	actors := newActorIndex()
+	initialized, ended := false, false
+	seenEnds := map[int64]bool{}
+	anchor, position := "start", 0
+	finish := func() {
+		if f == nil {
+			return
+		}
+		if f.Boss && !ended {
+			f.Partial = true
+		}
+		if f.Boss && !f.Partial {
+			text := bossText(*f)
+			repeats[text]++
+			if repeats[text] > 1 {
+				text += "\nrepeat " + strconv.Itoa(repeats[text])
+			}
+			f.ID = digest(text)
+			anchor, position = f.ID, 0
+		} else {
+			position++
+			f.ID = anchor + ":" + strconv.Itoa(position)
+		}
+		fact := collectFightFacts(*f)
+		actors.project(f, fact.touched, actors.resolved())
+		selectBosses(f, p)
+		d := indexDetail(*f, p)
+		fact.selected = p.DetailsFor == nil || p.DetailsFor(*f)
+		if fact.selected {
+			d = makeDetail(*f, p)
+		} else {
+			fact.bossEvidence = bossEvidence(*f)
+			f.Events = nil
+			d.UnscoredReason = "detailNotSelected"
+		}
+		f.Offset, f.Len, f.Specs = d.Offset, d.Len, d.Specs
+		r.Fights = append(r.Fights, *f)
+		r.Details = append(r.Details, d)
+		facts = append(facts, fact)
+		f, ended = nil, false
+	}
 	flush := func(end int64, cut bool) {
 		if pendingExit {
 			// Later outside lines (including headers/EOF) cannot move the exit.
 			end, cut = exitMs, false
 			pendingExit = false
 		}
-		if len(segment) == 0 {
+		if !initialized {
 			return
 		}
-		r := splitRun(segment, instance, difficulty, end, cut, p)
+		if f != nil && !f.Boss && cut && end-lastCombat <= p.PullGapMs {
+			f.Partial = true
+		}
+		finish()
+		r.InstanceID, r.EndMs = instance, max(r.StartMs, end)
+		var size int64
+		for _, f := range r.Fights {
+			if int64(f.GroupSize) > size {
+				size = int64(f.GroupSize)
+			}
+		}
+		r.Kind, r.Listed = p.InstanceKind(instance, size)
+		r.NightID = nightID(r.Fights)
 		readHeader(&r, header)
-		describe(&r, segment, p)
+		actors.finish(&r, facts, p)
+		result.DuplicateEncounterEnds += r.DuplicateEncounterEnds
 		if len(r.Fights) > 0 {
 			result.Runs = append(result.Runs, r)
 		}
-		segment = nil
+		r, facts, actors = Run{}, nil, newActorIndex()
+		initialized, ended = false, false
+		seenEnds = map[int64]bool{}
+		anchor, position = "start", 0
 	}
 	for e := range events {
 		if e.Kind == model.Header {
@@ -115,13 +176,10 @@ func collect(events iter.Seq[model.Event], p Params) (Result, error) {
 			if enabled && knownZone && next == instance {
 				continue
 			}
-			if enabled && instance != 0 && next == 0 && len(segment) > 0 {
-				// Delay the run boundary, but retain the exit to close the fight.
+			if enabled && instance != 0 && next == 0 && initialized {
 				pendingExit, exitMs = true, e.TimeMs
-				segment = append(segment, e)
+				finish() // re-entry joins runs, never fights across an exit
 			} else {
-				// Any different non-zero instance commits the pending exit, even
-				// if it is unlisted or has no fights of its own.
 				flush(e.TimeMs, false)
 				instance, difficulty = next, e.Zone.Difficulty
 			}
@@ -136,48 +194,23 @@ func collect(events iter.Seq[model.Event], p Params) (Result, error) {
 			instance = e.Enc.InstanceID.V
 			inferred = true
 		}
-		segment = append(segment, e)
-	}
-	if len(segment) > 0 {
-		flush(segment[len(segment)-1].TimeMs, true)
-	}
-	return result, nil
-}
-
-func splitRun(events []model.Event, instance, difficulty, end int64, cut bool, p Params) Run {
-	r := Run{InstanceID: instance, StartMs: events[0].TimeMs, OffsetH: events[0].OffsetH, EndMs: end, Partial: cut}
-	var f *model.Fight
-	ended := false
-	lastCombat := int64(0)
-	anchor, position := "start", 0
-	finish := func() {
-		if f == nil {
-			return
-		}
-		if f.Boss && !ended {
-			f.Partial = true
-		}
-		if f.Boss && !f.Partial {
-			f.ID = bossID(*f)
-			anchor, position = f.ID, 0
-		} else {
-			position++
-			f.ID = anchor + ":" + strconv.Itoa(position)
-		}
-		if f.Partial {
-			r.Partial = true
-		}
-		r.Fights = append(r.Fights, *f)
-		f = nil
-		ended = false
-	}
-	for _, e := range events {
-		if e.Kind == model.ZoneChange {
-			finish() // re-entry joins runs, never fights across an exit
-			continue
+		if !initialized {
+			r.StartMs, r.OffsetH, initialized = e.TimeMs, e.OffsetH, true
 		}
 		start := e.Kind == model.EncounterStart && e.Enc != nil
 		stop := e.Kind == model.EncounterEnd && e.Enc != nil
+		if start {
+			delete(seenEnds, e.Enc.ID)
+		}
+		if stop {
+			if seenEnds[e.Enc.ID] {
+				r.DuplicateEncounterEnds++
+				continue
+			}
+			seenEnds[e.Enc.ID] = true
+		}
+		lastMs = e.TimeMs
+		actors.observe(e)
 		if start {
 			finish()
 		}
@@ -191,8 +224,10 @@ func splitRun(events []model.Event, instance, difficulty, end int64, cut bool, p
 			f = &model.Fight{Boss: true, EncounterID: e.Enc.ID, Name: e.Enc.Name, InstanceID: e.Enc.InstanceID.V, DifficultyID: e.Enc.Difficulty, GroupSize: int(e.Enc.GroupSize), StartMs: e.TimeMs}
 		}
 		if stop && (f == nil || !f.Boss || f.EncounterID != e.Enc.ID) {
-			// Preserve an orphan end as an incomplete boss, never infer a start.
 			finish()
+			if len(r.Fights) == 0 {
+				r.Partial = true
+			}
 			f = &model.Fight{Boss: true, Partial: true, EncounterID: e.Enc.ID, Name: e.Enc.Name, InstanceID: e.Enc.InstanceID.V, DifficultyID: e.Enc.Difficulty, GroupSize: int(e.Enc.GroupSize), StartMs: e.TimeMs}
 		}
 		if f == nil && combat(e) {
@@ -207,7 +242,7 @@ func splitRun(events []model.Event, instance, difficulty, end int64, cut bool, p
 		}
 		f.Events = append(f.Events, e)
 		if !ended {
-			f.EndMs = e.TimeMs
+			f.EndMs = max(f.StartMs, f.EndMs, e.TimeMs)
 		}
 		if combat(e) {
 			lastCombat = e.TimeMs
@@ -220,21 +255,8 @@ func splitRun(events []model.Event, instance, difficulty, end int64, cut bool, p
 			ended = true
 		}
 	}
-	if f != nil && !f.Boss && cut && end-lastCombat <= p.PullGapMs {
-		f.Partial = true
-	}
-	finish()
-	var size int64
-	for _, f := range r.Fights {
-		if int64(f.GroupSize) > size {
-			size = int64(f.GroupSize)
-		}
-	}
-	if p.InstanceKind != nil {
-		r.Kind, r.Listed = p.InstanceKind(instance, size)
-	}
-	r.NightID = nightID(r.Fights)
-	return r
+	flush(lastMs, true)
+	return result, nil
 }
 
 func combat(e model.Event) bool {
@@ -258,7 +280,7 @@ func validate(p Params) error {
 
 func digest(s string) string { return fmt.Sprintf("%x", sha256.Sum256([]byte(s))) }
 func number(v int64) string  { return strconv.FormatInt(v, 10) }
-func bossID(f model.Fight) string {
+func bossText(f model.Fight) string {
 	fields := []string{"boss", number(f.InstanceID), number(f.EncounterID), number(f.DifficultyID), number(int64(f.GroupSize)), optional(f.Success), optional(f.DurationMs)}
 	ids := make(map[string]bool)
 	for _, c := range f.Combatants {
@@ -269,7 +291,7 @@ func bossID(f model.Fight) string {
 		players = append(players, id)
 	}
 	sort.Strings(players)
-	return digest(strings.Join(append(fields, players...), "\n"))
+	return strings.Join(append(fields, players...), "\n")
 }
 func optional(n model.Opt) string {
 	if !n.Present {

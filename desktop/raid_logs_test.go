@@ -76,6 +76,28 @@ func TestRaidLogManualPathAndFailures(t *testing.T) {
 		t.Fatal("empty folder accepted")
 	}
 }
+
+type failingRaidEntry struct{ os.DirEntry }
+
+func (failingRaidEntry) Info() (os.FileInfo, error) { return nil, os.ErrNotExist }
+func TestRaidLogInfoFailureSkipsOne(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"WoWCombatLog-good.txt", "WoWCombatLog-gone.txt"} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte("synthetic"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entries[0] = failingRaidEntry{entries[0]}
+	files, skipped, err := raidLogChoicesWithReadDir(root, func(string) ([]os.DirEntry, error) { return entries, nil })
+	if err != nil || skipped != 1 || len(files) != 1 || filepath.Base(files[0].Path) != "WoWCombatLog-good.txt" {
+		t.Fatalf("files=%d skipped=%d err=%v", len(files), skipped, err)
+	}
+}
+
 func TestRaidLogEqualTimesAreDeterministic(t *testing.T) {
 	root := t.TempDir()
 	logs := filepath.Join(root, "Logs")
