@@ -1,0 +1,861 @@
+{
+  "all-active": {
+    "availability": {
+      "810002": "inlog",
+      "810003": "blocked"
+    },
+    "floor": 0,
+    "issues": {},
+    "later": {
+      "1": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "accept",
+        "level": 40,
+        "levelOK": false,
+        "name": "Zinc errand",
+        "needs": {},
+        "parentActive": {},
+        "q": 810003,
+        "reqLevel": 38,
+        "source": "QuestieDB",
+        "who": "Tin keeper",
+        "zone": "The Deadmines"
+      }
+    },
+    "level": 35,
+    "plan": {
+      "1": 810002,
+      "2": 810003
+    },
+    "questNames": {
+      "810002": "Tin errand",
+      "810003": "Zinc errand"
+    },
+    "steps": {
+      "1": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "turnin",
+        "level": 30,
+        "levelOK": true,
+        "name": "Tin errand",
+        "needs": {},
+        "parentActive": {},
+        "q": 810002,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "who": "Tin keeper",
+        "zone": "The Deadmines"
+      }
+    },
+    "targets": 2,
+    "title": "The Deadmines"
+  },
+  "all-done": {
+    "availability": {
+      "810002": "available",
+      "810003": "blocked"
+    },
+    "floor": 0,
+    "issues": {},
+    "later": {
+      "1": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "accept",
+        "level": 40,
+        "levelOK": false,
+        "name": "Zinc errand",
+        "needs": {},
+        "parentActive": {},
+        "q": 810003,
+        "reqLevel": 38,
+        "source": "QuestieDB",
+        "who": "Tin keeper",
+        "zone": "The Deadmines"
+      }
+    },
+    "level": 35,
+    "plan": {
+      "1": 810002,
+      "2": 810003
+    },
+    "questNames": {
+      "810002": "Tin errand",
+      "810003": "Zinc errand"
+    },
+    "steps": {
+      "1": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "accept",
+        "level": 30,
+        "levelOK": true,
+        "name": "Tin errand",
+        "needs": {},
+        "parentActive": {},
+        "q": 810002,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "who": "Copper keeper",
+        "zone": "Area 880001"
+      },
+      "2": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "complete",
+        "level": 30,
+        "levelOK": true,
+        "name": "Tin errand",
+        "needs": {},
+        "note": "Complete the quest objectives",
+        "parentActive": {},
+        "q": 810002,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "zone": "The Deadmines"
+      },
+      "3": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "turnin",
+        "level": 30,
+        "levelOK": true,
+        "name": "Tin errand",
+        "needs": {},
+        "parentActive": {},
+        "q": 810002,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "who": "Tin keeper",
+        "zone": "The Deadmines"
+      }
+    },
+    "targets": 2,
+    "title": "The Deadmines"
+  },
+  "all-fresh": {
+    "availability": {
+      "810001": "available",
+      "810002": "blocked",
+      "810003": "blocked"
+    },
+    "floor": 0,
+    "issues": {},
+    "later": {
+      "1": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "accept",
+        "level": 40,
+        "levelOK": false,
+        "name": "Zinc errand",
+        "needs": {},
+        "parentActive": {},
+        "q": 810003,
+        "reqLevel": 38,
+        "source": "QuestieDB",
+        "who": "Tin keeper",
+        "zone": "The Deadmines"
+      }
+    },
+    "level": 35,
+    "plan": {
+      "1": 810001,
+      "2": 810002,
+      "3": 810003
+    },
+    "questNames": {
+      "810001": "Copper errand",
+      "810002": "Tin errand",
+      "810003": "Zinc errand"
+    },
+    "steps": {
+      "1": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "accept",
+        "level": 20,
+        "levelOK": true,
+        "name": "Copper errand",
+        "needs": {},
+        "parentActive": {},
+        "q": 810001,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "who": "Copper keeper",
+        "zone": "Area 880001"
+      },
+      "2": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "complete",
+        "level": 20,
+        "levelOK": true,
+        "name": "Copper errand",
+        "needs": {},
+        "note": "Complete the quest objectives",
+        "parentActive": {},
+        "q": 810001,
+        "reqLevel": 1,
+        "source": "QuestieDB"
+      },
+      "3": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "turnin",
+        "level": 20,
+        "levelOK": true,
+        "name": "Copper errand",
+        "needs": {},
+        "parentActive": {},
+        "q": 810001,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "who": "Copper keeper",
+        "zone": "Area 880001"
+      },
+      "4": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "accept",
+        "level": 30,
+        "levelOK": true,
+        "name": "Tin errand",
+        "needs": {
+          "1": 810001
+        },
+        "parentActive": {},
+        "q": 810002,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "who": "Copper keeper",
+        "zone": "Area 880001"
+      },
+      "5": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "complete",
+        "level": 30,
+        "levelOK": true,
+        "name": "Tin errand",
+        "needs": {
+          "1": 810001
+        },
+        "note": "Complete the quest objectives",
+        "parentActive": {},
+        "q": 810002,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "zone": "The Deadmines"
+      },
+      "6": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "turnin",
+        "level": 30,
+        "levelOK": true,
+        "name": "Tin errand",
+        "needs": {
+          "1": 810001
+        },
+        "parentActive": {},
+        "q": 810002,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "who": "Tin keeper",
+        "zone": "The Deadmines"
+      }
+    },
+    "targets": 2,
+    "title": "The Deadmines"
+  },
+  "game-active": {
+    "availability": {
+      "810002": "inlog",
+      "810003": "blocked"
+    },
+    "floor": 28,
+    "issues": {},
+    "later": {
+      "1": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "accept",
+        "level": 40,
+        "levelOK": false,
+        "name": "Zinc errand",
+        "needs": {},
+        "parentActive": {},
+        "q": 810003,
+        "reqLevel": 38,
+        "source": "QuestieDB",
+        "who": "Tin keeper",
+        "zone": "The Deadmines"
+      }
+    },
+    "level": 35,
+    "plan": {
+      "1": 810002,
+      "2": 810003
+    },
+    "questNames": {
+      "810002": "Tin errand",
+      "810003": "Zinc errand"
+    },
+    "steps": {
+      "1": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "turnin",
+        "level": 30,
+        "levelOK": true,
+        "name": "Tin errand",
+        "needs": {},
+        "parentActive": {},
+        "q": 810002,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "who": "Tin keeper",
+        "zone": "The Deadmines"
+      }
+    },
+    "targets": 2,
+    "title": "The Deadmines"
+  },
+  "game-done": {
+    "availability": {
+      "810002": "available",
+      "810003": "blocked"
+    },
+    "floor": 28,
+    "issues": {},
+    "later": {
+      "1": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "accept",
+        "level": 40,
+        "levelOK": false,
+        "name": "Zinc errand",
+        "needs": {},
+        "parentActive": {},
+        "q": 810003,
+        "reqLevel": 38,
+        "source": "QuestieDB",
+        "who": "Tin keeper",
+        "zone": "The Deadmines"
+      }
+    },
+    "level": 35,
+    "plan": {
+      "1": 810002,
+      "2": 810003
+    },
+    "questNames": {
+      "810002": "Tin errand",
+      "810003": "Zinc errand"
+    },
+    "steps": {
+      "1": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "accept",
+        "level": 30,
+        "levelOK": true,
+        "name": "Tin errand",
+        "needs": {},
+        "parentActive": {},
+        "q": 810002,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "who": "Copper keeper",
+        "zone": "Area 880001"
+      },
+      "2": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "complete",
+        "level": 30,
+        "levelOK": true,
+        "name": "Tin errand",
+        "needs": {},
+        "note": "Complete the quest objectives",
+        "parentActive": {},
+        "q": 810002,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "zone": "The Deadmines"
+      },
+      "3": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "turnin",
+        "level": 30,
+        "levelOK": true,
+        "name": "Tin errand",
+        "needs": {},
+        "parentActive": {},
+        "q": 810002,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "who": "Tin keeper",
+        "zone": "The Deadmines"
+      }
+    },
+    "targets": 2,
+    "title": "The Deadmines"
+  },
+  "game-fresh": {
+    "availability": {
+      "810001": "available",
+      "810002": "blocked",
+      "810003": "blocked"
+    },
+    "floor": 28,
+    "issues": {},
+    "later": {
+      "1": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "accept",
+        "level": 40,
+        "levelOK": false,
+        "name": "Zinc errand",
+        "needs": {},
+        "parentActive": {},
+        "q": 810003,
+        "reqLevel": 38,
+        "source": "QuestieDB",
+        "who": "Tin keeper",
+        "zone": "The Deadmines"
+      }
+    },
+    "level": 35,
+    "plan": {
+      "1": 810001,
+      "2": 810002,
+      "3": 810003
+    },
+    "questNames": {
+      "810001": "Copper errand",
+      "810002": "Tin errand",
+      "810003": "Zinc errand"
+    },
+    "steps": {
+      "1": {
+        "activeNeeds": {},
+        "below": true,
+        "confidence": "db",
+        "kind": "accept",
+        "level": 20,
+        "levelOK": true,
+        "name": "Copper errand",
+        "needs": {},
+        "note": "Below floor: your choice \u2014 unlocks 1 quests",
+        "parentActive": {},
+        "q": 810001,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "who": "Copper keeper",
+        "zone": "Area 880001"
+      },
+      "2": {
+        "activeNeeds": {},
+        "below": true,
+        "confidence": "db",
+        "kind": "complete",
+        "level": 20,
+        "levelOK": true,
+        "name": "Copper errand",
+        "needs": {},
+        "note": "Complete the quest objectives. Below floor: your choice \u2014 unlocks 1 quests",
+        "parentActive": {},
+        "q": 810001,
+        "reqLevel": 1,
+        "source": "QuestieDB"
+      },
+      "3": {
+        "activeNeeds": {},
+        "below": true,
+        "confidence": "db",
+        "kind": "turnin",
+        "level": 20,
+        "levelOK": true,
+        "name": "Copper errand",
+        "needs": {},
+        "note": "Below floor: your choice \u2014 unlocks 1 quests",
+        "parentActive": {},
+        "q": 810001,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "who": "Copper keeper",
+        "zone": "Area 880001"
+      },
+      "4": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "accept",
+        "level": 30,
+        "levelOK": true,
+        "name": "Tin errand",
+        "needs": {
+          "1": 810001
+        },
+        "parentActive": {},
+        "q": 810002,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "who": "Copper keeper",
+        "zone": "Area 880001"
+      },
+      "5": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "complete",
+        "level": 30,
+        "levelOK": true,
+        "name": "Tin errand",
+        "needs": {
+          "1": 810001
+        },
+        "note": "Complete the quest objectives",
+        "parentActive": {},
+        "q": 810002,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "zone": "The Deadmines"
+      },
+      "6": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "turnin",
+        "level": 30,
+        "levelOK": true,
+        "name": "Tin errand",
+        "needs": {
+          "1": 810001
+        },
+        "parentActive": {},
+        "q": 810002,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "who": "Tin keeper",
+        "zone": "The Deadmines"
+      }
+    },
+    "targets": 2,
+    "title": "The Deadmines"
+  },
+  "strict-active": {
+    "availability": {
+      "810002": "inlog",
+      "810003": "blocked"
+    },
+    "floor": 30,
+    "issues": {},
+    "later": {
+      "1": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "accept",
+        "level": 40,
+        "levelOK": false,
+        "name": "Zinc errand",
+        "needs": {},
+        "parentActive": {},
+        "q": 810003,
+        "reqLevel": 38,
+        "source": "QuestieDB",
+        "who": "Tin keeper",
+        "zone": "The Deadmines"
+      }
+    },
+    "level": 35,
+    "plan": {
+      "1": 810002,
+      "2": 810003
+    },
+    "questNames": {
+      "810002": "Tin errand",
+      "810003": "Zinc errand"
+    },
+    "steps": {
+      "1": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "turnin",
+        "level": 30,
+        "levelOK": true,
+        "name": "Tin errand",
+        "needs": {},
+        "parentActive": {},
+        "q": 810002,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "who": "Tin keeper",
+        "zone": "The Deadmines"
+      }
+    },
+    "targets": 2,
+    "title": "The Deadmines"
+  },
+  "strict-done": {
+    "availability": {
+      "810002": "available",
+      "810003": "blocked"
+    },
+    "floor": 30,
+    "issues": {},
+    "later": {
+      "1": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "accept",
+        "level": 40,
+        "levelOK": false,
+        "name": "Zinc errand",
+        "needs": {},
+        "parentActive": {},
+        "q": 810003,
+        "reqLevel": 38,
+        "source": "QuestieDB",
+        "who": "Tin keeper",
+        "zone": "The Deadmines"
+      }
+    },
+    "level": 35,
+    "plan": {
+      "1": 810002,
+      "2": 810003
+    },
+    "questNames": {
+      "810002": "Tin errand",
+      "810003": "Zinc errand"
+    },
+    "steps": {
+      "1": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "accept",
+        "level": 30,
+        "levelOK": true,
+        "name": "Tin errand",
+        "needs": {},
+        "parentActive": {},
+        "q": 810002,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "who": "Copper keeper",
+        "zone": "Area 880001"
+      },
+      "2": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "complete",
+        "level": 30,
+        "levelOK": true,
+        "name": "Tin errand",
+        "needs": {},
+        "note": "Complete the quest objectives",
+        "parentActive": {},
+        "q": 810002,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "zone": "The Deadmines"
+      },
+      "3": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "turnin",
+        "level": 30,
+        "levelOK": true,
+        "name": "Tin errand",
+        "needs": {},
+        "parentActive": {},
+        "q": 810002,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "who": "Tin keeper",
+        "zone": "The Deadmines"
+      }
+    },
+    "targets": 2,
+    "title": "The Deadmines"
+  },
+  "strict-fresh": {
+    "availability": {
+      "810001": "available",
+      "810002": "blocked",
+      "810003": "blocked"
+    },
+    "floor": 30,
+    "issues": {},
+    "later": {
+      "1": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "accept",
+        "level": 40,
+        "levelOK": false,
+        "name": "Zinc errand",
+        "needs": {},
+        "parentActive": {},
+        "q": 810003,
+        "reqLevel": 38,
+        "source": "QuestieDB",
+        "who": "Tin keeper",
+        "zone": "The Deadmines"
+      }
+    },
+    "level": 35,
+    "plan": {
+      "1": 810001,
+      "2": 810002,
+      "3": 810003
+    },
+    "questNames": {
+      "810001": "Copper errand",
+      "810002": "Tin errand",
+      "810003": "Zinc errand"
+    },
+    "steps": {
+      "1": {
+        "activeNeeds": {},
+        "below": true,
+        "confidence": "db",
+        "kind": "accept",
+        "level": 20,
+        "levelOK": true,
+        "name": "Copper errand",
+        "needs": {},
+        "note": "Below floor: your choice \u2014 unlocks 1 quests",
+        "parentActive": {},
+        "q": 810001,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "who": "Copper keeper",
+        "zone": "Area 880001"
+      },
+      "2": {
+        "activeNeeds": {},
+        "below": true,
+        "confidence": "db",
+        "kind": "complete",
+        "level": 20,
+        "levelOK": true,
+        "name": "Copper errand",
+        "needs": {},
+        "note": "Complete the quest objectives. Below floor: your choice \u2014 unlocks 1 quests",
+        "parentActive": {},
+        "q": 810001,
+        "reqLevel": 1,
+        "source": "QuestieDB"
+      },
+      "3": {
+        "activeNeeds": {},
+        "below": true,
+        "confidence": "db",
+        "kind": "turnin",
+        "level": 20,
+        "levelOK": true,
+        "name": "Copper errand",
+        "needs": {},
+        "note": "Below floor: your choice \u2014 unlocks 1 quests",
+        "parentActive": {},
+        "q": 810001,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "who": "Copper keeper",
+        "zone": "Area 880001"
+      },
+      "4": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "accept",
+        "level": 30,
+        "levelOK": true,
+        "name": "Tin errand",
+        "needs": {
+          "1": 810001
+        },
+        "parentActive": {},
+        "q": 810002,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "who": "Copper keeper",
+        "zone": "Area 880001"
+      },
+      "5": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "complete",
+        "level": 30,
+        "levelOK": true,
+        "name": "Tin errand",
+        "needs": {
+          "1": 810001
+        },
+        "note": "Complete the quest objectives",
+        "parentActive": {},
+        "q": 810002,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "zone": "The Deadmines"
+      },
+      "6": {
+        "activeNeeds": {},
+        "below": false,
+        "confidence": "db",
+        "kind": "turnin",
+        "level": 30,
+        "levelOK": true,
+        "name": "Tin errand",
+        "needs": {
+          "1": 810001
+        },
+        "parentActive": {},
+        "q": 810002,
+        "reqLevel": 1,
+        "source": "QuestieDB",
+        "who": "Tin keeper",
+        "zone": "The Deadmines"
+      }
+    },
+    "targets": 2,
+    "title": "The Deadmines"
+  }
+}

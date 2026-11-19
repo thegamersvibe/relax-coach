@@ -42,10 +42,10 @@ class ClientTests(unittest.TestCase):
 
     def test_restricted_messages_dropped_and_counted(self):
         c = Client()
-        self.assertTrue(c.run('return C_ChatInfo.SendAddonMessage("RLXR1", "a", "RAID")'))
+        self.assertEqual(c.run('return C_ChatInfo.SendAddonMessage("RLXR1", "a", "RAID")'), 0)
         c.restricted = True
-        self.assertFalse(c.run('return C_ChatInfo.SendAddonMessage("RLXR1", "b", "RAID")'))
-        self.assertFalse(c.run('return C_ChatInfo.SendAddonMessage("RLXR1", "c", "RAID")'))
+        self.assertEqual(c.run('return C_ChatInfo.SendAddonMessage("RLXR1", "b", "RAID")'), 11)
+        self.assertEqual(c.run('return C_ChatInfo.SendAddonMessage("RLXR1", "c", "RAID")'), 11)
         self.assertEqual(c.dropped, 2)
         self.assertEqual([s[1] for s in c.sent], ["a"])
 

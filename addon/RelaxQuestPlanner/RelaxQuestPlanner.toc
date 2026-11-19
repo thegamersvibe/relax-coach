@@ -2,12 +2,13 @@
 ## Title: Relax Quest Planner
 ## Notes: Dungeon quest routes, prerequisites and a guide picker. Runtime data only.
 ## Author: TheGamersVibe
-## Version: 0.3.0
+## Version: 0.4.0
 ## SavedVariablesPerCharacter: RelaxQuestPlannerDB
 ## OptionalDeps: QuestieDB, Questie, ForeverDungeonJournal, DungeonGuideForever, Journey
 
 Init.lua
 Core/Data.lua
+Core/PlaceData.lua
 Core/Player.lua
 Core/Engine.lua
 Core/Learn.lua

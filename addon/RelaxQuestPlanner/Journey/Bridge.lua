@@ -26,6 +26,13 @@ function Journey.ToGuide(route)
         return nil, "A route with steps is required"
     end
     local guide = {}
+    local lastBlock
+    local function blockName(block)
+        if block==1 then return "Before you go" end
+        if block==2 then return "Inside "..text(route.title or "dungeon") end
+        if block==3 then return "After the run" end
+        if block==4 then return "Next run" end
+    end
     local db = _G.RelaxQuestPlannerDB
     local skip = type(db) == "table" and type(db.skipped) == "table" and db.skipped or {}
     for index, action in ipairs(route.steps) do
@@ -54,7 +61,16 @@ function Journey.ToGuide(route)
         else
             condition = condition .. " and " .. quest .. " >= ACCEPTED"
         end
-        local labels = { text(action.name or ("Quest " .. tostring(q))) }
+        local labels = {}
+        if #guide==0 and #(route.preRunNotes or {})>0 then
+            labels[#labels+1]="Before you go"
+            for _,n in ipairs(route.preRunNotes) do labels[#labels+1]=text(n.text) end
+            lastBlock=1
+        end
+        if action.block and action.block~=lastBlock then
+            labels[#labels+1]=blockName(action.block); lastBlock=action.block
+        end
+        labels[#labels+1]=text(action.name or ("Quest " .. tostring(q)))
         if action.who then labels[#labels + 1] = text(action.who) end
         if action.zone then labels[#labels + 1] = text(action.zone) end
         if action.below then labels[#labels + 1] = "Below level floor: your choice" end

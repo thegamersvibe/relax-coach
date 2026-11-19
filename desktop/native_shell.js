@@ -258,8 +258,12 @@ function filterFarmHouse() {
   const rows = $('farm-body').querySelectorAll('tr[data-house]');
   let shown = 0;
   for (const row of rows) { row.hidden = house !== null && row.dataset.house !== house; if (!row.hidden) shown++; }
+  // The "no bank items" line counts only its own card's rows (hot items have rows per house too).
   const empty = $('farm-body').querySelector('.farm-empty-house');
-  if (empty) empty.hidden = !rows.length || shown > 0;
+  if (empty) {
+    const own = [...empty.closest('.card').querySelectorAll('tr[data-house]')];
+    empty.hidden = !own.length || own.some(row=>!row.hidden);
+  }
 }
 function displayFarm(result) {
   const has = result.HasFarm === true;

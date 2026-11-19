@@ -65,7 +65,7 @@ def check_raid_toc(names):
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument('--exe',type=Path,required=True)
-    ap.add_argument('--version',default='1.7.2')
+    ap.add_argument('--version',default='1.8.0')
     a=ap.parse_args()
     if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+',a.version):raise SystemExit('Invalid version')
     if not a.exe.is_file() or a.exe.read_bytes()[:2]!=b'MZ':raise SystemExit('Provide the verified Windows EXE')
@@ -120,7 +120,7 @@ def main():
         if missing:raise SystemExit('Missing reaction audio: '+', '.join(sorted(missing)))
     raid_version=check_raid_toc(names) if raid else None
     rows=[{'path':name,'sha256':digest(p),'bytes':p.stat().st_size} for p,name in inputs]
-    manifest={'project':'Relax Coach','kind':'guild-combined','version':a.version,'journeyVersion':'4.00.04','contentVersion':'4.00.08'}
+    manifest={'project':'Relax Coach','kind':'guild-combined','version':a.version,'journeyVersion':'4.00.04','contentVersion':'4.00.12'}
     if planner_version:manifest['plannerVersion']=planner_version
     if raid_version:manifest['raidVersion']=raid_version
     manifest['files']=rows

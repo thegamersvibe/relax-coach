@@ -87,6 +87,7 @@ type FarmView struct {
 	Gathering    []FarmZone
 	Auctions     []FarmAuctionStat
 	Listings     []FarmListing
+	Hot          FarmHot // hot items: up since the previous recorded day
 }
 
 type FarmHouse struct {
@@ -562,6 +563,7 @@ func buildFarmDB(db map[string]any, chars []CharView, now time.Time, ref farmRef
 		}
 	}
 	sort.Slice(fv.Listings, func(i, j int) bool { return fv.Listings[i].Char < fv.Listings[j].Char })
+	fv.Hot = buildHot(db, ver, verOK, fv.Houses, items, ref.Gather, now)
 	return fv
 }
 

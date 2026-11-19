@@ -1,0 +1,201 @@
+[
+  {
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "if not Wire.allowed() then wake(1); return end\n    lastPart = now",
+    "new": "if false then wake(1); return end\n    lastPart = now",
+    "killed_by": "test_provider_changes_gate_after_collection"
+  },
+  {
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "P.read(InCombatLockdown) == false",
+    "new": "true",
+    "killed_by": "test_dispatch_rechecks_each_restriction"
+  },
+  {
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "P.read(UnitAffectingCombat, \"player\") == false",
+    "new": "true",
+    "killed_by": "test_dispatch_rechecks_each_restriction"
+  },
+  {
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "P.read(C_ChatInfo and C_ChatInfo.InChatMessagingLockdown) == false",
+    "new": "true",
+    "killed_by": "test_dispatch_rechecks_each_restriction"
+  },
+  {
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "P.read(C_ChatInfo and C_ChatInfo.AreOutgoingAddonChatMessagesRestricted) == false",
+    "new": "true",
+    "killed_by": "test_dispatch_rechecks_each_restriction"
+  },
+  {
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "if P.read(C_RestrictedActions and C_RestrictedActions.GetAddOnRestrictionState, kind) ~= 0 then return false end",
+    "new": "if false then return false end",
+    "killed_by": "test_restriction_states_fail_closed_including_activating"
+  },
+  {
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "if P.nameKey(r.name) ~= key then Wire.count(\"forged\"); return end",
+    "new": "if false then Wire.count(\"forged\"); return end",
+    "killed_by": "test_receive_forged_name_dropped_and_counted"
+  },
+  {
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "now - (lastReason[reason] or -math.huge) >= 30",
+    "new": "now - (lastReason[reason] or -math.huge) >= 0",
+    "killed_by": "test_rates_coalesce_and_cancel_on_leave"
+  },
+  {
+    "file": "addon/RelaxRaid/Wire.lua",
+    "note": "Overlapping pacing guards: dispatch spacing and timer cadence are removed together.",
+    "old": "    if #attempts >= 60 or now - lastPart < 0.5 then wake(0.5); return end\n    local a = active\n    local text = \"P1|\" .. a.id .. \"|\" .. a.part .. \"|\" .. a.total .. \"|\" .. a.body:sub((a.part-1)*Wire.CHUNK+1, a.part*Wire.CHUNK)\n    -- Last possible gate: collection/optional providers can change restriction state too.\n    if not Wire.allowed() then wake(1); return end\n    lastPart = now\n    attempts[#attempts+1] = now -- failed client attempts cost the same rate budget\n    if a.part == 1 then lastReason[a.reason], lastReport = now, now end\n    local ok, result = pcall(C_ChatInfo.SendAddonMessage, Wire.PREFIX, text, \"RAID\")\n    if not ok or not P.plain(result) or result ~= 0 then active = nil; Wire.count(\"sendFailed\")\n    else\n        Wire.count(\"sent\")\n        a.part = a.part + 1\n        if a.part > a.total then active = nil end\n    end\n    if active or next(pending) then wake(0.5) end",
+    "new": "    if #attempts >= 60 or false then wake(0.5); return end\n    local a = active\n    local text = \"P1|\" .. a.id .. \"|\" .. a.part .. \"|\" .. a.total .. \"|\" .. a.body:sub((a.part-1)*Wire.CHUNK+1, a.part*Wire.CHUNK)\n    -- Last possible gate: collection/optional providers can change restriction state too.\n    if not Wire.allowed() then wake(1); return end\n    lastPart = now\n    attempts[#attempts+1] = now -- failed client attempts cost the same rate budget\n    if a.part == 1 then lastReason[a.reason], lastReport = now, now end\n    local ok, result = pcall(C_ChatInfo.SendAddonMessage, Wire.PREFIX, text, \"RAID\")\n    if not ok or not P.plain(result) or result ~= 0 then active = nil; Wire.count(\"sendFailed\")\n    else\n        Wire.count(\"sent\")\n        a.part = a.part + 1\n        if a.part > a.total then active = nil end\n    end\n    if active or next(pending) then wake(0) end",
+    "killed_by": "test_multipart_paced_and_each_fragment_guarded"
+  },
+  {
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "if a and (now < a.at or now-a.at >= 30) then",
+    "new": "if false then",
+    "killed_by": "test_multipart_reassembly_replay_expiry_and_version"
+  },
+  {
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "if doneCount >= 8 then",
+    "new": "if false then",
+    "killed_by": "test_receive_flood_bounded_and_malformed_never_executes"
+  },
+  {
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "if Wire.peerCount() >= 40 then",
+    "new": "if false then",
+    "killed_by": "test_receive_flood_bounded_and_malformed_never_executes"
+  },
+  {
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "RR.on(\"PLAYER_LOGOUT\", \"Wire\", function() Wire.cancel(); Wire.clearReceive() end)",
+    "new": "RR.on(\"PLAYER_LOGOUT\", \"Wire\", function() Wire.clearReceive() end)",
+    "killed_by": "test_queue_expires_and_logout_cancels"
+  },
+  {
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "active = nil -- discard partial pre-pull snapshot; collect again only after the gates reopen",
+    "new": "-- keep the stale partial snapshot",
+    "killed_by": "test_encounter_discards_partial_snapshot_and_rebuilds"
+  },
+  {
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "text:match(\"^P1|(%d+)|(%d+)|(%d+)|(.*)$\")",
+    "new": "text:match(\"^P[12]|(%d+)|(%d+)|(%d+)|(.*)$\")",
+    "killed_by": "test_multipart_reassembly_replay_expiry_and_version"
+  },
+  {
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "or f[1] ~= \"1\"",
+    "new": "or false",
+    "killed_by": "test_unknown_body_version"
+  },
+  {
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "#attempts >= 60 or now - lastPart < 0.5",
+    "new": "false or now - lastPart < 0.5",
+    "killed_by": "test_send_rolling_minute_budget"
+  },
+  {
+    "id": "H01",
+    "note": "send: drop local encounter flag",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "return not encounter and P.read(IsInRaid) == true and",
+    "new": "return P.read(IsInRaid) == true and",
+    "killed_by": "test_observed_encounter_blocks_even_with_inactive_client_flags"
+  },
+  {
+    "id": "H02",
+    "note": "send: restriction kinds 0..4",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "for kind = 0, 5 do",
+    "new": "for kind = 0, 4 do",
+    "killed_by": "test_each_restriction_kind_independently_blocks"
+  },
+  {
+    "id": "H03",
+    "note": "send: restriction kinds 2..5",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "for kind = 0, 5 do",
+    "new": "for kind = 2, 5 do",
+    "killed_by": "test_each_restriction_kind_independently_blocks"
+  },
+  {
+    "id": "H04",
+    "note": "recv: any channel",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "or not P.plain(channel) or channel ~= \"RAID\"\n",
+    "new": "or not P.plain(channel)\n",
+    "killed_by": "test_receive_requires_raid_distribution"
+  },
+  {
+    "id": "H05",
+    "note": "recv: 2400-byte message",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "or #text > 240 then",
+    "new": "or #text > 2400 then",
+    "killed_by": "test_oversize_packets_do_not_spend_receive_budget"
+  },
+  {
+    "id": "H07",
+    "note": "recv: 600/peer/min",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "if not charge(peer.times, 60, now)",
+    "new": "if not charge(peer.times, 600, now)",
+    "killed_by": "test_per_peer_minute_cap_boundary_and_recovery"
+  },
+  {
+    "id": "H08",
+    "note": "recv: global 24000",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "if not charge(receiveTimes, 2400, now)",
+    "new": "if not charge(receiveTimes, 24000, now)",
+    "killed_by": "test_global_minute_cap_precedes_peer_admission"
+  },
+  {
+    "id": "H11",
+    "note": "send: no 10s between reports",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "and now - lastReport >= 10 then",
+    "new": "and now - lastReport >= 0 then",
+    "killed_by": "test_different_reasons_still_wait_ten_seconds"
+  },
+  {
+    "id": "H14",
+    "note": "send: no fragment spacing",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "or now - lastPart < 0.5 then",
+    "new": "or now - lastPart < 0 then",
+    "killed_by": "test_fragment_spacing_uses_read_clock_not_timer_assumption"
+  },
+  {
+    "id": "H16",
+    "note": "recv: no assembled byte cap",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "if a.bytes > Wire.MAX_BODY then peer.active = nil; peer.done[id] = now; Wire.count(\"invalid\"); return end",
+    "new": "",
+    "killed_by": "test_assembled_limit_precedes_decode"
+  },
+  {
+    "id": "H17",
+    "note": "recv: replay check gone",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "if peer.done[id] then Wire.count(\"replay\"); return end",
+    "new": "",
+    "killed_by": "test_replay_drop_is_counted_without_overwrite"
+  },
+  {
+    "id": "H20",
+    "note": "recv: outside a raid",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "if not P or not S or not registered or P.read(IsInRaid) ~= true then return end",
+    "new": "if not P or not S or not registered then return end",
+    "killed_by": "test_outside_raid_cannot_seed_receive_assembly"
+  }
+]
