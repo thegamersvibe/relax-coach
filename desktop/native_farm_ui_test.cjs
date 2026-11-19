@@ -21,7 +21,7 @@ async function setup(t,handlers){
   }});
   t.after(()=>dom.window.close());await settle();await settle();
   const $=id=>dom.window.document.getElementById(id);
-  return {$,dom,shown:()=>[...$('farm-body').querySelectorAll('tr[data-house]')].filter(r=>!r.hidden).map(r=>r.dataset.house)};
+  return {$,dom,shown:()=>[...$('farm-sell').querySelectorAll('tr[data-house]')].filter(r=>!r.hidden).map(r=>r.dataset.house)};
 }
 
 test('no AH Profit save: no Farming entry',async t=>{
@@ -55,11 +55,25 @@ test('AH Profit save: Farming entry, page, and the current house first',async t=
   assert.ok(!$('farm-body').innerHTML.includes('<b>Linen</b>'),'save text stays escaped');
 });
 
+test('hot items follow the chosen house; the bank-empty line counts only its own card',async t=>{
+  const {$}=await setup(t,{reportRefresh:()=>report('B#2',true,farm)});
+  $('nav-farm').click();
+  const hot=()=>[...$('farm-hot').querySelectorAll('tr[data-house]')].filter(r=>!r.hidden);
+  assert.ok(hot().length>1 && hot().every(r=>r.dataset.house==='Stormrage|Alliance'),'only the current house');
+  assert.match($('farm-hot').textContent,/\+250%/);
+  assert.ok($('farm-hot').querySelector('svg path').getAttribute('d').startsWith('M'),'a chart per row');
+  $('farm-house').value='Other Realm|Alliance';fire($('farm-house'));
+  assert.match(hot().map(r=>r.textContent).join(' '),/No scan today/);
+  assert.equal($('farm-body').querySelector('.farm-empty-house').hidden,false,'no bank rows here, although hot rows show');
+  $('farm-house').value='';fire($('farm-house'));
+  assert.match(hot().map(r=>r.textContent).join(' '),/Pick an auction house/);
+});
+
 test('every house that has bank rows can be chosen, scanned or not',async t=>{
   const {$,shown}=await setup(t,{reportRefresh:()=>report('B#2',true,farm)});
   $('nav-farm').click();
   const options=[...$('farm-house').options].map(o=>o.value);
-  const houses=[...new Set([...$('farm-body').querySelectorAll('tr[data-house]')].map(r=>r.dataset.house))];
+  const houses=[...new Set([...$('farm-sell').querySelectorAll('tr[data-house]')].map(r=>r.dataset.house))];
   assert.ok(houses.includes('Nowhere|Horde'),'fixture has a row on an unscanned house');
   for (const h of houses) {
     assert.ok(options.includes(h),'house '+JSON.stringify(h)+' is in the list');
