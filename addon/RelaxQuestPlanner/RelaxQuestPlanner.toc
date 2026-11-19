@@ -8,6 +8,7 @@
 
 Init.lua
 Core/Data.lua
+Core/PlaceData.lua
 Core/Player.lua
 Core/Engine.lua
 Core/Learn.lua

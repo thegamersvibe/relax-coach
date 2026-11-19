@@ -131,7 +131,7 @@ class Harness:
             self.addon(PRIVATE / "installed-2026-11-09/AddOns/DungeonGuideForever/Data.lua", self.g.DungeonGuideForever_NS)
         if not qdb:
             self.lua.execute("LibQuestieDB=nil")
-        for name in ("Data", "Player", "Learn", "Engine"):
+        for name in ("Data", "PlaceData", "Player", "Learn", "Engine"):
             p = ROOT / f"addon/RelaxQuestPlanner/Core/{name}.lua"
             if p.exists():
                 self.lua.execute(p.read_text(), name=str(p))
@@ -173,7 +173,7 @@ class MiniHarness(Harness):
             Enum={raceMaskById={[3]=4,[6]=32,[95]=4294967296},classKeys={WARRIOR=1,HUNTER=4,DRUID=1024}}}
           LibQuestieDB.Support={Get=function() return {private={dungeons={[1]={'Test Dungeon'}}}} end}
         """)
-        for name in ("Data", "Player", "Learn", "Engine"):
+        for name in ("Data", "PlaceData", "Player", "Learn", "Engine"):
             p = ROOT / f"addon/RelaxQuestPlanner/Core/{name}.lua"
             self.lua.execute(p.read_text(), name=str(p))
         self.rqp = self.g.RelaxQuestPlanner

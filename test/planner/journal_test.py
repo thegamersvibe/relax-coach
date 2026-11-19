@@ -48,7 +48,7 @@ class Harness:
             Enum={raceMaskById={[1]=1,[3]=4,[7]=64,[8]=128},
               factionRaceMasks={Alliance=69,Horde=128},classKeys={WARRIOR=1,PALADIN=2,HUNTER=4,MAGE=128}}}
         ''')
-        for name in ('Data', 'Player', 'Learn', 'Engine'):
+        for name in ('Data', 'PlaceData', 'Player', 'Learn', 'Engine'):
             self.lua.execute((ROOT / f'addon/RelaxQuestPlanner/Core/{name}.lua').read_text())
         self.r = self.g.RelaxQuestPlanner
         # Names/aliases come from RQP's existing allowlist, not a donor fixture.
@@ -216,9 +216,11 @@ class ReviewRegressionTests(unittest.TestCase):
                 self.assertIn(B, array(route.plan))
                 self.assertEqual(action(route, 'accept', B).level, 0 if level == '20-25' else 30)
 
-    def test_journal_display_text_is_escaped_before_route_export(self):
+    def test_journal_text_is_escaped_once_where_it_is_shown(self):
+        # Route data keeps the journal's text as it is; the step list (UI/Steps.lua) and Journey
+        # (Journey/Bridge.lua) each escape it once, so a "|" is shown as "|", never as "||".
         raw = '|TMetal:16|t |cffff0000Copper|r |Hquest:810099|hTin|h'
-        escaped = raw.replace('|', '||')
+        escaped = raw
         for supplement in (False, True):
             with self.subTest(supplement=supplement):
                 h = location_harness(pickup='Inside '+raw, turnin='Outside '+raw,
@@ -238,6 +240,10 @@ class ReviewRegressionTests(unittest.TestCase):
                     {A: dict(mapID=880003, x=0.5, y=0.5, targetName=raw)})
                 h.r.Data.Reset()
                 self.assertEqual(h.r.Data.Pin('quest', A).who, escaped)
+                h.lua.execute((ROOT / 'addon/RelaxQuestPlanner/Journey/Bridge.lua').read_text())
+                labels = ' '.join(str(step[1][1].text) for step in array(h.r.Journey.ToGuide(route)) if step[1])
+                self.assertIn(raw.replace('|', '||'), labels, 'Journey escapes once')
+                self.assertNotIn('||||', labels, 'never twice')
 
 
 class MembershipTests(unittest.TestCase):

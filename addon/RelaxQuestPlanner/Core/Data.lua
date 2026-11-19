@@ -6,6 +6,7 @@ local D = RQP.Data
 local lib, questAPI, fdj, dg, checked, reason, supplements, ids, dungeons, areaMap
 local quests, npcs, objects, items, dungeonByArea = {}, {}, {}, {}, {}
 local journal, journalDungeons
+local triggers = {} -- D.Trigger cache
 local blacklist = {}
 local function tick() if RQP.Engine and RQP.Engine.Checkpoint then RQP.Engine.Checkpoint() end end
 local function tbl(v) return type(v)=="table" and v or {} end
@@ -72,7 +73,7 @@ local function journalSnapshot(source)
     local function value(v,depth)
         budget=budget-1; assert(budget>=0 and depth<=6, "journal budget")
         local t=type(v)
-        if t=="string" then local text=v:gsub("|","||"); return text end
+        if t=="string" then return v end -- raw; escaped once where it is shown (UI/Steps.lua, Journey/Bridge.lua)
         if t=="boolean" then return v end
         if t=="number" then assert(v==v and math.abs(v)<math.huge); return v end
         if t~="table" then return nil end
@@ -151,6 +152,7 @@ function D.Reset()
     lib,fdj,dg,checked,reason,supplements,ids,dungeons,areaMap=nil,nil,nil,nil,nil,nil,nil,nil,nil
     questAPI=nil
     quests,npcs,objects,items,dungeonByArea,blacklist={},{},{},{},{},{}
+    triggers={}
     if RQP.Engine and RQP.Engine.Invalidate then RQP.Engine.Invalidate() end
 end
 
@@ -184,6 +186,23 @@ function D.Source() D.Ready(); return lib and "QuestieDB" or "FDJ-only" end
 function D.Enums() D.Ready(); return lib and lib.Enum or {} end
 function D.Blacklisted(id) D.Ready(); return blacklist[id]==true end
 function D.FDJ() D.Ready(); return fdj end
+-- Quests whose work is inside a dungeon although QuestieDB gives them no objective rows and no end
+-- trigger (Core/PlaceData.lua): the dungeon name, or nil. The list is optional data.
+-- QuestieDB's end trigger (escort or explore: { text, { [zoneID] = points } }), read only when asked:
+-- the planner needs it just for quests without objective rows, and every field read costs time.
+function D.Trigger(id)
+    D.Ready()
+    if triggers[id]==nil then
+        local t=questAPI and read(questAPI,id,"triggerEnd")
+        triggers[id]=type(t)=="table" and type(t[2])=="table" and t[2] or false
+    end
+    return triggers[id] or nil
+end
+function D.PlaceInside(id)
+    local t=RQP.PlaceInside
+    local v=type(t)=="table" and t[id]
+    return type(v)=="string" and v or nil
+end
 function D.DungeonQuestie() D.Ready(); return dg end
 
 local fieldMap={name="name",reqLevel="requiredLevel",qLevel="questLevel",races="requiredRaces",

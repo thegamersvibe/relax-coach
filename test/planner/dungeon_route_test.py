@@ -10,7 +10,8 @@ from journal_test import Harness, ROOT, A, B, C, T, OUTSIDE, INSIDE, OUT_NPC, IN
 def quest(name, inside=False, pickup=OUT_NPC, turnin=OUT_NPC, **kw):
     # Instance-work fixtures need an objective, not only a dungeon category.
     kw.setdefault('objectives', {1: [[IN_NPC]]} if inside else {})
-    return q(name, questLevel=30, zoneOrSort=INSIDE if inside else OUTSIDE,
+    kw.setdefault('zoneOrSort', INSIDE if inside else OUTSIDE)
+    return q(name, questLevel=30,
              startedBy={1: [pickup]} if pickup else {}, finishedBy={1: [turnin]} if turnin else {}, **kw)
 
 
@@ -52,6 +53,64 @@ class DungeonRouteTests(unittest.TestCase):
                     self.assertEqual(action(route, 'complete', target).block, 2)
                     self.assertEqual(action(route, 'turnin', target).block, 3)
                 self.assertFalse(any(s.block == 4 for s in array(route.steps)))
+
+    # M2: a quest with no objective rows is not always a talk quest. Order: objective rows, then
+    # QuestieDB's end trigger zone, then the planner's inside list, then the talk-quest fallback.
+    def m2(self, trigger=None, listed=None):
+        kw = dict(objectives={})
+        if trigger is not None: kw['triggerEnd'] = ['Escort the copper keeper out', {trigger: [[50, 50]]}]
+        rows = {A: quest('Copper escort', True, pickup=IN_NPC, turnin=OUT_NPC, **kw)}
+        h = Harness(rows, entries(rows), level=31)
+        if listed is not None:
+            h.lua.execute('RelaxQuestPlanner.PlaceInside={[%d]=%s}' % (A, listed))
+            h.r.Data.Reset()
+        return self.check_route(h)
+
+    def test_m2_inside_trigger_means_inside_work(self):
+        route = self.m2(trigger=INSIDE)
+        s = action(route, 'complete', A)
+        self.assertEqual((s.where, s.block), ('inside', 2))
+        self.assertEqual(action(route, 'accept', A).block, 2)
+        self.assertEqual(action(route, 'turnin', A).block, 3)
+
+    def test_m2_outside_trigger_means_outside_work(self):
+        s = action(self.m2(trigger=OUTSIDE), 'complete', A)
+        self.assertEqual(s.where, 'outside')
+
+    def test_m2_inside_list_for_quests_without_rows_or_trigger(self):
+        s = action(self.m2(listed='TEST_DUNGEON'), 'complete', A)
+        self.assertEqual((s.where, s.block), ('inside', 2))
+        # Listed for another dungeon: not inside this one; the talk fallback places it by its turn-in.
+        s = action(self.m2(listed='"Another Keep"'), 'complete', A)
+        self.assertEqual(s.where, 'outside')
+        # A trigger wins over the list.
+        h_route = self.m2(trigger=OUTSIDE, listed='TEST_DUNGEON')
+        self.assertEqual(action(h_route, 'complete', A).where, 'outside')
+
+    def test_m2_talk_quest_fallback_unchanged(self):
+        s = action(self.m2(), 'complete', A)
+        self.assertEqual(s.where, 'outside', 'no rows, no trigger, not listed: by its turn-in')
+
+    def test_inside_list_is_data_only(self):
+        src = (ROOT / 'addon/RelaxQuestPlanner/Core/PlaceData.lua').read_text()
+        code = [l for l in src.splitlines() if l.strip() and not l.lstrip().startswith('--')]
+        self.assertEqual(code[:2], ['RelaxQuestPlanner = RelaxQuestPlanner or {}', 'RelaxQuestPlanner.PlaceInside = {'])
+        self.assertEqual(code[-1], '}')
+        import re
+        for line in code[2:-1]:
+            self.assertRegex(line, r'^    \[\d+\] = "[^"|\\]+",$')
+        toc = (ROOT / 'addon/RelaxQuestPlanner/RelaxQuestPlanner.toc').read_text().splitlines()
+        self.assertEqual(toc.index('Core/PlaceData.lua'), toc.index('Core/Data.lua') + 1)
+
+    def test_holiday_repeatable_in_the_log_stays_out(self):
+        rows = {A: quest('Copper festival', True, zoneOrSort=-22, specialFlags=1)}
+        h = Harness(rows, entries(rows), level=31, log=[dict(id=A, complete=False)])
+        route = h.route()
+        self.assertFalse(any(s.q == A for s in array(route.steps)), 'a holiday quest never enters the plan')
+        # The same repeatable outside a holiday stays when it is in the log (S1).
+        rows = {A: quest('Copper chore', True, specialFlags=1)}
+        h = Harness(rows, entries(rows), level=31, log=[dict(id=A, complete=False)])
+        self.assertTrue(any(s.q == A for s in array(h.route().steps)))
 
     def test_t1a_active_inside_turnin_and_two_missing_starters(self):
         rows = {

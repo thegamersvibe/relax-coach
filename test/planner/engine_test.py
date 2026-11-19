@@ -30,7 +30,7 @@ def journal_reference(h, graph, entities, name):
             if j.hideFromMainList or j.unavailable:
                 continue
             if j.unavailableRaces and (j.unavailableRaces[h.snapshot['race']]
-                                      or j.unavailableRaces[h.snapshot['raceID']]):
+                                      or j.unavailableRaces[h.snapshot.get('raceID')]):
                 continue
             if not row['races'] and j.faction in ('Alliance', 'Horde') and j.faction != h.snapshot['faction']:
                 continue

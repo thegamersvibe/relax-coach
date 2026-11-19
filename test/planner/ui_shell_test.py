@@ -236,6 +236,24 @@ class UIShellTests(unittest.TestCase):
           assert(not RelaxQuestPlannerDB.lastError)
         ''')
 
+    def test_step_text_is_shown_as_plain_text_once(self):
+        lua = client()
+        lua.execute(r'''
+          local U=RelaxQuestPlanner.UI
+          ROUTES["Alpha Keep"]={title="Alpha |cffKeep",steps={
+            {kind="accept",q=810001,name="Copper |Hquest:1|hlink|h",who="Tin |Tx|t",zone="Zinc|r",note="Bring |c ore",needs={}}
+          },later={},issues={},extras={{q=810011,name="Bronze |T"}},extraCount=1,preRunNotes={{q=810001,block=1,text="Pack |cff"}}}
+          SlashCmdList.RELAXQUESTPLANNER("dungeon Alpha Keep"); DRAIN()
+          U.RenderRoute()
+          assert(U.line1:GetText():find("Copper ||Hquest:1||hlink||h",1,true), U.line1:GetText())
+          assert(U.line2:GetText()=="Tin ||Tx||t - Zinc||r", U.line2:GetText())
+          assert(U.note:GetText():find("Bring ||c ore",1,true), U.note:GetText())
+          assert(U.title:GetText():find("Alpha ||cffKeep",1,true), U.title:GetText())
+          assert(not U.line1:GetText():find("||||",1,true), "once, never twice")
+          U.extrasButton:Click()
+          assert(U.extrasText:GetText():find("Bronze ||T (810011)",1,true) and U.extrasText:GetText():find("Pack ||cff",1,true), U.extrasText:GetText())
+        ''')
+
     def test_journal_block_header_and_local_preference_respects_blocks(self):
         lua = client()
         lua.execute(r'''
@@ -908,9 +926,9 @@ class UIShellTests(unittest.TestCase):
         review = [s for s in scripts if s.startswith('Core/Cleanup') or s == 'UI/Cleanup.lua']
         self.assertEqual(review[:2], ['Core/CleanupData.lua', 'Core/CleanupSnapshot.lua'])
         scripts = [s for s in scripts if s not in review]
-        self.assertEqual(scripts[:7], ["Init.lua", "Core/Data.lua", "Core/Player.lua", "Core/Engine.lua",
-                                     "Core/Learn.lua", "Journey/Bridge.lua", "Journey/Picker.lua"])
-        self.assertTrue(all(name.startswith("UI/") for name in scripts[7:]))
+        self.assertEqual(scripts[:8], ["Init.lua", "Core/Data.lua", "Core/PlaceData.lua", "Core/Player.lua",
+                                     "Core/Engine.lua", "Core/Learn.lua", "Journey/Bridge.lua", "Journey/Picker.lua"])
+        self.assertTrue(all(name.startswith("UI/") for name in scripts[8:]))
         owned = [ADDON / "Init.lua", *sorted((ADDON / "UI").glob("*.lua"))]
         for path in owned:
             text = path.read_text()

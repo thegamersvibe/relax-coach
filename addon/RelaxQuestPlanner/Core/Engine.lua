@@ -46,8 +46,8 @@ local function static(r,p,tailored)
     -- Without QuestieDB, FDJ's explicit faction/class metadata still applies.
     if (r.faction=="Alliance" or r.faction=="Horde") and r.faction~=p.faction then return "race" end
     if r.classOnly and p.class and string.upper(r.classOnly)~=p.class then return "class" end
+    if holidays[r.zone] then return "holiday" end -- before repeatable: a logged repeatable may stay, a holiday never
     if member(r.special,1) then return "repeatable" end
-    if holidays[r.zone] then return "holiday" end
 end
 local graphs=setmetatable({}, {__mode="k"})
 function E.Invalidate() graphs=setmetatable({}, {__mode="k"}) end
@@ -516,6 +516,23 @@ local function objectivePlace(r,dungeon,target)
             if nonempty(objectives) then work=true; break end
         end
         if not work then
+            -- No objective rows. Where the work is, in this order: QuestieDB's end trigger (an
+            -- escort's or an explore spot's zone), the planner's inside list (Core/PlaceData.lua),
+            -- else a talk/delivery quest, placed where it is turned in.
+            local here=D.CanonicalDungeon(dungeon)
+            local zones=D.Trigger(r.id)
+            if zones then
+                local known=false
+                for zone in pairs(zones) do
+                    if type(zone)=="number" and zone>0 then
+                        known=true
+                        if D.DungeonForArea(zone)==here then return "inside" end
+                    end
+                end
+                if known then return "outside" end
+            end
+            local listed=D.PlaceInside(r.id)
+            if listed and D.CanonicalDungeon(listed)==here then return "inside" end
             local place=where("turnin",r,dungeon)
             if place=="unknown" then place=where("accept",r,dungeon) end
             return place
