@@ -44,12 +44,13 @@ func TestFightWithEveryNewField(t *testing.T) {
 		modeltest.At(6000).Src(pet).Dst(boss).Owner(healer.ID).Damage(5, -1).Build(),
 		modeltest.At(7000).Src(tank).Spell(9, "Rage").Power(40, 100, 1).Build(),
 		modeltest.At(8000).Dst(healer).Died(1).Build(),
+		modeltest.At(8500).Src(boss).Dst(tank).Absorb(healer, 17, 250).Build(),
 		end,
 		modeltest.At(62001).Pos(1000, 50).Build(), // the last line, ending at byte 1050
 	}
 	f := modeltest.NewFight("f1", enc, events...).Partial().Players(tank, healer).Combatants(combatant).
 		Owner(pet, healer).Unowned("Pet-0-unknown").BossUnits(boss).Role(tank, "tank").Role(healer, "healer").
-		Spec(tank, "WARRIOR.protection").Range().Build()
+		Spec(tank, "WARRIOR.protection").Class(tank, "WARRIOR").Class(healer, "PRIEST").Range().Build()
 	allSet(t, f)
 	if !f.Boss || f.InstanceID != 329 || f.DifficultyID != 1 || f.DurationMs != model.Some(61000) || f.StartMs != 800 || f.EndMs != 62001 {
 		t.Errorf("fight from the encounter: %+v", f)
@@ -85,6 +86,13 @@ func TestFightWithEveryNewField(t *testing.T) {
 	allSet(t, enc)
 	allSet(t, *f.Events[1].Zone)
 	allSet(t, combatant)
+	if ab := f.Events[12]; ab.Kind != model.Absorb || ab.Caster != healer || ab.Src != boss || ab.Dst != tank ||
+		ab.ExtraSpellID != model.Some(17) || ab.Amount != model.Some(250) || ab.SpellID != 0 {
+		t.Errorf("absorb: %+v", ab)
+	}
+	if f.Classes[tank.ID] != "WARRIOR" || f.Classes[healer.ID] != "PRIEST" || len(f.Classes) != 2 {
+		t.Errorf("classes: %v", f.Classes)
+	}
 	if !reflect.DeepEqual(f.Events, events) || f.Combatants[0].PlayerID != tank.ID || f.Events[4].Amount != model.Some(100) ||
 		f.Events[1].Zone.Difficulty != 1 || f.Events[2].Info.PlayerID != tank.ID {
 		t.Errorf("events and combatant carried unchanged: %+v", f.Combatants)

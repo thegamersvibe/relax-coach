@@ -166,5 +166,17 @@
     "old": "r.source = model.Source{SHA256: sha256, Bytes: bytes}",
     "new": "r.source = model.Source{Bytes: bytes}",
     "killed_by": "TestFightWithEveryNewField"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.e.Kind, b.e.Caster = model.Absorb, caster",
+    "new": "b.e.Kind = model.Absorb",
+    "killed_by": "TestFightWithEveryNewField"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.f.Classes[p.ID] = class",
+    "new": "b.f.Classes[p.ID] = \"\"",
+    "killed_by": "TestFightWithEveryNewField"
   }
 ]

@@ -121,6 +121,7 @@ type Event struct {
 	Zone                       *Zone      // ZoneChange only
 	Info                       *Combatant // CombatantInfo only
 	Raw                        []string   // Other, CombatantInfo and Header only
+	Caster                     Actor      // Absorb only: the shield\'s caster (Src is the attacker, Dst the shielded unit)
 }
 
 // Encounter is what an ENCOUNTER_START or ENCOUNTER_END line carries.
@@ -176,6 +177,7 @@ type Fight struct {
 	BossUnits      []string          // unit ids
 	Roles          map[string]string // player id -> "tank", "healer" or "dps"
 	Specs          map[string]string // player id -> spec id "<CLASS>.<spec>" (PLAN 4A row 16); missing means unknown
+	Classes        map[string]string // player id -> class token, e.g. "PALADIN"; missing means unknown. Same for every fight of a run
 	Offset, Len    int64             // the fight's byte range in the source log: first line's Offset to last line's end
 }
 

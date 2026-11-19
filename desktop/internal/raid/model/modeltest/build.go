@@ -97,6 +97,13 @@ func (b *EventBuilder) Power(cur, max, powerType int64) *EventBuilder {
 	return b
 }
 
+// Absorb makes a SPELL_ABSORBED event: Src attacks Dst, caster's shield (shieldID) absorbs amount.
+func (b *EventBuilder) Absorb(caster model.Actor, shieldID, amount int64) *EventBuilder {
+	b.e.Kind, b.e.Caster = model.Absorb, caster
+	b.e.ExtraSpellID, b.e.Amount = model.Some(shieldID), model.Some(amount)
+	return b
+}
+
 // Owner sets the advanced block's owner field.
 func (b *EventBuilder) Owner(id string) *EventBuilder { b.e.InfoOwnerID = id; return b }
 
@@ -198,6 +205,15 @@ func (b *FightBuilder) Spec(p model.Actor, spec string) *FightBuilder {
 		b.f.Specs = map[string]string{}
 	}
 	b.f.Specs[p.ID] = spec
+	return b
+}
+
+// Class sets a player's class token, e.g. "PALADIN".
+func (b *FightBuilder) Class(p model.Actor, class string) *FightBuilder {
+	if b.f.Classes == nil {
+		b.f.Classes = map[string]string{}
+	}
+	b.f.Classes[p.ID] = class
 	return b
 }
 
