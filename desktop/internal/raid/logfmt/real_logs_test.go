@@ -38,7 +38,7 @@ func TestRealLogsOptInCountsOnly(t *testing.T) {
 			if e.Kind == model.EncounterEnd && e.Enc != nil && e.Enc.Success == model.Some(1) {
 				success++
 			}
-			if e.Kind != model.Other && e.Kind != model.CombatantInfo && len(e.Raw) != 0 {
+			if e.Kind != model.Other && e.Kind != model.CombatantInfo && e.Kind != model.Header && len(e.Raw) != 0 {
 				rawViolations++
 			}
 		}

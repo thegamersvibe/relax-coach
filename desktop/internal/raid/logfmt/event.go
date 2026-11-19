@@ -58,7 +58,7 @@ func event(f []string) (model.Event, SkipReason, bool) {
 		if !number(f[1]).Present || f[2] != "ADVANCED_LOG_ENABLED" || f[4] != "BUILD_VERSION" || f[6] != "PROJECT_ID" {
 			return model.Event{}, InvalidValue, true
 		}
-		return model.Event{Kind: model.Header}, "", true
+		return model.Event{Kind: model.Header, Raw: f[1:]}, "", true // version, then key/value pairs
 	}
 	if schema.kind == model.Other {
 		return model.Event{Kind: model.Other, Raw: f}, "", true

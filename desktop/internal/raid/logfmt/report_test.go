@@ -34,9 +34,19 @@ func TestReportRepeatedHeadersAndFieldCountEvidence(t *testing.T) {
 	if r.SkippedLayouts[logfmt.SkippedLayout{Name: "SPELL_ABSORBED", Fields: 2, Reason: logfmt.UnknownWidth}] != 1 {
 		t.Fatal(r)
 	}
+	// Raw stays only on Other, CombatantInfo and Header (brief R3 item 6). The header's Raw is the
+	// fields after the event name: the version, then key/value pairs (fights reads build and version).
 	for _, e := range events {
-		if e.Kind != model.Other && len(e.Raw) != 0 {
-			t.Fatal(e.Kind, "raw retained")
+		switch e.Kind {
+		case model.Other, model.CombatantInfo:
+		case model.Header:
+			if len(e.Raw) != 7 || e.Raw[0] != "22" || e.Raw[1] != "ADVANCED_LOG_ENABLED" || e.Raw[3] != "BUILD_VERSION" || e.Raw[4] != "fixture.1" {
+				t.Fatalf("header raw: %q", e.Raw)
+			}
+		default:
+			if len(e.Raw) != 0 {
+				t.Fatal(e.Kind, "raw retained")
+			}
 		}
 	}
 	rendered := r.String()
