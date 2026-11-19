@@ -49,6 +49,17 @@ func TestWriteRejectsShortWrite(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 }
+func TestFixturePowerFields(t *testing.T) {
+	a := Advanced(model.Event{Power: model.Some(0), PowerMax: model.Some(900), PowerType: model.Some(0)})
+	if a[10] != "0" || a[11] != "0" || a[12] != "900" {
+		t.Fatal(a)
+	}
+	a = Advanced(model.Event{})
+	if a[10] != Nil || a[11] != Nil || a[12] != Nil {
+		t.Fatal(a)
+	}
+}
+
 func TestAbsentFixtureFields(t *testing.T) {
 	a := Advanced(model.Event{})
 	for _, i := range []int{2, 3, 14, 15} {

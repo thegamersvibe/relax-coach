@@ -80,6 +80,10 @@ func event(f []string) (model.Event, SkipReason, bool) {
 	if advanced {
 		e.InfoUnit, e.InfoOwnerID = absent(f[p]), absent(f[p+1])
 		e.HP, e.HPMax = number(f[p+2]), number(f[p+3])
+		// V22 offsets: wowcoach.gg/docs/combat-log/advanced-logging (PLAN M2).
+		// Zero is a real power type (mana), never the unknown sentinel.
+		e.PowerType = number(f[p+10])
+		e.Power, e.PowerMax = number(f[p+11]), number(f[p+12])
 		e.X, e.Y = position(f[p+14]), position(f[p+15])
 		p += 19
 	}

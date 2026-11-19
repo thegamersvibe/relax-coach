@@ -38,7 +38,10 @@ imports no fixture code. The test fixtures use invented names and identifiers.
 - Optional invalid/unavailable numbers stay absent, distinct from a present
   zero. Integral decimal spellings in energize are accepted; a fractional power
   amount is absent because `model.Opt` cannot represent fractions. Position
-  samples are hundredths of a yard, rounded to the nearest hundredth.
+  samples are hundredths of a yard, rounded to the nearest hundredth. Advanced
+  power type/current/maximum are separate optional values of `InfoUnit`, from
+  block offsets 10/11/12; present zero mana is not absent. Power cost is unused.
+  The offset reference is [Advanced Combat Logging, WowCoach.gg](https://wowcoach.gg/docs/combat-log/advanced-logging), also cited in PLAN M2.
 - Absorb `Src` and `Dst` preserve the logged common actors. `ExtraSpellID` is the
   shield spell and `Amount` the shield amount, for both widths. The supplied
   model has no separate shield-caster actor: that shared-model addition needs

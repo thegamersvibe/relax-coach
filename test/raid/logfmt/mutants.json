@@ -88,5 +88,17 @@
     "old": "e.Enc.Success, e.Enc.FightMs = number(f[5]), number(f[6])",
     "new": "e.Enc.InstanceID = number(f[5])",
     "killed_by": "TestEncounterAndZonePayloadsReportedWipeAndRaid"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "e.PowerType = number(f[p+10])",
+    "new": "e.PowerType = model.Opt{}",
+    "killed_by": "TestAdvancedPowerFields"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "e.Power, e.PowerMax = number(f[p+11]), number(f[p+12])",
+    "new": "e.Power, e.PowerMax = number(f[p+12]), number(f[p+11])",
+    "killed_by": "TestAdvancedPowerFields"
   }
 ]

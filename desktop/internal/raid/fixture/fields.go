@@ -44,7 +44,7 @@ func Actor(a model.Actor) []Field {
 // Advanced writes the 19-field advanced block; unspecified numbers are nil.
 func Advanced(e model.Event) []Field {
 	return []Field{unit(e.InfoUnit), unit(e.InfoOwnerID), optional(e.HP), optional(e.HPMax),
-		Nil, Nil, Nil, Nil, Nil, Nil, Nil, Nil, Nil, Nil, position(e.X), position(e.Y), Nil, Nil, Nil}
+		Nil, Nil, Nil, Nil, Nil, Nil, optional(e.PowerType), optional(e.Power), optional(e.PowerMax), Nil, position(e.X), position(e.Y), Nil, Nil, Nil}
 }
 
 // Combatant writes fields after COMBATANT_INFO. Stats are the 24 numeric

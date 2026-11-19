@@ -34,5 +34,11 @@
     "old": "position(e.X), position(e.Y)",
     "new": "position(e.Y), position(e.X)",
     "killed_by": "TestTypedFixtureFields"
+  },
+  {
+    "file": "desktop/internal/raid/fixture/fields.go",
+    "old": "optional(e.PowerType), optional(e.Power), optional(e.PowerMax)",
+    "new": "optional(e.PowerType), optional(e.Power), optional(e.Power)",
+    "killed_by": "TestFixturePowerFields"
   }
 ]
