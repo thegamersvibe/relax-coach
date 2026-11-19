@@ -1,0 +1,355 @@
+"""Relax Raid logging switch: REQ-LOG-01, REQ-LOG-02 and PLAN.md section 7's R1 tests, on the mock client.
+
+  python -I -B test/raid/log/test_log.py
+"""
+import os
+import sys
+import unittest
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
+sys.path.insert(0, os.path.join(ROOT, "test", "raid", "_client"))
+from client import Client  # noqa: E402
+
+ADDON = os.path.join(ROOT, "addon", "RelaxRaid")
+OFFICER = ("Fake Guild", "Rank B", 1)
+MEMBER = ("Fake Guild", "Rank F", 5)
+ON_LINE = "combat logging is on"
+REMIND_LOG = "could not turn combat logging on"
+REMIND_ADV = "could not turn Advanced Combat Logging on"
+HINT = "could not read your guild rank"
+
+
+def boot(guild=OFFICER, loaded=True, lag=0.0, ignore=0.0, saved=None, refuse=False, player_logging=False,
+         advanced="0"):
+    c = Client(log_lag=lag, start_ignored_after_zone=ignore)
+    c.guild, c.guild_loaded, c.refuse_cvar_write = guild, loaded, refuse
+    c.cvars["advancedCombatLogging"] = advanced
+    if player_logging:  # the player typed /combatlog before
+        c._log.append((float("-inf"), True))
+    c.load_addon(ADDON, saved)
+    c.enter("none", 0, initial=True)
+    return c
+
+
+def truth(c):
+    """Is the client really logging (not the lagging read)?"""
+    return c._log[-1][1]
+
+
+def says(c, text):
+    return sum(1 for line in c.chat if text in line)
+
+
+def starts(c):
+    return sum(1 for a in c.log_calls if a is True)
+
+
+class LogTests(unittest.TestCase):
+    # --- REQ-LOG-01 -----------------------------------------------------------------------------------------
+    def test_raid_entry_turns_both_on(self):
+        c = boot()
+        c.advance(5)
+        c.enter("raid", 409)
+        c.advance(60)
+        self.assertTrue(truth(c))
+        self.assertEqual(c.cvars["advancedCombatLogging"], "1")
+        self.assertEqual(says(c, ON_LINE), 1)
+        self.assertEqual(says(c, "with Advanced Combat Logging"), 1)
+        self.assertEqual(says(c, REMIND_LOG) + says(c, REMIND_ADV), 0)
+
+    def test_dungeon_entry_turns_both_on(self):
+        c = boot()
+        c.enter("party", 329)
+        c.advance(60)
+        self.assertTrue(truth(c))
+        self.assertEqual(c.cvars["advancedCombatLogging"], "1")
+        self.assertEqual(says(c, ON_LINE), 1)
+
+    def test_open_world_and_other_instances_do_nothing(self):
+        c = boot()
+        for kind in ("none", "pvp", "arena", "scenario"):
+            c.enter(kind, 1)
+            c.advance(60)
+        self.assertEqual(starts(c), 0)
+        self.assertEqual(c.cvar_writes, [])
+        self.assertEqual(says(c, ON_LINE), 0)
+
+    def test_outdoor_raid_map_from_data(self):
+        c = boot()
+        c.run("RelaxRaid.modules.Log.OUTDOOR_RAID_MAPS = {9001}")
+        c.enter("none", 9001)
+        c.advance(60)
+        self.assertTrue(truth(c))
+        self.assertEqual(says(c, ON_LINE), 1)
+
+    def test_start_ignored_10s_read_lags_5s(self):
+        # PLAN.md 7: logging is on by the last retry and the chat line is said once
+        c = boot(lag=5, ignore=10)
+        c.advance(100)
+        c.enter("raid", 409)
+        c.advance(30)
+        self.assertTrue(truth(c), "on by the last retry")
+        c.advance(60)
+        self.assertEqual(c.ignored_starts, 3, "tries at 0, 3 and 6 s fall in the ignored window")
+        self.assertEqual(starts(c), 4, "the start the client accepted is trusted: no extra header lines")
+        self.assertEqual(says(c, ON_LINE), 1)
+        self.assertEqual(says(c, REMIND_LOG), 0)
+
+    def test_accepted_start_is_trusted_over_a_lagging_read(self):
+        # the read lags 8 s, longer than the gap between tries: an accepted start is not repeated (P2: each
+        # start while logging is on writes another header line)
+        c = boot(lag=8, ignore=10)
+        c.enter("raid", 409)
+        c.advance(60)
+        self.assertEqual(starts(c), 4, "0, 3, 6 ignored; 10 accepted; 15, 20, 30 trust it")
+        self.assertTrue(truth(c))
+        self.assertEqual(says(c, ON_LINE), 1)
+
+    def test_start_accepted_only_at_the_last_try(self):
+        c = boot(lag=5, ignore=25)
+        c.enter("raid", 409)
+        c.advance(29)
+        self.assertFalse(truth(c))
+        c.advance(1)
+        self.assertTrue(truth(c), "the 30 s try is accepted")
+        c.advance(60)
+        self.assertEqual(says(c, ON_LINE), 1, "the 40 s read confirms it")
+        self.assertEqual(says(c, REMIND_LOG), 0)
+
+    def test_never_confirmed_gives_one_reminder_and_stops(self):
+        c = boot(ignore=10_000)
+        c.enter("raid", 409)
+        c.advance(60)
+        self.assertEqual(says(c, REMIND_LOG), 1)
+        self.assertIn("/combatlog", c.chat[-1])
+        self.assertEqual(starts(c), 7, "one try per scheduled time, no more")
+        calls = len(c.log_calls)
+        c.advance(3600)
+        self.assertEqual(len(c.log_calls), calls, "no retry loop")
+        self.assertEqual(says(c, REMIND_LOG), 1)
+        self.assertEqual(says(c, ON_LINE), 0)
+
+    def test_already_on_with_advanced_off_turns_advanced_on_only(self):
+        c = boot(player_logging=True)
+        c.enter("raid", 409)
+        c.advance(60)
+        self.assertEqual(starts(c), 0, "logging was on: no start, so no extra header line")
+        self.assertEqual(c.cvars["advancedCombatLogging"], "1")
+        self.assertEqual(says(c, ON_LINE), 1)
+
+    def test_never_off(self):
+        # PLAN.md 7: logging already on by the player: we never call the "off" form, on any path
+        c = boot(player_logging=True, advanced="1")
+        c.enter("raid", 409)
+        c.advance(60)
+        c.fire("ZONE_CHANGED_NEW_AREA")
+        c.enter("none", 0)                     # leaving the raid
+        c.advance(60)
+        c.enter("party", 329)
+        c.advance(10)
+        c.slash("/relaxraid logger off")       # the setting turned off inside a dungeon
+        c.advance(60)
+        c.click_setting("RELAXRAID_LOGGER", False)
+        c.slash("/rraid logger default")
+        c.enter("party", 329, reload=True)     # /reload inside
+        c.advance(60)
+        c.fire("PLAYER_LOGOUT")
+        c.advance(60)
+        self.assertNotIn(False, c.log_calls)
+        self.assertNotIn(0, c.log_calls)
+        self.assertTrue(all(v == "1" for _, v in c.cvar_writes), c.cvar_writes)
+        self.assertTrue(truth(c))
+        # and when we started it ourselves
+        c2 = boot()
+        c2.enter("raid", 409)
+        c2.advance(60)
+        c2.enter("none", 0)
+        c2.slash("/relaxraid logger off")
+        c2.fire("PLAYER_LOGOUT")
+        c2.advance(60)
+        self.assertNotIn(False, c2.log_calls)
+        self.assertTrue(truth(c2))
+
+    def test_setting_write_refused(self):
+        # PLAN.md 7: reminder shown with the manual step, no error, no retry loop
+        c = boot(refuse=True)
+        c.enter("raid", 409)
+        c.advance(600)
+        self.assertEqual(says(c, REMIND_ADV), 1)
+        self.assertIn("Options > Network", [ln for ln in c.chat if REMIND_ADV in ln][0])
+        self.assertEqual(len(c.cvar_writes), 1, "the write is tried once")
+        self.assertEqual(says(c, "internal error"), 0)
+        self.assertEqual(dict(c.run("return RelaxRaid.errors").items()), {})
+        self.assertTrue(truth(c), "combat logging itself still goes on")
+        self.assertEqual(says(c, ON_LINE), 1)
+        self.assertEqual(says(c, "with Advanced"), 0)
+
+    def test_setting_api_throws(self):
+        c = boot()
+        c.run("C_CVar.SetCVar = function() error('blocked') end")
+        c.enter("raid", 409)
+        c.advance(60)
+        self.assertEqual(says(c, REMIND_ADV), 1)
+        self.assertEqual(says(c, "internal error"), 0)
+        self.assertTrue(truth(c))
+
+    def test_logging_api_throws(self):
+        c = boot()
+        c.run("LoggingCombat = function() error('blocked') end")
+        c.enter("raid", 409)
+        c.advance(60)
+        self.assertEqual(says(c, REMIND_LOG), 1)
+        self.assertEqual(says(c, "internal error"), 0)
+
+    def test_chat_line_once_per_entry(self):
+        c = boot()
+        c.enter("raid", 409)
+        c.advance(60)
+        c.fire("ZONE_CHANGED_NEW_AREA")
+        c.enter("raid", 409)                   # a loading screen inside the same raid
+        c.advance(60)
+        self.assertEqual(says(c, ON_LINE), 1)
+        c.enter("none", 0)
+        c.advance(5)
+        c.enter("raid", 409)                   # a new entry
+        c.advance(60)
+        self.assertEqual(says(c, ON_LINE), 2)
+
+    def test_leaving_early_stops_the_tries(self):
+        c = boot(ignore=10_000)
+        c.enter("raid", 409)
+        c.advance(4)
+        c.enter("none", 0)
+        c.advance(120)
+        self.assertEqual(starts(c), 2, "tries at 0 and 3 s only")
+        self.assertEqual(says(c, REMIND_LOG), 0, "no reminder outside")
+
+    # --- REQ-LOG-02 -----------------------------------------------------------------------------------------
+    def test_member_rank_is_not_a_logger(self):
+        c = boot(guild=MEMBER)
+        c.enter("raid", 409)
+        c.advance(60)
+        self.assertEqual(c.log_calls, [])
+        self.assertEqual(c.cvar_writes, [])
+        self.assertEqual(c.chat, [])
+        self.assertFalse(c.setting_value("RELAXRAID_LOGGER"))
+
+    def test_officer_rank_is_a_logger(self):
+        c = boot(guild=("Fake Guild", "Rank A", 0))
+        self.assertTrue(c.setting_value("RELAXRAID_LOGGER"))
+        c.slash("/relaxraid status")
+        self.assertIn("logger on for this character (default: officer rank)", c.chat[-1])
+
+    def test_officer_rank_unreadable_gives_logger_off_and_hint(self):
+        # PLAN.md 7: officer rank unreadable: logger off, hint shown
+        c = Client()
+        c.guild = ("Fake Guild", "Rank B", c.secret())
+        c.load_addon(ADDON)
+        c.enter("none", 0, initial=True)
+        self.assertEqual(says(c, HINT), 1)
+        self.assertIn("/relaxraid logger on", c.chat[-1])
+        c.fire("PLAYER_GUILD_UPDATE", "player")
+        c.fire("PLAYER_GUILD_UPDATE", "player")
+        c.enter("raid", 409)
+        c.advance(60)
+        self.assertEqual(says(c, HINT), 1, "once")
+        self.assertEqual(c.log_calls, [])
+        self.assertEqual(says(c, "internal error"), 0)
+        self.assertFalse(c.setting_value("RELAXRAID_LOGGER"))
+
+    def test_rank_index_not_a_number_is_unreadable(self):
+        c = boot(guild=("Fake Guild", "Rank B", "1"))
+        self.assertEqual(says(c, HINT), 1)
+        self.assertFalse(c.setting_value("RELAXRAID_LOGGER"))
+
+    def test_guild_data_late_then_officer(self):
+        # guild data arrives after the last try (the wait for it is set longer here), so only a restart helps
+        c = boot(loaded=False, saved={"RelaxRaid.modules.Log.RANK_WAIT": "600"})
+        c.enter("raid", 409)                   # logged in straight into a raid
+        c.advance(35)
+        self.assertEqual(c.log_calls, [], "nothing until the rank is known")
+        c.guild_loaded = True
+        c.fire("PLAYER_GUILD_UPDATE", "player")
+        c.advance(60)
+        self.assertTrue(truth(c))
+        self.assertEqual(says(c, ON_LINE), 1)
+        self.assertEqual(says(c, HINT), 0)
+
+    def test_guild_data_never_comes(self):
+        c = boot(loaded=False)
+        c.enter("raid", 409)
+        c.advance(60)
+        self.assertEqual(says(c, HINT), 1, "unreadable after the wait")
+        self.assertEqual(c.log_calls, [])
+        c.slash("/relaxraid logger on")        # the hint's own step works
+        c.advance(60)
+        self.assertTrue(truth(c))
+
+    def test_no_guild_is_off_without_hint(self):
+        c = boot(guild=None)
+        c.enter("raid", 409)
+        c.advance(60)
+        self.assertEqual(c.chat, [])
+        self.assertEqual(c.log_calls, [])
+
+    def test_choice_persists_and_wins_over_rank(self):
+        c = boot(guild=MEMBER)
+        c.slash("/relaxraid logger on")
+        self.assertIs(c.run("return RelaxRaidCharDB.logger"), True)
+        c2 = boot(guild=MEMBER, saved={"RelaxRaidCharDB": "{version = 1, logger = true}"})
+        c2.enter("party", 329)
+        c2.advance(60)
+        self.assertTrue(truth(c2))
+        c3 = boot(guild=OFFICER, saved={"RelaxRaidCharDB": "{version = 1, logger = false}"})
+        c3.enter("party", 329)
+        c3.advance(60)
+        self.assertEqual(c3.log_calls, [])
+        c3.slash("/relaxraid logger default")
+        self.assertIsNone(c3.run("return RelaxRaidCharDB.logger"))
+        c3.advance(60)
+        self.assertTrue(truth(c3), "back on the rank default, inside the dungeon")
+
+    def test_default_is_not_saved_as_a_choice(self):
+        c = boot(guild=OFFICER)
+        c.enter("raid", 409)
+        c.advance(60)
+        self.assertIsNone(c.run("return RelaxRaidCharDB"), "nothing written until the player chooses")
+
+    def test_panel_checkbox(self):
+        c = boot(guild=MEMBER)
+        cat = [x for x in c.categories if x["name"] == "Relax Raid"]
+        self.assertEqual(len(cat), 1)
+        self.assertTrue(cat[0]["registered"])
+        self.assertIsNotNone(c.settings["RELAXRAID_LOGGER"]["checkbox"])
+        c.enter("party", 329)
+        c.advance(35)                          # after the last try of this entry
+        c.click_setting("RELAXRAID_LOGGER", True)
+        self.assertIs(c.run("return RelaxRaidCharDB.logger"), True)
+        self.assertTrue(c.setting_value("RELAXRAID_LOGGER"))
+        c.advance(60)
+        self.assertTrue(truth(c), "turning it on inside a dungeon starts now")
+        c.click_setting("RELAXRAID_LOGGER", False)
+        self.assertIs(c.run("return RelaxRaidCharDB.logger"), False)
+
+    def test_newer_save_left_untouched(self):
+        saved = '{version = 2, logger = false, future = {a = 1}}'
+        c = boot(guild=OFFICER, saved={"RelaxRaidCharDB": saved})
+        dump = "local t = RelaxRaidCharDB; return t.version, t.logger, t.future.a, (function() local n = 0 " \
+               "for _ in pairs(t) do n = n + 1 end return n end)()"
+        before = c.run(dump)
+        c.slash("/relaxraid logger on")
+        c.click_setting("RELAXRAID_LOGGER", True)
+        self.assertEqual(c.run(dump), before)
+        self.assertEqual(before, (2, False, 1, 3))
+        self.assertEqual(says(c, "newer Relax Raid"), 2)
+
+    def test_slash_help_and_unknown(self):
+        c = boot()
+        c.slash("/relaxraid")
+        c.slash("/rraid what")
+        self.assertEqual(says(c, "/relaxraid logger on | off | default | status"), 2)
+
+
+if __name__ == "__main__":
+    unittest.main()

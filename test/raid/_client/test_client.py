@@ -85,6 +85,92 @@ class ClientTests(unittest.TestCase):
                 self.assertFalse(ok, expr)
                 self.assertIn("secret value used" if ours else "attempt to compare", str(msg))
 
+    # --- added by R1 ----------------------------------------------------------------------------------------
+    def test_events_reach_registered_frames(self):
+        c = Client()
+        c.run("got = {}; f = CreateFrame('Frame'); f:RegisterEvent('A'); "
+              "f:SetScript('OnEvent', function(_, e, x) got[#got + 1] = e .. tostring(x) end)")
+        c.fire("A", 1)
+        c.fire("B", 2)
+        c.run("f:UnregisterEvent('A')")
+        c.fire("A", 3)
+        self.assertEqual(list(c.run("return got").values()), ["A1"])
+
+    def test_enter_is_a_zone_change_and_a_loading_screen(self):
+        c = Client()
+        c.run("seen = nil; f = CreateFrame('Frame'); f:RegisterEvent('PLAYER_ENTERING_WORLD'); "
+              "f:SetScript('OnEvent', function(_, e, a, b) seen = tostring(a) .. tostring(b) end)")
+        c.advance(3)
+        c.enter("party", 33, reload=True)
+        self.assertEqual(c.run("return seen"), "falsetrue")
+        self.assertEqual(c.zone_changed_at, 3)
+        self.assertEqual(c.run("return select(2, IsInInstance())"), "party")
+
+    def test_guild_info(self):
+        c = Client()
+        self.assertFalse(c.run("return IsInGuild()"))
+        self.assertIsNone(c.run("return GetGuildInfo('player')"))
+        c.guild = ("G", "R", 2)
+        self.assertEqual(c.run("return GetGuildInfo('player')"), ("G", "R", 2))
+        c.guild_loaded = False
+        self.assertTrue(c.run("return IsInGuild()"))
+        self.assertIsNone(c.run("return GetGuildInfo('player')"), "not loaded yet")
+
+    def test_issecretvalue(self):
+        c = Client()
+        c.run("s = secret()")
+        self.assertTrue(c.run("return issecretvalue(s)"))
+        self.assertFalse(c.run("return issecretvalue({})"))
+        self.assertFalse(c.run("return issecretvalue(1)"))
+
+    def test_chat_slash_and_settings(self):
+        c = Client()
+        c.run("DEFAULT_CHAT_FRAME:AddMessage('hi')")
+        self.assertEqual(c.chat, ["hi"])
+        c.run("SLASH_T1 = '/tt'; SLASH_T2 = '/t2'; SlashCmdList.T = function(m) last = m end")
+        c.slash("/T2 a b")
+        self.assertEqual(c.run("return last"), "a b")
+        with self.assertRaises(KeyError):
+            c.slash("/none")
+        c.run("""v = false
+                 local cat = Settings.RegisterVerticalLayoutCategory('X')
+                 local s = Settings.RegisterProxySetting(cat, 'X_V', Settings.VarType.Boolean, 'V', false,
+                     function() return v end, function(x) v = x end)
+                 Settings.CreateCheckbox(cat, s, 'tip')
+                 Settings.RegisterAddOnCategory(cat)""")
+        self.assertTrue(c.categories[0]["registered"])
+        c.click_setting("X_V", True)
+        self.assertTrue(c.run("return v"))
+        self.assertTrue(c.setting_value("X_V"))
+
+    def test_calls_are_recorded(self):
+        c = Client()
+        c.run("LoggingCombat(); LoggingCombat(true); C_CVar.SetCVar('advancedCombatLogging', '1')")
+        c.refuse_cvar_write = True
+        c.run("C_CVar.SetCVar('advancedCombatLogging', '0')")
+        self.assertEqual(c.log_calls, [None, True])
+        self.assertEqual(c.cvar_writes, [("advancedCombatLogging", "1"), ("advancedCombatLogging", "0")])
+        self.assertEqual(c.cvars["advancedCombatLogging"], "1")
+
+    def test_load_addon(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            d = os.path.join(tmp, "Fake")
+            os.makedirs(d)
+            with open(os.path.join(d, "Fake.toc"), "w") as f:
+                f.write("## Interface: 16001\n## SavedVariables: FakeDB\n\nA.lua\nB.lua\n")
+            with open(os.path.join(d, "A.lua"), "w") as f:
+                f.write("local name, ns = ...; ns.order = name .. ':A'; seenDB = FakeDB\n")
+            with open(os.path.join(d, "B.lua"), "w") as f:
+                f.write("local _, ns = ...; ns.order = ns.order .. ':B'; local fr = CreateFrame('Frame'); "
+                        "fr:RegisterEvent('ADDON_LOADED'); fr:SetScript('OnEvent', function(_, _, n) loaded = n; db = FakeDB end)\n")
+            c = Client()
+            ns = c.load_addon(d, saved={"FakeDB": "{x = 1}"})
+            self.assertEqual(ns["order"], "Fake:A:B")
+            self.assertIsNone(c.run("return seenDB"), "saved variables arrive after the files run")
+            self.assertEqual(c.run("return loaded"), "Fake")
+            self.assertEqual(c.run("return db.x"), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

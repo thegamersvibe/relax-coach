@@ -9,8 +9,8 @@
 
 | Row | REQ ID | Target | PR / slice | Depends on | Owner | Implementation files | Status | Validation |
 |---|---|---|---|---|---|---|---|---|
-| IMP-001 | REQ-LOG-01 | forever | R1 | R0 | unassigned | `addon/RelaxRaid/{RelaxRaid.toc,Core.lua,Log.lua}` | planned | V-001 |
-| IMP-002 | REQ-LOG-02 | forever | R1 | R0 | unassigned | `addon/RelaxRaid/{RelaxRaid.toc,Core.lua,Log.lua}` | planned | V-002 |
+| IMP-001 | REQ-LOG-01 | forever | R1 | R0 | builder | `addon/RelaxRaid/{RelaxRaid.toc,Core.lua,Log.lua}` | built, in review | V-001 |
+| IMP-002 | REQ-LOG-02 | forever | R1 | R0 | builder | `addon/RelaxRaid/{RelaxRaid.toc,Core.lua,Log.lua}` | built, in review; officer rank list pending | V-002 |
 | IMP-003 | REQ-LOG-03 | forever | R4 | R0 | unassigned | `desktop/internal/raid/fights`, glue in `desktop/` | planned | V-003 |
 | IMP-004 | REQ-ADD-01 | forever | R2 | R1 | unassigned | `addon/RelaxRaid/{Prep.lua,Wire.lua,Store.lua}` | planned | V-004 |
 | IMP-005 | REQ-ADD-02 | forever | R2 | R1 | unassigned | `addon/RelaxRaid/{Prep.lua,Wire.lua,Store.lua}` | planned | V-005 |
@@ -98,8 +98,8 @@ Statuses: `planned`, `in progress`, `implemented`, `verified`, `blocked`, `defer
 
 | ID | REQ / slice | Target and build | Mode | Revision | Procedure and expected result | Observed result | Status |
 |---|---|---|---|---|---|---|---|
-| V-001 | REQ-LOG-01 / R1 | forever; build unknown | simulator | none yet | Acceptance column of REQ-LOG-01 | not run | not run |
-| V-002 | REQ-LOG-02 / R1 | forever; build unknown | simulator | none yet | Acceptance column of REQ-LOG-02 | not run | not run |
+| V-001 | REQ-LOG-01 / R1 | forever; mock client | simulator | `feat/raid-logger` | `raidtest.py log core`: raid and dungeon entry, start ignored 10 s with the read 5 s and 8 s behind, never off on every path, refused setting write, APIs that throw | pass; native not run (alpha, owner's decision) | simulator pass |
+| V-002 | REQ-LOG-02 / R1 | forever; mock client | simulator | `feat/raid-logger` | `raidtest.py log`: officer and member rank, rank secret or not a number, guild data late or never, no guild, choice saved and winning, panel checkbox, newer save untouched | pass; native not run (alpha, owner's decision) | simulator pass |
 | V-003 | REQ-LOG-03 / R4 | forever; build unknown | simulator | none yet | Acceptance column of REQ-LOG-03 | not run | not run |
 | V-004 | REQ-ADD-01 / R2 | forever; build unknown | simulator | none yet | Acceptance column of REQ-ADD-01 | not run | not run |
 | V-005 | REQ-ADD-02 / R2 | forever; build unknown | simulator | none yet | Acceptance column of REQ-ADD-02 | not run | not run |

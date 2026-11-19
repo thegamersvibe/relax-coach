@@ -1,0 +1,198 @@
+[
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    if not key then\n        state.run = nil\n        return\n    end",
+    "new": "    if not key then\n        if state.run then pcall(LoggingCombat, false) end\n        state.run = nil\n        return\n    end",
+    "killed_by": "test_never_off",
+    "why": "never off"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    if readOn() then confirm(run) return end\n    if run.accepted",
+    "new": "    if run.accepted",
+    "killed_by": "test_already_on_with_advanced_off_turns_advanced_on_only",
+    "why": "read first"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    if run.accepted and RR.now() - run.accepted < Log.TRUST then return end\n",
+    "new": "",
+    "killed_by": "test_accepted_start_is_trusted_over_a_lagging_read",
+    "why": "trust window"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "if ok and started == true then run.accepted = RR.now() end",
+    "new": "if ok then run.accepted = RR.now() end",
+    "killed_by": "test_start_ignored_10s_read_lags_5s",
+    "why": "trust any start"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "{0, 3, 6, 10, 15, 20, 30}",
+    "new": "{0, 3, 6, 10, 15, 20}",
+    "killed_by": "test_start_accepted_only_at_the_last_try",
+    "why": "no 30 s try"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    if run.said then return end\n",
+    "new": "",
+    "killed_by": "test_chat_line_once_per_entry",
+    "why": "chat every try"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "        RR.say(REMIND_LOG)\n",
+    "new": "",
+    "killed_by": "test_never_confirmed_gives_one_reminder_and_stops",
+    "why": "no reminder"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    run.advDone = true\n",
+    "new": "",
+    "killed_by": "test_setting_write_refused",
+    "why": "write retried"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    run.adv = ok2 and value2 == \"1\"",
+    "new": "    run.adv = true",
+    "killed_by": "test_setting_write_refused",
+    "why": "no read-back"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": " or type(index) ~= \"number\"",
+    "new": "",
+    "killed_by": "test_rank_index_not_a_number_is_unreadable",
+    "why": "non-number rank read"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "not Log.chosen() and not state.hinted then",
+    "new": "not Log.chosen() then",
+    "killed_by": "test_officer_rank_unreadable_gives_logger_off_and_hint",
+    "why": "hint every update"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    if rank == \"pending\" and final then rank = \"unreadable\" end\n",
+    "new": "",
+    "killed_by": "test_guild_data_never_comes",
+    "why": "wait forever for rank"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "if index == Log.OFFICER_RANKS[i] then return true end",
+    "new": "if index ~= Log.OFFICER_RANKS[i] then return true end",
+    "killed_by": "test_member_rank_is_not_a_logger",
+    "why": "officer match inverted"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    if Log.logger() ~= true then return end -- off",
+    "new": "    if Log.logger() == nil then return end -- off",
+    "killed_by": "test_member_rank_is_not_a_logger",
+    "why": "logger off ignored"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    if Log.logger() ~= true then return end -- off",
+    "new": "    if Log.logger() == false then return end -- off",
+    "killed_by": "test_guild_data_late_then_officer",
+    "why": "pending rank tries"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    if state.run ~= run then return end\n    if Log.logger() ~= true then return end -- off",
+    "new": "    if Log.logger() ~= true then return end -- off",
+    "killed_by": "test_leaving_early_stops_the_tries",
+    "why": "stale run tries"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    if not state.readOnly and type(db) == \"table\" and type(db.logger) == \"boolean\" then return db.logger end\n",
+    "new": "",
+    "killed_by": "test_choice_persists_and_wins_over_rank",
+    "why": "choice ignored"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "        state.readOnly = true -- a newer save",
+    "new": "        state.readOnly = false -- a newer save",
+    "killed_by": "test_newer_save_left_untouched",
+    "why": "newer save written"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    local before = Log.logger()\n    state.rank = rank",
+    "new": "    local before = Log.logger()\n    state.rank = rank; charDB()",
+    "killed_by": "test_default_is_not_saved_as_a_choice",
+    "why": "default saved"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "(kind == \"raid\" or kind == \"party\")",
+    "new": "(kind == \"raid\")",
+    "killed_by": "test_dungeon_entry_turns_both_on",
+    "why": "raids only"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "(kind == \"raid\" or kind == \"party\")",
+    "new": "(kind ~= \"none\")",
+    "killed_by": "test_open_world_and_other_instances_do_nothing",
+    "why": "any instance"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    if state.run and state.run.key == key then return end\n",
+    "new": "",
+    "killed_by": "test_chat_line_once_per_entry",
+    "why": "restart in same instance"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "            if Log.OUTDOOR_RAID_MAPS[i] == mapId then return \"raid:\" .. tostring(mapId) end\n",
+    "new": "",
+    "killed_by": "test_outdoor_raid_map_from_data",
+    "why": "outdoor list ignored"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "        state.run = nil -- start again where we stand\n",
+    "new": "",
+    "killed_by": "test_panel_checkbox",
+    "why": "switch on waits for next entry"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    if before ~= true and Log.logger() == true then",
+    "new": "    if false then",
+    "killed_by": "test_guild_data_late_then_officer",
+    "why": "late rank not acted on"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    Settings.RegisterAddOnCategory(category)\n",
+    "new": "",
+    "killed_by": "test_panel_checkbox",
+    "why": "panel not registered"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "local ok, started = pcall(LoggingCombat, true)",
+    "new": "local ok, started = true, LoggingCombat(true)",
+    "killed_by": "test_logging_api_throws",
+    "why": "start unguarded"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    pcall(C_CVar.SetCVar, \"advancedCombatLogging\", \"1\")",
+    "new": "    C_CVar.SetCVar(\"advancedCombatLogging\", \"1\")",
+    "killed_by": "test_setting_api_throws",
+    "why": "write unguarded"
+  }
+]
