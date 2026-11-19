@@ -135,7 +135,7 @@ def all_text(c):
 
 
 BOW, SHOTGUN, BEHIND_GUN, RAID_AXE, SOURCELESS, MARAUDON_GUN = 900001, 900002, 900003, 900004, 900005, 900006
-OUTDOOR_RAID, RAID_QUEST = 900007, 900008
+OUTDOOR_RAID, RAID_QUEST, NOZONE_VENDOR, NOZONE_CRAFT = 900007, 900008, 900009, 900010
 FACTS = {
     BOW: dict(name="Twin Outrunner's Bow", reqLevel=48, sourceType="vendor", npc="Illiyana Moonblaze",
               zone="Ashenvale", instructions="Bought from Illiyana Moonblaze."),
@@ -150,6 +150,10 @@ FACTS = {
                        zone="Eastern Plaguelands", instructions="Drops from Sapphiron."),
     RAID_QUEST: dict(name="Dragonslayer Neck", reqLevel=60, sourceType="quest_reward", zone="Stormwind City",
                      instructions="Reward from the quest 'The Lord of Blackrock'. Starts in Stormwind City."),
+    NOZONE_VENDOR: dict(name="Zoneless Gizmo", reqLevel=60, sourceType="vendor", npc="Synthetic Goblin",
+                        instructions="Bought from Synthetic Goblin."),
+    NOZONE_CRAFT: dict(name="Crafted Helm", reqLevel=55, sourceType="profession", profession="Blacksmithing",
+                       instructions="Crafted with Blacksmithing."),
     MARAUDON_GUN: dict(name="Maraudon Gun", reqLevel=45, sourceType="boss_drop", zone="Maraudon",
                        instructions="Drops from a dungeon boss."),
 }
@@ -227,8 +231,14 @@ rows = equipped_rows(60) + [(SOURCELESS, 'Chest', 55, 60, 400.0, 'Alliance', 'pr
                             (RAID_AXE, 'MainHand', 60, 60, 400.0, 'Alliance', 'protection'),
                             (BEHIND_GUN, 'Ranged', 40, 60, 90.0, 'Alliance', 'protection'),
                             (OUTDOOR_RAID, 'Trinket', 60, 60, 400.0, 'Alliance', 'protection'),
-                            (RAID_QUEST, 'Neck', 60, 60, 400.0, 'Alliance', 'protection')]
+                            (RAID_QUEST, 'Neck', 60, 60, 400.0, 'Alliance', 'protection'),
+                            (NOZONE_VENDOR, 'Trinket', 60, 60, 900.0, 'Alliance', 'protection'),
+                            (NOZONE_CRAFT, 'Head', 55, 60, 400.0, 'Alliance', 'protection')]
 L, G, FC, c = client(60, rows, FACTS, zone='Winterspring')
+check(not any(c.gear.slots[i].best and c.gear.slots[i].best.id == NOZONE_VENDOR for i in (13, 14)),
+      'named seller with no zone is not a pick (location unknown)')
+check('location unknown' not in all_text(c), 'no "location unknown" pick anywhere')
+check(c.gear.slots[1].best and c.gear.slots[1].best.id == NOZONE_CRAFT, 'crafted item with no zone is still a pick')
 check(not any(c.gear.slots[i].best and c.gear.slots[i].best.id == OUTDOOR_RAID for i in (13, 14)),
       'raid boss drop filed under an outdoor zone not suggested')
 check(not (c.gear.slots[2].best and c.gear.slots[2].best.id == RAID_QUEST), 'raid-kill reward quest not suggested')

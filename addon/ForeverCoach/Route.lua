@@ -98,8 +98,10 @@ function R:Place(f, snap, route)
         return "craft", P.craftNoProfession or 0.8, "crafted (buy it or ask a crafter)", nil
     end
     if generic then return "world", P.worldDrop or 0.55, "random world drop", nil end
+    -- A record with no zone (and not crafted or a random world drop) is never a pick, whatever its seller:
+    -- nobody can travel to "location unknown".
     if not zone or zone == "" then
-        return "unknown", P.unknownZone or 0.7, "location unknown", nil
+        return "unknown", 0, "location unknown", "no zone: nowhere to travel"
     end
     local parent = self:Parent(zone)
     if not (f.zoneOpen or generic or f.sourceType == "rare_npc") and (self:Denied(zone, snap.faction) or self:Denied(parent, snap.faction)) then

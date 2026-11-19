@@ -162,8 +162,7 @@ function G:Eligibility(f, snap)
         if f.npc == npc or ins:find("Bought from " .. npc, 1, true) then return "battleground reward" end
     end
     for _, pat in ipairs(pvp.patterns or {}) do if ins:find(pat, 1, true) then return "battleground reward" end end
-    -- A vendor with no seller and no place is not somewhere you can go.
-    if f.sourceType == "vendor" and (not f.npc or f.npc == "") and (not f.zone or f.zone == "") then return "no named source" end
+    -- A record with no zone (a vendor with or without a seller) is blocked in Route:Place ("location unknown").
     -- Raid drops only for raids marked open in Forever.
     local raid = FC.Route:Raid(f.zone, f)
     if raid and not FC.Route:RaidOpen(raid) then return "raid not open in Forever yet" end
