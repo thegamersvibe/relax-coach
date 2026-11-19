@@ -7,11 +7,68 @@ DUNGEONS = ("Gnomeregan", "The Deadmines", "Uldaman", "Razorfen Kraul",
             "Scarlet Monastery", "Wailing Caverns", "The Drowned City")
 
 
+def journal_reference(h, graph, entities, name):
+    """Refresh membership from the raw private journal; retain the old resolver.
+
+    Do not freeze donor IDs in this repository or use the engine's Journal/plan
+    output as the oracle. Hidden rows are prerequisites, not targets; non-page
+    quests survive only in the log. QuestieDB still supplies prerequisite order.
+    """
+    from unittest.mock import patch
+    from classify import classify
+    from path import build, NEVER
+    entries = {}
+    for page_name, page in h.g.FDJ.DB.items():
+        if h.rqp.Data.CanonicalDungeon(page_name) == name:
+            entries.update({v.id: v for v in array(page.quests)})
+    if not entries:
+        return build(graph, entities, name)
+    targets = []
+    for q, row in sorted(graph.db.q.items()):
+        j = entries.get(q)
+        if j is not None:
+            if j.hideFromMainList or j.unavailable:
+                continue
+            if j.unavailableRaces and (j.unavailableRaces[h.snapshot['race']]
+                                      or j.unavailableRaces[h.snapshot['raceID']]):
+                continue
+            if not row['races'] and j.faction in ('Alliance', 'Horde') and j.faction != h.snapshot['faction']:
+                continue
+            if not row['classes'] and j.classOnly and j.classOnly.upper() != h.snapshot['class']:
+                continue
+        elif q not in graph.p.log or name not in classify(row, graph.db, entities)['dungeons']:
+            continue
+        state = graph.state(q, level=60)
+        if state in NEVER | {'done'}:
+            continue
+        targets.append(dict(id=q, lvl=row['qLevel'], state=state))
+    with patch('path.dungeon_quests', return_value=targets):
+        expected = build(graph, entities, name)
+    # Target set, not action order: block sorting is checked separately below.
+    expected['journalTargets'] = [t['id'] for t in targets]
+    return expected
+
+
 @unittest.skipUnless(AVAILABLE, "SKIP: RQP_PRIVATE_DATA not installed")
 class EngineTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.h = Harness()
+
+    def test_journal_constant_text_matches_runtime_contract(self):
+        h = Harness()
+        self.assertEqual(h.fdj_errors, [])
+        self.assertTrue(h.lua.eval('''function()
+          for _,v in pairs(FDJ.Constants) do if type(v)~='string' then return false end end
+          for _,page in pairs(FDJ.DB) do
+            for _,q in ipairs(page.quests or {}) do
+              if q.pickup~=nil and type(q.pickup)~='string' then return false end
+              if q.turnin~=nil and type(q.turnin)~='string' then return false end
+            end
+          end
+          return true
+        end''')(), 'journal location constants must be strings, not UI auto-tables')
+        self.assertIsNotNone(h.rqp.Data.FDJ())
 
     def test_dungeon_list_is_forever_only(self):
         h = Harness()
@@ -93,12 +150,15 @@ class EngineTests(unittest.TestCase):
         ref.extra = {q: dict(sorted(v.items())) for q, v in ref.extra.items()}
         for dungeon in DUNGEONS:
             with self.subTest(dungeon=dungeon):
-                expected = build(ref, entities, dungeon)
+                expected = journal_reference(h, ref, entities, dungeon)
                 # Reference parity is checked without the dungeon-target level filter.
                 route = h.route(dungeon, mode="all")
                 plan = array(route.plan)
                 self.assertEqual(plan, [r["id"] for r in expected["steps"]])
+                self.assertEqual(route.targets, expected['targets'])
                 self.assertEqual(len(plan), len(set(plan)))
+                self.assertEqual([s.block for s in array(route.steps)],
+                                 sorted(s.block for s in array(route.steps)))
                 self.assertEqual(h.route(dungeon).floor, expected["floor"])
                 steps, later = array(route.steps), array(route.later)
                 self.assertEqual({s.q for s in steps} | {s.q for s in later}, set(plan))
@@ -107,6 +167,23 @@ class EngineTests(unittest.TestCase):
                 print("route", dungeon, "quests", len(plan), "actions", len(steps), "later", len(later))
         self.assertGreater(h.g.TEST_TICKS, 1)
         self.assertLessEqual(h.g.TEST_MAX_FRAME, 8.0 + 1e-8)
+
+    def test_legacy_classifier_still_matches_unchanged_reference(self):
+        from graph import Graph
+        from entities import Entities
+        from path import build
+        h = Harness()
+        ref, entities = Graph(h.snapshot), Entities()
+        ref.db.q = dict(sorted(ref.db.q.items()))
+        ref.extra = {q: dict(sorted(v.items())) for q, v in ref.extra.items()}
+        # Disable only overlay membership, keeping the inherited chain claims.
+        # The separate public golden covers complete absence of the journal.
+        h.lua.execute('RelaxQuestPlanner.Data.JournalDungeon=function() return nil end')
+        for name in DUNGEONS:
+            with self.subTest(dungeon=name):
+                route = h.route(name, mode='all')
+                self.assertEqual(array(route.plan), [s['id'] for s in build(ref, entities, name)['steps']])
+                self.assert_action_dependencies(route, h.player(), h)
 
     def assert_action_dependencies(self, route, p, h=None):
         h = h or self.h
@@ -268,7 +345,9 @@ class EngineTests(unittest.TestCase):
             self.assertEqual(actual, {q: ref.state(q) for q in ref.db.q})
             for name in DUNGEONS:
                 route = h.route(name, p, mode="all")
-                self.assertEqual(array(route.plan), [r["id"] for r in build(ref, entities, name)["steps"]])
+                expected = journal_reference(h, ref, entities, name)
+                self.assertEqual(array(route.plan), [r["id"] for r in expected["steps"]])
+                self.assertEqual(route.targets, expected['targets'])
                 self.assert_action_dependencies(route, p, h)
             print("runtime-without-DungeonQuestie-global", dict(sorted(Counter(actual.values()).items())))
 

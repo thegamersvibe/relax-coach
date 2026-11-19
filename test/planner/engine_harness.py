@@ -110,7 +110,9 @@ class Harness:
           local auto; auto=function() return setmetatable({}, {
             __index=function(t,k) local v=auto(); rawset(t,k,v); return v end,
             __call=function() return auto() end, __concat=function() return '' end}) end
-          FDJ=setmetatable({Constants=auto(),DB={}}, {
+          -- Location constants are strings in the real journal, not UI mocks.
+          local constants=setmetatable({}, {__index=function() return 'Copper keeper, Copper City' end})
+          FDJ=setmetatable({Constants=constants,DB={}}, {
             __index=function(t,k) local v=auto(); rawset(t,k,v); return v end})
           ForeverDungeonJournal_NS=FDJ
           TEST_CREATE_FRAME=CreateFrame
