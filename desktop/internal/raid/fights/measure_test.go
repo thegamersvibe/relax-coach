@@ -2,14 +2,11 @@ package fights_test
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
-	"sort"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -38,7 +35,7 @@ func TestRealLogsR4Measurements(t *testing.T) {
 		for _, mode := range []string{"all", "index"} {
 			p := realLogParams()
 			if mode == "index" {
-				p.DetailsFor = func(model.Fight) bool { return false }
+				p.DetailsFor = nil // Exercise the safe index-only default.
 			}
 			f, err := os.Open(filepath.Join(folder, entry.Name()))
 			if err != nil {
@@ -73,6 +70,30 @@ func TestRealLogsR4Measurements(t *testing.T) {
 			f.Close()
 			if err != nil {
 				t.Fatal("private decode failed")
+			}
+			for _, run := range res.Runs {
+				for i, fight := range run.Fights {
+					if run.Details[i].RolesComputed != (mode == "all") {
+						t.Fatal("roles-computed state does not match detail selection")
+					}
+					if mode == "index" && (len(fight.Events) != 0 || len(fight.Roles) != 0 || len(run.Details[i].Timelines) != 0) {
+						t.Fatal("default index retained detail or roles")
+					}
+				}
+			}
+			if mode == "index" {
+				var ids []string
+				for _, run := range res.Runs {
+					ids = append(ids, run.NightID)
+					for _, fight := range run.Fights {
+						if fight.Boss {
+							ids = append(ids, fight.ID)
+						}
+					}
+				}
+				if !reflect.DeepEqual(ids, identities[logNo-1]) {
+					t.Fatal("STOP: index and detail identities differ")
+				}
 			}
 			sample()
 			runtime.GC()
@@ -151,22 +172,15 @@ func TestRealLogsR4Measurements(t *testing.T) {
 									top, topID = hp[id], id
 								}
 							}
-							var rows []string
+							secondaryCandidates := 0
 							for id := range candidates {
 								if id != topID && hp[id] > 0 && hp[id]*2 >= top {
-									parts := strings.Split(id, "-")
-									if len(parts) >= 7 {
-										npc, _ := strconv.ParseInt(parts[5], 10, 64)
-										rows = append(rows, fmt.Sprintf("encounter=%d npc=%d maxHealth=%d topMaxHealth=%d", fight.EncounterID, npc, hp[id], top))
-									}
+									secondaryCandidates++
 								}
 							}
-							sort.Strings(rows)
-							// Only secondary candidates; never print a private GUID.
-							if len(rows) > 0 {
-								for _, row := range rows {
-									t.Log(row)
-								}
+							// Private evidence is counts only, never encounter/NPC ids.
+							if secondaryCandidates > 0 {
+								t.Logf("log=%d secondaryBossCandidates=%d", logNo, secondaryCandidates)
 							}
 						}
 					}

@@ -39,7 +39,7 @@ func TestReadRetainedHeapBoundedPerFight(t *testing.T) {
 	var retainedPeak uint64
 	runtime.ReadMemStats(&base)
 	p := params()
-	p.DetailsFor = func(model.Fight) bool { return false }
+	p.DetailsFor = nil // The default must release closed fights without a selector.
 	decode := func(_ io.Reader, emit func(model.Event)) error {
 		for i := 0; i < 120; i++ {
 			es := boss(int64(i+1), int64(i)*100000)

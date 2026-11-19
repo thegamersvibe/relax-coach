@@ -44,6 +44,9 @@ No model edits, real log contents, dependencies, upload, UI or installation.
   discovery. Discovery uses modification time, ties by path, regular files only.
   No live folder rotation has been observed. R8 must connect the UI.
 - M14 index mode uses DetailsFor to omit unselected events/timelines in output.
+  Round 2 makes nil index-only; a non-nil selector explicitly requests detail.
+  Detail.RolesComputed distinguishes uncomputed index roles from evaluated roles
+  with insufficient evidence (an empty model.Fight.Roles map).
   Round 1 replaces the original whole-run buffer with an active-fight buffer;
   see the measured retention contract below. Selected detail is retained output,
   not bounded memory for an arbitrarily long run.
@@ -285,7 +288,8 @@ boss-selection evidence grow with fights/actors (distinct source-target pairs),
 not repeated discarded event lines. Explicitly selected details retain their
 requested events and timeline projections, so all-detail memory still grows
 with output. There is no universal byte cap on one arbitrarily large fight or
-on requested output; a caller needing index memory must set DetailsFor false.
+on requested output. In round 1 a caller needing index memory had to set
+DetailsFor false; round 2 makes nil the index-only default.
 DetailsFor is called once when the fight closes; late ownership is reconciled
 at run completion without calling the selection callback again.
 
@@ -313,3 +317,123 @@ Go PATH was set to the requested local toolchain (go1.27.3). PY was uv's Python
 No full desktop test suite, native Windows/game test, push, PR, tag, rebase,
 installation or release was performed. R5 class/spec integration remains outside
 this lane; these two real fixtures are dungeons, not a live 40-player raid log.
+
+## Review round 2 on the unchanged stacked base
+
+Entry gate: branch `feat/raid-fights`, clean tree, HEAD
+`db019815578f028ebde15d4112c0947d7472f760`. The unchanged fights suite passed
+before edits (`ok .../fights 0.117s`). Both gated private-log tests passed before
+production changes; complete boss and full night identities were captured in a
+private comparison file outside the repository. Reviewer files were read-only.
+No model, logfmt, imports manifest, dependency, README or release files changed.
+This section supersedes round 1's default-detail and boss high-water-end rules.
+
+### Tests-first behavior ledger
+
+Targeted commands used `go -C desktop test -count=1 -v -run '^Test...$'
+./internal/raid/fights`. Each behavior was followed by a passing full fights
+suite. All RED/GREEN entries below are executed results, not predicted failures.
+
+| Ruling | Observed RED | Change and observed GREEN |
+|---|---|---|
+| MUST: unavailable tank evidence | `TestBossRolesRequireTankEvidence` failed in both no-boss-unit/damaging-swing-taker and known-boss/no-landed-swings cases: DPS and healer were assigned. The positive control passed. | A boss with zero eligible landed boss swings assigns no roles, even with positive damage/healing. Timelines still retain output. All three cases PASS. The player taking the swings also deals damage in the no-boss-unit case. |
+| Should 1: END owns boss boundary | `TestBossEndOwnsTailAfterClockSpike`: `fights=1: clock spike swallowed post-END trash`; `TestBossTailUsesRawEndWhenStartIsLater`: display clamp extended the tail. | Reset boss EndMs from END, lower-clamped only to START; use a separate raw END timestamp for tail membership. Both tests PASS. Derived from the second opinion's synthetic START(1000), hit(5000), END(2000), hit(2100), tail=50 repro; now also asserts exact end, inclusive equality, next pull, preserved raw timestamps and server duration. |
+| Should 2: nil means index only | `TestNilDetailsForIsIndexOnly` failed for Build and Read: nil retained/computed details. | Nil now selects no detail. Only a non-nil selector returning true requests it. Both cases PASS, including a second pass explicitly naming one fight ID, unchanged IDs/ranges/participants, and no unrequested spec inference. |
+| Should 3: explicit computation state | Initial test-first compile RED: missing `RolesComputed`; after field declaration, both selected cases failed with false status. | `Detail.RolesComputed` is false in index mode, true after detail inference even when Roles is empty for no evidence. `TestRolesComputedDistinguishesIndexFromNoEvidence` PASS in nil-index, rejected-index, selected-no-evidence and selected-evidence cases. No shared-model edit. |
+
+The full suite initially exposed five inherited role-fixture assumptions under
+MUST. Absorb, activity and ratio-strictness tests now supply a selected boss and
+landed swing so their existing healer/DPS assertions still test those rules.
+Only the no-landed-swings tank row and a selector overriding to a boss with no
+swings changed their expected roles to absent, as explicitly required. Tank
+share/top-ratio equalities and all effective totals remain asserted.
+
+Call-site discovery across `desktop/` found no production consumer yet. The
+synthetic `params()` helper and external `realLogParams()` explicitly select
+full detail for their existing assertions. The memory stress and private index
+pass now use nil. Existing selective/false callbacks remain supported. A
+separate per-fight sidecar stays available even in index mode, with byte range,
+confidence, unscored reason and the false computation status.
+
+### Nine reviewer survivors: actual failing overlays, then clean passes
+
+The nine exact substitutions from the reviewer's hand manifest were applied
+one at a time through Go overlays; no production files were rewritten. Each
+named test emitted FAIL with exit 1 under its overlay and PASS with exit 0 on
+the clean candidate. No compilation-failure kills, refusals or equivalence
+claims. These are regression-coverage additions for existing correct guards.
+
+| Reviewer number | Manifest entry (one-based) | Killing test | Observed RED |
+|---|---|---|---|
+| 4 | 95 | `TestCasterOnlyActorObservation` | caster-only actor lost name/flags in roster or fight |
+| 8 | 96 | `TestLateBossSelectionClearsStaleRoles` | late boss reselection retained stale roles without new tank evidence |
+| 9 | 97 | `TestIndexBossEvidenceKeepsSourceCreaturePairs` | compacted evidence lost an independently owned source/creature pair |
+| 26 | 98 | `TestHeaderResetsSeenEncounterEnds` | header retained duplicate-END state and lost the new orphan |
+| 30 | 99 | `TestNegativeAbsorbDoesNotSubtractHealing` | negative/absent absorb changed healing or removed original events |
+| 31 | 100 | `TestPetAbsorbCasterCreditsOwner` | pet caster healing or original event not assigned to owner |
+| 34 | 101 | `TestFriendlyDamageRequiresNPCControlToExclude` | friendly reaction alone excluded normal player damage or changed incoming |
+| 35 | 102 | `TestOwnedNPCFriendlyDamageIsNotCharmedPlayerDamage` | NPC-controlled owned creature was mistaken for a charmed player |
+| 37 | 103 | `TestEnemyPetSwingsDoNotSupplyTrashTankEvidence` | enemy pet/guardian swings contaminated trash tank share or top player |
+
+The late-ownership test first proves a tank role exists, then resolves an owner
+that changes the selected boss to one without swings and requires all stale
+roles to disappear. The pair-key test first closes an index fight, then resolves
+an earlier source despite a later hostile source damaging the same creature.
+The pet-caster test checks immediate and late ownership, original events, and
+exact healing totals. Index repair remains uncomputed.
+
+Inherited manifest entries 1 and 79 were re-anchored from `f.EndMs` to
+`encounterEndMs`, preserving their exclusive-tail and no-tail-close mutations.
+No other inherited mutant changed. Entries 104–113 cover the new no-evidence,
+END override/raw-tail/display-clamp, nil/default selection, explicit selection,
+and roles-computed guards. Total: 94 inherited + 9 survivors + 10 new guards =
+113, all killed by named tests.
+
+### Documented known behavior, not a fix
+
+`TestDocumentedKnownBehaviourStrayEndSplitsActiveBoss` passed before and after
+the boundary fix. The second opinion's synthetic START(77), stray END(88),
+END(77) sequence with an intervening hit still yields three partial fragments,
+no complete boss, and the intervening hit in the stray encounter. Exact event
+membership and empty complete-boss night identity are asserted. This known miss
+was deliberately left unchanged under the lead's ruling.
+
+### Real-log checks (counts only)
+
+Both external-package tests wire the real logfmt iterator into fights.Read.
+Before and after runs used RELAX_RAID_REAL_LOGS, the privately supplied prefix,
+and a full-identity comparison file outside the repository. All 13 complete
+boss identities per file and both entire night identities are unchanged from
+the clean entry baseline; index and explicit-detail identities also agree.
+Only counts are logged: the previous secondary-creature identifier tuples were
+replaced by counts. No real names, IDs, lines or private paths were added here.
+
+| Log | Runs / fights | Complete bosses before -> after | Trash / partial | Player entries in Unowned before -> after | Roles assigned / absent before -> after | Tank / healer / DPS before -> after |
+|---|---|---|---|---|---|---|
+| 1 | 1 / 75 | 13 -> 13 | 62 / 1 | 0 -> 0 | 345 / 25 -> 345 / 25 | 76 / 63 / 206 -> 76 / 63 / 206 |
+| 2 | 1 / 75 | 13 -> 13 | 62 / 1 | 0 -> 0 | 336 / 28 -> 336 / 28 | 74 / 61 / 201 -> 74 / 61 / 201 |
+
+MUST changes zero roles in these fixtures; its missing-boss/missing-swing cases
+are covered synthetically. Both retain 15 feign lines outside true deaths. Log
+2 still ends at its first zone-out, with no later event entering the run. The
+private index pass asserts no events, timelines or roles and false
+RolesComputed; the explicit-detail pass asserts true status for every fight.
+
+### Final commands actually observed
+
+All jobs ran sequentially with the requested local Go toolchain; Python mutant
+and Lua/Python gates used uv Python 3.14 with the CI requirements file.
+
+- `(cd desktop && gofmt -l internal/raid && go vet ./internal/raid/... && go test -count=1 ./internal/raid/...)`: no gofmt output, vet exit 0; raid, fights, fixture, logfmt, model all `ok`; modeltest has no test files.
+- `(cd desktop && go test -count=1 -run '^TestRaidLog' .)`: `ok .../desktop 0.011s`.
+- `python3 -I -B tools/raidtest.py --all --kind go`: `RESULT: 6/6 modules passed`, including race-enabled fights and focused main glue.
+- `$PY -I -B tools/raidtest.py --mutants fights`: `RESULT: 113/113 mutants killed`.
+- `$PY -I -B tools/raidtest.py --mutants logfmt`: `RESULT: 54/54 mutants killed`.
+- `$PY -I -B tools/raidtest.py --mutants raidlogs`: `RESULT: 2/2 mutants killed`.
+- `$PY -I -B tools/raidtest.py --all --kind lua,py`: `RESULT: 4/4 modules passed`.
+- Gated `go -C desktop test -count=1 -v -run '^TestRealLogsR4' ./internal/raid/fights`: both tests PASS; explicit output confirms all complete boss and full night identities unchanged, package `ok .../fights 5.694s`.
+- `git diff --check`: exit 0. Model/logfmt path diffs empty.
+
+No full desktop suite, native Windows/game test, push, PR, tag, amend, rebase,
+installation or release. No unresolved ruling questions. A single open fight
+still buffers until a boundary; nil/index default is not a hard memory cap.

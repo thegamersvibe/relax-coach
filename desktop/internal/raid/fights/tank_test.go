@@ -59,7 +59,7 @@ func TestTankLandedShareAndTopRatio(t *testing.T) {
 			f := only(t, build(t, es, params())).Fights[0]
 			for i, a := range players {
 				want := "" // No output evidence: a non-tank is not automatically DPS.
-				if i == 0 {
+				if i == 0 && tc.counts[0] > 0 {
 					want = "dps"
 				}
 				if tc.tanks[i] {

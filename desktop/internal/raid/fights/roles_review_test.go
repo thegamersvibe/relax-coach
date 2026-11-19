@@ -10,7 +10,10 @@ func TestRolesRequireActivity(t *testing.T) {
 	for _, inclusive := range []bool{false, true} {
 		p := params()
 		p.HealerStrictlyGreater = !inclusive
-		f := only(t, build(t, boss(7, 1000), p)).Fights[0]
+		es := boss(7, 1000)
+		es[3].InfoUnit, es[3].HPMax = giant.ID, model.Some(900)
+		es = append(es[:4], modeltest.At(1010).Src(giant).Dst(cato).Damage(10, -1).Landed().Build(), es[4])
+		f := only(t, build(t, es, p)).Fights[0]
 		if _, ok := f.Roles[bram.ID]; ok {
 			t.Fatal("inactive combatant assigned a role")
 		}

@@ -9,7 +9,8 @@ import (
 func TestAbsorbCreditsCaster(t *testing.T) {
 	es := boss(7, 1000)
 	absorb := modeltest.At(1010).Src(alia).Dst(bram).Absorb(cato, 55, 23).Build()
-	es = append(es[:4], append([]model.Event{absorb}, es[4:]...)...)
+	es[3].InfoUnit, es[3].HPMax = giant.ID, model.Some(900)
+	es = append(es[:4], modeltest.At(1009).Src(giant).Dst(bram).Damage(10, -1).Landed().Build(), absorb, es[4])
 	r := only(t, build(t, es, params()))
 	d := r.Details[0]
 	if d.Timelines[cato.ID] == nil || d.Timelines[cato.ID].HealingDone != 23 {

@@ -80,7 +80,7 @@ func TestBossUnitsRolesAndEffectiveTotals(t *testing.T) {
 		return []CreatureSelector{{ID: 83, Name: decoy.Name, Source: "synthetic"}}
 	}
 	f = only(t, build(t, es, p)).Fights[0]
-	if !reflect.DeepEqual(f.BossUnits, []string{decoy.ID}) || f.Roles[alia.ID] != "dps" {
+	if !reflect.DeepEqual(f.BossUnits, []string{decoy.ID}) || len(f.Roles) != 0 {
 		t.Fatal("override did not replace heuristic")
 	}
 	p.BossUnits = func(int64) []CreatureSelector {

@@ -29,7 +29,8 @@ func TestOwnerIncomingIsNotPlayerIncoming(t *testing.T) {
 func TestRoleStrictnessAndMissingDuration(t *testing.T) {
 	es := boss(7, 1000)
 	es[4].Enc.FightMs = model.Opt{}
-	es = append(es[:4], append([]model.Event{modeltest.At(1010).Src(alia).Dst(bram).Heal(100, 0).Build()}, es[4:]...)...)
+	es[3].InfoUnit, es[3].HPMax = giant.ID, model.Some(900)
+	es = append(es[:4], modeltest.At(1009).Src(giant).Dst(bram).Damage(10, -1).Landed().Build(), modeltest.At(1010).Src(alia).Dst(bram).Heal(100, 0).Build(), es[4])
 	p := params()
 	r := only(t, build(t, es, p))
 	if r.Fights[0].Roles[alia.ID] != "dps" || r.Details[0].LowConfidence || r.Fights[0].DurationMs.Present {

@@ -19,6 +19,7 @@ func indexDetail(f model.Fight, p Params) Detail {
 
 func makeDetail(f model.Fight, p Params) Detail {
 	d := indexDetail(f, p)
+	d.RolesComputed = true
 	for _, a := range f.Players {
 		d.Timelines[a.ID] = &Timeline{}
 	}
@@ -121,6 +122,11 @@ func makeDetail(f model.Fight, p Params) Detail {
 	}
 	// f shares the map with its caller but never modifies any caller-owned event.
 	for _, a := range f.Players {
+		// A boss without landed boss swings cannot distinguish tanks from DPS
+		// or healers. Positive output alone must not turn an unknown tank into DPS.
+		if f.Boss && total == 0 {
+			continue
+		}
 		tl := d.Timelines[a.ID]
 		tank := total > 0 && swings[a.ID] > 0 && float64(swings[a.ID])/float64(total) >= p.TankMinBossSwingShare &&
 			float64(swings[a.ID]) >= float64(top)*p.TankMinTopRatio

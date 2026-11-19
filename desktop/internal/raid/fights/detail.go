@@ -25,6 +25,9 @@ type SpellSignature struct {
 // Specs mirror the corresponding model fields; byte length includes the final
 // line ending. Timelines keep original events, not rewritten pet actors.
 type Detail struct {
+	// RolesComputed is false in index mode. True with an empty Fight.Roles
+	// means inference ran but evidence was insufficient; no role is guessed.
+	RolesComputed          bool
 	Offset, Len            int64
 	LowConfidence          bool
 	UnscoredReason         string

@@ -30,6 +30,7 @@ func realLogParams() Params {
 		TankMinBossSwingShare: .15, TankMinTopRatio: .5, HealerRequiresNotTank: true,
 		HealerMinHealingDamageRatio: 1, HealerStrictlyGreater: true,
 		BossUnitSelection: "highest_max_health_damaged_creature",
+		DetailsFor:        func(model.Fight) bool { return true }, // Explicit full-detail integration coverage.
 		InstanceKind: func(id, size int64) (model.RunKind, bool) {
 			if id == 329 {
 				return model.RunDungeon, true

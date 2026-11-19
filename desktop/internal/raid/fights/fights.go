@@ -28,7 +28,7 @@ type Params struct {
 	HealerStrictlyGreater                   bool
 	BossUnitSelection                       string
 	InstanceKind                            func(instanceID, groupSize int64) (model.RunKind, bool)
-	DetailsFor                              func(model.Fight) bool // nil selects all; false keeps only index metadata
+	DetailsFor                              func(model.Fight) bool // nil keeps index only; explicitly select fights for detail
 	BossUnits                               func(encounterID int64) []CreatureSelector
 	Profiles                                []SpecProfile
 	InferSpecs                              func(casts []model.Event, profiles []SpecProfile) map[string]string
@@ -78,7 +78,7 @@ func collect(events iter.Seq[model.Event], p Params) (Result, error) {
 	instance, difficulty := int64(0), int64(0)
 	enabled, knownZone, inferred := true, false, false
 	pendingExit := false
-	var exitMs, lastMs, lastCombat int64
+	var exitMs, lastMs, lastCombat, encounterEndMs int64
 	var r Run
 	var f *model.Fight
 	var facts []fightFacts
@@ -109,7 +109,7 @@ func collect(events iter.Seq[model.Event], p Params) (Result, error) {
 		actors.project(f, fact.touched, actors.resolved())
 		selectBosses(f, p)
 		d := indexDetail(*f, p)
-		fact.selected = p.DetailsFor == nil || p.DetailsFor(*f)
+		fact.selected = p.DetailsFor != nil && p.DetailsFor(*f)
 		if fact.selected {
 			d = makeDetail(*f, p)
 		} else {
@@ -214,7 +214,7 @@ func collect(events iter.Seq[model.Event], p Params) (Result, error) {
 		if start {
 			finish()
 		}
-		if f != nil && ended && e.TimeMs-f.EndMs > p.TailMs {
+		if f != nil && ended && e.TimeMs-encounterEndMs > p.TailMs {
 			finish()
 		}
 		if f != nil && !f.Boss && e.TimeMs-lastCombat > p.PullGapMs {
@@ -251,6 +251,10 @@ func collect(events iter.Seq[model.Event], p Params) (Result, error) {
 			f.Combatants = append(f.Combatants, *e.Info)
 		}
 		if stop {
+			// The END marker owns the tail; an earlier clock spike must not
+			// extend it. Clamp display bounds only when END predates START.
+			encounterEndMs = e.TimeMs
+			f.EndMs = max(f.StartMs, encounterEndMs)
 			f.Success, f.DurationMs = e.Enc.Success, e.Enc.FightMs
 			ended = true
 		}
