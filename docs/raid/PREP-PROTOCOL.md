@@ -260,22 +260,38 @@ the first body's `sentAt`; each receipt still updates its own window timestamp.
 **Byte accounting:** `Store.put` re-encodes the validated report through
 `Wire.encode` and counts the Lua string length of that canonical body. The
 same computation applies to received reports, the own-copy send path and load.
-There is no caller-supplied length to trust and no persistent byte counter.
+There is no caller-supplied length or saved byte counter to trust. A session-only
+ledger sums validated body lengths once per night, then tracks appends, removals
+and orphan cleanup. Weak night keys release evicted nights; reload rebuilds the
+ledger from validated, re-encoded bodies, not saved accounting fields.
 Realm-less names are normalized before encoding, so the stored canonical size
 includes the appended realm, rather than the shorter incoming name spelling.
 Only distinct appended bodies spend bytes; timestamps on reused window rows
-are not charged. The inclusive budget is **100,000 body bytes per character
-per night**, not serialized table bytes and not a shared raid budget.
+are not charged. Both limits are inclusive and count body bytes, not serialized
+table bytes:
 
-When appending exceeds the budget, remove that character's oldest body(s) until
-it fits. Remove that character from every window referring to each dropped
-body; decrement its higher indices as the dense list shifts. Other characters'
-bodies, indices and receive times do not change. Empty windows are removed.
-When window/player-cap eviction leaves a character with no window references,
-remove its entire body list too. Older bodies for a still-referenced character
-remain until its own byte budget evicts them, even if its latest receipt
-replaced their last individual reference. No sender-guild check is added: a
-non-guild raid member's report is retained by an enabled logger as before.
+- **100,000 bytes per character per night**;
+- **4,000,000 bytes per night**, summed over every character's retained bodies.
+
+First enforce the character budget by removing that character's oldest body(s)
+until it fits. Then, if the night exceeds 4,000,000 bytes, select the character
+holding the **most body bytes** in that night and drop its **oldest** distinct
+body. Equal byte totals use the **lowest whole-name key**. Recompute the largest
+holder from the updated totals and repeat until the night fits. This is not an
+oldest-window or newest-sender policy: a late substitute's single report is kept
+when a long-standing raider holds more bytes. An honest 40-player night with
+exactly 100,000 bytes each totals exactly 4,000,000 and evicts nothing.
+
+For either budget, remove the selected character from every window referring
+to a dropped body; decrement its higher indices as the dense list shifts.
+Other characters' bodies, indices and receive times do not change unless the
+night loop subsequently selects them. Empty windows are removed. When any
+window/player/budget eviction leaves a character with no window references,
+remove its entire body list and release those bytes too. Older bodies for a
+still-referenced character remain until a byte budget evicts them, even if its
+latest receipt replaced their last individual reference. No sender-guild check
+is added: a non-guild raid member's report is retained by an enabled logger as
+before. The layout is unchanged, so **prep.version remains 2**.
 
 `day = floor((receiverServerTime - 43200) / 86400)` is the unchanged UTC-noon
 bucket, not the app's content-derived `nightId`. A window starts on the first
@@ -292,29 +308,33 @@ indices, and decodes/re-encodes referenced characters' body lists. Lists must be
 dense and bounded; malformed bodies/forged identities are dropped with index
 remapping. Budget admission walks newest-first, then restores oldest-first
 list order. Invalid references, empty windows/nights and orphan character lists
-are discarded. No received or saved body is executed.
+are discarded. After per-character validation/budget admission and orphan
+cleanup, load applies the same largest-holder night budget, remapping indices
+and pruning newly empty windows. No received or saved body is executed.
 
-### Measured synthetic fill and its scope
+### Measured synthetic fills and their scope
 
-The tightened fill saturates each of 40 characters' budgets on each of 3 nights
-with distinct maximum-field reports (including 19 `notScored` slots), then fills
-all 80 windows with references. Measured canonical compact serialization:
-**13,528,853 bytes**, **7,560 bodies**, **11,816,280 body bytes**, **9,600 window
-references**. The test asserts **16 MiB**, not the former 50 MiB, reloads and
-compares the entire serialization exactly. The final detailed run measured
-4.866 seconds to reload under lupa. See `evidence/R2.md` for the command output. Body strings avoid the expanded-field table overhead that
-would otherwise make a 100,000-wire-byte budget much larger on disk.
+The body bound is now **3 nights * 4,000,000 = 12,000,000 bytes**, regardless of
+roster churn, plus at most **9,600 window references** and layout/serialization
+overhead. This is a body-byte bound, not a native SavedVariables file-size or
+Lua-heap claim. The permanent synthetic tests both assert **16 MiB serialized**
+and exact serialization after reload:
 
-This is the architect's fixed-40-character fill, **not a universal 16 MiB cap
-under roster churn**: 40 is a per-window cap, not a per-night identity cap.
-Changing the character roster between windows can retain more than 40 distinct
-characters per night. A separate rotating-roster probe, with only one maximum-
-field body for each of 3200 identities/night, measured 17,761,373 bytes across
-3 nights (9600 references and bodies, 15,004,800 body bytes). That exceeds
-16 MiB even without filling those characters' individual budgets. No unapproved
-nightly character cap or shared byte budget was added. The distinction is an
-open sizing-policy question, not silently resolved by dropping other senders'
-history.
+| Fill, three nights | Bodies | Body bytes | Window references | Serialized bytes | Reload seconds |
+|---|---:|---:|---:|---:|---:|
+| Fixed 40, distinct maximum-field bodies saturating each character budget, then 80 windows | 7,560 | 11,816,280 | 9,600 | 13,528,853 | 4.814 |
+| Rotating 40 maximum-field identities per window, 3,200 attempted identities/night | 7,677 | 11,999,151 | 7,677 | 14,203,586 | 5.634 |
+
+The rotating case retains 2,559 one-body characters per night (3,999,717 body
+bytes); whole empty windows disappear as the selected characters are removed.
+Before the night rule, the same probe retained 9,600 bodies/references and
+15,004,800 body bytes, serializing to 17,761,373 bytes, above 16 MiB. That prior
+open sizing-policy question is resolved by the architect's night budget, not a
+new identity cap. `test/raid/store/test_churn.py` is now a permanent test, not
+an optional probe; `test_fill.py` preserves the fixed-40 fill. Both are included
+in `raidtest.py --all --kind lua,py` through their own module descriptors, keeping
+the existing 30-second per-module deadline. See `evidence/R2.md` for actual
+RED/GREEN, mutation and command output.
 
 The measurement is not native WoW file formatting, Lua heap size or frame
 latency. Newer-save preservation uses canonical serialization before/after all
@@ -389,7 +409,6 @@ Blizzard SavedVariables formatting/flush. Mocks do not certify these. Restricted
 or unknown clients remain silent and unknown preparation is never scored as zero.
 
 Explicit DEC-40 and PHASE1-BRIEF supersede older logger-default and packaging
-wording. The rotating-roster size boundary above remains open for the architect;
-the requested per-character budget and unchanged per-window cap are implemented
-without inventing a global cap. R2 does not modify app upload/raw-log policies
-or compute a score.
+wording. The architect's follow-up adds the night byte budget above while
+retaining the per-character budget and per-window cap. R2 does not modify app
+upload/raw-log policies or compute a score.

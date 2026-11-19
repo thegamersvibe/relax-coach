@@ -4,6 +4,7 @@ local _, RR = ...
 local Store = RR.module("Store")
 Store.VERSION, Store.MAX_NIGHTS, Store.MAX_WINDOWS, Store.MAX_PLAYERS = 2, 3, 80, 40
 Store.MAX_BYTES = 100000 -- canonical wire-body bytes per character, per night
+Store.MAX_NIGHT_BYTES = 4000000 -- sum of all characters' retained body bytes
 Store.stats = {}
 local newWindow = false
 function Store.count(key)
@@ -26,32 +27,84 @@ local function content(body)
     local stop = body:find("\t", start, true)
     return body:sub(1, start-1) .. body:sub(stop)
 end
+-- Session-only accounting; never persisted or trusted from a save. Weak keys
+-- release evicted nights. All body-list mutations below update this ledger.
+local usage = setmetatable({}, {__mode="k"})
+local function nightUsage(night)
+    local current = usage[night]
+    if not current then
+        current = {bytes=0, held={}}
+        for key, bodies in pairs(night.reports) do
+            local own = 0
+            for _, body in ipairs(bodies) do own = own + #body end
+            current.held[key], current.bytes = own, current.bytes + own
+        end
+        usage[night] = current
+    end
+    return current
+end
+local function forgetReports(night, key)
+    local current = usage[night]
+    if current then
+        current.bytes = current.bytes - (current.held[key] or 0)
+        current.held[key] = nil
+    end
+    night.reports[key] = nil
+end
+local function dropOldest(night, key)
+    local current = nightUsage(night)
+    local bodies = night.reports[key]
+    local bytes = #table.remove(bodies, 1)
+    current.bytes, current.held[key] = current.bytes - bytes, current.held[key] - bytes
+    for _, window in ipairs(night.windows) do
+        local row = window.reports[key]
+        if row then
+            if row.report == 1 then window.reports[key] = nil
+            else row.report = row.report - 1 end
+        end
+    end
+    return bytes
+end
 local function trimReports(night, key)
     local bodies, bytes = night.reports[key], 0
     for _, body in ipairs(bodies) do bytes = bytes + #body end
     local over = bytes > Store.MAX_BYTES
     while bytes > Store.MAX_BYTES do
-        bytes = bytes - #table.remove(bodies, 1)
-        for _, window in ipairs(night.windows) do
-            local row = window.reports[key]
-            if row then
-                if row.report == 1 then window.reports[key] = nil
-                else row.report = row.report - 1 end
-            end
-        end
+        bytes = bytes - dropOldest(night, key)
         Store.count("budgetEvicted")
     end
     return over
 end
-local function pruneNight(night)
+local function pruneNight(night, only)
     local live = {}
     for i = #night.windows, 1, -1 do
         local rows = night.windows[i].reports
         if not next(rows) then table.remove(night.windows, i)
+        elseif only then
+            if rows[only] then live[only] = true end
         else for key in pairs(rows) do live[key] = true end end
     end
-    for key in pairs(night.reports) do
-        if not live[key] then night.reports[key] = nil end
+    if only then
+        if not live[only] then forgetReports(night, only) end
+    else
+        for key in pairs(night.reports) do
+            if not live[key] then forgetReports(night, key) end
+        end
+    end
+end
+local function trimNight(night)
+    local current = nightUsage(night)
+    while current.bytes > Store.MAX_NIGHT_BYTES do
+        local largest, most = nil, -1
+        for key, own in pairs(current.held) do
+            if own > most or (own == most and (not largest or key < largest)) then
+                largest, most = key, own
+            end
+        end
+        dropOldest(night, largest)
+        -- Only this holder lost references; do not rescan every window row.
+        pruneNight(night, largest)
+        Store.count("nightBudgetEvicted")
     end
 end
 -- Bodies use the canonical wire grammar, not expanded Lua field tables.
@@ -103,6 +156,7 @@ local function cleanNights(source)
                 end
             end
             pruneNight(night)
+            trimNight(night)
             if #night.windows > 0 then out[#out+1] = night end
         end
     end
@@ -156,12 +210,18 @@ function Store.put(sender, report)
     if not reports[key] and count >= Store.MAX_PLAYERS then
         reports[oldest] = nil; pruned = true; Store.count("evicted")
     end
+    local current = nightUsage(night)
     local bodies = night.reports[key] or {}
     night.reports[key] = bodies
     local latest = bodies[#bodies]
-    if not latest or content(latest) ~= content(body) then bodies[#bodies+1] = body end
+    if not latest or content(latest) ~= content(body) then
+        bodies[#bodies+1] = body
+        current.bytes = current.bytes + #body
+        current.held[key] = (current.held[key] or 0) + #body
+    end
     reports[key] = {receivedAt=now, report=#bodies}
     if trimReports(night, key) or pruned then pruneNight(night) end
+    trimNight(night)
     return true
 end
 RR.on("ENCOUNTER_END", "Store", function() newWindow = true end)
