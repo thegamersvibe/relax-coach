@@ -56,6 +56,7 @@ type ParseReport struct {
 	Header                         *HeaderInfo
 	First, Last                    *TimeStamp
 	AdvancedOn, AdvancedOff        int64 // only layouts with an optional advanced block
+	MultiPower                     int64 // lines with two power types in one field (first kept)
 	ReadError                      error
 }
 
@@ -84,6 +85,7 @@ func (r ParseReport) String() string {
 		state = "off"
 	}
 	fmt.Fprintf(&b, "Advanced: %s (on=%d off=%d, by field count)\n", state, r.AdvancedOn, r.AdvancedOff)
+	fmt.Fprintf(&b, "Lines with two power types: %d\n", r.MultiPower)
 	if r.First != nil {
 		fmt.Fprintf(&b, "First: timeMs=%d offsetH=%d\n", r.First.TimeMs, r.First.OffsetH)
 	}

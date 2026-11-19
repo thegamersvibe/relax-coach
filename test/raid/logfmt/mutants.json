@@ -91,14 +91,26 @@
   },
   {
     "file": "desktop/internal/raid/logfmt/event.go",
-    "old": "e.PowerType = number(f[p+10])",
-    "new": "e.PowerType = model.Opt{}",
+    "old": "e.PowerType, m1 = firstPower(f[p+10])",
+    "new": "_, m1 = firstPower(f[p+10])",
     "killed_by": "TestAdvancedPowerFields"
   },
   {
     "file": "desktop/internal/raid/logfmt/event.go",
-    "old": "e.Power, e.PowerMax = number(f[p+11]), number(f[p+12])",
-    "new": "e.Power, e.PowerMax = number(f[p+12]), number(f[p+11])",
+    "old": "e.Power, m2 = firstPower(f[p+11])\n\t\te.PowerMax, m3 = firstPower(f[p+12])",
+    "new": "e.Power, m2 = firstPower(f[p+12])\n\t\te.PowerMax, m3 = firstPower(f[p+11])",
     "killed_by": "TestAdvancedPowerFields"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "first, _, two := strings.Cut(s, \"|\")\n\treturn number(first), two",
+    "new": "_, _, two := strings.Cut(s, \"|\")\n\treturn number(s), two",
+    "killed_by": "TestTwoPowerTypesKeepTheFirst"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "multi = m1 || m2 || m3",
+    "new": "multi = false && (m1 || m2 || m3)",
+    "killed_by": "TestTwoPowerTypesKeepTheFirst"
   }
 ]

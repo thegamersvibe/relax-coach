@@ -45,34 +45,47 @@ func actor(f []string) model.Actor {
 	return model.Actor{ID: absent(f[0]), Name: absent(f[1]), Flags: uint32(flags)}
 }
 
+// firstPower reads a power field; a field carrying two power types ("3|4") keeps the first value.
+func firstPower(s string) (model.Opt, bool) {
+	first, _, two := strings.Cut(s, "|")
+	return number(first), two
+}
+
 func event(f []string) (model.Event, SkipReason, bool) {
+	e, reason, known, _ := eventPower(f)
+	return e, reason, known
+}
+
+// eventPower is event plus whether the line carried two power types in one field.
+func eventPower(f []string) (model.Event, SkipReason, bool, bool) {
+	multi := false
 	schema, known := formats[f[0]]
 	if !known {
-		return model.Event{Kind: model.Other, Raw: f}, "", false
+		return model.Event{Kind: model.Other, Raw: f}, "", false, multi
 	}
 	advanced, ok := schema.widths[len(f)]
 	if !ok {
-		return model.Event{}, UnknownWidth, true
+		return model.Event{}, UnknownWidth, true, multi
 	}
 	if schema.kind == model.Header {
 		if !number(f[1]).Present || f[2] != "ADVANCED_LOG_ENABLED" || f[4] != "BUILD_VERSION" || f[6] != "PROJECT_ID" {
-			return model.Event{}, InvalidValue, true
+			return model.Event{}, InvalidValue, true, multi
 		}
-		return model.Event{Kind: model.Header, Raw: f[1:]}, "", true // version, then key/value pairs
+		return model.Event{Kind: model.Header, Raw: f[1:]}, "", true, multi // version, then key/value pairs
 	}
 	if schema.kind == model.Other {
-		return model.Event{Kind: model.Other, Raw: f}, "", true
+		return model.Event{Kind: model.Other, Raw: f}, "", true, multi
 	}
 	if schema.kind == model.EncounterStart || schema.kind == model.EncounterEnd || schema.kind == model.ZoneChange || schema.kind == model.CombatantInfo {
 		e, reason := structural(schema.kind, f)
-		return e, reason, true
+		return e, reason, true, multi
 	}
 	e := model.Event{Kind: schema.kind, Stream: schema.stream, Src: actor(f[1:5]), Dst: actor(f[5:9])}
 	p := 9
 	if schema.spell || (schema.kind == model.Absorb && len(f) == 22) {
 		id := number(f[p])
 		if !id.Present {
-			return model.Event{}, InvalidValue, true
+			return model.Event{}, InvalidValue, true, multi
 		}
 		e.SpellID, e.SpellName = id.V, strings.Clone(f[p+1])
 		p += 3
@@ -82,8 +95,11 @@ func event(f []string) (model.Event, SkipReason, bool) {
 		e.HP, e.HPMax = number(f[p+2]), number(f[p+3])
 		// V22 offsets: wowcoach.gg/docs/combat-log/advanced-logging (PLAN M2).
 		// Zero is a real power type (mana), never the unknown sentinel.
-		e.PowerType = number(f[p+10])
-		e.Power, e.PowerMax = number(f[p+11]), number(f[p+12])
+		var m1, m2, m3 bool
+		e.PowerType, m1 = firstPower(f[p+10])
+		e.Power, m2 = firstPower(f[p+11])
+		e.PowerMax, m3 = firstPower(f[p+12])
+		multi = m1 || m2 || m3
 		e.X, e.Y = position(f[p+14]), position(f[p+15])
 		p += 19
 	}
@@ -131,5 +147,5 @@ func event(f []string) (model.Event, SkipReason, bool) {
 			e.AuraType = strings.Clone(f[p+3])
 		}
 	}
-	return e, "", true
+	return e, "", true, multi
 }

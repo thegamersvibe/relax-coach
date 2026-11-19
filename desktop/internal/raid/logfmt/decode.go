@@ -72,13 +72,16 @@ func decodeLine(raw string, offset int64, r *ParseReport) (model.Event, bool) {
 		r.skip(InvalidFields, name, 0)
 		return model.Event{}, false
 	}
-	e, reason, known := event(fields)
+	e, reason, known, multi := eventPower(fields)
 	if reason != "" {
 		r.skip(reason, name, len(fields))
 		return model.Event{}, false
 	}
 	if !known {
 		r.UnknownEvents[name]++
+	}
+	if multi {
+		r.MultiPower++ // two power types in one field: the first is kept
 	}
 	if e.Kind == model.Header {
 		r.HeadersSeen++
