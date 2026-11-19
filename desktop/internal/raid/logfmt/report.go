@@ -7,6 +7,7 @@ import (
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/model"
 	"sort"
 	"strings"
+	"unicode/utf8"
 )
 
 type SkipReason string
@@ -17,6 +18,7 @@ const (
 	InvalidFields  SkipReason = "invalid fields"
 	UnknownWidth   SkipReason = "unknown field count"
 	InvalidValue   SkipReason = "invalid required value"
+	InvalidFlags   SkipReason = "invalid actor flags"
 	LineTooLong    SkipReason = "line too long"
 )
 
@@ -44,8 +46,10 @@ type SkippedLayout struct {
 
 // ParseReport is reset when iteration starts. Parsed includes Other, including
 // unknown names; it excludes headers. LinesRead = Parsed + HeadersSeen + skips.
-// EventCounts counts recognisable names even on skipped lines. First and Last
-// are the first/last valid timestamps in file order, not sorted clock extrema.
+// EventCounts counts names even on skipped lines. Unknown names are bounded
+// ASCII labels; unsafe/excess names share "other" across all report maps.
+// First and Last are the first/last valid timestamps in file order, not
+// sorted clock extrema.
 // A reader failure is separate from line accounting and never silently ignored.
 type ParseReport struct {
 	LinesRead, Parsed, HeadersSeen int64
@@ -57,7 +61,78 @@ type ParseReport struct {
 	First, Last                    *TimeStamp
 	AdvancedOn, AdvancedOff        int64 // only layouts with an optional advanced block
 	MultiPower                     int64 // lines with two power types in one field (first kept)
+	NameNULBytes                   int64 // NUL bytes in recognized actor-name fields
+	InvalidUTF8Names               int64 // actor-name occurrences, not unique names
 	ReadError                      error
+	unknownNames                   map[string]struct{} // shared budget, including skipped names
+}
+
+const (
+	maxReportNameBytes = 64
+	maxUnknownNames    = 64
+	otherEventName     = "other"
+)
+
+// reportName bounds every report key without changing the event or its Raw.
+// Even a short name must own its storage rather than pin the source line.
+func (r *ParseReport) reportName(name string) string {
+	if name == "" {
+		return ""
+	}
+	if _, known := formats[name]; !known {
+		if len(name) > maxReportNameBytes {
+			return otherEventName
+		}
+		for _, c := range name {
+			if c != '_' && (c < 'A' || c > 'Z') {
+				return otherEventName
+			}
+		}
+		if _, seen := r.unknownNames[name]; !seen {
+			if len(r.unknownNames) >= maxUnknownNames {
+				return otherEventName
+			}
+			if r.unknownNames == nil {
+				r.unknownNames = make(map[string]struct{})
+			}
+			r.unknownNames[strings.Clone(name)] = struct{}{}
+		}
+	}
+	return strings.Clone(name)
+}
+
+// countActorNames inspects known, split layouts before value validation, so
+// invalid flags do not hide name diagnostics. It never normalizes name bytes.
+func (r *ParseReport) countActorNames(f []string) {
+	schema, known := formats[f[0]]
+	if !known {
+		return
+	}
+	if _, supported := schema.widths[len(f)]; !supported {
+		return
+	}
+	switch schema.kind {
+	case model.Header, model.EncounterStart, model.EncounterEnd, model.ZoneChange, model.CombatantInfo:
+		return
+	case model.Other:
+		if f[0] == "MAP_CHANGE" {
+			return
+		}
+	}
+	indices := []int{2, 6}
+	if schema.kind == model.Absorb {
+		p := 10
+		if len(f) == 22 {
+			p += 3
+		}
+		indices = append(indices, p)
+	}
+	for _, i := range indices {
+		r.NameNULBytes += int64(strings.Count(f[i], "\x00"))
+		if !utf8.ValidString(f[i]) {
+			r.InvalidUTF8Names++
+		}
+	}
 }
 
 func (r *ParseReport) skip(reason SkipReason, name string, fields int) {
@@ -86,6 +161,7 @@ func (r ParseReport) String() string {
 	}
 	fmt.Fprintf(&b, "Advanced: %s (on=%d off=%d, by field count)\n", state, r.AdvancedOn, r.AdvancedOff)
 	fmt.Fprintf(&b, "Lines with two power types: %d\n", r.MultiPower)
+	fmt.Fprintf(&b, "Actor name NUL bytes: %d\nActor names with invalid UTF-8: %d\n", r.NameNULBytes, r.InvalidUTF8Names)
 	if r.First != nil {
 		fmt.Fprintf(&b, "First: timeMs=%d offsetH=%d\n", r.First.TimeMs, r.First.OffsetH)
 	}

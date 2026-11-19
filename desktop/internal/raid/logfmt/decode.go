@@ -54,12 +54,13 @@ func decodeLine(raw string, offset int64, r *ParseReport) (model.Event, bool) {
 	text := strings.TrimSuffix(strings.TrimSuffix(raw, "\n"), "\r")
 	stamp, body, found := strings.Cut(text, "  ")
 	name, _, _ := strings.Cut(body, ",")
-	if name != "" {
-		r.EventCounts[name]++
+	reportedName := r.reportName(name)
+	if reportedName != "" {
+		r.EventCounts[reportedName]++
 	}
 	tm, zone, ok := timestamp(stamp)
 	if !found || !ok {
-		r.skip(InvalidTime, name, 0)
+		r.skip(InvalidTime, reportedName, 0)
 		return model.Event{}, false
 	}
 	timePoint := &TimeStamp{tm, zone}
@@ -69,16 +70,17 @@ func decodeLine(raw string, offset int64, r *ParseReport) (model.Event, bool) {
 	r.Last = timePoint
 	fields, ok := split(body)
 	if !ok || name == "" {
-		r.skip(InvalidFields, name, 0)
+		r.skip(InvalidFields, reportedName, 0)
 		return model.Event{}, false
 	}
+	r.countActorNames(fields)
 	e, reason, known, multi := eventPower(fields)
 	if reason != "" {
-		r.skip(reason, name, len(fields))
+		r.skip(reason, reportedName, len(fields))
 		return model.Event{}, false
 	}
 	if !known {
-		r.UnknownEvents[name]++
+		r.UnknownEvents[reportedName]++
 	}
 	if multi {
 		r.MultiPower++ // two power types in one field: the first is kept

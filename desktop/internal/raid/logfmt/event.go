@@ -40,9 +40,12 @@ func position(s string) model.Opt {
 	}
 	return model.Some(int64(v))
 }
-func actor(f []string) model.Actor {
-	flags, _ := strconv.ParseUint(f[2], 0, 32)
-	return model.Actor{ID: absent(f[0]), Name: absent(f[1]), Flags: uint32(flags)}
+func actor(f []string) (model.Actor, bool) {
+	flags, err := strconv.ParseUint(f[2], 0, 32)
+	if err != nil {
+		return model.Actor{}, false
+	}
+	return model.Actor{ID: absent(f[0]), Name: absent(f[1]), Flags: uint32(flags)}, true
 }
 
 // firstPower reads a power field; a field carrying two power types ("3|4") keeps the first value.
@@ -73,14 +76,22 @@ func eventPower(f []string) (model.Event, SkipReason, bool, bool) {
 		}
 		return model.Event{Kind: model.Header, Raw: f[1:]}, "", true, multi // version, then key/value pairs
 	}
-	if schema.kind == model.Other {
+	if schema.kind == model.Other && f[0] == "MAP_CHANGE" {
 		return model.Event{Kind: model.Other, Raw: f}, "", true, multi
 	}
 	if schema.kind == model.EncounterStart || schema.kind == model.EncounterEnd || schema.kind == model.ZoneChange || schema.kind == model.CombatantInfo {
 		e, reason := structural(schema.kind, f)
 		return e, reason, true, multi
 	}
-	e := model.Event{Kind: schema.kind, Stream: schema.stream, Src: actor(f[1:5]), Dst: actor(f[5:9])}
+	src, srcOK := actor(f[1:5])
+	dst, dstOK := actor(f[5:9])
+	if !srcOK || !dstOK {
+		return model.Event{}, InvalidFlags, true, multi
+	}
+	if schema.kind == model.Other {
+		return model.Event{Kind: model.Other, Raw: f}, "", true, multi
+	}
+	e := model.Event{Kind: schema.kind, Stream: schema.stream, Src: src, Dst: dst}
 	p := 9
 	if schema.spell || (schema.kind == model.Absorb && len(f) == 22) {
 		id := number(f[p])
@@ -123,8 +134,12 @@ func eventPower(f []string) (model.Event, SkipReason, bool, bool) {
 			e.Absorbed = number(f[p+2])
 		}
 	case model.Absorb:
-		// Src/Dst remain the common logged actors. The current model has no
-		// separate shield-caster actor; do not mislabel it as an advanced owner.
+		// The shield caster follows the optional attack spell triple.
+		// Src stays the attacker; Dst stays the shielded unit.
+		e.Caster, ok = actor(f[p : p+4])
+		if !ok {
+			return model.Event{}, InvalidFlags, true, multi
+		}
 		e.ExtraSpellID = number(f[p+4])
 		e.Amount = number(f[p+7])
 		e.Crit = f[p+9] == "1"
