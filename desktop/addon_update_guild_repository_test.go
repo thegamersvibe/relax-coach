@@ -21,6 +21,9 @@ func TestGuildRepositoryRuntimeBytes(t *testing.T) {
 	if addonBundleRelease(version) {
 		sources, roots = append(sources, "../addon/RelaxQuestPlanner"), append(roots, addonPlannerRoot)
 	}
+	if addonRaidRelease(version) {
+		sources, roots = append(sources, "../addon/RelaxRaid"), append(roots, addonRaidRoot)
+	}
 	for i, source := range sources {
 		err := filepath.WalkDir(source, func(p string, d os.DirEntry, err error) error {
 			if err != nil {
@@ -67,6 +70,17 @@ func TestGuildRepositoryRuntimeBytes(t *testing.T) {
 			t.Fatal(err)
 		}
 		manifest["plannerVersion"] = meta["version"]
+	}
+	if addonRaidRelease(version) {
+		toc, err := os.ReadFile("../addon/RelaxRaid/RelaxRaid.toc")
+		if err != nil {
+			t.Fatal(err)
+		}
+		meta, _, err := addonTOCMetadata(toc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		manifest["raidVersion"] = meta["version"]
 	}
 	payload := guildZip(t, entries, manifest)
 	u := guildUpdaterForVersion(t, payload, version)
