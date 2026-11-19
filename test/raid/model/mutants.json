@@ -106,5 +106,29 @@
     "old": "StartMs: r.startMs, OffsetH: r.offsetH, Build: r.build, LogVersion: r.version, Advanced: r.advanced, Source: r.source}\n}\n\n// Dungeon",
     "new": "StartMs: r.startMs, OffsetH: r.offsetH, Build: r.build, LogVersion: r.version, Advanced: r.advanced}\n}\n\n// Dungeon",
     "killed_by": "TestFightWithEveryNewField"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.r.GearChecked, b.r.BetterGear = true, better",
+    "new": "b.r.BetterGear = better",
+    "killed_by": "TestResultTypesThroughBuilders"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "return model.Part{Name: name, Tenths: model.Some(tenths), Evidence: ev}",
+    "new": "return model.Part{Name: name, Tenths: model.Opt{V: tenths}, Evidence: ev}",
+    "killed_by": "TestResultTypesThroughBuilders"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.s.Rank = model.Some(r); return b",
+    "new": "b.s.Rank = model.Opt{V: r}; return b",
+    "killed_by": "TestResultTypesThroughBuilders"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.r.SenderClock, b.r.Stamped = sender, stamped",
+    "new": "b.r.SenderClock, b.r.Stamped = stamped, sender",
+    "killed_by": "TestResultTypesThroughBuilders"
   }
 ]

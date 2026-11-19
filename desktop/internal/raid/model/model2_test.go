@@ -100,6 +100,53 @@ func TestFightWithEveryNewField(t *testing.T) {
 	}
 }
 
+// The lane-to-lane result types, built only through builders, every field set and checked.
+func TestResultTypesThroughBuilders(t *testing.T) {
+	p := modeltest.Player("Cato-PvP-EU")
+	allSet(t, modeltest.Wipe("f1", 2, 3, 4))
+	if w := modeltest.Wipe("f1", 2, 3, 4); w.FightID != "f1" || w.FirstDeath != 2 || len(w.Following) != 2 || w.Following[1] != 4 {
+		t.Errorf("wipe: %+v", w)
+	}
+	ev := modeltest.Evidence("Stood in fire 3 times.", []int64{1200, 3400}, "hits", 3)
+	allSet(t, ev)
+	if ev.Counts["hits"] != 3 || ev.AtMs[1] != 3400 || ev.Text != "Stood in fire 3 times." {
+		t.Errorf("evidence: %+v", ev)
+	}
+	part := modeltest.Part("mechanics", 873, ev)
+	allSet(t, part)
+	if part.Tenths != model.Some(873) || part.Name != "mechanics" || modeltest.Unmeasured("utility").Tenths.Present {
+		t.Errorf("parts: %+v", part)
+	}
+	fs := modeltest.FightScore("f1", p, "dps").Score(912).Coverage(85).Parts(part, modeltest.Unmeasured("utility")).
+		Flags("partialFight").Build()
+	allSet(t, fs)
+	if fs.PlayerID != p.ID || fs.Tenths != model.Some(912) || fs.Coverage != 85 || len(fs.Parts) != 2 || fs.Flags[0] != "partialFight" || fs.Role != "dps" {
+		t.Errorf("fight score: %+v", fs)
+	}
+	if nd := modeltest.FightScore("f1", p, "dps").Coverage(0).Build(); nd.Tenths.Present {
+		t.Error("no Score means not enough data")
+	}
+	ns := modeltest.NightScore(p, "spec").Score(880).Coverage(90).Rank(1).Fights(fs).Build()
+	allSet(t, ns)
+	if ns.Rank != model.Some(1) || ns.Baseline != "spec" || ns.Tenths != model.Some(880) || ns.Coverage != 90 || len(ns.Fights) != 1 {
+		t.Errorf("night score: %+v", ns)
+	}
+	if modeltest.NightScore(p, "spec").Score(1).Build().Rank.Present {
+		t.Error("no Rank means unranked (dungeon run, not enough data)")
+	}
+	pr := modeltest.Prep("Cato-PvP-EU", "MAGE", 60, 1, "1.8.1").Played(3600).Consumable("flask", 2).
+		Gear(map[int64]int64{1: 12345}).Clock(1000, 1002).Build()
+	allSet(t, pr)
+	if pr.Name != "Cato-PvP-EU" || pr.Class != "MAGE" || pr.Level != 60 || pr.Protocol != 1 || pr.AddonVersion != "1.8.1" ||
+		pr.PlayedAtLevelS != model.Some(3600) || pr.Consumables["flask"] != 2 || !pr.GearChecked || pr.BetterGear[1] != 12345 ||
+		pr.SenderClock != 1000 || pr.Stamped != 1002 {
+		t.Errorf("prep: %+v", pr)
+	}
+	if g := modeltest.Prep("Cato-PvP-EU", "MAGE", 60, 1, "1.8.1").Build(); g.GearChecked || g.PlayedAtLevelS.Present {
+		t.Error("gear not checked and played unreadable until set")
+	}
+}
+
 // Event fields with no builder: the decoder fills them, and tests that need them set them by hand.
 var handOnly = map[string]bool{"OffsetH": true, "Line": true, "Absorbed": true, "Crit": true,
 	"HP": true, "HPMax": true, "InfoUnit": true, "X": true, "Y": true, "ExtraSpellID": true, "Raw": true}

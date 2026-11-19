@@ -302,3 +302,124 @@ func (b *DeathBuilder) Suggest(cause string) *DeathBuilder { b.d.SuggestedCause 
 
 // Build returns the death.
 func (b *DeathBuilder) Build() model.Death { return b.d }
+
+// Wipe builds a wipe summary: the first death's index and the following deaths inside the window.
+func Wipe(fightID string, first int, following ...int) model.Wipe {
+	return model.Wipe{FightID: fightID, FirstDeath: first, Following: following}
+}
+
+// Evidence builds one part's evidence; counts are given as name, value pairs.
+func Evidence(text string, atMs []int64, counts ...any) model.Evidence {
+	ev := model.Evidence{Text: text, AtMs: atMs}
+	for i := 0; i+1 < len(counts); i += 2 {
+		if ev.Counts == nil {
+			ev.Counts = map[string]int64{}
+		}
+		ev.Counts[counts[i].(string)] = int64(counts[i+1].(int))
+	}
+	return ev
+}
+
+// Part builds a measured part (score in tenths).
+func Part(name string, tenths int64, ev model.Evidence) model.Part {
+	return model.Part{Name: name, Tenths: model.Some(tenths), Evidence: ev}
+}
+
+// Unmeasured builds a part that could not be measured (Tenths unset).
+func Unmeasured(name string) model.Part { return model.Part{Name: name} }
+
+// FightScoreBuilder builds one player's score in one fight.
+type FightScoreBuilder struct{ s model.FightScore }
+
+// FightScore starts a fight score; without Score it is "not enough data".
+func FightScore(fightID string, p model.Actor, role string) *FightScoreBuilder {
+	return &FightScoreBuilder{s: model.FightScore{FightID: fightID, PlayerID: p.ID, Role: role}}
+}
+
+// Score sets the score in tenths.
+func (b *FightScoreBuilder) Score(tenths int64) *FightScoreBuilder {
+	b.s.Tenths = model.Some(tenths)
+	return b
+}
+
+// Coverage sets coverage in hundredths (0 to 100).
+func (b *FightScoreBuilder) Coverage(h int) *FightScoreBuilder { b.s.Coverage = h; return b }
+
+// Parts appends parts.
+func (b *FightScoreBuilder) Parts(p ...model.Part) *FightScoreBuilder {
+	b.s.Parts = append(b.s.Parts, p...)
+	return b
+}
+
+// Flags appends flags from 4A row 8.
+func (b *FightScoreBuilder) Flags(f ...string) *FightScoreBuilder {
+	b.s.Flags = append(b.s.Flags, f...)
+	return b
+}
+
+// Build returns the fight score.
+func (b *FightScoreBuilder) Build() model.FightScore { return b.s }
+
+// NightScoreBuilder builds one player's night (or run) score.
+type NightScoreBuilder struct{ s model.NightScore }
+
+// NightScore starts a night score; without Score it is "not enough data", without Rank it has no rank.
+func NightScore(p model.Actor, baseline string) *NightScoreBuilder {
+	return &NightScoreBuilder{s: model.NightScore{PlayerID: p.ID, Baseline: baseline}}
+}
+
+// Score sets the score in tenths.
+func (b *NightScoreBuilder) Score(tenths int64) *NightScoreBuilder {
+	b.s.Tenths = model.Some(tenths)
+	return b
+}
+
+// Coverage sets coverage in hundredths.
+func (b *NightScoreBuilder) Coverage(h int) *NightScoreBuilder { b.s.Coverage = h; return b }
+
+// Rank sets the rank (raid nights only).
+func (b *NightScoreBuilder) Rank(r int64) *NightScoreBuilder { b.s.Rank = model.Some(r); return b }
+
+// Fights appends the player's fight scores.
+func (b *NightScoreBuilder) Fights(f ...model.FightScore) *NightScoreBuilder {
+	b.s.Fights = append(b.s.Fights, f...)
+	return b
+}
+
+// Build returns the night score.
+func (b *NightScoreBuilder) Build() model.NightScore { return b.s }
+
+// PrepBuilder builds a prep report.
+type PrepBuilder struct{ r model.PrepReport }
+
+// Prep starts a prep report from a sender; gear is "not checked" until Gear is called.
+func Prep(name, class string, level, protocol int64, addonVersion string) *PrepBuilder {
+	return &PrepBuilder{r: model.PrepReport{Name: name, Class: class, Level: level, Protocol: protocol, AddonVersion: addonVersion}}
+}
+
+// Played sets the time played at this level in seconds.
+func (b *PrepBuilder) Played(s int64) *PrepBuilder { b.r.PlayedAtLevelS = model.Some(s); return b }
+
+// Consumable sets a category's count.
+func (b *PrepBuilder) Consumable(category string, n int64) *PrepBuilder {
+	if b.r.Consumables == nil {
+		b.r.Consumables = map[string]int64{}
+	}
+	b.r.Consumables[category] = n
+	return b
+}
+
+// Gear marks gear checked and records better items in bags (slot to item id).
+func (b *PrepBuilder) Gear(better map[int64]int64) *PrepBuilder {
+	b.r.GearChecked, b.r.BetterGear = true, better
+	return b
+}
+
+// Clock sets the sender's clock and the time the report was stamped on receipt.
+func (b *PrepBuilder) Clock(sender, stamped int64) *PrepBuilder {
+	b.r.SenderClock, b.r.Stamped = sender, stamped
+	return b
+}
+
+// Build returns the report.
+func (b *PrepBuilder) Build() model.PrepReport { return b.r }
