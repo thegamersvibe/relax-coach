@@ -8,15 +8,24 @@
 
 Modules are the directories test/raid/<name>/ holding a module.json:
   {"kind": "go"|"lua"|"py", "source": "<path>", "test": ["<argv>", ...], "depends": ["<module>", ...]}
-Test commands run from the repository root (Go modules use "go -C desktop ..."). mutants.json holds a list of
-{"file", "old", "new", "killed_by"}. A mutant must sit inside the module's source and its old text must occur
-exactly once. Product files are never written: a Go mutant is swapped in with go test -overlay and runs only the
-killed_by test; a Lua or Python mutant runs in a temporary copy of the module's files with "-k killed_by".
+Test commands run from the repository root (Go modules use "go -C desktop ..."). A module whose command runs no
+test at all fails. mutants.json holds a list of {"file", "old", "new", "killed_by"}; an empty list is "no mutants".
+
+A mutant is checked like this, and anything that is not a clear kill or survival is a REFUSAL, which fails the run:
+  - its file, resolved (symlinks and "..") must lie inside the module's source; its old text must occur exactly
+    once and differ from the new text;
+  - the killed_by test must exist and pass on clean code (the baseline), in the same setting the mutant runs in;
+  - with the mutation, the killed_by test must actually run: a build error, a selector that matches nothing or
+    a timeout is a refusal, not a kill;
+  - KILLED only when that named test ran and failed; SURVIVED when it ran and passed.
+Product files are never written: a Go mutant is swapped in with go test -overlay; a Lua or Python mutant runs in a
+temporary copy of the module's files, its declared dependencies' files and the shared support code, with -v -k.
 Exit 1 when a module fails, a mutant survives or is refused, or a module runs longer than the limit.
 """
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -87,6 +96,14 @@ def changed_files(root, ref):
     return sorted({p for p in (out + extra).splitlines() if p})
 
 
+def ran_nothing(kind, output):
+    """True when the output shows the command ran no test (go: no test files / no tests to run; unittest: 0)."""
+    if kind == "go":
+        return bool(re.search(r"\[no test files\]|\[no tests to run\]|no tests to run", output)) and not re.search(r"^ok\s+\S+\s+[\d.]+s\s*$", output, re.M)
+    m = re.findall(r"^Ran (\d+) tests?", output, re.M)
+    return not m or all(int(n) == 0 for n in m)
+
+
 def run_module(root, spec, limit):
     start = time.monotonic()
     try:
@@ -95,9 +112,58 @@ def run_module(root, spec, limit):
     except subprocess.TimeoutExpired as e:
         rc, output = -1, "timed out\n" + str(e.stdout or "")
     seconds = time.monotonic() - start
-    ok = rc == 0 and seconds <= limit
-    why = "" if ok else ("rc %d" % rc if rc else "slower than the %gs limit" % limit)
+    empty = rc == 0 and ran_nothing(spec["kind"], output)
+    ok = rc == 0 and seconds <= limit and not empty
+    why = "; ".join(r for r, bad in (("rc %d" % rc, rc != 0), ("ran no tests", empty),
+                                      ("slower than the %gs limit" % limit, seconds > limit)) if bad)
     return ok, seconds, why, output
+
+
+class Refused(Exception):
+    pass
+
+
+def inside(path, base):
+    path, base = os.path.realpath(path), os.path.realpath(base)
+    return path == base or path.startswith(base.rstrip(os.sep) + os.sep)
+
+
+def go_named(output, name):
+    """'pass' / 'fail' / None for a named Go test in -v output."""
+    if re.search(r"^\s*--- FAIL: %s \(" % re.escape(name), output, re.M):
+        return "fail"
+    if re.search(r"^\s*--- PASS: %s \(" % re.escape(name), output, re.M):
+        return "pass"
+    return None
+
+
+def py_named(output, name):
+    """'pass' / 'fail' / None for unittest -v output: the named test's own result line."""
+    results = re.findall(r"^(%s) \(.*?\)\s*(?:\.\.\.|\n.*?\.\.\.)\s*(ok|FAIL|ERROR|skipped.*)$" % re.escape(name), output, re.M)
+    if not results:
+        return None
+    states = {r[1] for r in results}
+    if "FAIL" in states or "ERROR" in states:
+        return "fail"
+    return "pass" if states == {"ok"} else None
+
+
+def run_named(cmd, cwd, kind, name, limit):
+    """Run one named test; returns 'pass' / 'fail' and the output, or raises Refused."""
+    try:
+        proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=limit + 5)
+    except subprocess.TimeoutExpired:
+        raise Refused("timed out (a timeout is not a kill)")
+    out = proc.stdout + proc.stderr
+    if kind == "go":
+        if "[build failed]" in out or "[setup failed]" in out:
+            raise Refused("does not build:\n" + out[-300:])
+        state = go_named(out, name)
+    else:
+        state = py_named(out, name)
+    if state is None:
+        raise Refused("test %s did not run (rc %d):\n%s" % (name, proc.returncode, out[-300:]))
+    return state, out
 
 
 def go_package(spec):
@@ -107,33 +173,48 @@ def go_package(spec):
     return "./" + src[len("desktop/"):]
 
 
-def run_mutant(root, spec, m, limit):
-    """(killed, detail). Refusals raise ValueError."""
-    for key in ("file", "old", "new", "killed_by"):
-        if not isinstance(m.get(key), str):
-            raise ValueError("mutant needs file, old, new and killed_by")
-    if not under(m["file"], spec["source"]):
-        raise ValueError("%s is outside module source %s" % (m["file"], spec["source"]))
+def run_mutant(root, spec, mods, m, limit):
+    """(killed, detail). Raises Refused for anything that is neither a clear kill nor a clear survival."""
+    if not all(isinstance(m.get(k), str) for k in ("file", "old", "new", "killed_by")) or not (m["file"] and m["old"] and m["killed_by"]):
+        raise Refused("mutant needs file, old, new (may be empty) and killed_by")
     target = os.path.join(root, m["file"])
+    if not inside(target, os.path.join(root, spec["source"])) or not under(m["file"], spec["source"]):
+        raise Refused("%s is outside module source %s" % (m["file"], spec["source"]))
+    if m["old"] == m["new"]:
+        raise Refused("the mutation changes nothing (old == new)")
     with open(target, encoding="utf-8") as f:
         text = f.read()
     count = text.count(m["old"])
     if count != 1:
-        raise ValueError("old text occurs %d times in %s (must be exactly once)" % (count, m["file"]))
+        raise Refused("old text occurs %d times in %s (must be exactly once)" % (count, m["file"]))
     mutated = text.replace(m["old"], m["new"], 1)
+    name = m["killed_by"]
     with tempfile.TemporaryDirectory(prefix="raidtest-") as tmp:
         if spec["kind"] == "go":
+            base = ["go", "-C", "desktop", "test", "-count=1", "-v", "-run", "^(" + name + ")$", go_package(spec)]
+            state, _ = run_named(base, root, "go", name, limit)
+            if state != "pass":
+                raise Refused("baseline: %s fails on clean code" % name)
             swap = os.path.join(tmp, os.path.basename(target))
             with open(swap, "w", encoding="utf-8") as f:
                 f.write(mutated)
             overlay = os.path.join(tmp, "overlay.json")
             with open(overlay, "w", encoding="utf-8") as f:
-                json.dump({"Replace": {os.path.abspath(target): swap}}, f)
-            cmd = ["go", "-C", "desktop", "test", "-count=1", "-overlay", overlay, "-run", "^(" + m["killed_by"] + ")$", go_package(spec)]
-            cwd = root
+                json.dump({"Replace": {os.path.realpath(target): swap}}, f)
+            cmd = base[:5] + ["-overlay", overlay] + base[5:]
+            state, out = run_named(cmd, root, "go", name, limit)
         else:
-            # copy only the module's own files and the shared support code; the product tree is not touched
-            for rel in {spec["source"].rstrip("/"), spec["dir"].rstrip("/"), "test/raid/_client", "tools"}:
+            # the module, its declared dependencies (transitively) and the shared support code
+            need, seen = [spec], set()
+            rels = {"test/raid/_client", "tools"}
+            while need:
+                sp = need.pop()
+                if sp["name"] in seen:
+                    continue
+                seen.add(sp["name"])
+                rels.update({sp["source"].rstrip("/"), sp["dir"].rstrip("/")})
+                need.extend(mods[d] for d in sp["depends"] if d in mods)
+            for rel in rels:
                 src = os.path.join(root, rel)
                 dst = os.path.join(tmp, rel)
                 if os.path.isdir(src):
@@ -141,16 +222,14 @@ def run_mutant(root, spec, m, limit):
                 elif os.path.isfile(src):
                     os.makedirs(os.path.dirname(dst), exist_ok=True)
                     shutil.copy2(src, dst)
+            cmd = list(spec["test"]) + ["-v", "-k", name]
+            state, _ = run_named(cmd, tmp, spec["kind"], name, limit)
+            if state != "pass":
+                raise Refused("baseline: %s fails on clean code (in the mutant copy)" % name)
             with open(os.path.join(tmp, m["file"]), "w", encoding="utf-8") as f:
                 f.write(mutated)
-            cmd, cwd = list(spec["test"]) + ["-k", m["killed_by"]], tmp
-        try:
-            proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=limit + 5)
-            killed = proc.returncode != 0
-            detail = (proc.stdout + proc.stderr)[-400:]
-        except subprocess.TimeoutExpired:
-            killed, detail = True, "timed out (counts as killed)"
-    return killed, detail
+            state, out = run_named(cmd, tmp, spec["kind"], name, limit)
+    return state == "fail", out[-400:]
 
 
 def main(argv=None):
@@ -180,8 +259,8 @@ def main(argv=None):
             label = "%s #%d (%s)" % (args.mutants, i, m.get("killed_by"))
             try:
                 start = time.monotonic()
-                killed, detail = run_mutant(root, spec, m, args.limit)
-            except ValueError as e:
+                killed, detail = run_mutant(root, spec, mods, m, args.limit)
+            except (Refused, OSError) as e:
                 print("REFUSED %s: %s" % (label, e))
                 failed += 1
                 continue
@@ -189,6 +268,9 @@ def main(argv=None):
             if not killed:
                 failed += 1
                 print(detail)
+        if not mutants:
+            print("RESULT: no mutants")
+            return 0
         print("RESULT: %d/%d mutants killed" % (len(mutants) - failed, len(mutants)))
         return 1 if failed else 0
 

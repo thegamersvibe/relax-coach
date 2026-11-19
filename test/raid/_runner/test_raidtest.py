@@ -5,6 +5,7 @@
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -62,6 +63,40 @@ def three_modules(t):
 def sha(path):
     with open(path, "rb") as f:
         return hashlib.sha256(f.read()).hexdigest()
+
+
+GO_MOD = "module github.com/thegamersvibe/relax-coach/desktop\n\ngo 1.21\n"
+GO_SRC = "package probe\n\nfunc Value() int { return 1 }\n"
+GO_TEST = """package probe
+
+import (
+	"testing"
+	"time"
+)
+
+func TestValue(t *testing.T) {
+	if Value() != 1 {
+		t.Fatal("value")
+	}
+}
+
+func TestSlow(t *testing.T) { time.Sleep(8 * time.Second) }
+
+func TestRed(t *testing.T) { t.Fatal("red on clean code") }
+"""
+
+
+def go_module(t, mutants, test_src=GO_TEST):
+    """A Go module 'g' over desktop/internal/raid/probe/ in a throwaway tree. Go must be on PATH: no skip."""
+    if not shutil.which("go"):
+        raise AssertionError("go is not on PATH: the Go runner cases cannot run (they do not skip)")
+    t.write("desktop/go.mod", GO_MOD)
+    t.write("desktop/internal/raid/probe/probe.go", GO_SRC)
+    if test_src is not None:
+        t.write("desktop/internal/raid/probe/probe_test.go", test_src)
+    t.write("test/raid/g/module.json", json.dumps({"kind": "go", "source": "desktop/internal/raid/probe/",
+        "test": ["go", "-C", "desktop", "test", "-count=1", "./internal/raid/probe/"], "depends": []}))
+    t.write("test/raid/g/mutants.json", json.dumps(mutants))
 
 
 class RunnerTests(unittest.TestCase):
@@ -152,6 +187,183 @@ class RunnerTests(unittest.TestCase):
         rc, out = self.t.run("f")
         self.assertEqual(rc, 1, out)
         self.assertRegex(out, r"FAIL\s+f\s")
+
+    # Review round 1: a mutant is KILLED only when its named test ran and failed; everything else is a refusal.
+    def one_py_module(self, mutants, test=PASSING):
+        self.t.write("lib/a/x.py", "VALUE = 1\n")
+        self.t.write("test/raid/a/t.py", test.format(src="lib/a/x.py"))
+        self.t.module("a", "lib/a/", mutants=mutants)
+
+    def test_mutant_with_missing_test_refused(self):
+        self.one_py_module([{"file": "lib/a/x.py", "old": "VALUE = 1", "new": "VALUE = 2", "killed_by": "test_does_not_exist"}])
+        rc, out = self.t.run("--mutants", "a")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("REFUSED", out)
+        self.assertIn("did not run", out)
+        self.assertNotIn("KILLED", out)
+
+    def test_equivalent_mutant_survives(self):
+        self.one_py_module([{"file": "lib/a/x.py", "old": "VALUE = 1\n", "new": "VALUE = 1  # same\n", "killed_by": "test_value"}])
+        rc, out = self.t.run("--mutants", "a")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("SURVIVED a #1", out)
+
+    def test_no_op_mutant_refused(self):
+        self.one_py_module([{"file": "lib/a/x.py", "old": "VALUE = 1", "new": "VALUE = 1", "killed_by": "test_value"}])
+        rc, out = self.t.run("--mutants", "a")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("changes nothing", out)
+
+    def test_pre_red_test_refused(self):
+        red = PASSING.replace('self.assertIn("VALUE = 1", src)', 'self.assertIn("VALUE = 9", src)')
+        self.one_py_module([{"file": "lib/a/x.py", "old": "VALUE = 1", "new": "VALUE = 2", "killed_by": "test_value"}], test=red)
+        rc, out = self.t.run("--mutants", "a")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("baseline", out)
+        self.assertNotIn("KILLED", out)
+
+    def test_real_kill_and_deletion(self):
+        self.one_py_module([{"file": "lib/a/x.py", "old": "VALUE = 1", "new": "VALUE = 2", "killed_by": "test_value"},
+                            {"file": "lib/a/x.py", "old": "VALUE = 1\n", "new": "", "killed_by": "test_value"}])
+        rc, out = self.t.run("--mutants", "a")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("RESULT: 2/2 mutants killed", out)
+
+    def test_declared_dependency_copied(self):
+        both = PASSING.replace('src = pathlib.Path("{src}").read_text()',
+                               'src = pathlib.Path("{src}").read_text() + pathlib.Path("lib/a/x.py").read_text()')
+        self.t.write("lib/a/x.py", "VALUE = 1\n")
+        self.t.write("lib/b/y.py", "OTHER = 0\nVALUE = 1\n")
+        self.t.write("test/raid/a/t.py", PASSING.format(src="lib/a/x.py"))
+        self.t.write("test/raid/b/t.py", both.format(src="lib/b/y.py"))
+        self.t.module("a", "lib/a/")
+        # b's test needs a's file; the mutation leaves the test green: a clean SURVIVED, not a FileNotFoundError kill
+        self.t.module("b", "lib/b/", depends=["a"],
+                      mutants=[{"file": "lib/b/y.py", "old": "OTHER = 0", "new": "OTHER = 5", "killed_by": "test_value"}])
+        rc, out = self.t.run("--mutants", "b")
+        self.assertIn("SURVIVED b #1", out)
+        self.assertNotIn("KILLED", out)
+
+    def test_dotdot_escape_refused(self):
+        self.t.write("lib/a/x.py", "VALUE = 1\n")
+        self.t.write("lib/b/x.py", "VALUE = 1\n")
+        self.t.write("test/raid/a/t.py", PASSING.format(src="lib/b/x.py"))
+        self.t.module("a", "lib/a/", mutants=[{"file": "lib/a/../b/x.py", "old": "VALUE = 1", "new": "VALUE = 2", "killed_by": "test_value"}])
+        rc, out = self.t.run("--mutants", "a")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("outside module source", out)
+
+    def test_symlink_escape_refused(self):
+        self.t.write("lib/b/x.py", "VALUE = 1\n")
+        os.makedirs(os.path.join(self.t.root, "lib", "a"))
+        os.symlink(os.path.join(self.t.root, "lib", "b", "x.py"), os.path.join(self.t.root, "lib", "a", "x.py"))
+        self.t.write("test/raid/a/t.py", PASSING.format(src="lib/a/x.py"))
+        self.t.module("a", "lib/a/", mutants=[{"file": "lib/a/x.py", "old": "VALUE = 1", "new": "VALUE = 2", "killed_by": "test_value"}])
+        rc, out = self.t.run("--mutants", "a")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("outside module source", out)
+
+    def test_module_running_no_tests_fails(self):
+        self.t.write("lib/a/x.py", "VALUE = 1\n")
+        self.t.write("test/raid/a/t.py", "import unittest\nunittest.main()\n")
+        self.t.module("a", "lib/a/")
+        rc, out = self.t.run("a")
+        self.assertEqual(rc, 1, out)
+        self.assertRegex(out, r"FAIL\s+a\s")
+
+    def test_empty_mutants_is_no_mutants(self):
+        self.one_py_module([])
+        rc, out = self.t.run("--mutants", "a")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("RESULT: no mutants", out)
+        self.assertNotIn("0/0", out)
+
+    def test_go_kill_and_refusals(self):
+        go_module(self.t, [
+            {"file": "desktop/internal/raid/probe/probe.go", "old": "return 1", "new": "return 2", "killed_by": "TestValue"},
+            {"file": "desktop/internal/raid/probe/probe.go", "old": "return 1", "new": "return \"x\"", "killed_by": "TestValue"},
+            {"file": "desktop/internal/raid/probe/probe.go", "old": "return 1", "new": "return 2", "killed_by": "TestMissing"},
+            {"file": "desktop/internal/raid/probe/probe.go", "old": "return 1", "new": "return 2", "killed_by": "TestRed"},
+            {"file": "desktop/internal/raid/probe/probe.go", "old": "return 1", "new": "return 2", "killed_by": "["},
+            {"file": "desktop/internal/raid/probe/probe.go", "old": "return 1", "new": "return 2", "killed_by": "TestSlow"},
+            {"file": "desktop/internal/raid/probe/../probe/probe.go", "old": "return 1", "new": "return 2", "killed_by": "TestValue"},
+        ])
+        rc, out = self.t.run("--mutants", "g", "--limit", "0.1")
+        self.assertEqual(rc, 1, out)
+        lines = [l for l in out.splitlines() if l.startswith(("KILLED", "SURVIVED", "REFUSED"))]
+        self.assertEqual([l.split()[0] for l in lines], ["KILLED"] + ["REFUSED"] * 5 + ["KILLED"], out)
+        self.assertIn("does not build", lines[1])
+        self.assertIn("did not run", lines[2])
+        self.assertIn("baseline", lines[3])
+        self.assertIn("timed out", lines[5])
+        self.assertIn("RESULT: 2/7 mutants killed", out)
+        self.assertEqual(sha(os.path.join(self.t.root, "desktop/internal/raid/probe/probe.go")),
+                         hashlib.sha256(GO_SRC.encode()).hexdigest())
+
+    def test_go_module_without_tests_fails(self):
+        go_module(self.t, [], test_src=None)
+        rc, out = self.t.run("g")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("ran no tests", out)
+        go_module(self.t, [], test_src="package probe\n\nimport \"testing\"\n\nfunc TestValue(t *testing.T) {}\n")
+        rc, out = self.t.run("g")
+        self.assertEqual(rc, 0, out)
+
+
+RULES = os.path.join(os.path.dirname(RUNNER), "..", "desktop", "internal", "raid")
+
+
+class RulesTests(unittest.TestCase):
+    """The structure rules (rules_test.go) red on planted files, in a throwaway copy of the raid tree."""
+
+    def setUp(self):
+        if not shutil.which("go"):
+            raise AssertionError("go is not on PATH: the rules cases cannot run (they do not skip)")
+        self.tmp = tempfile.TemporaryDirectory(prefix="raidrules-")
+        self.addCleanup(self.tmp.cleanup)
+        self.t = Tree(self.tmp.name)
+        self.t.write("desktop/go.mod", GO_MOD)
+        for rel in ("rules_test.go", "imports.json"):
+            with open(os.path.join(RULES, rel), encoding="utf-8") as f:
+                self.t.write("desktop/internal/raid/" + rel, f.read())
+        self.t.write("desktop/internal/raid/imports.json", json.dumps({"logfmt": [], "fixture": []}))
+        self.t.write("desktop/internal/raid/logfmt/a.go", "package logfmt\n")
+        self.t.write("desktop/internal/raid/fixture/a.go", "package fixture\n")
+
+    def rules(self):
+        p = subprocess.run(["go", "-C", os.path.join(self.t.root, "desktop"), "test", "-count=1", "./internal/raid/"],
+                           capture_output=True, text=True, timeout=120)
+        return p.returncode, p.stdout + p.stderr
+
+    def test_clean_tree_passes(self):
+        rc, out = self.rules()
+        self.assertEqual(rc, 0, out)
+
+    def test_windows_only_import_checked_on_any_host(self):
+        self.t.write("desktop/internal/raid/logfmt/a_windows.go",
+                     "//go:build windows\n\npackage logfmt\n\nimport _ \"github.com/thegamersvibe/relax-coach/desktop/internal/raid/fixture\"\n")
+        rc, out = self.rules()
+        self.assertEqual(rc, 1, out)
+        self.assertIn("logfmt imports fixture, which imports.json does not allow", out)
+
+    def test_number_literals_above_999(self):
+        red = (("1000", "1000"), ("1e3", "1000"), ("1000.0", "1000"), ("999 + 1", "1000"), ("-(2 * 600)", "-1200"),
+               ("0x3E8", "1000"), ("1_000", "1000"), ("1 << 10", "1024"), ("1000 * n", "1000"))
+        for k, (src, _) in enumerate(red):  # one file per case, so each finding names its own case
+            self.t.write("desktop/internal/raid/logfmt/r%d.go" % k, "package logfmt\n\nvar x%d = %s\n" % (k, src))
+        self.t.write("desktop/internal/raid/logfmt/n.go", "package logfmt\n\nvar n = 1\n")
+        rc, out = self.rules()
+        self.assertEqual(rc, 1, out)
+        for k, (src, shown) in enumerate(red):
+            with self.subTest(src=src):
+                self.assertIn("logfmt/r%d.go:3 %s\n" % (k, shown), out)
+        for k in range(len(red)):
+            os.remove(os.path.join(self.t.root, "desktop/internal/raid/logfmt/r%d.go" % k))
+        green = ("999", "0.5", "999.0", "500 + 499", "999 * n", "-999")
+        self.t.write("desktop/internal/raid/logfmt/g.go",
+                     "package logfmt\n\n" + "".join("var g%d = %s\n" % (k, src) for k, src in enumerate(green)))
+        rc, out = self.rules()
+        self.assertEqual(rc, 0, out)
 
 
 if __name__ == "__main__":
