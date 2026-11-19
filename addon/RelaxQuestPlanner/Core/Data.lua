@@ -5,6 +5,7 @@ RQP.Data = RQP.Data or {}
 local D = RQP.Data
 local lib, questAPI, fdj, dg, checked, reason, supplements, ids, dungeons, areaMap
 local quests, npcs, objects, items, dungeonByArea = {}, {}, {}, {}, {}
+local journal, journalDungeons
 local blacklist = {}
 local function tick() if RQP.Engine and RQP.Engine.Checkpoint then RQP.Engine.Checkpoint() end end
 local function tbl(v) return type(v)=="table" and v or {} end
@@ -64,7 +65,74 @@ local function errorText(err)
 end
 D.Error = errorText
 
+-- Snapshot only the runtime fields we consume. All foreign indexing happens
+-- inside one protected, non-yielding read; consumers never retain donor tables.
+local function journalSnapshot(source)
+    local budget=60000
+    local function value(v,depth)
+        budget=budget-1; assert(budget>=0 and depth<=6, "journal budget")
+        local t=type(v)
+        if t=="string" or t=="boolean" then return v end
+        if t=="number" then assert(v==v and math.abs(v)<math.huge); return v end
+        if t~="table" then return nil end
+        local out={}
+        for k,x in pairs(v) do
+            assert(type(k)=="string" or type(k)=="number", "journal key")
+            out[k]=value(x,depth+1)
+        end
+        return out
+    end
+    local fields={id="number",name="string",level="scalar",requires="number",faction="string",
+        classOnly="string",pickup="string",turnin="string",startsInDungeon="boolean",
+        startItem="table",startObject="table",hideFromMainList="boolean",requiredItem="table",
+        requiredItems="table",profession="string",attunement="string",repeatable="boolean",
+        unavailable="boolean",unavailableRaces="table",map="table",choice="scalar",itemStep="boolean",
+        mapID="number",x="number",y="number",targetName="string",label="string"}
+    local function record(v)
+        assert(type(v)=="table", "journal record")
+        local out={}
+        for k,t in pairs(fields) do
+            local x=v[k]
+            if x~=nil then
+                assert(type(x)==t or (t=="scalar" and scalar(x)~=nil), "journal field")
+                out[k]=value(x,0)
+            end
+        end
+        return out
+    end
+    local out={DB={},QUEST_PREREQ_CHAINS={},QUEST_PREREQ_DETAILS={},QUEST_START_MAPS={}}
+    assert(type(source.DB)=="table", "journal pages")
+    for name,page in pairs(source.DB) do
+        assert(type(name)=="string" and type(page)=="table" and type(page.quests)=="table", "journal page")
+        local list={}
+        for _,v in ipairs(page.quests) do
+            assert(type(v)=="table", "journal entry")
+            if type(v.id)=="number" then list[#list+1]=record(v) end
+        end
+        out.DB[name]={quests=list}
+    end
+    for _,key in ipairs({"QUEST_PREREQ_CHAINS","QUEST_PREREQ_DETAILS","QUEST_START_MAPS"}) do
+        local src=source[key]
+        assert(src==nil or type(src)=="table", "journal index")
+        for id,v in pairs(src or {}) do
+            if type(id)=="number" then
+                if key=="QUEST_PREREQ_CHAINS" then
+                    assert(type(v)=="table", "journal chain")
+                    local list={}
+                    for _,s in ipairs(v) do
+                        assert(type(s)=="table", "journal step")
+                        if type(s.id)=="number" then list[#list+1]=record(s) end
+                    end
+                    out[key][id]=list
+                else out[key][id]=record(v) end
+            end
+        end
+    end
+    return out
+end
+
 function D.Reset()
+    journal,journalDungeons=nil,nil
     lib,fdj,dg,checked,reason,supplements,ids,dungeons,areaMap=nil,nil,nil,nil,nil,nil,nil,nil,nil
     questAPI=nil
     quests,npcs,objects,items,dungeonByArea,blacklist={},{},{},{},{},{}
@@ -81,7 +149,11 @@ function D.Ready()
             lib=candidate; questAPI=candidate.Quest or _G.QuestDB
         else reason="QuestieDB contract 4 unavailable: "..tostring(why or supported) end
     end
-    if type(_G.ForeverDungeonJournal_NS)=="table" then fdj=_G.ForeverDungeonJournal_NS end
+    local ok, snapshot=pcall(function()
+        local source=_G.ForeverDungeonJournal_NS
+        if type(source)=="table" then return journalSnapshot(source) end
+    end)
+    if ok then fdj=snapshot end
     -- DungeonGuideForever normally keeps its namespace private. Never reach into
     -- another addon's locals; use it only if that addon explicitly exports a global.
     local global=_G.DungeonGuideForever_NS or _G.DungeonGuideForever
@@ -275,6 +347,36 @@ function D.CanonicalDungeon(name)
     local dungeon=canonicalOf[name]
     return dungeon and dungeon.name or name
 end
+local function loadJournal()
+    if journal then return end
+    D.Ready()
+    local entries,pages={},{}
+    local source=fdj
+    if source then
+        for _,page in ipairs(keys(source.DB)) do
+            local canonical=canonicalOf[page]
+            if canonical then
+                local name=canonical.name
+                pages[name]=pages[name] or {}
+                for _,v in ipairs(source.DB[page].quests) do
+                    if not entries[v.id] then entries[v.id]=v end
+                    local found=false
+                    for _,entry in ipairs(pages[name]) do if entry.id==v.id then found=true; break end end
+                    if not found then pages[name][#pages[name]+1]=v end
+                    tick()
+                end
+            end
+        end
+    end
+    journal,journalDungeons=entries,pages
+end
+function D.JournalDungeon(name)
+    loadJournal(); return journalDungeons[D.CanonicalDungeon(name)]
+end
+function D.Journal(id)
+    loadJournal(); return journal[id]
+end
+
 local function zones()
     if dungeons then return end
     D.Ready(); local byName,byArea={},{}
