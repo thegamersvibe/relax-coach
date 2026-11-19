@@ -145,6 +145,16 @@ local function settleRank(final)
         RR.say(HINT_RANK)
     end
     if before ~= true and Log.logger() == true then Log.restart() end
+    Log.sizeHint() -- decided only now that the rank may be settled
+end
+
+-- On by default for someone who is not an officer (DEC-40): once per session, in a raid, say what it costs on
+-- disk. Decided only on a settled rank: a pending rank may still turn out to be an officer's.
+function Log.sizeHint()
+    if state.sizeHinted or Log.chosen() or state.rank == "officer" or state.rank == "pending" then return end
+    if currentKind() ~= "raid" or Log.logger() ~= true then return end
+    state.sizeHinted = true
+    RR.say(HINT_SIZE)
 end
 
 -- Where we are -----------------------------------------------------------------------------------------------
@@ -238,11 +248,7 @@ function Log.begin(key)
     state.seq = state.seq + 1
     local run = {id = state.seq, key = key}
     state.run = run
-    -- on by default for someone who is not an officer (DEC-40): say once per session what that costs on disk
-    if not state.sizeHinted and not Log.chosen() and state.rank ~= "officer" and Log.logger() == true then
-        state.sizeHinted = true
-        RR.say(HINT_SIZE)
-    end
+    Log.sizeHint()
     for i = 1, #Log.SCHEDULE do
         RR.after(Log.SCHEDULE[i], "Log.try", function() Log.try(run) end)
     end
@@ -270,10 +276,20 @@ end
 local RANK_WORDS = {officer = "officer rank", member = "not an officer rank", noguild = "not in a guild",
                     unreadable = "guild rank unreadable", pending = "waiting for guild data"}
 
+local function word(v)
+    return v == nil and "not decided yet" or v and "on" or "off"
+end
+
 function Log.status()
-    local on = Log.logger()
-    local why = Log.chosen() and "your choice" or ("default: " .. RANK_WORDS[state.rank])
-    RR.say("logger " .. (on == nil and "not decided yet" or on and "on" or "off") .. " for this character (" .. why .. ").")
+    local raid, dungeon = Log.default(state.rank, "raid"), Log.default(state.rank, "party")
+    if Log.chosen() then
+        RR.say("logger " .. word(Log.logger()) .. " for this character (your choice).")
+    elseif raid == dungeon then
+        RR.say("logger " .. word(raid) .. " for this character (default: " .. RANK_WORDS[state.rank] .. ").")
+    else -- the default differs by instance type (DEC-40): say both
+        RR.say("logger for this character: default, " .. word(raid) .. " in raids, " .. word(dungeon) ..
+            " in dungeons (" .. RANK_WORDS[state.rank] .. ").")
+    end
     local run = state.run
     if readOn() then
         RR.say("combat logging: on.")
@@ -303,8 +319,13 @@ local function panel()
     local category = Settings.RegisterVerticalLayoutCategory("Relax Raid")
     local setting = Settings.RegisterProxySetting(category, "RELAXRAID_LOGGER", Settings.VarType.Boolean,
         "Logger (this character)", false,
-        function() return Log.logger() == true end,
-        function(value) Log.setLogger(value == true) end)
+        -- shows the stored choice, else the raid default; setting it back to that default clears the choice,
+        -- so ticking and unticking returns to "default" instead of storing "off"
+        function() return Log.logger("raid") == true end,
+        function(value)
+            value = value == true
+            if value == (Log.default(state.rank, "raid") == true) then Log.setLogger(nil) else Log.setLogger(value) end
+        end)
     Settings.CreateCheckbox(category, setting,
         "Turn combat logging and Advanced Combat Logging on when this character enters a raid or dungeon.")
     Settings.RegisterAddOnCategory(category)
