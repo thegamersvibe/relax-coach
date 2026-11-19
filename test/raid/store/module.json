@@ -1,0 +1,14 @@
+{
+  "kind": "lua",
+  "source": "addon/RelaxRaid/Store.lua",
+  "test": [
+    "python3",
+    "-I",
+    "-B",
+    "test/raid/store/test_store.py"
+  ],
+  "depends": [
+    "prep",
+    "log"
+  ]
+}

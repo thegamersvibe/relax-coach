@@ -1,0 +1,15 @@
+{
+  "kind": "lua",
+  "source": "addon/RelaxRaid/Wire.lua",
+  "test": [
+    "python3",
+    "-I",
+    "-B",
+    "test/raid/wire/test_wire.py"
+  ],
+  "depends": [
+    "prep",
+    "store",
+    "log"
+  ]
+}
