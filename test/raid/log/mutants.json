@@ -264,5 +264,40 @@
     "new": "",
     "killed_by": "test_toggling_the_logger_inside_one_entry_keeps_once_per_entry",
     "why": "toggle resets once-per-entry"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    if kind == \"raid\" then return true end",
+    "new": "",
+    "killed_by": "test_dec40_member_logs_raids_not_dungeons",
+    "why": "raid default only for officers"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    if rank == \"noguild\" then return false end\n",
+    "new": "",
+    "killed_by": "test_dec40_not_in_a_guild_stays_off",
+    "why": "not in a guild logs raids"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    if kind == \"raid\" then return true end",
+    "new": "    if kind == \"raid\" or kind == \"party\" then return true end",
+    "killed_by": "test_dec40_member_logs_raids_not_dungeons",
+    "why": "dungeons for everyone"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    if not state.sizeHinted and not Log.chosen() and state.rank ~= \"officer\" and Log.logger() == true then",
+    "new": "    if not Log.chosen() and state.rank ~= \"officer\" and Log.logger() == true then",
+    "killed_by": "test_dec40_size_hint_once_per_session",
+    "why": "size hint every raid"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": " and state.rank ~= \"officer\" and Log.logger() == true then",
+    "new": " and Log.logger() == true then",
+    "killed_by": "test_dec40_officer_logs_both_without_the_size_hint",
+    "why": "size hint for officers"
   }
 ]

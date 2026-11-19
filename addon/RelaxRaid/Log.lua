@@ -40,7 +40,8 @@ Log.DB_VERSION = 1
 
 local REMIND_LOG = "could not turn combat logging on. Type /combatlog now; the game answers \"Combat being logged\"."
 local REMIND_ADV = "could not turn Advanced Combat Logging on. Switch it on in Options > Network > Advanced Combat Logging."
-local HINT_RANK = "could not read your guild rank, so this character is not a logger. If you log raids, type /relaxraid logger on."
+local HINT_RANK = "could not read your guild rank, so this character does not log dungeons (raids still log). To log dungeons too, type /relaxraid logger on."
+local HINT_SIZE = "this raid is logged for you (raids log for every guild member). Combat logs are large (several hundred MB a raid night); do not delete them until they are uploaded."
 
 local state = {run = nil, seq = 0, rank = "pending", hinted = false, readOnly = false}
 Log.state = state
@@ -59,13 +60,28 @@ local function charDB()
     return db
 end
 
--- The logger setting: true or false, or nil while the default waits for the guild rank.
-function Log.logger()
+-- The default for (guild member, rank, instance type), DEC-40 (PLAN.md 6B.4): in a raid every guild member
+-- logs, rank or not; anywhere else (a five-player dungeon) only the officer ranks. Not in a guild: never.
+-- Returns true or false, or nil while a dungeon default still waits for the guild rank.
+function Log.default(rank, kind)
+    if rank == "noguild" then return false end
+    if kind == "raid" then return true end -- officer, member, unreadable or still loading: in the guild is enough
+    if rank == "officer" then return true end
+    if rank == "pending" then return nil end
+    return false
+end
+
+-- The instance type we are in ("raid", "party"), or nil outside.
+local function currentKind()
+    local key = (state.run and state.run.key) or Log.where()
+    return key and string.match(key, "^(%a+):") or nil
+end
+
+-- The logger setting: a stored choice, else the default for the instance we are in (or `kind`).
+function Log.logger(kind)
     local db = RelaxRaidCharDB
     if not state.readOnly and type(db) == "table" and type(db.logger) == "boolean" then return db.logger end
-    if state.rank == "officer" then return true end
-    if state.rank == "pending" then return nil end
-    return false
+    return Log.default(state.rank, kind or currentKind())
 end
 
 function Log.chosen()
@@ -222,6 +238,11 @@ function Log.begin(key)
     state.seq = state.seq + 1
     local run = {id = state.seq, key = key}
     state.run = run
+    -- on by default for someone who is not an officer (DEC-40): say once per session what that costs on disk
+    if not state.sizeHinted and not Log.chosen() and state.rank ~= "officer" and Log.logger() == true then
+        state.sizeHinted = true
+        RR.say(HINT_SIZE)
+    end
     for i = 1, #Log.SCHEDULE do
         RR.after(Log.SCHEDULE[i], "Log.try", function() Log.try(run) end)
     end
