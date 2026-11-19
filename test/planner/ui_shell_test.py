@@ -222,6 +222,81 @@ def client(before=""):
 
 
 class UIShellTests(unittest.TestCase):
+    def test_table_who_is_ignored_without_losing_location_or_step(self):
+        lua = client()
+        lua.execute(r'''
+          local U=RelaxQuestPlanner.UI
+          ROUTES["Alpha Keep"]={title="Alpha Keep",steps={
+            {kind="accept",q=810001,name="Copper task",who={},zone="Copper City",needs={}}
+          },later={},issues={}}
+          SlashCmdList.RELAXQUESTPLANNER("dungeon Alpha Keep"); DRAIN()
+          U.RenderRoute()
+          assert(U.current.q==810001)
+          assert(U.line2:GetText()=="Copper City", "discard malformed NPC, retain zone")
+          assert(not RelaxQuestPlannerDB.lastError)
+        ''')
+
+    def test_step_text_is_shown_as_plain_text_once(self):
+        lua = client()
+        lua.execute(r'''
+          local U=RelaxQuestPlanner.UI
+          ROUTES["Alpha Keep"]={title="Alpha |cffKeep",steps={
+            {kind="accept",q=810001,name="Copper |Hquest:1|hlink|h",who="Tin |Tx|t",zone="Zinc|r",note="Bring |c ore",needs={}}
+          },later={},issues={},extras={{q=810011,name="Bronze |T"}},extraCount=1,preRunNotes={{q=810001,block=1,text="Pack |cff"}}}
+          SlashCmdList.RELAXQUESTPLANNER("dungeon Alpha Keep"); DRAIN()
+          U.RenderRoute()
+          assert(U.line1:GetText():find("Copper ||Hquest:1||hlink||h",1,true), U.line1:GetText())
+          assert(U.line2:GetText()=="Tin ||Tx||t - Zinc||r", U.line2:GetText())
+          assert(U.note:GetText():find("Bring ||c ore",1,true), U.note:GetText())
+          assert(U.title:GetText():find("Alpha ||cffKeep",1,true), U.title:GetText())
+          assert(not U.line1:GetText():find("||||",1,true), "once, never twice")
+          U.extrasButton:Click()
+          assert(U.extrasText:GetText():find("Bronze ||T (810011)",1,true) and U.extrasText:GetText():find("Pack ||cff",1,true), U.extrasText:GetText())
+        ''')
+
+    def test_journal_block_header_and_local_preference_respects_blocks(self):
+        lua = client()
+        lua.execute(r'''
+          local U=RelaxQuestPlanner.UI
+          ROUTES["Alpha Keep"]={title="Alpha Keep",journal=true,steps={
+            {kind="accept",q=810001,name="Copper lead",zone="Away",block=1,where="outside",needs={}},
+            {kind="accept",q=810002,name="Tin task",zone="Home",block=2,where="inside",needs={}},
+            {kind="accept",q=810003,name="Zinc task",zone="Home",block=2,where="inside",needs={}},
+            {kind="accept",q=810004,name="Alloy report",zone="Home",block=3,where="outside",needs={}},
+            {kind="accept",q=810005,name="Copper return",zone="Home",block=4,where="inside",needs={}},
+          },later={},issues={},extras={},extraCount=0}
+          SlashCmdList.RELAXQUESTPLANNER("dungeon Alpha Keep"); DRAIN()
+          assert(U.current.q==810001, "outside work before independent local inside work")
+          for _,row in ipairs({{810001,"Before you go"},{810002,"Inside Alpha Keep"},
+                               {810003,"Inside Alpha Keep"},{810004,"After the run"},{810005,"Next run"}}) do
+            U.RenderRoute()
+            local _,count=U.title:GetText():gsub(row[2],"")
+            assert(count==1, "one current block header, not appended on every repaint")
+            assert(U.current.q==row[1])
+            STATE.done[row[1]]=true
+          end
+          U.RenderRoute(); assert(not U.title:GetText():find("Next run"))
+        ''')
+
+    def test_journal_extras_click_lists_all_without_selecting_a_goal(self):
+        lua = client()
+        lua.execute(r'''
+          local U=RelaxQuestPlanner.UI
+          ROUTES["Alpha Keep"]={title="Alpha Keep",journal=true,steps={},later={},issues={},
+            extras={{q=810011,name="Copper craft"},{q=810012,name="Tin craft"}},extraCount=2,
+            preRunNotes={{q=810001,block=1,text="Bring: Copper kit"}}}
+          SlashCmdList.RELAXQUESTPLANNER("dungeon Alpha Keep"); DRAIN()
+          assert(U.extrasButton and U.extrasButton:IsShown(), "extras count is clickable even on an empty route")
+          assert(U.extrasButton:GetText():find("2 more quests use this dungeon",1,true))
+          local count=#BUILD_CALLS
+          U.extrasButton:Click()
+          assert(U.extrasFrame:IsShown() and #BUILD_CALLS==count, "list only; never select a different route")
+          assert(U.extrasText:GetText():find("Copper craft") and U.extrasText:GetText():find("Tin craft"))
+          assert(U.extrasText:GetText():find("Bring: Copper kit",1,true))
+          SlashCmdList.RELAXQUESTPLANNER("dungeon Beta Hall"); DRAIN()
+          assert(not U.extrasButton:IsShown() and not U.extrasFrame:IsShown(), "no stale extras on next route")
+        ''')
+
     def test_shell_loads_and_handles_help_hide_show_escape_and_errors(self):
         lua = client()
         self.assertIsNotNone(lua.globals().SlashCmdList.RELAXQUESTPLANNER,
@@ -338,7 +413,7 @@ class UIShellTests(unittest.TestCase):
           assert(help:find("shows the top 3 guides; click one to jump to your first undone step",1,true))
         ''')
         readme = (ADDON / 'README.md').read_text()
-        for expected in ('0.3.0', 'Relax Coach v1.5.0', 'RelaxCoach-Bundle-', 'Journey',
+        for expected in ('0.4.0', 'Relax Coach v1.5.0', 'RelaxCoach-Bundle-', 'Journey',
                          '/rqp mode [strict|game|all]', '/rqp guide',
                          'shows the top 3 guides; click one to jump to your first undone step'):
             self.assertIn(expected, readme)
@@ -841,7 +916,7 @@ class UIShellTests(unittest.TestCase):
         self.assertEqual(metadata["Interface"], "16001")
         self.assertEqual(metadata["Title"], "Relax Quest Planner")
         self.assertEqual(metadata["Author"], "TheGamersVibe")
-        self.assertEqual(metadata["Version"], "0.3.0")
+        self.assertEqual(metadata["Version"], "0.4.0")
         self.assertEqual(client().eval('RelaxQuestPlanner.version'), metadata["Version"])
         self.assertEqual(metadata["SavedVariablesPerCharacter"], "RelaxQuestPlannerDB")
         self.assertEqual(metadata["OptionalDeps"].split(", "), [
@@ -851,9 +926,9 @@ class UIShellTests(unittest.TestCase):
         review = [s for s in scripts if s.startswith('Core/Cleanup') or s == 'UI/Cleanup.lua']
         self.assertEqual(review[:2], ['Core/CleanupData.lua', 'Core/CleanupSnapshot.lua'])
         scripts = [s for s in scripts if s not in review]
-        self.assertEqual(scripts[:7], ["Init.lua", "Core/Data.lua", "Core/Player.lua", "Core/Engine.lua",
-                                     "Core/Learn.lua", "Journey/Bridge.lua", "Journey/Picker.lua"])
-        self.assertTrue(all(name.startswith("UI/") for name in scripts[7:]))
+        self.assertEqual(scripts[:8], ["Init.lua", "Core/Data.lua", "Core/PlaceData.lua", "Core/Player.lua",
+                                     "Core/Engine.lua", "Core/Learn.lua", "Journey/Bridge.lua", "Journey/Picker.lua"])
+        self.assertTrue(all(name.startswith("UI/") for name in scripts[8:]))
         owned = [ADDON / "Init.lua", *sorted((ADDON / "UI").glob("*.lua"))]
         for path in owned:
             text = path.read_text()

@@ -11,7 +11,7 @@ Three **separate WoW Forever addons**, plus a native Windows report app:
 
 **[Download release v1.8.0](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.8.0)**:
 
-- `RelaxCoach-RaidBundle-1.8.0.zip` — the four independent addons (Coach, Journey, Relax Quest Planner 0.3.0, Relax Raid 0.1.0), Journey guide content **4.00.12**, the Windows app and optional installer/restore scripts. From v1.8.0 the combined download is named `RelaxCoach-RaidBundle-<version>.zip` because it adds the Relax Raid folder; v1.5.0 to v1.7.2 used `RelaxCoach-Bundle-<version>.zip`, and earlier releases `RelaxCoach-Guild-<version>.zip`.
+- `RelaxCoach-RaidBundle-1.8.0.zip` — the four independent addons (Coach, Journey, Relax Quest Planner 0.4.0, Relax Raid 0.1.0), Journey guide content **4.00.12**, the Windows app and optional installer/restore scripts. From v1.8.0 the combined download is named `RelaxCoach-RaidBundle-<version>.zip` because it adds the Relax Raid folder; v1.5.0 to v1.7.2 used `RelaxCoach-Bundle-<version>.zip`, and earlier releases `RelaxCoach-Guild-<version>.zip`.
 - `RelaxCoach.exe` — app-only download, for updating the application separately.
 - `SHA256SUMS.txt` — checksums for these release assets.
 
@@ -33,7 +33,8 @@ There is deliberately no Coach-only `RelaxCoach-1.8.0.zip`: older apps must not 
 - **App first:** this release adds the Relax Raid folder, so apps before 1.8.0 must run **Check App Update → Update App** first, then **Updates → Check → Update** (or **Updates → Update everything**). The download is now `RelaxCoach-RaidBundle-1.8.0.zip`.
 - **Guide content 4.00.12:** 74 of the 201 guide files updated; the catalog now lists 127 guides (was 125), adding Riverglades 43 (Alliance) and 44 (Horde). Relax Journey code stays `4.00.04`.
 - **Alliance guides 30–60 stop on 18 December 2026.** The 44 Alliance guides for levels 30 to 60 carry the content's validity date of 18 December 2026; after that date Journey no longer opens them until a newer guide-content update ships. Horde guides and Alliance guides below 30 have no such date.
-- Coach and the Windows app move to **1.8.0**. Relax Journey (`4.00.04`) and Relax Quest Planner (`0.3.0`) are unchanged.
+- **Relax Quest Planner 0.4.0 — dungeon chains:** dungeon quest chains are tailored to each character (finished, faction, class and race filters; quests you can't take yet stay under later), using ForeverDungeonJournal pages when that addon is installed. Dungeon steps come last in the route, split into **Before you go**, **Inside <dungeon>**, **After the run** and **Next run**, and class, crafting or set quests that merely use a dungeon sit behind a count you can click. It plans only; it never accepts, completes or turns in quests. Details in the [planner README](https://github.com/thegamersvibe/relax-coach/blob/v1.8.0/addon/RelaxQuestPlanner/README.md).
+- Coach and the Windows app move to **1.8.0**. Relax Journey (`4.00.04`) is unchanged.
 - **Not tested in game: alpha, owner's decision.** Offline tests do not validate native Forever behavior or the Windows update flow.
 
 ## What's new in v1.7.2
