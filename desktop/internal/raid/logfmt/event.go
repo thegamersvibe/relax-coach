@@ -41,7 +41,12 @@ func position(s string) model.Opt {
 	return model.Some(int64(v))
 }
 func actor(f []string) (model.Actor, bool) {
-	flags, err := strconv.ParseUint(f[2], 0, 32)
+	// Unit flags use a lowercase 0x prefix on the wire; digits may be either case.
+	if !strings.HasPrefix(f[2], "0x") {
+		return model.Actor{}, false
+	}
+	// An explicit base rejects separators and signs instead of Go literal syntax.
+	flags, err := strconv.ParseUint(f[2][2:], 16, 32)
 	if err != nil {
 		return model.Actor{}, false
 	}
