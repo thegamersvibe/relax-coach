@@ -157,9 +157,12 @@ func TestHotFilters(t *testing.T) {
 		{"now at most 10 times the baseline",
 			series(hotToday, 20, 1000, 1000, 1000, 1000, 1000, 10000),
 			series(hotToday, 20, 1000, 1000, 1000, 1000, 1000, 10001)},
-		{"change above 0",
-			series(hotToday, 20, 900, 900, 900, 900, 1000, 1001),
-			series(hotToday, 20, 900, 900, 900, 900, 1000, 1000)},
+		{"at least 20% since the previous day (both +30% against usual)",
+			series(hotToday, 20, 1000, 1000, 1000, 1000, 1000, 1080, 1300),
+			series(hotToday, 20, 1000, 1000, 1000, 1000, 1000, 1100, 1300)},
+		{"at least 20% against the usual price",
+			series(hotToday, 20, 1000, 1000, 1000, 1000, 1000, 900, 1200),
+			series(hotToday, 20, 1000, 1000, 1000, 1000, 1000, 900, 1199)},
 	}
 	for _, c := range cases {
 		hh := hotHouse(t, hotSave(map[int][]ahpHistRow{1: c.keep, 2: c.drop}))
@@ -191,10 +194,11 @@ func TestHotReboundAndSlowClimbAreOff(t *testing.T) {
 			t.Fatalf("rebound or slow climb on the list: %v", ids)
 		}
 	}
-	// Alone, the rebound is still dropped (not up against usual); the slow climb is the only row.
+	// Alone, both are still off: the rebound is not up against usual, the slow climb (+2% a day) is under
+	// the 20% minimum rise.
 	hh = hotHouse(t, hotSave(map[int][]ahpHistRow{500: hist[500], 501: hist[501]}))
-	if !reflect.DeepEqual(hotIDs(hh), []int{501}) || hh.Rows[0].ChangePct != 2 {
-		t.Fatalf("alone: %v %+v", hotIDs(hh), hh.Rows)
+	if len(hh.Rows) != 0 || hh.Checked != 2 || hh.Dropped != 2 {
+		t.Fatalf("alone: %v %+v", hotIDs(hh), hh)
 	}
 }
 
@@ -255,42 +259,66 @@ func TestHotFirstWeeksChangeOnly(t *testing.T) {
 	}
 }
 
-// No row today: the current price counts when it is under 24 hours old, and
-// is compared with the days before the day it was seen.
-func TestHotLivePriceWithoutTodayRow(t *testing.T) {
+// Without a scan today the house is decided on its last scan day, for every item alike: that day against the
+// day before, labelled with the day. Live prices never stand in, so items do not drop one by one as they age.
+func TestHotWithoutScanTodayUsesTheLastScanDay(t *testing.T) {
 	db := hotSave(map[int][]ahpHistRow{
-		1: series(hotToday-1, 20, 1000, 1000, 1000, 1000, 1000, 1000),
-		2: series(hotToday-1, 20, 1000, 1000, 1000, 1000, 1000, 1000),
+		1: series(hotToday-1, 20, 1000, 1000, 1000, 1000, 1000, 1000, 1600),
+		2: series(hotToday-1, 20, 1000, 1000, 1000, 1000, 1000, 1000, 1500),
+		3: series(hotToday-2, 20, 1000, 1000, 1000, 1000, 1000, 1000, 2000), // not seen on that day
 	})
 	L := M(M(db["live"])["Realm|Alliance"])
-	M(L["p"])["1"], M(L["q"])["1"], M(L["t"])["1"] = float64(1500), float64(9), float64(hotNow.Unix()-3600)
-	M(L["p"])["2"], M(L["q"])["2"], M(L["t"])["2"] = float64(1500), float64(9), float64(hotNow.Unix()-24*3600)
-	// Seen yesterday at 23:00 UTC, 13 hours ago: compared with the day before yesterday.
-	M(M(db["hist"])["Realm|Alliance"])["3"] = ahpHistEncode(series(hotToday-2, 20, 1000, 1000, 1000, 1000, 1000, 1000))
-	M(L["p"])["3"], M(L["q"])["3"], M(L["t"])["3"] = float64(1400), float64(9), float64(hotNow.Unix()-13*3600)
-	hh := hotHouse(t, db)
-	if !reflect.DeepEqual(hotIDs(hh), []int{1, 3}) || hh.Rows[0].Now != 1500 || hh.Rows[0].BaseDays != 6 || hh.Rows[0].PrevDays != 1 {
-		t.Fatalf("rows %+v", hh.Rows)
+	for _, k := range []string{"1", "2", "3"} { // current prices of any age change nothing
+		M(L["p"])[k], M(L["q"])[k], M(L["t"])[k] = float64(9000), float64(9), float64(hotNow.Unix()-30*3600)
 	}
-	if r := hh.Rows[1]; r.Now != 1400 || r.BaseDays != 6 || r.PrevDays != 1 || r.Chart.DotX != hotChartW-2 {
-		t.Fatalf("yesterday's live price: %+v", r)
+	M(L["t"])["2"] = float64(hotNow.Unix() - 3600)
+	hh := hotHouse(t, db)
+	if !reflect.DeepEqual(hotIDs(hh), []int{1, 2}) || hh.Checked != 2 || hh.DaysAgo != 1 {
+		t.Fatalf("rows %v checked %d days ago %d", hotIDs(hh), hh.Checked, hh.DaysAgo)
+	}
+	if hh.Rows[0].Now != 1600 || hh.Rows[1].Now != 1500 || hh.NowDay.Format("2006-01-02") != time.Unix(ahpHistDay0+(hotToday-1)*86400, 0).UTC().Format("2006-01-02") {
+		t.Fatalf("yesterday's prices and date: %+v %v", hh.Rows, hh.NowDay)
+	}
+	if hh.Rows[0].Chart.DotX != hotChartW-2 {
+		t.Errorf("the chart ends on the scan day: %+v", hh.Rows[0].Chart)
+	}
+	// A scan today decides the house on today; yesterday-only items are then not compared.
+	H := M(M(db["hist"])["Realm|Alliance"])
+	H["4"] = ahpHistEncode(series(hotToday, 20, 1000, 1000, 1000, 1000, 1000, 1000, 1700))
+	hh = hotHouse(t, db)
+	if !reflect.DeepEqual(hotIDs(hh), []int{4}) || hh.DaysAgo != 0 || hh.Checked != 1 {
+		t.Fatalf("today: rows %v days ago %d checked %d", hotIDs(hh), hh.DaysAgo, hh.Checked)
 	}
 }
 
-// The live price is one moment; when its day already has a row, the day's
-// lowest wins (one price per day), so a day that was also cheap is not "up".
-func TestHotLivePriceYieldsToItsDaysRow(t *testing.T) {
-	db := hotSave(map[int][]ahpHistRow{
-		1: append(series(hotToday-2, 20, 1000, 1000, 1000, 1000, 1000, 1000), ahpHistRow{hotToday - 1, 6000, 1050, 30}),
-		2: append(series(hotToday-2, 20, 1000, 1000, 1000, 1000, 1000, 1000), ahpHistRow{hotToday - 1, 6000, 0, 30}),
-	})
-	L := M(M(db["live"])["Realm|Alliance"])
-	for _, k := range []string{"1", "2"} {
-		M(L["p"])[k], M(L["q"])[k], M(L["t"])[k] = float64(6000), float64(9), float64(hotNow.Unix()-13*3600)
+// The rank is the smaller of the two rises: an order by either one alone differs.
+func TestHotRankIsTheSmallerRise(t *testing.T) {
+	hh := hotHouse(t, hotSave(map[int][]ahpHistRow{
+		1: series(hotToday, 20, 1000, 1000, 1000, 1000, 1000, 2300, 3000), // since +30%, against +200%: rank 30
+		2: series(hotToday, 20, 1000, 1000, 1000, 1000, 1000, 750, 1500),  // since +100%, against +50%: rank 50
+		3: series(hotToday, 20, 1000, 1000, 1000, 1000, 1000, 350, 1400),  // since +300%, against +40%: rank 40
+	}))
+	if !reflect.DeepEqual(hotIDs(hh), []int{2, 3, 1}) {
+		t.Fatalf("by min(since, against): %v %+v", hotIDs(hh), hh.Rows)
 	}
-	hh := hotHouse(t, db)
-	if !reflect.DeepEqual(hotIDs(hh), []int{2, 1}) || hh.Rows[0].Now != 6000 || hh.Rows[1].Now != 1050 || hh.Rows[1].Spike {
-		t.Fatalf("item 1 was 1050 at its cheapest that day: rows %+v", hh.Rows)
+}
+
+// Guild prices for a house this account never scanned: the unknown-house choice says guild-only.
+func TestHotGuildOnlyHouseWithoutOwnEntry(t *testing.T) {
+	db := hotSave(map[int][]ahpHistRow{1: steady(1500)})
+	db["shared"] = map[string]any{"Other|Horde": map[string]any{"p": map[string]any{"1": float64(100)}}}
+	h := buildHot(db, 3, true, hotHouses, nil, nil, hotNow)
+	if !h.GuildOnly {
+		t.Fatal("guild prices for an unscanned house")
+	}
+	fv := FarmView{Present: true, Houses: hotHouses, Hot: h}
+	html, err := renderFarmBody(View{Farm: fv})
+	if err != nil || !strings.Contains(html, `<tr data-house=""><td colspan="7" class="subtle">Hot items need your own scans for now.`) {
+		t.Fatalf("render: %v", err)
+	}
+	db["shared"] = map[string]any{"Realm|Alliance": map[string]any{"p": map[string]any{"1": float64(100)}}}
+	if buildHot(db, 3, true, hotHouses, nil, nil, hotNow).GuildOnly {
+		t.Error("guild prices for a scanned house are not guild-only")
 	}
 }
 
@@ -345,13 +373,25 @@ func TestHotNoDataMessages(t *testing.T) {
 	if m := msg(guild, 3); m != "Hot items need your own scans for now. Guild price history is coming." {
 		t.Errorf("guild only: %q", m)
 	}
-	if m := msg(hotSave(map[int][]ahpHistRow{1: series(hotToday-1, 20, 1000, 1000, 1000, 1000, 1000, 1500)}), 3); m != "No scan today. Scan the auction house to see what moved." {
+	if m := msg(hotSave(map[int][]ahpHistRow{}), 3); m != "No scan today. Scan the auction house to see what moved." {
 		t.Errorf("no scan today: %q", m)
+	}
+	if m := msg(hotSave(map[int][]ahpHistRow{1: series(hotToday-1, 20, 1000, 1000, 1000, 1000, 1000, 1500)}), 3); m != "" {
+		t.Errorf("a scan yesterday is shown, labelled, not as no scan: %q", m)
 	}
 	flat := hotSave(map[int][]ahpHistRow{1: steady(1000), 2: steady(900)})
 	h := buildHot(flat, 3, true, hotHouses, nil, nil, hotNow)
-	if hh := h.Houses[0]; hh.Message != "Nothing is clearly up today." || hh.Checked != 2 || hh.Dropped != 2 {
+	if hh := h.Houses[0]; hh.Message != "" || len(hh.Rows) != 0 || hh.Checked != 2 || hh.Dropped != 2 {
 		t.Errorf("nothing up: %+v", hh)
+	}
+	html, _ := renderFarmBody(View{Farm: FarmView{Present: true, Houses: hotHouses, Hot: h}})
+	if !strings.Contains(html, "Nothing is clearly up.") || !strings.Contains(html, "2 items checked, 2 left out by the filters") {
+		t.Error("nothing up: the page says so with the counts")
+	}
+	empty := buildHot(hotSave(map[int][]ahpHistRow{}), 3, true, hotHouses, nil, nil, hotNow)
+	html, _ = renderFarmBody(View{Farm: FarmView{Present: true, Houses: hotHouses, Hot: empty}})
+	if !strings.Contains(html, "No scan today.") || strings.Contains(html, ", last scan ") {
+		t.Error("no scan today: no contradicting last-scan line")
 	}
 }
 

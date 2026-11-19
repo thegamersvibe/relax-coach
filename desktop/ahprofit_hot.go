@@ -21,10 +21,11 @@ const (
 	hotMinBaseline       = 500 // copper: 5 silver
 	hotMinListed         = 5   // listed on Now's day, and median listed on the earlier days
 	hotMaxAgainst        = 10  // Now at most this many times the baseline (and the previous day)
+	hotMinChangePct      = 20  // up at least this % since the previous recorded day
+	hotMinAgainstPct     = 20  // and at least this % against the usual price (baseline mode)
 	hotSpikePct          = 50  // spike: Now at least this % above the baseline and above every earlier high
 	hotPrevMaxGap        = 2   // Previous is at most this many days before Now
-	hotLiveMaxAge        = 24 * time.Hour
-	hotChartDays         = 21 // the addon keeps 21 days
+	hotChartDays         = 21  // the addon keeps 21 days
 	hotChartW, hotChartH = 120, 28
 )
 
@@ -151,9 +152,10 @@ func ahpHistEncode(rows []ahpHistRow) string {
 }
 
 type FarmHot struct {
-	Shown   bool   // the section is on the page
-	Message string // the whole section: e.g. "Update AH Profit to see hot items."
-	Houses  []FarmHotHouse
+	Shown     bool   // the section is on the page
+	Message   string // the whole section: e.g. "Update AH Profit to see hot items."
+	GuildOnly bool   // guild prices for a house with no own scan: shown on the unknown-house choice
+	Houses    []FarmHotHouse
 }
 
 type FarmHotHouse struct {
@@ -165,6 +167,8 @@ type FarmHotHouse struct {
 	Dropped    int       // of those, left out by the filters
 	Damaged    int       // history strings that did not decode (items dropped)
 	ChangeOnly bool      // first weeks: no item has hotMinDays earlier days yet
+	NowDay     time.Time // the recorded day the list is for (UTC)
+	DaysAgo    int       // 0: today; 1: yesterday's scan; more: an older scan
 	Rows       []FarmHotRow
 }
 
@@ -226,6 +230,17 @@ func buildHot(db map[string]any, ver int, verOK bool, houses []FarmHouse, items 
 	hist, live, shared := M(db["hist"]), M(db["live"]), M(db["shared"])
 	today := ahpScanDay(now)
 	out := FarmHot{Shown: true}
+	known := map[string]bool{}
+	for _, h := range houses {
+		known[h.Key] = true
+	}
+	// Guild prices for a house this account never scanned itself: that member gets the guild-only line,
+	// not "pick an auction house" (the picker lists only scanned houses).
+	for k, raw := range shared {
+		if !known[k] && len(M(M(raw)["p"])) > 0 {
+			out.GuildOnly = true
+		}
+	}
 	for _, h := range houses {
 		out.Houses = append(out.Houses, buildHotHouse(h.Key, M(hist[h.Key]), M(live[h.Key]), M(shared[h.Key]), items, gather, today, now))
 	}
@@ -234,7 +249,7 @@ func buildHot(db map[string]any, ver int, verOK bool, houses []FarmHouse, items 
 
 func buildHotHouse(key string, H, L, S map[string]any, items map[int]farmItemRef, gather map[int]bool, today int, now time.Time) FarmHotHouse {
 	hh := FarmHotHouse{House: key, Source: "From your own scans"}
-	lp, lq, lt := M(L["p"]), M(L["q"]), M(L["t"])
+	lt := M(L["t"])
 	hh.LastScan = ahpTime(L["full"])
 	for _, v := range lt {
 		if t := ahpTime(v); t.After(hh.LastScan) && !t.After(now) {
@@ -249,8 +264,15 @@ func buildHotHouse(key string, H, L, S map[string]any, items map[int]farmItemRef
 		}
 		return hh
 	}
-	var cands []hotItem
-	anyNow, anyBaseline := false, false
+	// Decide the day for the whole house, not per item: the newest recorded day. Without a scan today the
+	// list is that day's against its previous day, for every item alike, labelled with the day, until a
+	// new scan. (A live price never stands in for a day: items would drop one by one as they pass 24 h.)
+	type decoded struct {
+		id   int
+		rows []ahpHistRow
+	}
+	var all []decoded
+	newest := -1
 	for k, raw := range H {
 		id, err := strconv.Atoi(k)
 		s, isStr := raw.(string)
@@ -263,30 +285,26 @@ func buildHotHouse(key string, H, L, S map[string]any, items map[int]farmItemRef
 			hh.Damaged++
 			continue
 		}
-		it := hotItem{id: id, rows: rows}
-		if n := len(rows); n > 0 && rows[n-1].Day == today {
-			it.now, it.listed, it.nowDay = rows[n-1].price(), rows[n-1].Listed, today
-		} else if p, ok := ahpInt(lp[k], 1e12); ok && p > 0 {
-			// No row today: the current price, when it is under 24 hours old.
-			t := ahpTime(lt[k])
-			if t.IsZero() || t.After(now) || now.Sub(t) >= hotLiveMaxAge {
-				continue
-			}
-			q, _ := ahpInt(lq[k], 1e9)
-			it.now, it.listed, it.nowDay = p, q, ahpScanDay(t)
-			// Its day already has a row: the day's lowest wins (one price per day).
-			if n := len(rows); n > 0 && rows[n-1].Day == it.nowDay {
-				it.now, it.listed = rows[n-1].price(), rows[n-1].Listed
-			}
-		} else {
-			continue
+		if n := len(rows); n > 0 {
+			newest = max(newest, rows[n-1].Day)
+			all = append(all, decoded{id, rows})
 		}
-		anyNow = true
-		for _, r := range rows {
-			if r.Day < it.nowDay {
-				it.earlier = append(it.earlier, r)
-			}
+	}
+	if newest < 0 {
+		hh.Message = "No scan today. Scan the auction house to see what moved."
+		return hh
+	}
+	hh.NowDay = time.Unix(ahpHistDay0+int64(newest)*86400, 0).UTC()
+	hh.DaysAgo = today - newest
+	var cands []hotItem
+	anyBaseline := false
+	for _, d := range all {
+		last := d.rows[len(d.rows)-1]
+		if last.Day != newest {
+			continue // not seen on that day
 		}
+		it := hotItem{id: d.id, rows: d.rows, now: last.price(), listed: last.Listed, nowDay: newest}
+		it.earlier = d.rows[:len(d.rows)-1]
 		e := it.earlier
 		if len(e) == 0 || it.nowDay-e[len(e)-1].Day > hotPrevMaxGap {
 			continue // no Previous within 2 days: skipped
@@ -296,10 +314,6 @@ func buildHotHouse(key string, H, L, S map[string]any, items map[int]farmItemRef
 			anyBaseline = true
 		}
 		cands = append(cands, it)
-	}
-	if !anyNow {
-		hh.Message = "No scan today. Scan the auction house to see what moved."
-		return hh
 	}
 	hh.ChangeOnly = !anyBaseline
 	for _, it := range cands {
@@ -326,9 +340,6 @@ func buildHotHouse(key string, H, L, S map[string]any, items map[int]farmItemRef
 	})
 	if len(hh.Rows) > hotMaxRows {
 		hh.Rows = hh.Rows[:hotMaxRows]
-	}
-	if len(hh.Rows) == 0 {
-		hh.Message = "Nothing is clearly up today."
 	}
 	return hh
 }
@@ -357,17 +368,17 @@ func hotRank(it hotItem, changeOnly bool) (FarmHotRow, bool) {
 		return row, false
 	case now > hotMaxAgainst*base || now > hotMaxAgainst*prev:
 		return row, false
-	case change <= 0:
+	case change < hotMinChangePct:
 		return row, false
 	}
 	if changeOnly {
 		row.rank = change
 		return row, true
 	}
-	row.rank = min(change, against)
-	if row.rank <= 0 { // only items up against both stay: a rebound to normal drops out
+	if against < hotMinAgainstPct { // up against both: a rebound to normal and a slow climb drop out
 		return row, false
 	}
+	row.rank = min(change, against)
 	if now >= base*(1+hotSpikePct/100.0) && it.now > high {
 		row.Spike, row.SpikeDays = true, it.nowDay-it.earlier[0].Day+1
 	}
