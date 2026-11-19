@@ -97,6 +97,7 @@ type FarmHouse struct {
 }
 
 type FarmSellRow struct {
+	QualityClass      string
 	House, Char, Name string
 	ID, Count, Bound  int
 	Price, Net, Value int // copper: lowest listing, after the cut, Net × unbound count
@@ -197,7 +198,7 @@ func (a *App) loadFarmLocked(v *View, prev View) {
 			}
 		}
 		if err == nil {
-			fv = buildFarmDB(db, v.Chars, time.Now(), loadFarmRef(a.game, &a.farmRef))
+			fv = buildFarmDB(db, v.Chars, time.Now(), loadFarmRef(a.game, &a.farmRef), v.itemNames, loadGearNames(a.game, &a.gearNames))
 		}
 	}
 	if err != nil {
@@ -256,11 +257,12 @@ func parseFarm(data []byte) (map[string]any, error) {
 	return db, nil
 }
 
-func buildFarmDB(db map[string]any, chars []CharView, now time.Time, ref farmRef) FarmView {
+func buildFarmDB(db map[string]any, chars []CharView, now time.Time, ref farmRef, fallbackNames ...map[int]farmItemRef) FarmView {
 	now = now.Truncate(time.Second) // whole seconds, like the game's GetServerTime
 	fv := FarmView{Present: true, Cut: 5}
-	// Names and vendor prices: the save's own item cache first, then AH
-	// Profit's bundled files, then "item <id>" with no vendor claim.
+	// Names: AH Profit save, its bundled files (unchanged priority), Coach,
+	// GearQuest, then "item <id>". Quality follows the winning name source;
+	// the new sources never supply vendor prices or gatherability.
 	items := map[int]farmItemRef{}
 	for id, it := range ref.Items {
 		items[id] = it
@@ -269,6 +271,9 @@ func buildFarmDB(db map[string]any, chars []CharView, now time.Time, ref farmRef
 	v3 := verOK && ver == 3 // ledger, sessions and items exist only in version 3
 	if v3 {
 		saveItemRefs(db, items)
+	}
+	for _, names := range fallbackNames {
+		fillFarmNames(items, names)
 	}
 	if c, ok := ahpInt(db["cut"], 100); ok && (c == 5 || c == 15) {
 		fv.Cut = c
@@ -404,7 +409,10 @@ func buildFarmDB(db map[string]any, chars []CharView, now time.Time, ref farmRef
 			}
 			r := FarmSellRow{House: house, Char: char, ID: id, Name: "item " + strconv.Itoa(id), Count: n, Bound: bound, BankSeen: seen, AllBound: bound == n}
 			if it, ok := items[id]; ok {
-				r.Name, r.Vendor, r.VendorKnown = it.Name, it.Vendor, it.VendorKnown
+				if it.Name != "" {
+					r.Name, r.QualityClass = it.Name, it.QualityClass
+				}
+				r.Vendor, r.VendorKnown = it.Vendor, it.VendorKnown
 			}
 			if house != "" {
 				r.Price, r.Listed, r.Seen, r.Source, r.From = price(house, id)

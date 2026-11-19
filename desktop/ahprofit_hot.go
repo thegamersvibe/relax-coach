@@ -174,6 +174,7 @@ type FarmHotHouse struct {
 }
 
 type FarmHotRow struct {
+	QualityClass            string
 	ID, Now, Prev, Baseline int
 	Name                    string
 	Gatherable              bool
@@ -335,7 +336,7 @@ func buildHotHouse(key string, H, L, S map[string]any, items map[int]farmItemRef
 			continue
 		}
 		row.ID = it.id
-		row.Name = items[it.id].Name
+		row.Name, row.QualityClass = items[it.id].Name, items[it.id].QualityClass
 		if row.Name == "" {
 			row.Name = fmt.Sprintf("item %d", it.id)
 		}

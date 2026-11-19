@@ -23,8 +23,9 @@ var ahpRefMaxBytes int64 = 4 << 20
 var farmRefParses int
 
 type farmItemRef struct {
-	Name   string
-	Vendor int // copper per unit; meaningful only when VendorKnown
+	QualityClass string // validated q0..q7, empty when unknown or token
+	Name         string
+	Vendor       int // copper per unit; meaningful only when VendorKnown
 	// VendorKnown: from the save (the game's own sell price, 0 = cannot be
 	// sold to a vendor), or a bundled vendor price above 0. A bundled 0 is
 	// "not known", never "worth nothing".
@@ -66,7 +67,11 @@ func ahpNodeHash(s string) int {
 // parseLuaAssignedTable parses the table literal assigned by the first
 // "<name> =" statement at the start of a line. Errors and panics are
 // returned as errors; nothing in the file is executed.
-func parseLuaAssignedTable(src, name string) (out map[string]any, err error) {
+func parseLuaAssignedTable(src, name string) (map[string]any, error) {
+	return parseLuaAssignedTableLimited(src, name, ahpMaxValues)
+}
+
+func parseLuaAssignedTableLimited(src, name string, maxValues int) (out map[string]any, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			out, err = nil, fmt.Errorf("%s: unreadable (%v)", name, r)
@@ -88,7 +93,7 @@ func parseLuaAssignedTable(src, name string) (out map[string]any, err error) {
 	if at < 0 {
 		return nil, fmt.Errorf("%s not found", name)
 	}
-	p := &luaParser{s: src, pos: at, maxValues: ahpMaxValues}
+	p := &luaParser{s: src, pos: at, maxValues: maxValues}
 	if !p.eat('=') {
 		return nil, fmt.Errorf("%s: expected =", name)
 	}
