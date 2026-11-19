@@ -1,13 +1,13 @@
 # Night result file, format version 1
 
 The one file the Relax Coach app gives the Guild Logs site per raid night (REQ-WEB-01).
-Sources: DESIGN.md 10.2; PLAN.md section 4, items 4, 6, 7 and 8; PLAN.md section 4A, which settles the
-open field points. The site's upload route (W2) and pages are written against this document. Changing
+Sources: DESIGN.md 10.2; PLAN.md section 4, items 4, 6, 7 and 8; PLAN.md section 4A (version 4.3, rows 1 to 16),
+which settles the open field points. The site's upload route (W2) and pages are written against this document. Changing
 a field's meaning, or adding a field or a flag, raises `formatVersion`.
 
 ## General rules
 
-- JSON, UTF-8, one object. File name `night-YYYYMMDD-<first 8 of nightId>.json`; the date is the
+- JSON, one object, always in the canonical form below. File name `night-YYYYMMDD-<first 8 of nightId>.json`; the date is the
   local date of the first fight's start. A re-score writes the same name and replaces the file.
 - `formatVersion` starts at 1. A reader refuses a file whose `formatVersion` is newer than it knows,
   and refuses a flag or an enumeration value it does not know.
@@ -15,7 +15,8 @@ a field's meaning, or adding a field or a flag, raises `formatVersion`.
 - Players are keyed by the character name **exactly as the log wrote it**, the whole string. The file
   has **no `siteCharacterId` and no `siteName` field**: the site links names when a file is uploaded
   (PLAN.md 6.1, 6.2), and the app has no site client before W6.
-- A value that is unknown or could not be measured is `null`, **never 0**. A field marked "absent"
+- A value that is unknown or could not be measured is `null`, **never 0**. Coverage is the exception:
+  it is always the measured number (see "Not enough data"). A field marked "absent"
   below does not exist in the file; it is not `null`.
 - No raw events. Evidence is a summary (below); the full event lists stay in the app.
 - Times: the night start and each fight start are a **time pair** `{"timeMs": int, "offsetH": int}`:
@@ -30,16 +31,32 @@ a field's meaning, or adding a field or a flag, raises `formatVersion`.
 | Field | Type | Meaning |
 |---|---|---|
 | `nightId` | string, 64 lowercase hex | SHA-256 of the night's sorted fight ids joined by a newline (`\n`). Says *which night*. |
-| `contentHash` | string, 64 lowercase hex | SHA-256 of the file's canonical bytes with the `contentHash` field left out. Says *which scoring of it*. |
+| `contentHash` | string, 64 lowercase hex | SHA-256 of the file's bytes with the 64 characters of the `contentHash` value replaced by 64 zeros (`0`). Says *which scoring of it*. |
 
-Canonical bytes: UTF-8, object keys sorted, no insignificant whitespace, numbers written by the rules
-above. On upload: same `nightId` and same `contentHash` changes nothing. Same `nightId` with a
+The file on disk is always canonical (next section), so a reader checks `contentHash` on the raw bytes
+and never re-writes the file. On upload: same `nightId` and same `contentHash` changes nothing. Same `nightId` with a
 different `contentHash` is a re-score: it replaces the stored result, returns an approved night to
 "uploaded" and shows what changed (REQ-WEB-05). A night read from a second logger's file can have
 different fight ids, so a different `nightId`; the site treats it as a different night, and an
 officer removes the spare. Merging two logs is out of scope.
 
 A fight id is a hash of the fight's own content, never a counter or a random value.
+
+## Canonical form
+
+The writer emits exactly this, and it is the only form the file has:
+
+- UTF-8, no byte-order mark, no trailing newline. No whitespace between tokens.
+- Object keys in ascending order of their UTF-8 bytes; arrays in the order given.
+- Strings: the bytes as logged, no Unicode normalisation. Only `"` and `\` are escaped (as `\"` and
+  `\\`), and control characters below U+0020 as `\u00xx` with lower-case hex. Everything else,
+  including all non-ASCII, `<`, `>`, `&`, U+2028 and U+2029, is written raw.
+- Integers: digits with an optional leading `-`, no leading zeros, no `-0`.
+- Scores and coverage: the fixed decimals above (`87.0`, `0.75`). No exponent form anywhere.
+- `true`, `false`, `null` in lower case.
+
+Go's `encoding/json` does not produce this (it escapes U+2028, U+2029 and, by default, `<`, `>`, `&`,
+and does not write `87.0`), so the writer is its own small one, with a test per rule.
 
 ## Top level
 
@@ -79,23 +96,27 @@ A fight id is a hash of the fight's own content, never a counter or a random val
 |---|---|---|---|
 | `class` | string or null | yes | Class token as the game gives it, e.g. `WARRIOR`. |
 | `flags` | array of flag | yes | Night-level flags for this player (`newAt60`, `differentBuild`, `uncalibratedSpec`). |
-| `night` | object | yes | `{"score": number or null, "coverage": number or null, "rank": integer or null}`. |
+| `night` | object | yes | `{"score": number or null, "coverage": number, "rank": integer or null}`. |
 | `fights` | object: fight id → player fight | yes | Only fights the player took part in. |
 | `deaths` | array of death | yes | This player's deaths, in time order. |
 
 `rank` starts at 1 within the night, over all players with a night score. Equal scores share a rank
 and the next rank is skipped (1, 1, 3). Rank compares the stored, rounded score, so the file and the
-page cannot disagree. `score`, `coverage` and `rank` are `null` for a player listed as "not enough
-data".
+page cannot disagree.
+
+**Not enough data.** Coverage is always the measured number, never `null`; a player with nothing
+measurable has `0.00`. Under the coverage threshold in the config, `score` and `rank` are `null` and
+coverage still shows why. This holds at night level and at fight level (a fight has no rank). A reader
+recognises "not enough data" by `score` being `null`.
 
 ## Player fight (`players[<name>].fights[<fight id>]`)
 
 | Field | Type | Required | Meaning |
 |---|---|---|---|
-| `specId` | integer or null | yes | Spec id (the 33 ids of the spec list) for this fight. |
+| `specId` | string or null | yes | `<CLASS>.<spec>` for this fight: the class token as the game gives it, a dot, and the spec id from the spec list, e.g. `PALADIN.holy`. The 33 entries of the spec list are 33 distinct pairs (only 30 spec words are distinct: `protection`, `holy` and `restoration` occur under two classes). The same string names the profile file, `rules/raid/specs/PALADIN.holy.json`. `null` when the spec is unknown. |
 | `role` | string or null | yes | `tank`, `healer` or `dps` in this fight. |
 | `score` | number or null | yes | Fight score: the weighted sum of the measurable parts for the role (REQ-SCO-01, 02). |
-| `coverage` | number or null | yes | Share of weight that was measurable. |
+| `coverage` | number | yes | Share of weight that was measurable; always a number (see "Not enough data"). |
 | `flags` | array of flag | yes | Flags for this fight. |
 | `parts` | object | yes | Exactly five keys: `output`, `activity`, `mechanics` (mechanics and survival), `utility` (utility and support), `preparation`. Each is a part, or `null` when the part could not be measured. |
 
@@ -174,5 +195,5 @@ built the same way, from the run's sorted fight ids.
 | `raid` | Absent; replaced by `instanceId` (integer) and `name` (string, the instance as logged) |
 | `partial` | Boolean at top level: the log starts or ends inside the run |
 | Fight `type` | `boss` or `pull`, as in the night file |
-| Player `night` | Replaced by `run`: `{"score": number or null, "coverage": number or null}`, no rank |
+| Player `night` | Replaced by `run`: `{"score": number or null, "coverage": number}`, no rank |
 | `wipes`, `assignments` | Absent |
