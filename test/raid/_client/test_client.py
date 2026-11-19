@@ -145,10 +145,10 @@ class ClientTests(unittest.TestCase):
 
     def test_calls_are_recorded(self):
         c = Client()
-        c.run("LoggingCombat(); LoggingCombat(true); C_CVar.SetCVar('advancedCombatLogging', '1')")
+        c.run("LoggingCombat(); LoggingCombat(true); LoggingCombat(nil); C_CVar.SetCVar('advancedCombatLogging', '1')")
         c.refuse_cvar_write = True
         c.run("C_CVar.SetCVar('advancedCombatLogging', '0')")
-        self.assertEqual(c.log_calls, [None, True])
+        self.assertEqual(c.log_calls, [None, True, "nil-arg"])
         self.assertEqual(c.cvar_writes, [("advancedCombatLogging", "1"), ("advancedCombatLogging", "0")])
         self.assertEqual(c.cvars["advancedCombatLogging"], "1")
 

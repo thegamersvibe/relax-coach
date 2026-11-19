@@ -25,7 +25,8 @@ Added by R1 (each confirmed in the client listing at Gethe/wow-ui-source@eac30af
   - Slash commands: SlashCmdList; slash("/cmd args") calls the handler a SLASH_<KEY>n global names.
   - The Settings panel: Settings.RegisterVerticalLayoutCategory/RegisterProxySetting/CreateCheckbox/
     RegisterAddOnCategory, kept in `settings`; a test clicks a checkbox with click_setting().
-  - Every LoggingCombat call is kept in `log_calls` (its argument; None for a read); every SetCVar in `cvar_writes`.
+  - Every LoggingCombat call is kept in `log_calls` (its argument; None for a read with no argument, "nil-arg" for
+    an explicit nil); every SetCVar in `cvar_writes`.
   - load_addon(): the toc's files in order with (name, namespace), then saved variables, then ADDON_LOADED.
 API names are the client's own; each is confirmed in the client listing by the module that first uses it.
 """
@@ -142,8 +143,11 @@ class Client:
         return self.settings[variable]["get"]()
 
     # --- client API ------------------------------------------------------------------------------------
-    def _logging_combat(self, on=None):
-        self.log_calls.append(on)
+    def _logging_combat(self, *args):
+        # a read is LoggingCombat() with no argument; LoggingCombat(nil) is recorded apart, as "nil-arg"
+        # (what the client does with it is unknown: the addon must never call it)
+        self.log_calls.append((args[0] if args[0] is not None else "nil-arg") if args else None)
+        on = args[0] if args else None
         if on is None:
             seen = self.now - self.log_lag
             value = False

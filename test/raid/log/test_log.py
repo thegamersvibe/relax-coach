@@ -181,6 +181,48 @@ class LogTests(unittest.TestCase):
         c.advance(60)
         self.assertTrue(truth(c))
 
+    def test_secret_guild_values_are_unknown_not_missing(self):
+        c = Client()
+        c.guild = (c.secret(), c.secret(), c.secret())
+        c.load_addon(ADDON)
+        c.enter("none", 0, initial=True)
+        c.advance(20)
+        self.assertEqual(says(c, HINT), 1, "unreadable, not waiting for guild data forever")
+        self.assertEqual(says(c, "internal error"), 0)
+        self.assertFalse(c.setting_value("RELAXRAID_LOGGER"))
+
+    def test_chat_line_reads_the_advanced_setting_when_it_speaks(self):
+        c = boot(lag=5, ignore=10, advanced="1")
+        c.enter("raid", 409)
+        c.advance(1)
+        c.cvars["advancedCombatLogging"] = "0"   # switched off by the player after the first try
+        c.advance(60)
+        self.assertEqual(says(c, ON_LINE), 1)
+        self.assertEqual(says(c, "with Advanced"), 0, "the line says what is true when it is said")
+
+    def test_toggling_the_logger_inside_one_entry_keeps_once_per_entry(self):
+        c = boot(refuse=True, ignore=10_000)
+        c.enter("raid", 409)
+        c.advance(45)                            # write refused once, reminder said once
+        for _ in range(2):
+            c.slash("/relaxraid logger off")
+            c.slash("/relaxraid logger on")
+            c.advance(45)
+        self.assertEqual(len(c.cvar_writes), 1, "one setting write per entry")
+        self.assertEqual(says(c, REMIND_ADV), 1)
+        self.assertEqual(says(c, REMIND_LOG), 1)
+        c2 = boot()
+        c2.enter("party", 329)
+        c2.advance(45)
+        c2.slash("/relaxraid logger off")
+        c2.slash("/relaxraid logger on")
+        c2.advance(45)
+        self.assertEqual(says(c2, ON_LINE), 1, "one confirmation per entry")
+        c2.enter("none", 0)
+        c2.enter("party", 329)
+        c2.advance(45)
+        self.assertEqual(says(c2, ON_LINE), 2, "a new entry says it again")
+
     def test_retries_until_the_read_confirms(self):
         # the read lags 8 s, longer than the gap between tries: only the read stops the retries, so the start
         # at 10 s is repeated once at 15 s (one extra header line, which the parser accepts: PROBES P2 item 3)
@@ -257,6 +299,7 @@ class LogTests(unittest.TestCase):
         c.advance(60)
         self.assertNotIn(False, c.log_calls)
         self.assertNotIn(0, c.log_calls)
+        self.assertNotIn("nil-arg", c.log_calls, "LoggingCombat(nil) is not a read")
         self.assertTrue(all(v == "1" for _, v in c.cvar_writes), c.cvar_writes)
         self.assertTrue(truth(c))
         # and when we started it ourselves

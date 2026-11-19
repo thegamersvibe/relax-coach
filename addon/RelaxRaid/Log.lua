@@ -82,10 +82,7 @@ function Log.setLogger(value)
     charDB().logger = value
     local now = Log.logger()
     RR.say("logger " .. (now and "on" or "off") .. " for this character" .. (value == nil and " (guild rank default)." or "."))
-    if now then
-        state.run = nil -- start again where we stand
-        Log.check()
-    end
+    if now then Log.restart() end -- start again where we stand
     return true
 end
 
@@ -97,7 +94,11 @@ function Log.readRank()
     if not inGuild then return "noguild" end
     local ok, guildName, rankName, index = pcall(GetGuildInfo, "player")
     if not ok then return "unreadable" end
-    if guildName == nil and index == nil and rankName == nil then return "pending" end
+    if isSecret(guildName) or isSecret(rankName) or isSecret(index) then
+        -- a secret is unknown, never nil: only a listed name or a plain index below can decide
+    elseif guildName == nil and index == nil and rankName == nil then
+        return "pending"
+    end
     local indexOk = index ~= nil and not isSecret(index) and type(index) == "number"
     local nameOk = rankName ~= nil and not isSecret(rankName) and type(rankName) == "string"
     -- a listed name decides alone; otherwise the index must be readable to say "member"
@@ -127,10 +128,7 @@ local function settleRank(final)
         state.hinted = true
         RR.say(HINT_RANK)
     end
-    if before ~= true and Log.logger() == true then
-        state.run = nil
-        Log.check()
-    end
+    if before ~= true and Log.logger() == true then Log.restart() end
 end
 
 -- Where we are -----------------------------------------------------------------------------------------------
@@ -185,7 +183,8 @@ end
 local function confirm(run)
     if run.said then return end
     run.said = true
-    RR.say("combat logging is on" .. (run.adv and ", with Advanced Combat Logging." or "."))
+    -- read the setting now: the player may have switched it since the first try
+    RR.say("combat logging is on" .. (advancedIsOn() and ", with Advanced Combat Logging." or "."))
 end
 
 function Log.try(run)
@@ -204,6 +203,18 @@ function Log.final(run)
     if not run.reminded then
         run.reminded = true
         RR.say(REMIND_LOG)
+    end
+end
+
+-- Start the tries again inside the same entry (the logger was switched on, or the rank came in) without
+-- resetting what this entry already did: one confirmation, one reminder and one setting write per entry.
+function Log.restart()
+    local old = state.run
+    state.run = nil
+    Log.check()
+    local run = state.run
+    if old and run and run.key == old.key then
+        run.said, run.reminded, run.advDone, run.adv = old.said, old.reminded, old.advDone, old.adv
     end
 end
 
