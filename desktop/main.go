@@ -65,6 +65,7 @@ type SlotView struct {
 	BestWhere, Status, Note                   string
 	Equipped, Weapon                          bool
 	GapPct                                    int
+	GapText                                   string // shown gain: "45%", ">100%" (pctText)
 }
 
 type TalentView struct {

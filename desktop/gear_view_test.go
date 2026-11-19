@@ -123,3 +123,31 @@ func TestGearViewHiddenPercentStillCountsUpgrade(t *testing.T) {
 		t.Fatalf("hidden percentage shown or upgrade lost: chest=%d legs=%d upgrades=%d", chest.GapPct, legs.GapPct, c.GearUpgrades)
 	}
 }
+
+// One clamp rule with the addon (G.PctText): a gain above 100 reads ">100%"; a bag upgrade's percentage is
+// hidden when too few slots are scored.
+func TestGearViewPercentClampAndHiddenBagPercent(t *testing.T) {
+	c := gearTestChar(t, `snapshot={name="Probe",level=51,class="WARRIOR",xpMax=10000,
+		equipped={[18]={id=1008},[5]={id=1004}}, equipmentState={[18]="equipped",[5]="equipped",[11]="empty",[2]="empty"}},
+		gear={status="ok",slots={[18]={id=1008,scoreStatus="known",score=100,gapPct=300,best={id=9001,name="Big Gun"}},
+			[5]={id=1004,scoreStatus="known",score=100,gapPct=45,best={id=9002,name="Chest"}}},
+		owned={{id=9003,name="Bag Ring",label="Ring 1",inv=11,gain=250},{id=9004,name="Bag Neck",label="Neck",inv=2,gain=20,pctHidden=true}}}`)
+	if s := gearTestSlot(t, c, "Ranged"); s.GapText != ">100%" || s.GapPct != 100 {
+		t.Fatalf("300%% gain: want >100%% text and colour 100, got %+v", s)
+	}
+	if s := gearTestSlot(t, c, "Chest"); s.GapText != "45%" {
+		t.Fatalf("45%% gain text: %+v", s)
+	}
+	if len(c.Owned) != 2 || c.Owned[0].GainText != "+>100%" || c.Owned[1].GainText != "" {
+		t.Fatalf("owned gain text: %+v", c.Owned)
+	}
+	html, err := renderReportBody(View{Chars: []CharView{c}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := strings.NewReplacer("&#43;", "+", "&gt;", ">").Replace(html) // the template escapes + and >
+	if !strings.Contains(text, "about +>100%") || !strings.Contains(text, "+>100%</div>") || strings.Contains(text, "300%") ||
+		strings.Contains(text, "about +20%") {
+		t.Fatal("report shows an unclamped or hidden percentage")
+	}
+}

@@ -251,7 +251,7 @@ h3:has(.filters){display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;whi
 
    {{if .Owned}}<div class="card">
     <h3>Already in your bags</h3>
-    <ul class="owned">{{range .Owned}}<li><b>{{.Name}}</b> → {{.Slot}} <span class="gscore">about +{{.Gain}}%</span></li>{{end}}</ul>
+    <ul class="owned">{{range .Owned}}<li><b>{{.Name}}</b> → {{.Slot}} {{if .GainText}}<span class="gscore">about {{.GainText}}</span>{{end}}</li>{{end}}</ul>
    </div>{{end}}
 
    {{if gt (len .Findings) 3}}
@@ -336,7 +336,7 @@ h3:has(.filters){display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;whi
  <div style="min-width:0">
   <div class="sn">{{.Name}}</div>
   <div class="it{{if eq .Status "unreadable"}} unread{{else if not .Equipped}} none{{end}}">{{if .Equipped}}{{.Item}}{{else if eq .Status "unreadable"}}Not read{{else}}Empty{{end}}</div>
-  {{if and .BestName .Equipped (gt .GapPct 0)}}<div class="gap">+{{.GapPct}}%</div>{{end}}
+  {{if and .BestName .Equipped (gt .GapPct 0)}}<div class="gap">+{{.GapText}}</div>{{end}}
   {{if eq .Status "unknown"}}<div class="gap" style="color:var(--dim)">?</div>{{end}}
  </div>
  <div class="tip">{{if .Note}}{{.Note}}{{else if eq .Status "unknown"}}Equipped. Not scored for this spec: comparable scoring data is unavailable.{{else if not .BestName}}No recommendation for this slot.{{else if and .Equipped (eq .GapPct 0)}}✓ Good for your level.{{else}}Upgrade: <b>{{.BestName}}</b>{{if .BestWhere}}<br>{{.BestWhere}}{{end}}<br>{{short .BestHow}}{{end}}</div>
