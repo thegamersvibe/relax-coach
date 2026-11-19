@@ -27,6 +27,9 @@ func describe(r *Run, events []model.Event, p Params) {
 		}
 	}
 	for _, e := range events {
+		if e.InfoUnit != "" && (e.HP.Present || e.HPMax.Present || e.Power.Present || e.PowerMax.Present || e.PowerType.Present || e.X.Present || e.Y.Present) {
+			r.Advanced = true
+		}
 		for _, a := range []model.Actor{e.Src, e.Dst} {
 			if a.ID == "" {
 				continue
@@ -115,6 +118,7 @@ func describe(r *Run, events []model.Event, p Params) {
 		if r.Kind == model.RunUnknown {
 			d.UnscoredReason = "unknownInstance"
 		}
+		f.Offset, f.Len, f.Specs = d.Offset, d.Len, d.Specs
 		r.Details = append(r.Details, d)
 	}
 	for _, id := range keys(roster) {

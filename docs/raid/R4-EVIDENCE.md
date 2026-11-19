@@ -7,9 +7,12 @@ No model edits, real log contents, dependencies, upload, UI or installation.
 
 - The initial base lacks later model fields; this first slice uses a local
   result sidecar for source, byte ranges, spec, header metadata and timelines.
-  The parent's model-addendum update will migrate supported fields to model.
+  Model addendum 2 is now integrated: model.Fight receives byte ranges and
+  specs; model raid/dungeon runs receive source/build/log-version/advanced.
+  Detail retains convenience mirrors and per-player timelines.
 - Power was initially held out by the parent; the subsequent model-addendum
-  instruction brings it back in, in a follow-up slice after that base lands.
+  instruction brought it back in. Power, maximum power and power type are
+  sampled for InfoUnit, including present zero mana and absent values.
 - Use the brief's cast-signature hook, not PLAN's prospective talent table.
   An empty profile/signature set means unknown, not a guessed spec.
 - Use the brief/R5 instance classifier: listed kind wins; an unlisted large
@@ -77,6 +80,54 @@ Initial final-run outputs:
   refusal was fixed to a runnable mutation; one effective-healing survivor
   exposed a missing numerical assertion, now added without changing production.
   Follow-up verification: `RESULT: 17/17 mutants killed`; raid vet/test exit 0.
+
+## Model-addendum follow-up
+
+The initial slice was committed as 8e4ea59b7a60f666a3d81741735944b303652c64.
+It was rebased onto the supplied model commit
+5020a0dd5734ee5db13c7f2ce137db7babf1a982 as
+4a200b55873f8091f997dcc7e20f5bf81aba36c8. No backup tag was created under
+the standing no-tags rule; the original SHA is retained here. The first rebase
+attempt stopped for missing committer identity; replay completed with the
+authorized per-command identity. No shared model file was edited by this lane.
+
+- Power/range/spec/source RED: missing Sample.Power, then power-only sample
+  missing, model fight fields missing and model run source missing. GREEN:
+  raid vet/test exit 0 after projection into the new fields.
+- Contract review RED: zone instance replaced fight-start instance, empty
+  signatures admitted a guessed spec, typed advanced block ignored. GREEN:
+  raid vet/test exit 0. Positive signature fixtures now explicitly supply a
+  synthetic signature; the unknown-signature regression keeps an empty list.
+- Source-error RED: a decoder swallowing an I/O error could publish a partial
+  raw hash. GREEN: the counting reader remembers non-EOF source failures.
+- Partial/progress RED: a zone-truncated boss did not mark its run partial;
+  a stale HP sample could resurrect a dead boss in wipe progress. GREEN:
+  run partial propagation, cut trash partials, and dead-unit zero health.
+- REQ-PAR-04 power is implemented, no longer held open. Real-log event-family
+  golden sampling is still not run. REQ-PAR-06 class remains open: model has
+  no typed class field, and fights does not interpret COMBATANT_INFO.Raw.
+- PHASE1-BRIEF currently has the power rows in step 0 but no separate heading
+  titled “Model addendum 2”; the supplied model revision and the updated
+  step-0/v2 text were used. This did not block implementation.
+
+## Final verification on model addendum 2
+
+Commands (Go PATH configured as directed; PY is the supplied uv Python 3.14
+invocation with `.github/requirements-ci.txt`):
+
+- `(cd desktop && go vet ./internal/raid/... && go test -count=1 ./internal/raid/...)`
+  => exit 0; `ok .../internal/raid`, `ok .../internal/raid/fights`,
+  `ok .../internal/raid/model` (modeltest is a builder package with no test files).
+- `(cd desktop && go test -count=1 -run '^TestRaidLog' .)`
+  => `ok github.com/thegamersvibe/relax-coach/desktop 0.010s`.
+- `python3 -I -B tools/raidtest.py --all --kind go`
+  => `RESULT: 3/3 modules passed` (includes race-enabled fights/model commands).
+- `$PY -I -B tools/raidtest.py --mutants fights`
+  => `RESULT: 27/27 mutants killed`, no survival or refusal.
+- `$PY -I -B tools/raidtest.py --all --kind lua,py`
+  => `RESULT: 4/4 modules passed`.
+- `git diff --check`: exit 0. Model path diff against the supplied model base:
+  empty. PAR-08/PAR-09 requirement text unchanged.
 
 ## Not run / integration boundaries
 

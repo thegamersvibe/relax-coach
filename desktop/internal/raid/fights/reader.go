@@ -9,11 +9,7 @@ import (
 )
 
 // Source identifies the entire raw stream, including skipped/outside-run lines.
-// These fields are a local sidecar until the shared model addendum lands.
-type Source struct {
-	SHA256 string
-	Bytes  int64
-}
+type Source = model.Source
 
 // Decoder is an adapter seam, not a parser. Adapt logfmt.Decode in package main;
 // fights must never import logfmt. emit must be called synchronously, in file order.
@@ -42,18 +38,28 @@ func Read(raw io.Reader, decode Decoder, p Params) (Result, error) {
 	if _, err = io.Copy(io.Discard, counted); err != nil {
 		return Result{}, err
 	}
+	if counted.err != nil {
+		return Result{}, counted.err
+	}
 	result.Source = Source{SHA256: fmt.Sprintf("%x", hash.Sum(nil)), Bytes: counted.n}
+	for i := range result.Runs {
+		result.Runs[i].Source = result.Source
+	}
 	return result, nil
 }
 
 type countReader struct {
-	r io.Reader
-	n int64
+	r   io.Reader
+	n   int64
+	err error
 }
 
 func (c *countReader) Read(b []byte) (int, error) {
 	n, err := c.r.Read(b)
 	c.n += int64(n)
+	if err != nil && err != io.EOF && c.err == nil {
+		c.err = err
+	}
 	return n, err
 }
 
@@ -63,11 +69,11 @@ func (r Run) RaidNight() (model.RaidNight, bool) {
 	if r.Kind != model.RunRaid {
 		return model.RaidNight{}, false
 	}
-	return model.RaidNight{Fights: r.Fights, Roster: r.Roster, Partial: r.Partial, Logger: r.Logger, StartMs: r.StartMs, OffsetH: r.OffsetH}, true
+	return model.RaidNight{Fights: r.Fights, Roster: r.Roster, Partial: r.Partial, Logger: r.Logger, StartMs: r.StartMs, OffsetH: r.OffsetH, Build: r.Build, LogVersion: r.LogVersion, Advanced: r.Advanced, Source: r.Source}, true
 }
 func (r Run) DungeonRun() (model.DungeonRun, bool) {
 	if r.Kind != model.RunDungeon {
 		return model.DungeonRun{}, false
 	}
-	return model.DungeonRun{Fights: r.Fights, Roster: r.Roster, InstanceID: r.InstanceID, Partial: r.Partial, Logger: r.Logger, StartMs: r.StartMs, OffsetH: r.OffsetH}, true
+	return model.DungeonRun{Fights: r.Fights, Roster: r.Roster, InstanceID: r.InstanceID, Partial: r.Partial, Logger: r.Logger, StartMs: r.StartMs, OffsetH: r.OffsetH, Build: r.Build, LogVersion: r.LogVersion, Advanced: r.Advanced, Source: r.Source}, true
 }

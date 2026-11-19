@@ -29,6 +29,7 @@ func makeDetail(f model.Fight, p Params) Detail {
 		return id
 	}
 	boss := map[string]bool{}
+	dead := map[string]bool{}
 	hp, maxHP := map[string]model.Opt{}, map[string]model.Opt{}
 	for _, id := range f.BossUnits {
 		boss[id] = true
@@ -44,8 +45,8 @@ func makeDetail(f model.Fight, p Params) Detail {
 		if tl := d.Timelines[dst]; tl != nil && src != dst {
 			tl.Events = append(tl.Events, e)
 		}
-		if tl := d.Timelines[e.InfoUnit]; tl != nil && (e.HP.Present || e.HPMax.Present || e.X.Present || e.Y.Present) {
-			tl.Samples = append(tl.Samples, Sample{TimeMs: e.TimeMs, HP: e.HP, HPMax: e.HPMax, X: e.X, Y: e.Y})
+		if tl := d.Timelines[e.InfoUnit]; tl != nil && (e.HP.Present || e.HPMax.Present || e.X.Present || e.Y.Present || e.Power.Present || e.PowerMax.Present || e.PowerType.Present) {
+			tl.Samples = append(tl.Samples, Sample{TimeMs: e.TimeMs, HP: e.HP, HPMax: e.HPMax, X: e.X, Y: e.Y, Power: e.Power, PowerMax: e.PowerMax, PowerType: e.PowerType})
 		}
 		if e.IsDeath() {
 			if tl := d.Timelines[e.Dst.ID]; tl != nil {
@@ -87,7 +88,7 @@ func makeDetail(f model.Fight, p Params) Detail {
 			swings[e.Dst.ID]++
 		}
 		if boss[e.InfoUnit] {
-			if e.HP.Present {
+			if e.HP.Present && !dead[e.InfoUnit] {
 				hp[e.InfoUnit] = e.HP
 			}
 			if e.HPMax.Present {
@@ -96,6 +97,7 @@ func makeDetail(f model.Fight, p Params) Detail {
 		}
 		if e.IsDeath() && boss[e.Dst.ID] {
 			hp[e.Dst.ID] = model.Some(0)
+			dead[e.Dst.ID] = true
 		}
 	}
 	// f shares the map with its caller but never modifies any caller-owned event.
@@ -119,7 +121,7 @@ func makeDetail(f model.Fight, p Params) Detail {
 	if p.InferSpecs != nil && len(p.Profiles) > 0 {
 		allowed := map[string]bool{}
 		for _, pr := range p.Profiles {
-			allowed[pr.ID] = true
+			allowed[pr.ID] = len(pr.CastSignatures) > 0
 		}
 		for id, spec := range p.InferSpecs(casts, p.Profiles) {
 			if d.Timelines[id] != nil && allowed[spec] {

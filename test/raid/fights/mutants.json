@@ -100,5 +100,65 @@
     "old": "r.Kind != model.RunRaid",
     "new": "false",
     "killed_by": "TestTypedRunsAndSelectedDetails"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "Power: e.Power, PowerMax: e.PowerMax, PowerType: e.PowerType",
+    "new": "Power: model.Opt{}, PowerMax: e.PowerMax, PowerType: e.PowerType",
+    "killed_by": "TestPowerSamplesBelongToInfoUnit"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "PowerType: e.PowerType",
+    "new": "PowerType: model.Opt{}",
+    "killed_by": "TestPowerSamplesBelongToInfoUnit"
+  },
+  {
+    "file": "desktop/internal/raid/fights/actors.go",
+    "old": "f.Offset, f.Len, f.Specs = d.Offset, d.Len, d.Specs",
+    "new": "f.Offset, f.Len, f.Specs = d.Offset, 0, d.Specs",
+    "killed_by": "TestModelFightRangeAndSpecs"
+  },
+  {
+    "file": "desktop/internal/raid/fights/actors.go",
+    "old": "f.Offset, f.Len, f.Specs = d.Offset, d.Len, d.Specs",
+    "new": "f.Offset, f.Len, f.Specs = d.Offset, d.Len, nil",
+    "killed_by": "TestModelFightRangeAndSpecs"
+  },
+  {
+    "file": "desktop/internal/raid/fights/reader.go",
+    "old": "result.Runs[i].Source = result.Source",
+    "new": "result.Runs[i].Source = model.Source{}",
+    "killed_by": "TestModelRunsCarrySourceAndHeader"
+  },
+  {
+    "file": "desktop/internal/raid/fights/reader.go",
+    "old": "if counted.err != nil {",
+    "new": "if false {",
+    "killed_by": "TestReadRejectsSwallowedSourceError"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "allowed[pr.ID] = len(pr.CastSignatures) > 0",
+    "new": "allowed[pr.ID] = true",
+    "killed_by": "TestNoSignatureMeansUnknownSpec"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "if f.Partial {\n\t\t\tr.Partial = true",
+    "new": "if false {\n\t\t\tr.Partial = true",
+    "killed_by": "TestIncompleteFightMarksRunPartial"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "if e.HP.Present && !dead[e.InfoUnit] {",
+    "new": "if e.HP.Present {",
+    "killed_by": "TestDeadBossRemainsZeroForWipeProgress"
+  },
+  {
+    "file": "desktop/internal/raid/fights/actors.go",
+    "old": "r.Advanced = true",
+    "new": "r.Advanced = false",
+    "killed_by": "TestAdvancedEvidenceWithoutHeaderFlag"
   }
 ]

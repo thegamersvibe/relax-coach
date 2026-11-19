@@ -106,7 +106,7 @@ func TestTimelinesSamplesSpecHookAndMetadata(t *testing.T) {
 	}
 	p := params()
 	p.LowConfidenceFightMs = 50001
-	p.Profiles = []SpecProfile{{ID: "INVENTED.first"}}
+	p.Profiles = []SpecProfile{{ID: "INVENTED.first", CastSignatures: []SpellSignature{{ID: 55, Name: "Invented signature"}}}}
 	p.InferSpecs = func(casts []model.Event, profiles []SpecProfile) map[string]string {
 		if len(casts) != 1 || casts[0].Kind != model.CastSuccess || len(profiles) != 1 {
 			t.Fatal("bad spec hook input")

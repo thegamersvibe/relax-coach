@@ -55,6 +55,7 @@ type Run struct {
 	Build          string
 	LogVersion     int64
 	Advanced       bool
+	Source         model.Source
 }
 
 // Build consumes decoded events in file order. Wall time is used for windows,
@@ -137,6 +138,9 @@ func splitRun(events []model.Event, instance, difficulty, end int64, cut bool, p
 			position++
 			f.ID = anchor + ":" + strconv.Itoa(position)
 		}
+		if f.Partial {
+			r.Partial = true
+		}
 		r.Fights = append(r.Fights, *f)
 		f = nil
 		ended = false
@@ -154,12 +158,12 @@ func splitRun(events []model.Event, instance, difficulty, end int64, cut bool, p
 			finish()
 		}
 		if start {
-			f = &model.Fight{Boss: true, EncounterID: e.Enc.ID, Name: e.Enc.Name, InstanceID: instance, DifficultyID: e.Enc.Difficulty, GroupSize: int(e.Enc.GroupSize), StartMs: e.TimeMs}
+			f = &model.Fight{Boss: true, EncounterID: e.Enc.ID, Name: e.Enc.Name, InstanceID: e.Enc.InstanceID.V, DifficultyID: e.Enc.Difficulty, GroupSize: int(e.Enc.GroupSize), StartMs: e.TimeMs}
 		}
 		if stop && (f == nil || !f.Boss || f.EncounterID != e.Enc.ID) {
 			// Preserve an orphan end as an incomplete boss, never infer a start.
 			finish()
-			f = &model.Fight{Boss: true, Partial: true, EncounterID: e.Enc.ID, Name: e.Enc.Name, InstanceID: instance, DifficultyID: e.Enc.Difficulty, GroupSize: int(e.Enc.GroupSize), StartMs: e.TimeMs}
+			f = &model.Fight{Boss: true, Partial: true, EncounterID: e.Enc.ID, Name: e.Enc.Name, InstanceID: e.Enc.InstanceID.V, DifficultyID: e.Enc.Difficulty, GroupSize: int(e.Enc.GroupSize), StartMs: e.TimeMs}
 		}
 		if f == nil && combat(e) {
 			partial := len(r.Fights) == 0 && e.TimeMs-r.StartMs <= p.PullGapMs
@@ -185,6 +189,9 @@ func splitRun(events []model.Event, instance, difficulty, end int64, cut bool, p
 			f.Success, f.DurationMs = e.Enc.Success, e.Enc.FightMs
 			ended = true
 		}
+	}
+	if f != nil && !f.Boss && cut && end-lastCombat <= p.PullGapMs {
+		f.Partial = true
 	}
 	finish()
 	var size int64

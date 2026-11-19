@@ -21,8 +21,9 @@ type SpellSignature struct {
 	Name string
 }
 
-// Detail carries fields absent from the frozen shared model. Byte length includes
-// the final line ending. Timelines keep original events, not rewritten pet actors.
+// Detail holds per-player projections beside the model fights. Offset/Len and
+// Specs mirror the corresponding model fields; byte length includes the final
+// line ending. Timelines keep original events, not rewritten pet actors.
 type Detail struct {
 	Offset, Len            int64
 	LowConfidence          bool
@@ -32,8 +33,9 @@ type Detail struct {
 	RemainingHP, MaximumHP model.Opt
 }
 type Sample struct {
-	TimeMs          int64
-	HP, HPMax, X, Y model.Opt
+	Power, PowerMax, PowerType model.Opt
+	TimeMs                     int64
+	HP, HPMax, X, Y            model.Opt
 }
 type Timeline struct {
 	Events                                                                                []model.Event
