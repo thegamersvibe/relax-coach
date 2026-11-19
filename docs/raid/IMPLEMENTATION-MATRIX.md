@@ -81,7 +81,7 @@
 | IMP-070 | REQ-SR-10 | forever | R16 | R2 | unassigned | `addon/RelaxRaid/Reserve.lua` | planned | V-070 |
 | IMP-071 | REQ-SR-08 | forever | R19 | R0 | unassigned | `desktop/internal/raid/sr` | planned | V-071 |
 | IMP-072 | REQ-SR-09 | forever | later | Q-04 | unassigned | n/a | deferred | V-072 |
-| IMP-073 | REQ-DST-01 | forever | R9a | none | unassigned | `desktop/addon_update_guild.go`, `desktop/addon_bundle_state.go` | planned | V-073 |
+| IMP-073 | REQ-DST-01 | forever | R9a | none | builder | `desktop/addon_update.go`, `desktop/addon_update_guild.go`, `desktop/addon_bundle_state.go`, `desktop/addon_update_lock_recovery.go`, `desktop/addon_update_transaction.go` | built, in review | V-073 |
 | IMP-074 | REQ-DST-01 | forever | R9b | R1, R9a released | unassigned | `scripts/build_guild_bundle.py` | planned | V-074 |
 | IMP-075 | REQ-DST-02 | forever | every PR | none | unassigned | n/a | planned | V-075 |
 | IMP-076 | REQ-DST-03 | forever | R0 | none | R0 builder (bunyan) | `desktop/internal/raid/model`, `tools/raidtest.py`, `test/raid/_client/` | implemented | V-076 |
@@ -170,7 +170,7 @@ Statuses: `planned`, `in progress`, `implemented`, `verified`, `blocked`, `defer
 | V-070 | REQ-SR-10 / R16 | forever; build unknown | simulator | none yet | Acceptance column of REQ-SR-10 | not run | not run |
 | V-071 | REQ-SR-08 / R19 | forever; build unknown | simulator | none yet | Acceptance column of REQ-SR-08 | not run | not run |
 | V-072 | REQ-SR-09 / later | forever; build unknown | simulator | none yet | Acceptance column of REQ-SR-09 | not run | not run |
-| V-073 | REQ-DST-01 / R9a | forever; build unknown | unit | none yet | Acceptance column of REQ-DST-01 | not run | not run |
+| V-073 | REQ-DST-01 / R9a | forever; Go tests | unit | `feat/raid-app-folder` | `go test -run 'BundleRaid|RaidGate|BundleState'`: old bundle on the new app; gate bundle fresh and over an earlier copy; rollback; stale-lock recovery; 13 refusals with nothing changed; WTF untouched | pass; native Windows not run (alpha, owner's decision) | unit pass |
 | V-074 | REQ-DST-01 / R9b | forever; build unknown | unit | none yet | Acceptance column of REQ-DST-01 | not run | not run |
 | V-075 | REQ-DST-02 / every PR | forever; build unknown | unit | none yet | Acceptance column of REQ-DST-02 | not run | not run |
 | V-076 | REQ-DST-03 / R0 | forever; build unknown | review | `feat/raid-seam` | Acceptance column of REQ-DST-03: every copied block has a provenance header and a `THIRD_PARTY.md` row | R0 adds no block copied from another addon; `THIRD_PARTY.md` unchanged | verified |

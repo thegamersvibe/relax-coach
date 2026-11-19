@@ -22,11 +22,23 @@ var addonGuildRoots = []string{"Interface/AddOns/ForeverCoach", "Interface/AddOn
 // addonPlannerRoot joins the bundle from 1.5.0 (see addonBundleRelease).
 const addonPlannerRoot = "Interface/AddOns/RelaxQuestPlanner"
 
+// addonRaidRoot joins the bundle from addonRaidMinimumVersion.
+const addonRaidRoot = "Interface/AddOns/RelaxRaid"
+
 func addonGuildRootsFor(version string) []string {
+	roots := addonGuildRoots
 	if addonBundleRelease(version) {
-		return append(append([]string{}, addonGuildRoots...), addonPlannerRoot)
+		roots = append(append([]string{}, roots...), addonPlannerRoot)
 	}
-	return addonGuildRoots
+	if addonRaidRelease(version) {
+		roots = append(append([]string{}, roots...), addonRaidRoot)
+	}
+	return roots
+}
+
+// addonAllGuildRoots is every root any bundle can carry: what state detection and lock recovery look at.
+func addonAllGuildRoots() []string {
+	return addonGuildRootsFor(addonRaidMinimumVersion)
 }
 
 var addonGuildExtras = map[string]bool{"RelaxCoach.exe": true, "README.md": true, "LICENSE-Coach": true, "Install-RelaxCoach.ps1": true, "Restore-RelaxCoach.ps1": true, "manifest.json": true}
@@ -58,6 +70,11 @@ func addonGuildPath(name string, directory bool, coachFiles map[string]bool, roo
 		case ".lua", ".toc", ".tga", ".blp", ".xml", ".txt", ".md", ".ttf", ".otf", ".html", ".png":
 			return true
 		}
+	case addonRaidRoot:
+		switch strings.ToLower(path.Ext(name)) {
+		case ".lua", ".toc", ".md", ".txt":
+			return true
+		}
 	case addonGuildRoots[2]:
 		return path.Ext(name) == ".html"
 	default:
@@ -69,7 +86,8 @@ func addonGuildPath(name string, directory bool, coachFiles map[string]bool, roo
 func (u *addonUpdater) extractGuild(ctx context.Context, payload []byte, stage, version string) (map[string]addonFileDigest, error) {
 	coachFiles := addonPublicFilesForVersion(version)
 	roots := addonGuildRootsFor(version)
-	planner := len(roots) > len(addonGuildRoots)
+	planner := addonBundleRelease(version)
+	raid := addonRaidRelease(version)
 	reader, err := zip.NewReader(bytes.NewReader(payload), int64(len(payload)))
 	if err != nil {
 		return nil, fmt.Errorf("invalid addon ZIP: %w", err)
@@ -119,7 +137,7 @@ func (u *addonUpdater) extractGuild(ctx context.Context, payload []byte, stage, 
 		// One TOC per addon root: WoW would also load flavour TOCs such as
 		// <Folder>_Vanilla.toc, which the identity checks below never read.
 		if !f.Mode().IsDir() && strings.EqualFold(path.Ext(f.Name), ".toc") {
-			for root, toc := range map[string]string{addonGuildRoots[1]: "Journey.toc", addonPlannerRoot: "RelaxQuestPlanner.toc"} {
+			for root, toc := range map[string]string{addonGuildRoots[1]: "Journey.toc", addonPlannerRoot: "RelaxQuestPlanner.toc", addonRaidRoot: "RelaxRaid.toc"} {
 				if strings.HasPrefix(f.Name, root+"/") && f.Name != root+"/"+toc {
 					return nil, fmt.Errorf("archive TOC %s refused: only %s is allowed in %s", f.Name, toc, root)
 				}
@@ -144,6 +162,9 @@ func (u *addonUpdater) extractGuild(ctx context.Context, payload []byte, stage, 
 	required := []string{addonGuildRoots[1] + "/Journey.toc", addonGuildRoots[2] + "/guides.html", "manifest.json"}
 	if planner {
 		required = append(required, addonPlannerRoot+"/RelaxQuestPlanner.toc")
+	}
+	if raid {
+		required = append(required, addonRaidRoot+"/RelaxRaid.toc")
 	}
 	for _, name := range required {
 		if !seen[strings.ToLower(name)] {
@@ -218,6 +239,7 @@ func (u *addonUpdater) extractGuild(ctx context.Context, payload []byte, stage, 
 		JourneyVersion string `json:"journeyVersion"`
 		ContentVersion string `json:"contentVersion"`
 		PlannerVersion string `json:"plannerVersion,omitempty"`
+		RaidVersion    string `json:"raidVersion,omitempty"`
 		Files          []struct {
 			Path   string `json:"path"`
 			SHA256 string `json:"sha256"`
@@ -232,7 +254,7 @@ func (u *addonUpdater) extractGuild(ctx context.Context, payload []byte, stage, 
 	if err := dec.Decode(new(any)); err != io.EOF {
 		return nil, errors.New("trailing guild manifest data")
 	}
-	if m.Project != "Relax Coach" || m.Kind != "guild-combined" || m.Version != version || m.JourneyVersion == "" || m.ContentVersion == "" || planner != (m.PlannerVersion != "") {
+	if m.Project != "Relax Coach" || m.Kind != "guild-combined" || m.Version != version || m.JourneyVersion == "" || m.ContentVersion == "" || planner != (m.PlannerVersion != "") || raid != (m.RaidVersion != "") {
 		return nil, errors.New("incompatible guild manifest identity/version")
 	}
 	if len(m.Files) != len(all) {
@@ -289,6 +311,11 @@ func (u *addonUpdater) extractGuild(ctx context.Context, payload []byte, stage, 
 			return nil, err
 		}
 	}
+	if raid {
+		if err := addonCheckRaidTOC(stage, runtime, m.RaidVersion); err != nil {
+			return nil, err
+		}
+	}
 	return runtime, nil
 }
 
@@ -323,6 +350,40 @@ func addonCheckPlannerTOC(stage string, runtime map[string]addonFileDigest, vers
 	}
 	if len(loads) == 0 {
 		return errors.New("incomplete Relax Quest Planner runtime")
+	}
+	return nil
+}
+
+// addonCheckRaidTOC mirrors the planner checks for Relax Raid (docs/raid/INCLUDE-PROPOSAL.md): fixed title and
+// both SavedVariables, the manifest's raidVersion, no required addon, every load file present in the archive.
+func addonCheckRaidTOC(stage string, runtime map[string]addonFileDigest, version string) error {
+	toc, err := addonReadSmallFile(filepath.Join(stage, filepath.FromSlash(addonRaidRoot), "RelaxRaid.toc"))
+	if err != nil {
+		return err
+	}
+	meta, loads, err := addonTOCMetadata(toc)
+	if err != nil {
+		return err
+	}
+	if meta["title"] != "Relax Raid" || meta["version"] != version || meta["savedvariables"] != "RelaxRaidDB" || meta["savedvariablespercharacter"] != "RelaxRaidCharDB" {
+		return errors.New("incompatible Relax Raid TOC identity/version/SavedVariables")
+	}
+	for _, key := range []string{"dependencies", "requireddeps", "requireddependencies", "deps", "required-dependencies", "required-deps"} {
+		if strings.TrimSpace(meta[key]) != "" {
+			return errors.New("incompatible Relax Raid TOC: it must not require other addons")
+		}
+	}
+	for _, name := range loads {
+		name = strings.ReplaceAll(name, "\\", "/")
+		if err := addonSafeZipName(name); err != nil {
+			return err
+		}
+		if _, ok := runtime[addonRaidRoot+"/"+name]; !ok {
+			return fmt.Errorf("missing Relax Raid TOC load file: %s", name)
+		}
+	}
+	if len(loads) == 0 {
+		return errors.New("incomplete Relax Raid runtime")
 	}
 	return nil
 }

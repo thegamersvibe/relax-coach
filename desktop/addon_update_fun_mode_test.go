@@ -55,6 +55,9 @@ func funModeEntries(version string) []addonZipEntry {
 	if addonBundleRelease(version) {
 		entries = append(entries, plannerFixtureEntries()...)
 	}
+	if addonRaidRelease(version) {
+		entries = append(entries, raidFixtureEntries()...)
+	}
 	return entries
 }
 
@@ -64,6 +67,9 @@ func funModeZip(t *testing.T, entries []addonZipEntry, version string) []byte {
 	manifest["version"] = version
 	if addonBundleRelease(version) {
 		manifest["plannerVersion"] = plannerFixtureVersion
+	}
+	if addonRaidRelease(version) {
+		manifest["raidVersion"] = raidFixtureVersion
 	}
 	return guildZip(t, entries, manifest)
 }
