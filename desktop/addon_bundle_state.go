@@ -40,7 +40,7 @@ type AddonBundleState struct {
 }
 
 func InstalledBundleState(game string) AddonBundleState {
-	all := addonGuildRootsFor(addonBundleMinimumVersion)
+	all := addonAllGuildRoots()
 	state := AddonBundleState{State: "none", Install: true, PresentFolders: []string{}, MissingFolders: []string{}}
 	if game == "" || !filepath.IsAbs(game) {
 		state.MissingFolders = addonFolderNames(all)
@@ -60,7 +60,7 @@ func InstalledBundleState(game string) AddonBundleState {
 	}
 	version := InstalledCoachVersion(game)
 	state.Install = version == "0.0.0"
-	expected := all
+	expected := addonGuildRootsFor(addonBundleMinimumVersion) // a fresh client: the folders every bundle has had
 	if !state.Install {
 		expected = []string{addonGuildRoots[0]}
 		if addonGuildRelease(version) {

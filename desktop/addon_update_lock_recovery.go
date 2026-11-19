@@ -58,7 +58,7 @@ func (u *addonUpdater) addonRecoverStaleLock(game string) (stale bool) {
 				return stale
 			}
 			pairs := [][2]string{{filepath.Join(transaction, "ForeverCoach"), filepath.Join(game, "Interface", "AddOns", "ForeverCoach")}}
-			for _, root := range addonGuildRootsFor(addonBundleMinimumVersion) {
+			for _, root := range addonAllGuildRoots() {
 				rel := filepath.FromSlash(root)
 				pairs = append(pairs, [2]string{filepath.Join(transaction, "previous", rel), filepath.Join(game, rel)})
 			}

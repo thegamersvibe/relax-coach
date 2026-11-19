@@ -91,7 +91,7 @@ func guildGame(t *testing.T) string {
 	return game
 }
 func guildRuntime(name string) bool {
-	for _, root := range append(append([]string{}, guildFixtureRoots...), addonPlannerRoot) {
+	for _, root := range append(append([]string{}, guildFixtureRoots...), addonPlannerRoot, addonRaidRoot) {
 		if strings.HasPrefix(name, root+"/") {
 			return true
 		}

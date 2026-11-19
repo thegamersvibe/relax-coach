@@ -582,6 +582,9 @@ func (u *addonUpdater) installTrees(ctx context.Context, game string, release Ad
 			}
 		}
 	}
+	if guild && addonRaidRelease(release.Version) {
+		result.Message = strings.Replace(result.Message, "Relax Quest Planner and guide content", "Relax Quest Planner, Relax Raid and guide content", 1)
+	}
 	result.Message += " " + addonAdvice(restart, running)
 	return result, nil
 }

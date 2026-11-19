@@ -28,6 +28,19 @@ const addonGuildMinimumVersion = "1.4.2"
 // Update App first, before anything is downloaded.
 const addonBundleMinimumVersion = "1.5.0"
 
+// From addonRaidMinimumVersion the bundle also carries Relax Raid (PLAN R9a/R9b, app first). Apps before it
+// refuse that folder, so the bundle gets a new asset name again: an older app reports an app-only release
+// and asks for Update App first, before anything is downloaded. One constant: the release that first ships
+// RelaxRaid sets it. The app that knows the folder ships in that release or earlier (apps from 1.6.0 update
+// themselves first). That release must not also publish RelaxCoach-Bundle-<v>.zip (R9b's builder).
+const addonRaidMinimumVersion = "1.8.0"
+
+func addonRaidRelease(version string) bool {
+	v, err := parseAddonVersion(version)
+	minimum, _ := parseAddonVersion(addonRaidMinimumVersion)
+	return err == nil && !minimum.newerThan(v)
+}
+
 func addonBundleRelease(version string) bool {
 	v, err := parseAddonVersion(version)
 	minimum, _ := parseAddonVersion(addonBundleMinimumVersion)
@@ -41,6 +54,9 @@ func addonGuildRelease(version string) bool {
 }
 
 func addonAssetName(version string) string {
+	if addonRaidRelease(version) {
+		return "RelaxCoach-RaidBundle-" + version + ".zip"
+	}
 	if addonBundleRelease(version) {
 		return "RelaxCoach-Bundle-" + version + ".zip"
 	}

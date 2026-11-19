@@ -31,6 +31,9 @@ func bundleZip(t *testing.T, version string, mutate func([]addonZipEntry, map[st
 	if addonBundleRelease(version) {
 		manifest["plannerVersion"] = plannerFixtureVersion
 	}
+	if addonRaidRelease(version) {
+		manifest["raidVersion"] = raidFixtureVersion
+	}
 	if mutate != nil {
 		entries = mutate(entries, manifest)
 		files := guildManifest(entries)["files"]
