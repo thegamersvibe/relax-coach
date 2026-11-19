@@ -1,12 +1,38 @@
-# Relax Quest Planner — 0.3.0
+# Relax Quest Planner — 0.4.0
 
 Quest planner for **WoW Forever** (Interface 16001), shipped in the Relax Coach
 bundle from **v1.5.0**. It plans dungeon quest chains and individual quest goals
 without accepting, completing or turning in quests for you.
 
-**Validation status:** version 0.3.0 has passed the offline test suites only.
+**Validation status:** version 0.4.0 has passed the offline test suites only.
 **Not tested in game: alpha, owner's decision.** Please report anything that
 misbehaves in the native Forever client.
+
+## What's new in 0.4.0
+
+- **Dungeon chains:** installed ForeverDungeonJournal pages now supply dungeon
+  membership even when QuestieDB already knows the quests. Wings merge through
+  the existing dungeon aliases. Hidden entries are lead-ins, not extra targets.
+- **Tailored routes:** completed, faction, class, race and unavailable filters
+  apply to journal candidates; level-locked quests stay under later. Conflicting
+  faction sources keep the quest with a **check faction** note.
+- **Less clutter:** non-journal quests that merely use a dungeon stay behind
+  **N more quests use this dungeon (class, crafting or set quests)**. Click the
+  count to read the list; quests already in your log remain in the route.
+- **Outside first:** **Before you go**, **Inside <dungeon>**, **After the run** and
+  **Next run** separate preparation, inside pickups/objectives/turn-ins, outside
+  follow-ups and a return trip. Known QuestieDB NPC/object zones win over journal
+  text; disagreements and unconfirmed locations are labelled. Preparation notes
+  list journal-required items, professions and attunements without adding gates.
+- Journal chain order is a hint, not a new prerequisite. It never changes quest
+  state or creates an action cycle; existing prerequisite claims remain intact.
+- Journey keeps the engine's action order and carries block headings and notes.
+  No automatic quest actions, new network sends or donor records are shipped.
+  With no usable journal page, routes retain the 0.3.0 behavior; a missing journal
+  is labelled **limited data**. Individual quest-goal routing is unchanged.
+- Public synthetic Lua 5.1 fixtures cover the character-shaped routes. The
+  private current-data suite requires QuestieDB source tables not present in the
+  installed packed addon; native testing is **not run (alpha, owner's decision)**.
 
 ## What's new in 0.3.0
 
@@ -132,7 +158,8 @@ Journey files merged by hand.
 
 Leave `WTF`/SavedVariables and unrelated addons alone. Enable Relax Quest Planner
 and Journey at character selection. Enable **QuestieDB** for full data;
-**ForeverDungeonJournal** provides a limited fallback. No third-party quest
+**ForeverDungeonJournal** adds dungeon membership, chain order and location
+notes (and supplies a limited fallback without QuestieDB). No third-party quest
 database is bundled with this addon. Log in and type `/rqp`. New routes open in
 Journey by default. If Journey or its integration is missing, route planning
 still works; guide picking is disabled.
