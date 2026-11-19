@@ -69,6 +69,44 @@ test('hot items follow the chosen house; the bank-empty line counts only its own
   assert.match(hot().map(r=>r.textContent).join(' '),/Pick an auction house/);
 });
 
+for (const [card,direction,colour,change,supply,quality] of [
+  ['farm-hot','hot-up','rgb(63, 185, 80)','+250%','20 / 20','q2'],
+  ['farm-fallers','hot-down','rgb(248, 81, 73)','-50%','40 / 20','q3']
+]) test(direction+' uses shared direction colour, signed changes and unit supply',async t=>{
+  const {$,dom}=await setup(t,{reportRefresh:()=>report('B#2',true,farm)});
+  $('nav-farm').click();
+  const row=$(card).querySelector('svg').closest('tr');
+  const cells=row.querySelectorAll('td');
+  assert.equal(cells[2].textContent.trim(),change,'daily change keeps its sign');
+  assert.equal(cells[4].textContent.trim(),change,'against usual keeps its sign');
+  assert.equal(cells[5].textContent.trim(),supply,'listed now / usual units');
+  assert.ok(cells[0].querySelector('.'+quality),'name-source quality is independent of direction');
+  for (const el of [cells[2],cells[4],row.querySelector('svg')]) {
+    assert.ok(el.classList.contains(direction),'one direction class shared by changes and chart');
+    assert.equal(dom.window.getComputedStyle(el).color,colour,'colour comes from page CSS');
+    assert.equal(el.hasAttribute('style'),false,'no inline style');
+  }
+  const svg=row.querySelector('svg');
+  assert.equal(svg.querySelector('path').getAttribute('stroke'),'currentColor');
+  assert.equal(svg.querySelector('circle').getAttribute('fill'),'currentColor');
+  if (card==='farm-fallers') {
+    assert.equal(row.querySelector('.hot-dump').textContent,'dump');
+    assert.equal(row.querySelector('.hot-spike'),null);
+  }
+});
+
+test('fallers follow the chosen house and show their empty and unknown-house messages',async t=>{
+  const {$}=await setup(t,{reportRefresh:()=>report('B#2',true,farm)});
+  $('nav-farm').click();
+  const visible=()=>[...$('farm-fallers').querySelectorAll('tr[data-house]')].filter(r=>!r.hidden);
+  assert.ok(visible().length>1 && visible().every(r=>r.dataset.house==='Stormrage|Alliance'));
+  assert.match(visible().map(r=>r.textContent).join(' '),/Down since yesterday/);
+  $('farm-house').value='Other Realm|Alliance';fire($('farm-house'));
+  assert.match(visible().map(r=>r.textContent).join(' '),/No scan today/);
+  $('farm-house').value='';fire($('farm-house'));
+  assert.match(visible().map(r=>r.textContent).join(' '),/Pick an auction house/);
+});
+
 test('every house that has bank rows can be chosen, scanned or not',async t=>{
   const {$,shown}=await setup(t,{reportRefresh:()=>report('B#2',true,farm)});
   $('nav-farm').click();

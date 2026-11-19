@@ -148,9 +148,9 @@ func TestHotFilters(t *testing.T) {
 		{"baseline >= 5 silver",
 			series(hotToday, 20, 500, 500, 500, 500, 500, 800),
 			series(hotToday, 20, 499, 499, 499, 499, 499, 800)},
-		{"listed today >= 5",
-			append(series(hotToday-1, 20, 1000, 1000, 1000, 1000, 1000), ahpHistRow{hotToday, 1500, 0, 5}),
-			append(series(hotToday-1, 20, 1000, 1000, 1000, 1000, 1000), ahpHistRow{hotToday, 1500, 0, 4})},
+		{"listed today >= 10",
+			append(series(hotToday-1, 10, 1000, 1000, 1000, 1000, 1000), ahpHistRow{hotToday, 1500, 0, 10}),
+			append(series(hotToday-1, 10, 1000, 1000, 1000, 1000, 1000), ahpHistRow{hotToday, 1500, 0, 9})},
 		{"median listed earlier >= 5",
 			append(series(hotToday-1, 5, 1000, 1000, 1000, 1000, 1000), ahpHistRow{hotToday, 1500, 0, 50}),
 			append(series(hotToday-1, 4, 1000, 1000, 1000, 1000, 1000), ahpHistRow{hotToday, 1500, 0, 50})},
@@ -314,7 +314,7 @@ func TestHotGuildOnlyMember(t *testing.T) {
 		t.Fatal("guild prices, no own scans")
 	}
 	html, err := renderFarmBody(View{Farm: FarmView{Present: true, Hot: h}})
-	if err != nil || !strings.Contains(html, `<tr data-house=""><td colspan="7" class="subtle">Hot items need your own scans for now.`) {
+	if err != nil || !strings.Contains(html, `<tr data-house=""><td colspan="8" class="subtle">Hot items need your own scans for now.`) {
 		t.Fatalf("render: %v", err)
 	}
 	own := hotSave(map[int][]ahpHistRow{1: steady(1500)})

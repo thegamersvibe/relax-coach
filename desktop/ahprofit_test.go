@@ -323,9 +323,13 @@ func TestFarmRenderForUITests(t *testing.T) {
 	sv := strings.Replace(strings.Replace(farmFixture(), `["v"] = 2`, `["v"] = 3`, 1), `["rec"] = { },`, fmt.Sprintf(`["rec"] = { },
 	["ledger"] = { ["Tester-Stormrage"] = { [%d] = { ["loot"] = { 5000, 0 }, ["repair"] = { 0, 1200 } } } },
 	["sessions"] = { { ["char"] = "<b>Tester</b>", ["zone"] = "Elwynn Forest", ["start"] = %d, ["stop"] = %d, ["dur"] = 3600, ["inc"] = { ["loot"] = 5000 }, ["out"] = { }, ["items"] = { }, ["nodes"] = 3 } },
-	["hist"] = { ["Stormrage|Alliance"] = { [2772] = %q } },`, day, farmNow-4000, farmNow-400,
-		ahpHistEncode(series(ahpScanDay(time.Unix(farmNow, 0)), 20, 2000, 2000, 2000, 2000, 2000, 2000, 7000))), 1)
-	fv, err := buildFarm([]byte(sv), chars, time.Unix(farmNow, 0), farmRef{})
+	["hist"] = { ["Stormrage|Alliance"] = { [2772] = %q, [8001] = %q } },`, day, farmNow-4000, farmNow-400,
+		ahpHistEncode(series(day, 20, 2000, 2000, 2000, 2000, 2000, 2000, 7000)),
+		ahpHistEncode(append(series(day-1, 20, 2000, 2000, 2000, 2000, 2000), ahpHistRow{Day: day, High: 1000, Listed: 40}))), 1)
+	fv, err := buildFarm([]byte(sv), chars, time.Unix(farmNow, 0), farmRef{Items: map[int]farmItemRef{
+		2772: {Name: "Sample Up", QualityClass: "q2"},
+		8001: {Name: "Sample Down", QualityClass: "q3"},
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}
