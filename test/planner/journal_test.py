@@ -128,5 +128,74 @@ class JournalTests(unittest.TestCase):
         self.assertEqual(h.r.Data.Journal(A).requiredItems[1][2], 'Copper kit')
 
 
+def golden_routes():
+    rows = {
+        A: q('Copper errand', questLevel=20, startedBy={1: [OUT_NPC]}, finishedBy={1: [OUT_NPC]}, nextQuestInChain=B),
+        B: q('Tin errand', questLevel=30, zoneOrSort=INSIDE, preQuestGroup=[A],
+             startedBy={1: [OUT_NPC]}, finishedBy={1: [IN_NPC]}),
+        C: q('Zinc errand', questLevel=40, requiredLevel=38, zoneOrSort=INSIDE,
+             startedBy={1: [IN_NPC]}, finishedBy={1: [OUT_NPC]}),
+    }
+    result = {}
+    for mode in ('all', 'game', 'strict'):
+        for phase in ('fresh', 'active', 'done'):
+            h = Harness(rows, log=[dict(id=B, complete=True)] if phase == 'active' else (),
+                        done=[A] if phase == 'done' else ())
+            result[mode + '-' + phase] = plain(h.route(mode=mode))
+    return result
+
+
+class MembershipTests(unittest.TestCase):
+    def test_journal_membership_without_area_and_hidden_leadin(self):
+        h = Harness({A: q('Copper lead', nextQuestInChain=B), B: q('Tin target')},
+                    [dict(id=A, name='Copper lead', hideFromMainList=True), dict(id=B, name='Tin target')])
+        h.lua.execute('LibQuestieDB.Support=nil'); h.r.Data.Reset()
+        route = h.route()
+        self.assertEqual(route.targets, 1)
+        self.assertEqual(array(route.plan), [A, B])
+
+    def test_non_journal_extras_are_counted_and_in_log_is_kept(self):
+        rows = {A: q('Copper target', zoneOrSort=INSIDE), B: q('Tin extra', zoneOrSort=INSIDE),
+                C: q('Zinc active', zoneOrSort=INSIDE)}
+        h = Harness(rows, [dict(id=A, name='Copper target')], log=[dict(id=C, complete=False)])
+        route = h.route()
+        self.assertEqual(route.targets, 2)
+        self.assertEqual(set(array(route.plan)), {A, C})
+        self.assertEqual([v.q for v in array(route.extras)], [B])
+        self.assertEqual(route.extraCount, 1)
+
+    def test_faction_class_race_unavailable_and_completed_filters(self):
+        rows = {A+i: q('Metal errand '+str(i)) for i in range(8)}
+        rows[A+1]['requiredClasses'] = 1  # DB class beats journal class
+        rows[A+5]['requiredRaces'] = 1   # same-faction race exclusion
+        entries = [dict(id=A, name='Metal errand 0', faction='Horde'),
+                   dict(id=A+1, name='Metal errand 1', classOnly='MAGE'),
+                   dict(id=A+2, name='Metal errand 2', classOnly='MAGE'),
+                   dict(id=A+3, name='Metal errand 3', unavailableRaces={'Dwarf': True}),
+                   dict(id=A+4, name='Metal errand 4', unavailable=True),
+                   dict(id=A+5, name='Metal errand 5', faction='Alliance'),
+                   dict(id=A+6, name='Metal errand 6'), dict(id=A+7, name='Metal errand 7', requires=40)]
+        h = Harness(rows, entries, done=[A+6])
+        route = h.route()
+        self.assertEqual(route.targets, 2)
+        self.assertEqual(set(array(route.plan)), {A+1, A+7})
+        self.assertEqual([s.q for s in array(route.later)], [A+7])
+
+    def test_faction_conflict_keeps_target_with_label_without_changing_state(self):
+        h = Harness({A: q('Copper disputed', requiredRaces=128)},
+                    [dict(id=A, name='Copper disputed', faction='Alliance')])
+        self.assertEqual(h.r.Engine.State(A)[0], 'race')
+        route = h.route()
+        self.assertEqual(route.targets, 1)
+        self.assertEqual(array(route.plan), [A])
+        self.assertIn('check faction', route.steps[1].note)
+        self.assertEqual(h.r.Engine.State(A)[0], 'race')
+
+    def test_no_journal_full_route_golden(self):
+        import json
+        expected = json.loads((ROOT / 'test/planner/fixtures/no_journal_routes.json').read_text())
+        self.assertEqual(json.loads(json.dumps(golden_routes())), expected)
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

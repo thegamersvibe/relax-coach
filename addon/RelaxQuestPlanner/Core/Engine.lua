@@ -11,10 +11,37 @@ E.MaskContains=member
 local holidays={[-366]=true,[-22]=true,[-284]=true,[-369]=true,[-364]=true,[-1002]=true,
     [-1003]=true,[-370]=true,[-41]=true,[-375]=true,[-376]=true,[-1006]=true,[-1005]=true}
 local never={race=true,class=true,blacklisted=true,repeatable=true,holiday=true,superseded=true,
-    exclusive=true,breadcrumbObsolete=true,expired=true,overLevel=true}
-local function static(r,p)
+    exclusive=true,breadcrumbObsolete=true,expired=true,overLevel=true,unavailable=true}
+local function overlap(a,b)
+    while a>0 and b>0 do
+        if a%2==1 and b%2==1 then return true end
+        a,b=math.floor(a/2),math.floor(b/2)
+    end
+    return false
+end
+local function journalFaction(r,j)
+    if not j or (j.faction~="Alliance" and j.faction~="Horde") then return nil,false end
+    local masks=D.Enums().factionRaceMasks or {}
+    local a=overlap(r.races,masks.Alliance or 0)
+    local h=overlap(r.races,masks.Horde or 0)
+    local faction=a~=h and (a and "Alliance" or "Horde") or nil
+    return faction,faction~=nil and faction~=j.faction
+end
+local function requiredLevel(r,g)
+    local j=g.tailored and D.Journal(r.id)
+    return math.max(r.reqLevel,j and j.requires or 0)
+end
+local function static(r,p,tailored)
     if D.Blacklisted(r.id) then return "blacklisted" end
-    if r.races~=0 and not member(r.races,p.raceMask) then return "race" end
+    local j=tailored and D.Journal(r.id)
+    local faction,conflict=journalFaction(r,j)
+    if r.races~=0 and not member(r.races,p.raceMask) and not (conflict and faction~=p.faction) then return "race" end
+    if j then
+        if r.races==0 and (j.faction=="Alliance" or j.faction=="Horde") and j.faction~=p.faction then return "race" end
+        if r.classes==0 and j.classOnly and p.class and j.classOnly:upper()~=p.class then return "class" end
+        if j.unavailableRaces and (j.unavailableRaces[p.race] or j.unavailableRaces[p.raceID]) then return "race" end
+        if j.unavailable then return "unavailable" end
+    end
     if r.classes~=0 and not member(r.classes,p.classMask) then return "class" end
     -- Without QuestieDB, FDJ's explicit faction/class metadata still applies.
     if (r.faction=="Alliance" or r.faction=="Horde") and r.faction~=p.faction then return "race" end
@@ -94,7 +121,7 @@ local function gates(q,p,done,log,level,g)
     if not r then return {{"unknownQuest",q}} end
     if done[q] then return {"done"} end
     if log[q] then return {"inlog"} end
-    local st=static(r,p); if st then return {st} end
+    local st=static(r,p,g.tailored); if st then return {st} end
     local why={}
     local function add(k,v) why[#why+1]={k,v} end
     if #r.single>0 then
@@ -122,7 +149,7 @@ local function gates(q,p,done,log,level,g)
     if r.disabledBy and log[r.disabledBy] then add("disabledBy",r.disabledBy) end
     -- Lookahead relaxes only the minimum level, never the character's upper cap.
     if r.maxLevel and p.level>r.maxLevel then return {"overLevel"} end
-    if r.reqLevel>level then add("level",r.reqLevel) end
+    if requiredLevel(r,g)>level then add("level",requiredLevel(r,g)) end
     if nonempty(r.skill) or nonempty(r.ranks) or nonempty(r.spec) then add("profession",firstGate(r.skill,r.ranks)) end
     if nonempty(r.minRep) or nonempty(r.maxRep) then add("reputation",firstGate(r.minRep,r.maxRep)) end
     if nonempty(r.spell) then add("spell",r.spell) end
@@ -253,6 +280,31 @@ local function classify(r)
 end
 local oldInvalidate=E.Invalidate
 function E.Invalidate() oldInvalidate(); classifications={}; addonLists=nil end
+local function journalTargets(name,p,g,entries)
+    local listed,targets,extras={},{},{}
+    for _,j in ipairs(entries) do listed[j.id]=j end
+    for _,q in ipairs(D.AllQuestIds()) do
+        local r=D.Quest(q); local j=listed[q]
+        if r and not p.done[q] and not static(r,p,true) then
+            local st=state(q,p,p.done,p.log,60,g)
+            local grey=g.floor>0 and r.qLevel>0 and r.qLevel<g.floor and not p.log[q]
+            if not never[st] and not grey then
+                if j then
+                    if not j.hideFromMainList then targets[#targets+1]=q end
+                elseif classify(r)[name] then
+                    if p.log[q] then targets[#targets+1]=q
+                    else extras[#extras+1]={q=q,name=r.name} end
+                end
+            end
+        end
+        tick()
+    end
+    table.sort(targets,function(a,b)
+        local x,y=D.Quest(a).qLevel,D.Quest(b).qLevel
+        if x~=y then return x<y end; return a<b
+    end)
+    return targets,extras
+end
 local function dungeonTargets(name,p,g)
     name=D.CanonicalDungeon(name)
     if not addonLists then
@@ -451,7 +503,7 @@ local function actions(route,p,g,targets)
             tick()
         end
         metadata[q]={needs=needs,active=active,parentActive=parentActive,index=index}
-        if r.reqLevel>p.level then blocked[q]=true end
+        if requiredLevel(r,g)>p.level then blocked[q]=true end
         tick()
     end
     -- A lower-level child cannot be presented now if its required parent is later.
@@ -469,6 +521,10 @@ local function actions(route,p,g,targets)
     for _,q in ipairs(route.plan) do for _,id in ipairs(metadata[q].needs) do isPrerequisite[id]=true end end
     local function node(kind,r,m,priority)
         local s=step(kind,r,p,route.floor,m.needs,m.active,m.parentActive)
+        if g.tailored then
+            local _,conflict=journalFaction(r,D.Journal(r.id))
+            if conflict then s.note=(s.note or "").."; check faction" end
+        end
         local n={step=s,deps={},priority=priority,index=m.index,key=kind..":"..r.id}
         nodes[#nodes+1]=n; byQuest[r.id]=byQuest[r.id] or {}; byQuest[r.id][kind]=n
         return n
@@ -477,6 +533,7 @@ local function actions(route,p,g,targets)
         local r,m=D.Quest(q),metadata[q]
         if blocked[q] then
             local s=step("accept",r,p,route.floor,m.needs,m.active,m.parentActive)
+            s.reqLevel=requiredLevel(r,g); s.levelOK=s.reqLevel<=p.level
             if s.levelOK then s.note=(s.note or "").."; prerequisite is level-locked" end
             route.later[#route.later+1]=s
         else
@@ -543,9 +600,16 @@ local function build(title,goal,p,opts)
     local ok,reason=D.Ready()
     if not ok then route.issues[1]={"missingData",reason}; return route end
     if D.Source()~="QuestieDB" then route.issues[#route.issues+1]={"limitedData",reason} end
-    local g=graph(p)
+    -- Tailoring belongs to this route only; never mutate the graph E.State uses.
+    local g=copy(graph(p))
     g.floor=floor
-    local targets=goal and {goal} or dungeonTargets(title,p,g)
+    local entries=not goal and D.JournalDungeon(title)
+    local targets
+    if entries then
+        g.tailored=true; route.journal=true
+        targets,route.extras=journalTargets(D.CanonicalDungeon(title),p,g,entries)
+        route.extraCount=#route.extras
+    else targets=goal and {goal} or dungeonTargets(title,p,g) end
     local targetSet={}
     for _,q in ipairs(targets) do
         targetSet[q]=true; resolve(q,p,g,route.plan,{},route.issues); tick()
