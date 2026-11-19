@@ -1,0 +1,15 @@
+{
+  "_comment": "Per package under desktop/internal/raid/: the raid-tree packages it may import (PLAN.md 3.1). A package missing here fails TestImports, so a new package must declare its imports first.",
+  "model": [],
+  "model/modeltest": ["model"],
+  "cfg": ["model"],
+  "logfmt": ["model"],
+  "fixture": ["model"],
+  "fights": ["model", "cfg"],
+  "death": ["model", "cfg"],
+  "score": ["model", "cfg"],
+  "prep": ["model"],
+  "result": ["model"],
+  "sr": ["model", "cfg"],
+  "upload": ["result"]
+}

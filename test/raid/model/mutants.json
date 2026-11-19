@@ -1,0 +1,14 @@
+[
+  {
+    "file": "desktop/internal/raid/model/model.go",
+    "old": "e.DiedFlag.V == 0",
+    "new": "e.DiedFlag.V != 0",
+    "killed_by": "TestIsDeath"
+  },
+  {
+    "file": "desktop/internal/raid/model/model.go",
+    "old": "e.DiedFlag.Present && ",
+    "new": "",
+    "killed_by": "TestIsDeath"
+  }
+]
