@@ -410,7 +410,7 @@ class GuildBuilderExeTests(unittest.TestCase):
         with zipfile.ZipFile(self.root/'dist/RelaxCoach-Guild-1.4.0.zip') as z:
             manifest=json.loads(z.read('manifest.json'))
             self.assertEqual(manifest['journeyVersion'],'4.00.04')
-            self.assertEqual(manifest['contentVersion'],'4.00.08')
+            self.assertEqual(manifest['contentVersion'],'4.00.12')
 
     def test_alternate_exe_replaces_missing_or_stale_standalone(self):
         for state in ('missing','stale'):
@@ -493,7 +493,7 @@ class GuildBundleTests(unittest.TestCase):
         toc=(ROOT/'addon/Journey/Journey.toc').read_text()
         self.assertIn('## Version: 4.00.04\n',toc)
         self.assertIn('## X-Relax-Version: 1.4.2\n',toc)
-        self.assertIn('## X-Guide-Version: 4.00.08\n',toc)
+        self.assertIn('## X-Guide-Version: 4.00.12\n',toc)
         self.assertIn('## SavedVariables: Journey_Account\n',toc)
         self.assertIn('## SavedVariablesPerCharacter: Journey_Character\n',toc)
 
@@ -522,6 +522,11 @@ class GuildBundleTests(unittest.TestCase):
             self.assertTrue(mandatory.issubset(names))
             self.assertIn('Interface/Content/Journey-Content/guides.html',names)
             self.assertTrue(any(n.startswith('Interface/Content/Journey-Content/') for n in names))
+            # Guide bytes belong only to the guild content root, never an addon
+            # or a second archive location (including renamed duplicate files).
+            guides={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in (ROOT/'content/Journey-Content').glob('*.html')}
+            self.assertEqual({n for n in names if hashlib.sha256(z.read(n)).hexdigest() in set(guides.values())},
+                             {'Interface/Content/Journey-Content/'+name for name in guides})
             for name in names:
                 parts=name.lower().split('/')
                 self.assertFalse(set(parts)&{'wtf','private','evidence','backups','.git','__pycache__'},name)
@@ -537,7 +542,7 @@ class GuildBundleTests(unittest.TestCase):
             if bundle:self.assertIn('Interface/AddOns/RelaxQuestPlanner/RelaxQuestPlanner.toc',names)
             else:self.assertFalse(any(n.startswith('Interface/AddOns/RelaxQuestPlanner/') for n in names))
             self.assertEqual(manifest['journeyVersion'],'4.00.04')
-            self.assertEqual(manifest['contentVersion'],'4.00.08')
+            self.assertEqual(manifest['contentVersion'],'4.00.12')
             self.assertEqual({r['path'] for r in manifest['files']},set(names)-{'manifest.json'})
             for row in manifest['files']:
                 raw=z.read(row['path'])

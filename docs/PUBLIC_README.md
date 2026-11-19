@@ -8,7 +8,8 @@ This is a **legacy Coach-only archive**, not the current combined guild download
 
 - **Relax Raid 0.1.0, the raid logger:** turns the game's combat log and Advanced Combat Logging on when you enter a raid. Raids log for every guild member; dungeons only for officer ranks. **Don't delete your combat log** (several hundred MB a night); the guild needs it for raid reports. `/rraid status`, `/rraid logger on|off|default`.
 - **App first:** apps before 1.8.0 need **Check App Update → Update App** first; the download is now `RelaxCoach-RaidBundle-1.8.0.zip`. Exit WoW and start it again after the update (new addon folder).
-- Coach and the app are **1.8.0**; Relax Journey (`4.00.04`), guide content (`4.00.08`) and Relax Quest Planner (`0.3.0`) are unchanged.
+- **Guide content 4.00.12** (127 guides, adds Riverglades 43/44). **Alliance guides 30–60 stop on 18 December 2026** until a newer content update ships; Horde guides are not affected.
+- Coach and the app are **1.8.0**; Relax Journey (`4.00.04`) and Relax Quest Planner (`0.3.0`) are unchanged.
 - **Not tested in game: alpha, owner's decision.**
 
 ## What's new in v1.7.2 (combined bundle)

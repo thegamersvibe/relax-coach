@@ -11,7 +11,7 @@ Three **separate WoW Forever addons**, plus a native Windows report app:
 
 **[Download release v1.8.0](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.8.0)**:
 
-- `RelaxCoach-RaidBundle-1.8.0.zip` — the four independent addons (Coach, Journey, Relax Quest Planner 0.3.0, Relax Raid 0.1.0), Journey guide content **4.00.08**, the Windows app and optional installer/restore scripts. From v1.8.0 the combined download is named `RelaxCoach-RaidBundle-<version>.zip` because it adds the Relax Raid folder; v1.5.0 to v1.7.2 used `RelaxCoach-Bundle-<version>.zip`, and earlier releases `RelaxCoach-Guild-<version>.zip`.
+- `RelaxCoach-RaidBundle-1.8.0.zip` — the four independent addons (Coach, Journey, Relax Quest Planner 0.3.0, Relax Raid 0.1.0), Journey guide content **4.00.12**, the Windows app and optional installer/restore scripts. From v1.8.0 the combined download is named `RelaxCoach-RaidBundle-<version>.zip` because it adds the Relax Raid folder; v1.5.0 to v1.7.2 used `RelaxCoach-Bundle-<version>.zip`, and earlier releases `RelaxCoach-Guild-<version>.zip`.
 - `RelaxCoach.exe` — app-only download, for updating the application separately.
 - `SHA256SUMS.txt` — checksums for these release assets.
 
@@ -31,7 +31,9 @@ There is deliberately no Coach-only `RelaxCoach-1.8.0.zip`: older apps must not 
 - **Don't delete your combat log.** It is large (several hundred MB a raid night) and is the raw material for later raid reports. Keep `WoWCombatLog` files until the guild has collected them.
 - **`/rraid`** (or `/relaxraid`): `/rraid status` shows whether this character logs and whether logging is on now; `/rraid logger on`, `off` or `default` changes it for this character. The same switch is in **Options → AddOns → Relax Raid**. If the game could not turn logging on, Relax Raid tells you to type `/combatlog` yourself.
 - **App first:** this release adds the Relax Raid folder, so apps before 1.8.0 must run **Check App Update → Update App** first, then **Updates → Check → Update** (or **Updates → Update everything**). The download is now `RelaxCoach-RaidBundle-1.8.0.zip`.
-- Coach and the Windows app move to **1.8.0**. Relax Journey (`4.00.04`), guide content (`4.00.08`) and Relax Quest Planner (`0.3.0`) are unchanged.
+- **Guide content 4.00.12:** 74 of the 201 guide files updated; the catalog now lists 127 guides (was 125), adding Riverglades 43 (Alliance) and 44 (Horde). Relax Journey code stays `4.00.04`.
+- **Alliance guides 30–60 stop on 18 December 2026.** The 44 Alliance guides for levels 30 to 60 carry the content's validity date of 18 December 2026; after that date Journey no longer opens them until a newer guide-content update ships. Horde guides and Alliance guides below 30 have no such date.
+- Coach and the Windows app move to **1.8.0**. Relax Journey (`4.00.04`) and Relax Quest Planner (`0.3.0`) are unchanged.
 - **Not tested in game: alpha, owner's decision.** Offline tests do not validate native Forever behavior or the Windows update flow.
 
 ## What's new in v1.7.2
@@ -201,7 +203,7 @@ Use the included `Restore-RelaxCoach.ps1 -Backup <backup-folder>` with WoW close
 ## Coverage and known limits
 
 - Optional installed providers: GearQuest Forever for comparable item scores, ForeverDungeonJournal for dungeon information. Unknown or incomparable gear is shown as unscored, not assigned an invented score.
-- Included Journey code: `4.00.04`; Relax package/Coach version: `1.8.0`; guide-content version: `4.00.08`. The original signed catalog and guide bytes are retained. The content's existing validity date is **18 December 2026**; this release does not remove expiry checks.
+- Included Journey code: `4.00.04`; Relax package/Coach version: `1.8.0`; guide-content version: `4.00.12`. The original signed catalog and guide bytes are retained. The content's existing validity date is **18 December 2026**; this release does not remove expiry checks.
 - This is not a claim of complete coverage for every custom Forever class/spec/item or every leveling route. Some route entries are stubs.
 - An intermittent blank native window occurred during development. The final local candidate passed ten restart/Refresh cycles and a more-than-three-minute minimize/restore test, but the earlier root cause was not conclusively identified. If the window is blank, close and reopen it and report the issue.
 
