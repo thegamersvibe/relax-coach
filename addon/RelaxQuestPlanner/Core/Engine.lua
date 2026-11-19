@@ -459,6 +459,144 @@ local function dependencies(q,p,g,planned)
     end
     return D.Keys(needs),active,parentActive
 end
+local function journalPlace(text,dungeon)
+    if type(text)~="string" or text=="" then return nil end
+    local lower=text:lower()
+    if lower:find("outside",1,true) then return "outside" end
+    if lower:find("inside",1,true) then return "inside" end
+    for _,d in ipairs(D.FOREVER_DUNGEONS) do
+        if d.name==D.CanonicalDungeon(dungeon) then
+            if lower:find(d.name:lower(),1,true) then return "inside" end
+            for _,alias in ipairs(d.aliases or {}) do
+                if lower:find(alias:lower(),1,true) then return "inside" end
+            end
+        end
+    end
+    return "outside"
+end
+local function where(kind,r,dungeon)
+    local j=D.Journal(r.id)
+    local text=j and (kind=="accept" and j.pickup or j.turnin)
+    local journalWhere=journalPlace(text,dungeon)
+    local sources=starters(r,kind=="turnin")
+    local hasArea=false
+    for _,d in ipairs(D.Dungeons()) do if d.name==D.CanonicalDungeon(dungeon) and #d.areaIds>0 then hasArea=true end end
+    if hasArea then
+        for _,s in ipairs(sources) do
+            if (s.kind=="npc" or s.kind=="object") and s.name and s.zone then
+                local place=D.DungeonForArea(s.zone)==D.CanonicalDungeon(dungeon) and "inside" or "outside"
+                return place,journalWhere~=nil and place~=journalWhere,text
+            end
+        end
+    end
+    if journalWhere then return journalWhere,false,text end
+    if kind=="accept" then
+        local itemID=j and j.startItem and j.startItem[1]
+        if type(itemID)=="number" then
+            sources[#sources+1]={kind="item",sources=itemSources(itemID)}
+        end
+        for _,s in ipairs(sources) do
+            if s.kind=="item" and D.DungeonForArea(singleSourceZone(s.sources,true))==D.CanonicalDungeon(dungeon) then
+                return "inside",false,text
+            end
+        end
+        if j and j.startsInDungeon then return "inside",false,text end
+    end
+    return "unknown",false,text
+end
+local function objectivePlace(r,dungeon,target)
+    local known,inside=false,false
+    local function add(zone)
+        if type(zone)=="number" and zone>0 then
+            known=true
+            if D.DungeonForArea(zone)==D.CanonicalDungeon(dungeon) then inside=true end
+        end
+    end
+    for index,kind in ipairs({"npc","object","item"}) do
+        for _,objective in ipairs(r.objectives[index] or {}) do
+            local id=type(objective)=="table" and objective[1]
+            if type(id)=="number" then
+                if kind=="item" then for _,s in ipairs(itemSources(id)) do add(s.zone) end
+                else local row=kind=="npc" and D.Npc(id) or D.Object(id); if row then add(row.zone) end end
+            end
+        end
+    end
+    for _,objective in ipairs(r.objectives[5] or {}) do
+        if type(objective)=="table" and type(objective[1])=="table" then
+            for _,id in ipairs(objective[1]) do local n=D.Npc(id); if n then add(n.zone) end end
+        end
+    end
+    if not known then add(r.zone) end
+    if known then return inside and "inside" or "outside" end
+    if target or where("accept",r,dungeon)=="inside" or where("turnin",r,dungeon)=="inside" then return "inside" end
+    return "outside"
+end
+local function note(s,text)
+    if text and text~="" then s.note=(s.note and s.note.."; " or "")..text end
+end
+local function journalStep(s,r,route,target)
+    if s.kind=="complete" then
+        s.where=objectivePlace(r,route.title,target)
+    else
+        local conflict,text
+        s.where,conflict,text=where(s.kind,r,route.title)
+        if text and not s.who then s.note=text end
+        if conflict then note(s,"sources disagree") end
+        if s.where=="unknown" then note(s,s.kind=="accept" and "pickup location not confirmed" or "turn-in location not confirmed") end
+        local j=D.Journal(r.id)
+        if s.kind=="accept" and s.where=="inside" then
+            local item=j and j.startItem
+            if item and type(item[2])=="string" then note(s,"Starts from item "..item[2].." inside "..route.title)
+            else note(s,"Pick up inside "..route.title) end
+        elseif s.kind=="turnin" and s.where=="inside" then note(s,"Turn in inside "..route.title) end
+    end
+    if s.where=="inside" then s.zone=route.title end
+    s.block=s.where=="outside" and 1 or 2
+end
+local function preRunNotes(route)
+    route.preRunNotes={}
+    for _,id in ipairs(route.plan) do
+        local j=D.Journal(id)
+        if j then
+            local bring,needs={},{}
+            local function item(v)
+                if type(v)=="table" and type(v[2])=="string" then bring[#bring+1]=v[2] end
+            end
+            item(j.requiredItem)
+            for _,v in ipairs(j.requiredItems or {}) do item(v) end
+            if j.profession then needs[#needs+1]=j.profession end
+            if j.attunement then needs[#needs+1]=j.attunement end
+            local text={}
+            if #bring>0 then text[#text+1]="Bring: "..table.concat(bring,", ") end
+            if #needs>0 then text[#text+1]="Needs: "..table.concat(needs,", ") end
+            if #text>0 then route.preRunNotes[#route.preRunNotes+1]={q=id,block=1,text=table.concat(text,"; ")} end
+        end
+    end
+end
+local function routeBlocks(nodes,p,route,targets)
+    local byKey={}
+    for _,n in ipairs(nodes) do
+        byKey[n.key]=n
+        local s=n.step
+        if s.kind=="turnin" and s.where=="outside" and p.ready[s.q]
+            and objectivePlace(D.Quest(s.q),route.title,targets[s.q])=="inside" then s.block=3 end
+    end
+    local changed=true
+    while changed do
+        changed=false
+        for _,n in ipairs(nodes) do
+            local s=n.step; local block=s.block
+            for dep in pairs(n.deps) do
+                local parent=byKey[dep].step.block
+                block=math.max(block,parent)
+                if s.where=="outside" and parent==2 then block=math.max(block,3)
+                elseif s.where~="outside" and parent>=3 then block=4 end
+            end
+            if block~=s.block then s.block=block; changed=true end
+            tick()
+        end
+    end
+end
 local function step(kind,r,p,floor,needs,active,parentActive)
     local s={kind=kind,q=r.id,name=r.name,needs=needs,activeNeeds=active,parentActive=parentActive,
         below=r.qLevel<floor,levelOK=r.reqLevel<=p.level,source=r.source or "QuestieDB",
@@ -573,6 +711,7 @@ local function actions(route,p,g,targets)
     local function node(kind,r,m,priority)
         local s=step(kind,r,p,route.floor,m.needs,m.active,m.parentActive)
         if g.tailored then
+            journalStep(s,r,route,targets[r.id])
             local _,conflict=journalFaction(r,D.Journal(r.id))
             if conflict then s.note=(s.note or "").."; check faction" end
         end
@@ -584,6 +723,7 @@ local function actions(route,p,g,targets)
         local r,m=D.Quest(q),metadata[q]
         if blocked[q] then
             local s=step("accept",r,p,route.floor,m.needs,m.active,m.parentActive)
+            if g.tailored then journalStep(s,r,route,targets[r.id]) end
             s.reqLevel=requiredLevel(r,g); s.levelOK=s.reqLevel<=p.level
             if s.levelOK then s.note=(s.note or "").."; prerequisite is level-locked" end
             route.later[#route.later+1]=s
@@ -595,7 +735,7 @@ local function actions(route,p,g,targets)
             local complete
             if not p.ready[q] then
                 complete=node("complete",r,m,targets[q] and 3 or 1)
-                if targets[q] then complete.step.zone=route.title end
+                if targets[q] and not route.journal then complete.step.zone=route.title end
                 if accept then complete.deps[accept.key]=true end
             end
             local turn=node("turnin",r,m,isPrerequisite[q] and 1 or 4)
@@ -620,10 +760,19 @@ local function actions(route,p,g,targets)
         end
         tick()
     end
-    if route.journal then orderHints(route,p,nodes,byQuest) end
+    if route.journal then
+        orderHints(route,p,nodes,byQuest)
+        routeBlocks(nodes,p,route,targets)
+        preRunNotes(route)
+    end
     local emitted={}
     local function less(a,b)
-        if a.priority~=b.priority then return a.priority<b.priority end
+        if route.journal then
+            if a.step.block~=b.step.block then return a.step.block<b.step.block end
+            local rank={accept=0,complete=1,turnin=2}
+            if rank[a.step.kind]~=rank[b.step.kind] then return rank[a.step.kind]<rank[b.step.kind] end
+        end
+        if not route.journal and a.priority~=b.priority then return a.priority<b.priority end
         local az,bz=a.step.zone or "~",b.step.zone or "~"
         if az~=bz then return az<bz end
         if a.index~=b.index then return a.index<b.index end

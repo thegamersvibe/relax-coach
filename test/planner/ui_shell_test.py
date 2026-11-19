@@ -222,6 +222,49 @@ def client(before=""):
 
 
 class UIShellTests(unittest.TestCase):
+    def test_journal_block_header_and_local_preference_respects_blocks(self):
+        lua = client()
+        lua.execute(r'''
+          local U=RelaxQuestPlanner.UI
+          ROUTES["Alpha Keep"]={title="Alpha Keep",journal=true,steps={
+            {kind="accept",q=810001,name="Copper lead",zone="Away",block=1,where="outside",needs={}},
+            {kind="accept",q=810002,name="Tin task",zone="Home",block=2,where="inside",needs={}},
+            {kind="accept",q=810003,name="Zinc task",zone="Home",block=2,where="inside",needs={}},
+            {kind="accept",q=810004,name="Alloy report",zone="Home",block=3,where="outside",needs={}},
+            {kind="accept",q=810005,name="Copper return",zone="Home",block=4,where="inside",needs={}},
+          },later={},issues={},extras={},extraCount=0}
+          SlashCmdList.RELAXQUESTPLANNER("dungeon Alpha Keep"); DRAIN()
+          assert(U.current.q==810001, "outside work before independent local inside work")
+          for _,row in ipairs({{810001,"Before you go"},{810002,"Inside Alpha Keep"},
+                               {810003,"Inside Alpha Keep"},{810004,"After the run"},{810005,"Next run"}}) do
+            U.RenderRoute()
+            local _,count=U.title:GetText():gsub(row[2],"")
+            assert(count==1, "one current block header, not appended on every repaint")
+            assert(U.current.q==row[1])
+            STATE.done[row[1]]=true
+          end
+          U.RenderRoute(); assert(not U.title:GetText():find("Next run"))
+        ''')
+
+    def test_journal_extras_click_lists_all_without_selecting_a_goal(self):
+        lua = client()
+        lua.execute(r'''
+          local U=RelaxQuestPlanner.UI
+          ROUTES["Alpha Keep"]={title="Alpha Keep",journal=true,steps={},later={},issues={},
+            extras={{q=810011,name="Copper craft"},{q=810012,name="Tin craft"}},extraCount=2,
+            preRunNotes={{q=810001,block=1,text="Bring: Copper kit"}}}
+          SlashCmdList.RELAXQUESTPLANNER("dungeon Alpha Keep"); DRAIN()
+          assert(U.extrasButton and U.extrasButton:IsShown(), "extras count is clickable even on an empty route")
+          assert(U.extrasButton:GetText():find("2 more quests use this dungeon",1,true))
+          local count=#BUILD_CALLS
+          U.extrasButton:Click()
+          assert(U.extrasFrame:IsShown() and #BUILD_CALLS==count, "list only; never select a different route")
+          assert(U.extrasText:GetText():find("Copper craft") and U.extrasText:GetText():find("Tin craft"))
+          assert(U.extrasText:GetText():find("Bring: Copper kit",1,true))
+          SlashCmdList.RELAXQUESTPLANNER("dungeon Beta Hall"); DRAIN()
+          assert(not U.extrasButton:IsShown() and not U.extrasFrame:IsShown(), "no stale extras on next route")
+        ''')
+
     def test_shell_loads_and_handles_help_hide_show_escape_and_errors(self):
         lua = client()
         self.assertIsNotNone(lua.globals().SlashCmdList.RELAXQUESTPLANNER,

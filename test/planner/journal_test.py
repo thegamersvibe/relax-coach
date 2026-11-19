@@ -259,5 +259,118 @@ class HintTests(unittest.TestCase):
         self.assertEqual(len(route.steps), 12)
 
 
+def location_harness(pickup=None, turnin=None, **entry):
+    fields = dict(id=A, name='Copper errand', **entry)
+    if pickup is not None: fields['pickup'] = pickup
+    if turnin is not None: fields['turnin'] = turnin
+    return Harness({A: q('Copper errand', startedBy={}, finishedBy={})}, [fields])
+
+
+def action(route, kind, id=A):
+    return next(s for s in array(route.steps) if s.kind == kind and s.q == id)
+
+
+class BlockTests(unittest.TestCase):
+    def test_named_db_location_wins_flag_and_disagreement_is_labelled(self):
+        h = location_harness(pickup='Inside the vault', turnin='Inside the vault', startsInDungeon=True)
+        h.g.TEST_ROWS[A].startedBy = to_lua(h.lua, {1: [OUT_NPC]})
+        h.g.TEST_ROWS[A].finishedBy = to_lua(h.lua, {1: [OUT_NPC]})
+        h.r.Data.Reset(); route = h.route()
+        for kind in ('accept', 'turnin'):
+            s = action(route, kind)
+            self.assertEqual(s.where, 'outside')
+            self.assertIn('sources disagree', s.note)
+        self.assertEqual(action(route, 'accept').block, 1)
+
+    def test_journal_text_and_outside_negation(self):
+        h = location_harness(pickup='Inside the copper vault', turnin='Outside the copper vault')
+        route = h.route()
+        self.assertEqual(action(route, 'accept').where, 'inside')
+        self.assertEqual(action(route, 'turnin').where, 'outside')
+        self.assertIn('Inside the copper vault', action(route, 'accept').note)
+        self.assertEqual(action(route, 'accept').zone, h.name)
+        h.g.ForeverDungeonJournal_NS.DB[h.name].quests[1].pickup = 'Meet at ' + h.alias
+        h.r.Data.Reset()
+        self.assertEqual(action(h.route(), 'accept').where, 'inside')
+
+    def test_item_only_known_dungeon_source(self):
+        h = location_harness(startItem=[882001, 'Copper token', 1, 'From the tin keeper'])
+        h.g.TEST_ITEMS[882001] = to_lua(h.lua, dict(name='Copper token', npcDrops=[IN_NPC]))
+        h.r.Data.Reset()
+        s = action(h.route(), 'accept')
+        self.assertEqual(s.where, 'inside')
+        self.assertIn('Starts from item Copper token inside', s.note)
+        h.g.TEST_ITEMS[882001].vendors = to_lua(h.lua, [OUT_NPC]); h.r.Data.Reset()
+        self.assertEqual(action(h.route(), 'accept').where, 'unknown')
+
+    def test_flag_is_last_resort_and_not_a_turnin_flag(self):
+        h = location_harness(startsInDungeon=True)
+        self.assertEqual(action(h.route(), 'accept').where, 'inside')
+        self.assertEqual(action(h.route(), 'turnin').where, 'unknown')
+        h.g.ForeverDungeonJournal_NS.DB[h.name].quests[1].pickup = 'At Copper City'
+        h.r.Data.Reset()
+        self.assertEqual(action(h.route(), 'accept').where, 'outside')
+
+    def test_unknown_goes_inside_with_unconfirmed_note(self):
+        h = location_harness(); s = action(h.route(), 'accept')
+        self.assertEqual(s.where, 'unknown'); self.assertEqual(s.block, 2)
+        self.assertIn('pickup location not confirmed', s.note)
+
+    def test_outside_chain_and_inside_turnin_unlock(self):
+        rows = {
+            A: q('Copper lead', startedBy={1: [OUT_NPC]}, finishedBy={1: [OUT_NPC]}, zoneOrSort=OUTSIDE),
+            B: q('Tin target', startedBy={1: [OUT_NPC]}, finishedBy={1: [IN_NPC]}, preQuestGroup=[A], zoneOrSort=INSIDE),
+            C: q('Zinc followup', startedBy={1: [IN_NPC]}, finishedBy={1: [OUT_NPC]}, preQuestGroup=[B], zoneOrSort=INSIDE),
+        }
+        h = Harness(rows, [dict(id=B, name='Tin target'), dict(id=C, name='Zinc followup')])
+        route = h.route(); keys = [(s.kind, s.q) for s in array(route.steps)]
+        self.assertTrue(all(s.block == 1 for s in array(route.steps) if s.q == A))
+        self.assertEqual(action(route, 'accept', B).block, 1)
+        self.assertEqual(action(route, 'turnin', B).block, 2)
+        self.assertEqual(action(route, 'accept', C).block, 2)
+        self.assertLess(keys.index(('turnin', B)), keys.index(('accept', C)))
+        self.assertEqual(action(route, 'turnin', C).block, 3)
+        blocks = [s.block for s in array(route.steps)]
+        self.assertEqual(blocks, sorted(blocks))
+
+    def test_second_run_after_outside_followup(self):
+        h = Harness({
+            A: q('Copper token', zoneOrSort=INSIDE, startedBy={1: [IN_NPC]}, finishedBy={1: [OUT_NPC]}),
+            B: q('Tin return', zoneOrSort=INSIDE, preQuestGroup=[A], startedBy={1: [OUT_NPC]}, finishedBy={1: [OUT_NPC]}),
+            C: q('Zinc return', zoneOrSort=INSIDE, preQuestGroup=[B], startedBy={1: [IN_NPC]}, finishedBy={1: [IN_NPC]}),
+        }, [dict(id=id, name=name) for id,name in ((A,'Copper token'),(B,'Tin return'),(C,'Zinc return'))])
+        route = h.route()
+        self.assertEqual(action(route, 'turnin', A).block, 3)
+        self.assertEqual(action(route, 'accept', B).block, 3)
+        self.assertEqual(action(route, 'complete', B).block, 4)
+        self.assertEqual(action(route, 'accept', C).block, 4)
+        self.assertEqual([s.block for s in array(route.steps)], sorted(s.block for s in array(route.steps)))
+
+    def test_bridge_preserves_actions_and_emits_one_header_per_block(self):
+        h = Harness({A: q('Copper task', zoneOrSort=INSIDE, startedBy={1: [OUT_NPC]}, finishedBy={1: [OUT_NPC]})},
+                    [dict(id=A, name='Copper task', requiredItem=[882001, 'Copper kit', 1, 1])])
+        route = h.route()
+        h.lua.execute((ROOT / 'addon/RelaxQuestPlanner/Journey/Bridge.lua').read_text())
+        guide = h.r.Journey.ToGuide(route)
+        labels = '\n'.join(guide[i][1][1].text for i in range(1, len(guide)))
+        for heading in ('Before you go', 'Inside '+h.name, 'After the run'):
+            self.assertEqual(labels.count(heading), 1)
+        self.assertIn('Bring: Copper kit', labels)
+        self.assertEqual([guide[i][1][2][route.steps[i].kind] for i in range(1, len(guide))],
+                         [s.q for s in array(route.steps)])
+
+    def test_prerun_note_for_inside_pickup_has_no_gate(self):
+        h = location_harness(pickup='Inside the vault', requiredItem=[882002,'Tin kit',1,2],
+                             profession='MINING', attunement='COPPER')
+        route = h.route()
+        self.assertIsNotNone(route.preRunNotes)
+        self.assertEqual(len(route.preRunNotes), 1)
+        note = route.preRunNotes[1]
+        self.assertEqual(note.block, 1)
+        self.assertIn('Bring: Tin kit', note.text)
+        self.assertIn('Needs: MINING, COPPER', note.text)
+        self.assertEqual(route.availability[A], 'available')
+
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)
