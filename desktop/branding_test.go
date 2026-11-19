@@ -106,7 +106,7 @@ func TestReportRelaxBranding(t *testing.T) {
 			html := out.String()
 			for _, want := range []string{
 				"<title>Relax Coach</title>", "<h1>Relax Coach</h1>",
-				"Diagnostic report", "Relax Coach · based on TheGamersVibe",
+				"Diagnostic report", "Relax Coach · based on TheGamersVibe", "From " + addonRaidMinimumVersion + " the bundle also includes Relax Raid; an existing RelaxRaid folder is backed up.",
 				"Updates installs the app, the Relax Coach addons (Coach, Journey with its guides, Relax Quest Planner)", "settings and saves are kept",
 				"TheGamersVibe", "ForeverCoach.lua", "WoW Forever leveling report",
 				`action="/setgame"`, `fetch('/refresh',{method:'POST'})`,

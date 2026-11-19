@@ -21,6 +21,8 @@ class GuildBuilderExeTests(unittest.TestCase):
         for name,text in fixtures.items():
             path=self.root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text(text)
         shutil.copy2(ROOT/'scripts/build_guild_bundle.py',self.root/'scripts/build_guild_bundle.py')
+        (self.root/'desktop').mkdir()
+        shutil.copy2(ROOT/'desktop/addon_update.go',self.root/'desktop/addon_update.go')
         self.payload=b'MZsynthetic packaging fixture; not a runnable Windows EXE\n'
         self.exe=self.root/'candidate/Coach.exe'
         self.exe.parent.mkdir();self.exe.write_bytes(self.payload)
@@ -216,6 +218,168 @@ class GuildBuilderExeTests(unittest.TestCase):
         sums={line.split('  ',1)[1] for line in (self.root/'dist/SHA256SUMS.txt').read_text().splitlines()}
         self.assertEqual(sums,{'RelaxCoach.exe','RelaxCoach-Bundle-1.5.0.zip'})
 
+    def raid_fixture(self,version='1.8.0'):
+        self.flight_fixture(version)
+        shutil.copytree(ROOT/'addon/RelaxRaid',self.root/'addon/RelaxRaid')
+        return self.root/'addon/RelaxRaid/RelaxRaid.toc'
+
+    def test_180_bundle_packs_real_raid_under_new_asset_name(self):
+        toc=self.raid_fixture()
+        match=re.search(r'^## Version: (\S+)',toc.read_text(),re.M)
+        assert match is not None,'real RelaxRaid TOC Version missing'
+        version=match.group(1)
+        result=self.run_builder(self.exe,'1.8.0')
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        archive=self.root/'dist/RelaxCoach-RaidBundle-1.8.0.zip'
+        self.assertTrue(archive.is_file(),result.stdout)
+        self.assertFalse((self.root/'dist/RelaxCoach-Bundle-1.8.0.zip').exists())
+        with zipfile.ZipFile(archive) as z:
+            manifest=json.loads(z.read('manifest.json'))
+            self.assertEqual(manifest['raidVersion'],version)
+            rows={r['path']:r for r in manifest['files']}
+            self.assertEqual(set(rows),set(z.namelist())-{'manifest.json'})
+            for source in (ROOT/'addon/RelaxRaid').rglob('*'):
+                if not source.is_file():continue
+                path='Interface/AddOns/RelaxRaid/'+source.relative_to(ROOT/'addon/RelaxRaid').as_posix()
+                data=source.read_bytes()
+                self.assertEqual(z.read(path),data)
+                self.assertEqual(rows[path],{'path':path,'sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data)})
+        sums={name:sha for sha,name in (line.split('  ',1) for line in (self.root/'dist/SHA256SUMS.txt').read_text().splitlines())}
+        self.assertEqual(sums,{archive.name:hashlib.sha256(archive.read_bytes()).hexdigest(),
+                               'RelaxCoach.exe':hashlib.sha256(self.payload).hexdigest()})
+
+    def test_below_raid_floor_keeps_old_name_and_excludes_raid(self):
+        self.raid_fixture('1.7.10')
+        result=self.run_builder(self.exe,'1.7.10')
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        with zipfile.ZipFile(self.root/'dist/RelaxCoach-Bundle-1.7.10.zip') as z:
+            self.assertFalse(any(n.startswith('Interface/AddOns/RelaxRaid/') for n in z.namelist()))
+            self.assertNotIn('raidVersion',json.loads(z.read('manifest.json')))
+        self.assertFalse((self.root/'dist/RelaxCoach-RaidBundle-1.7.10.zip').exists())
+
+    def assert_builder_refuses_without_writes(self,message,version='1.8.0'):
+        dist=self.root/'dist'
+        before={p.relative_to(dist).as_posix():p.read_bytes() for p in dist.rglob('*') if p.is_file()}
+        result=self.run_builder(self.exe,version)
+        self.assertNotEqual(result.returncode,0,result.stdout)
+        self.assertIn(message,result.stderr)
+        self.assertEqual({p.relative_to(dist).as_posix():p.read_bytes() for p in dist.rglob('*') if p.is_file()},before)
+        self.assertFalse((dist/'guild-package').exists())
+
+    def test_raid_floor_is_read_from_the_app(self):
+        self.raid_fixture('1.9.0')
+        source=self.root/'desktop/addon_update.go'
+        source.write_text(source.read_text().replace('const addonRaidMinimumVersion = "1.8.0"','const addonRaidMinimumVersion = "1.9.0"'))
+        result=self.run_builder(self.exe,'1.9.0')
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertTrue((self.root/'dist/RelaxCoach-RaidBundle-1.9.0.zip').is_file())
+        (self.root/'addon/ForeverCoach/ForeverCoach.toc').write_text('## Title: Relax Coach\n## Version: 1.8.0\n')
+        result=self.run_builder(self.exe,'1.8.0')
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        with zipfile.ZipFile(self.root/'dist/RelaxCoach-Bundle-1.8.0.zip') as z:
+            self.assertFalse(any(n.startswith('Interface/AddOns/RelaxRaid/') for n in z.namelist()))
+
+    def test_unparseable_raid_floor_is_refused_before_any_output(self):
+        source=self.root/'desktop/addon_update.go'
+        for text in (None,'// const addonRaidMinimumVersion = "1.8.0"\n',
+                     'const addonRaidMinimumVersion = "soon"\n',
+                     'const addonRaidMinimumVersion = "1.8.0"\n'*2):
+            with self.subTest(source=text):
+                if text is None:source.unlink()
+                else:source.write_text(text)
+                self.assert_builder_refuses_without_writes('Cannot parse addonRaidMinimumVersion',version='1.4.0')
+
+    def test_raid_bundle_refuses_stale_legacy_asset_before_any_output(self):
+        self.raid_fixture()
+        (self.root/'dist/RelaxCoach-Bundle-1.8.0.zip').write_bytes(b'stale old-name archive')
+        self.assert_builder_refuses_without_writes('Refusing stale legacy bundle')
+
+    def test_raid_title_is_exact_and_has_no_colour_codes(self):
+        toc=self.raid_fixture()
+        original=toc.read_text()
+        for title in ('|cffffffffRelax Raid|r','Relax Raid Extra'):
+            with self.subTest(title=title):
+                toc.write_text(original.replace('Title: Relax Raid','Title: '+title))
+                self.assert_builder_refuses_without_writes('Relax Raid TOC identity/version/SavedVariables')
+
+    def test_raid_requires_both_saved_variables(self):
+        toc=self.raid_fixture()
+        original=toc.read_text()
+        for key in ('SavedVariables','SavedVariablesPerCharacter'):
+            with self.subTest(key=key):
+                toc.write_text(re.sub(r'^## '+key+r':.*$', '## '+key+': OtherDB',original,flags=re.M))
+                self.assert_builder_refuses_without_writes('Relax Raid TOC identity/version/SavedVariables')
+
+    def test_raid_refuses_second_toc(self):
+        self.raid_fixture()
+        for name in ('RelaxRaid_Vanilla.toc','nested/other.TOC'):
+            with self.subTest(name=name):
+                p=self.root/'addon/RelaxRaid'/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('## Title: Other\n')
+                self.assert_builder_refuses_without_writes('Extra addon TOC rejected')
+                p.unlink()
+
+    def test_raid_refuses_disallowed_file_types(self):
+        self.raid_fixture()
+        p=self.root/'addon/RelaxRaid/icon.tga';p.write_bytes(b'synthetic artwork')
+        self.assert_builder_refuses_without_writes('Unexpected Relax Raid file')
+
+    def test_raid_refuses_missing_load_file(self):
+        self.raid_fixture()
+        (self.root/'addon/RelaxRaid/Log.lua').unlink()
+        self.assert_builder_refuses_without_writes('missing Relax Raid TOC load file: Log.lua')
+
+    def test_raid_refuses_required_dependency_keys(self):
+        toc=self.raid_fixture()
+        original=toc.read_text()
+        for key in ('Dependencies','RequiredDeps','RequiredDependencies','Deps','Required-Dependencies','Required-Deps'):
+            with self.subTest(key=key):
+                toc.write_text(original+'\n## '+key+': Journey\n')
+                self.assert_builder_refuses_without_writes('Relax Raid TOC: it must not require other addons')
+
+    def test_raid_refuses_duplicate_metadata_and_empty_runtime(self):
+        toc=self.raid_fixture()
+        original=toc.read_text()
+        for text,message in ((original+'\n## title: Relax Raid\n','duplicate addon TOC metadata'),
+                             ('\n'.join(l for l in original.splitlines() if l.startswith('#')),'incomplete Relax Raid runtime')):
+            with self.subTest(message=message):
+                toc.write_text(text)
+                self.assert_builder_refuses_without_writes(message)
+
+    def test_raid_toc_size_limit_matches_the_app(self):
+        toc=self.raid_fixture()
+        original=toc.read_bytes()
+        # addonReadSmallFile permits exactly 64 KiB, never one byte more.
+        boundary=original+b'\n#'+b'x'*((64<<10)-len(original)-2)
+        toc.write_bytes(boundary+b'x')
+        self.assert_builder_refuses_without_writes('Relax Raid TOC is not a small regular file')
+        toc.write_bytes(boundary)
+        result=self.run_builder(self.exe,'1.8.0')
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        with zipfile.ZipFile(self.root/'dist/RelaxCoach-RaidBundle-1.8.0.zip') as z:
+            self.assertEqual(z.read('Interface/AddOns/RelaxRaid/RelaxRaid.toc'),boundary)
+
+    def test_raid_refuses_unsafe_load_names_even_when_present(self):
+        toc=self.raid_fixture()
+        original=toc.read_text()
+        for name in ('CON.lua','bad|name.lua','nonascii-\u00e9.lua','nested./Load.lua'):
+            with self.subTest(name=name):
+                p=self.root/'addon/RelaxRaid'/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('-- synthetic load\n')
+                toc.write_text(original+'\n'+name+'\n')
+                self.assert_builder_refuses_without_writes('Unsafe Relax Raid path')
+                p.unlink()
+
+    def test_raid_refuses_case_colliding_files_and_ancestors(self):
+        self.raid_fixture()
+        for names in (('Core.lua','CORE.lua'),('Lib/A.lua','lib/B.lua')):
+            with self.subTest(names=names):
+                added=[]
+                for name in names:
+                    p=self.root/'addon/RelaxRaid'/name
+                    if not p.exists():
+                        p.parent.mkdir(parents=True,exist_ok=True);p.write_text('-- synthetic\n');added.append(p)
+                self.assert_builder_refuses_without_writes('Case-colliding Relax Raid path')
+                for p in added:p.unlink()
+
     def test_planner_identity_is_checked(self):
         self.add_planner(title='Something Else')
         (self.root/'addon/ForeverCoach/ForeverCoach.toc').write_text('## Title: Relax Coach\n## Version: 1.5.0\n')
@@ -282,6 +446,37 @@ class GuildBuilderExeTests(unittest.TestCase):
                 self.assertEqual(self.standalone.read_bytes(),b'MZstale synthetic fixture\n')
                 self.assertFalse((self.root/'dist/guild-package').exists())
 
+class GuildInstallerScriptTests(unittest.TestCase):
+    """Static contract only: PowerShell/Windows execution is a separate gate."""
+    def test_installer_allowlist_accepts_only_the_raid_root(self):
+        script=(ROOT/'scripts/Install-RelaxCoach.ps1').read_text()
+        match=re.search(r"\$rel -notmatch '([^']+)'",script)
+        assert match is not None,'installer allowlist missing'
+        pattern=re.compile(match.group(1),re.I)  # PowerShell -notmatch ignores case.
+        for path in ('Interface/AddOns/RelaxRaid/RelaxRaid.toc','Interface/AddOns/RelaxRaid/sub/Log.lua',
+                     'interface/addons/relaxraid/Core.lua'):
+            self.assertIsNotNone(pattern.search(path),path)
+        for path in ('Interface/AddOns/RelaxRaidExtra/Core.lua','WTF/RelaxRaid.lua','RelaxRaid/Core.lua'):
+            self.assertIsNone(pattern.search(path),path)
+
+    def test_installer_raid_slot_and_required_toc_mirror_planner(self):
+        script=(ROOT/'scripts/Install-RelaxCoach.ps1').read_text()
+        for pattern in (r"\$planner=@.*\nif\(\$planner -and.*\n",r"if\(\$planner\) \{\n.*\n.*\n\}"):
+            match=re.search(pattern,script)
+            assert match is not None,'planner contract missing'
+            raid=match.group(0).replace('planner','raid').replace('RelaxQuestPlanner','RelaxRaid')
+            self.assertIn(raid,script)
+        self.assertIn('foreach($s in $slots)',script)
+        self.assertIn('if($s.existed) { Copy-Item -LiteralPath $s.target -Destination $s.backup -Recurse }',script)
+        restore=(ROOT/'scripts/Restore-RelaxCoach.ps1').read_text()
+        # Restore is already slot-driven: the newly recorded raid slot takes the
+        # same remove/copy/hash-verification path as the planner, without a fork.
+        self.assertIn('foreach($slot in $state.slots)',restore)
+        self.assertIn('Remove-Item -LiteralPath $slot.target -Recurse -Force',restore)
+        self.assertIn('Copy-Item -LiteralPath $slot.backup -Destination $slot.target -Recurse',restore)
+        self.assertIn('New target survived rollback:',restore)
+        self.assertIn('Rollback verification failed:',restore)
+
 class GuildBundleTests(unittest.TestCase):
     def test_release_inputs_keep_independent_coach_identity_at_144(self):
         toc=(ROOT/'addon/ForeverCoach/ForeverCoach.toc').read_text()
@@ -312,8 +507,13 @@ class GuildBundleTests(unittest.TestCase):
     def test_combined_archive_preserves_runtime_and_excludes_saves(self):
         version=re.search(r'^## Version: (\S+)',(ROOT/'addon/ForeverCoach/ForeverCoach.toc').read_text(),re.M).group(1)
         bundle=tuple(map(int,version.split('.')))>=(1,5,0)
+        match=re.search(r'^const addonRaidMinimumVersion = "([0-9.]+)"$',(ROOT/'desktop/addon_update.go').read_text(),re.M)
+        assert match is not None,'app raid floor missing'
+        floor=match.group(1)
+        raid=tuple(map(int,version.split('.'))) >= tuple(map(int,floor.split('.')))
         folders=('ForeverCoach','Journey','RelaxQuestPlanner') if bundle else ('ForeverCoach','Journey')
-        path=ROOT/'dist'/(('RelaxCoach-Bundle-' if bundle else 'RelaxCoach-Guild-')+version+'.zip')
+        if raid:folders+=('RelaxRaid',)
+        path=ROOT/'dist'/(('RelaxCoach-RaidBundle-' if raid else 'RelaxCoach-Bundle-' if bundle else 'RelaxCoach-Guild-')+version+'.zip')
         self.assertTrue(path.is_file(),'combined guild archive is missing')
         with zipfile.ZipFile(path) as z:
             names=z.namelist()
@@ -331,6 +531,9 @@ class GuildBundleTests(unittest.TestCase):
             self.assertEqual(manifest['kind'],'guild-combined')
             self.assertEqual(manifest['version'],version)
             self.assertEqual('plannerVersion' in manifest,bundle)
+            self.assertEqual('raidVersion' in manifest,raid)
+            if raid:self.assertIn('Interface/AddOns/RelaxRaid/RelaxRaid.toc',names)
+            else:self.assertFalse(any(n.startswith('Interface/AddOns/RelaxRaid/') for n in names))
             if bundle:self.assertIn('Interface/AddOns/RelaxQuestPlanner/RelaxQuestPlanner.toc',names)
             else:self.assertFalse(any(n.startswith('Interface/AddOns/RelaxQuestPlanner/') for n in names))
             self.assertEqual(manifest['journeyVersion'],'4.00.04')
