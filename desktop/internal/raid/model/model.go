@@ -111,6 +111,8 @@ type Event struct {
 	DiedFlag                   Opt        // UNIT_DIED's last field; only V==0 is a death
 	ExtraSpellID               Opt        // the interrupted, dispelled or absorbing spell
 	Offset, Len                int64      // byte position of the line in the source, and its length with the line ending
+	Power, PowerMax            Opt        // of InfoUnit, from the advanced block (model addendum 2)
+	PowerType                  Opt        // the power type number as logged; Opt because 0 (mana) is a real type
 	Overheal                   Opt        // heal lines only
 	MissType                   string     // the miss word as logged (ABSORB, DODGE, ...); "" on other kinds
 	AuraType                   string     // BUFF, DEBUFF or ""
@@ -164,7 +166,7 @@ type Fight struct {
 	GroupSize      int
 	Events         []Event
 	Boss           bool
-	InstanceID     int64
+	InstanceID     int64 // from ENCOUNTER_START; 0 means open world or no start line
 	DifficultyID   int64
 	DurationMs     Opt // the server's fight length; never EndMs minus StartMs
 	Players        []Actor
@@ -173,6 +175,8 @@ type Fight struct {
 	Unowned        []string          // pet or guardian ids whose owner is not known
 	BossUnits      []string          // unit ids
 	Roles          map[string]string // player id -> "tank", "healer" or "dps"
+	Specs          map[string]string // player id -> spec id "<CLASS>.<spec>" (PLAN 4A row 16); missing means unknown
+	Offset, Len    int64             // the fight's byte range in the source log: first line's Offset to last line's end
 }
 
 // Combatant is a decoded COMBATANT_INFO line; fields not understood are kept raw.
@@ -199,21 +203,91 @@ type Aura struct {
 
 // Death is one classified death.
 type Death struct {
-	Player   Actor
-	TimeMs   int64
+	Player     Actor
+	TimeMs     int64
+	FightID    string
+	Cause      string
+	Evidence   []int64
+	Confidence string   // "high", "medium" or "low" (PLAN 4A row 3)
+	OwnerKind  string   // "player", "healers", "nobody" or "undecided" (4A row 4)
+	Owners     []string // names as logged: the one player, or every healer charged; empty otherwise
+	// SuggestedCause: for Cause "unresolved", one of the six other causes or "" (written as null); for any
+	// other cause always "" (the field is absent from the file). 4A row 5.
+	SuggestedCause string
+}
+
+// Wipe is R6's wipe summary for one fight (REQ-DTH-06).
+type Wipe struct {
+	FightID    string
+	FirstDeath int   // index into the fight's deaths
+	Following  []int // deaths inside the config window
+}
+
+// Source is the raw log a night was parsed from (4A row 19).
+type Source struct {
+	SHA256 string
+	Bytes  int64
+}
+
+// Evidence is one part's evidence in one fight (4A row 9).
+type Evidence struct {
+	Text   string
+	Counts map[string]int64
+	AtMs   []int64
+}
+
+// Part is one scored part. Scores are integers so rounding happens once, in score.
+type Part struct {
+	Name     string
+	Tenths   Opt // score times 10; unset means not measured (4A row 7)
+	Evidence Evidence
+}
+
+// FightScore is R7's output for one player in one fight.
+type FightScore struct {
 	FightID  string
-	Cause    string
-	Evidence []int64
+	PlayerID string
+	Role     string
+	Tenths   Opt // unset means "not enough data" (4A row 15)
+	Coverage int // hundredths, 0 to 100
+	Parts    []Part
+	Flags    []string // the closed list of 4A row 8
+}
+
+// NightScore is R7's output for one player over a night or run.
+type NightScore struct {
+	PlayerID string
+	Tenths   Opt
+	Coverage int
+	Rank     Opt    // unset for "not enough data" and in a dungeon run (4A rows 6, 13)
+	Baseline string // which baseline was used (REQ-OFF-01)
+	Fights   []FightScore
+}
+
+// PrepReport is one member's prep report (PLAN contract 3): written by prep, read by score.
+type PrepReport struct {
+	Protocol, Level      int64
+	AddonVersion, Name   string
+	Class                string
+	PlayedAtLevelS       Opt              // unset means unreadable
+	Consumables          map[string]int64 // by category
+	BetterGear           map[int64]int64  // slot to item id
+	GearChecked          bool
+	SenderClock, Stamped int64
 }
 
 // RaidNight holds runs of kind RunRaid only.
 type RaidNight struct {
-	Fights  []Fight
-	Roster  []Actor
-	Partial bool
-	Logger  Actor // the player whose lines carry the "mine" flag; empty if none
-	StartMs int64
-	OffsetH int8
+	Fights     []Fight
+	Roster     []Actor
+	Partial    bool
+	Logger     Actor // the player whose lines carry the "mine" flag; empty if none
+	StartMs    int64
+	OffsetH    int8
+	Build      string // from the header line
+	LogVersion int64
+	Advanced   bool // advanced logging on, by field count
+	Source     Source
 }
 
 // DungeonRun is one run of kind RunDungeon.
@@ -225,4 +299,8 @@ type DungeonRun struct {
 	Logger     Actor // the player whose lines carry the "mine" flag; empty if none
 	StartMs    int64
 	OffsetH    int8
+	Build      string // from the header line
+	LogVersion int64
+	Advanced   bool // advanced logging on, by field count
+	Source     Source
 }

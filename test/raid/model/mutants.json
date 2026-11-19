@@ -40,5 +40,71 @@
     "old": "b.e.Amount, b.e.Overheal = model.Some(amount), model.Some(overheal)",
     "new": "b.e.Amount = model.Some(amount)",
     "killed_by": "TestFightWithEveryNewField"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.e.Offset, b.e.Len = offset, length",
+    "new": "_, _ = offset, length",
+    "killed_by": "TestEventBuildersPinned"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.e.Offset, b.e.Len = offset, length",
+    "new": "b.e.Offset = offset; _ = length",
+    "killed_by": "TestEventBuildersPinned"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.e.SpellID, b.e.SpellName = id, name",
+    "new": "_, _ = id, name",
+    "killed_by": "TestEventBuildersPinned"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "Name: name, Difficulty: difficulty}",
+    "new": "Name: name}",
+    "killed_by": "TestEventBuildersPinned"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "model.Zone{InstanceID: instanceID,",
+    "new": "model.Zone{InstanceID: 0,",
+    "killed_by": "TestEventBuildersPinned"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "\tif len(events) > 0 {\n\t\tf.StartMs, f.EndMs = events[0].TimeMs, events[len(events)-1].TimeMs\n\t}",
+    "new": "\tif len(events) > 0 {\n\t\tf.StartMs, f.EndMs = events[0].TimeMs, events[len(events)-1].TimeMs\n\t\tif f.Boss && !f.DurationMs.Present {\n\t\t\tf.DurationMs = model.Some(f.EndMs - f.StartMs)\n\t\t}\n\t}",
+    "killed_by": "TestEventBuildersPinned"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "model.Some(cur), model.Some(max), model.Some(powerType)",
+    "new": "model.Some(cur), model.Some(max), model.Opt{V: powerType}",
+    "killed_by": "TestEventBuildersPinned"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.f.Offset, b.f.Len = first.Offset, last.Offset+last.Len-first.Offset",
+    "new": "b.f.Offset, b.f.Len = first.Offset, last.Offset-first.Offset",
+    "killed_by": "TestFightWithEveryNewField"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.f.Owners[pet.ID] = owner.ID",
+    "new": "b.f.Owners[owner.ID] = pet.ID",
+    "killed_by": "TestFightWithEveryNewField"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.d.OwnerKind, b.d.Owners = kind, names",
+    "new": "b.d.OwnerKind = kind",
+    "killed_by": "TestFightWithEveryNewField"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "StartMs: r.startMs, OffsetH: r.offsetH, Build: r.build, LogVersion: r.version, Advanced: r.advanced, Source: r.source}\n}\n\n// Dungeon",
+    "new": "StartMs: r.startMs, OffsetH: r.offsetH, Build: r.build, LogVersion: r.version, Advanced: r.advanced}\n}\n\n// Dungeon",
+    "killed_by": "TestFightWithEveryNewField"
   }
 ]
