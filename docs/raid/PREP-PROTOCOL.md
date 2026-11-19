@@ -1,4 +1,4 @@
-# Relax Raid preparation v1 (R2)
+# Relax Raid preparation (R2): wire v1, prep store v2
 
 Target: Forever, Interface 16001. Addon version 0.2.0. This is preparation data,
 not scores, a chat announcement, an equipment action, a combat-log reader, or an
@@ -114,9 +114,23 @@ including ten and twelve, and still rejects every unknown version.
 1  addonVersion  name  class  level  playedLevel  reason  sentAt  consumables  gear  notScored
 ```
 
-(The spaces above stand for TAB bytes.) Unknown scalar is `u`. Lists use `-`
-for a checked-empty list, `u` for unreadable; gear additionally uses `n` for
-not checked. Consumable rows are `category,itemID,count`, gear rows are
+The spaces above stand for TAB bytes. The wire markers are field-specific:
+
+| Field | Unknown/unreadable marker | Checked empty / not checked |
+|---|---|---|
+| `addonVersion` | `unreadable` | neither applies; literal text, not `u` |
+| `class` | `unreadable` | neither applies; literal text, not `u` |
+| `level` | `u` | neither applies |
+| `playedLevel` | `u` | zero is a readable zero, not unknown |
+| `consumables` | `u` | `-` means checked empty; no not-checked marker |
+| `gear` | `u` | `-` means checked empty; `n` means not checked |
+| `notScored` | `u` | `-` means checked empty; `n` means not checked |
+| `protocol`, `name`, `reason`, `sentAt` | no marker; invalid/unreadable rejects the report | required valid fields |
+
+In decoded reports, `u` becomes `unreadable`, and gear `n` becomes
+`not checked`. With unreadable/unchecked gear, `notScored` is absent in the
+decoded report, but its wire field is still `u`/`n` respectively. Consumable
+rows are `category,itemID,count`, gear rows are
 `slot,wornID,bagID`; rows are separated by semicolons. Free-text fields reject
 control characters and pipes; numerical/category fields have a closed grammar.
 Worn ID 0 means Coach explicitly confirmed an empty slot, never an unreadable
@@ -175,36 +189,46 @@ claimed by their owner. Replay suppression is bounded, not a durable sequence
 protocol. A sender reloading and reusing a recent ID may have that report
 ignored until its retirement expires; replay after expiry may be admitted.
 
-## SavedVariables v1
+## SavedVariables: account v1, prep v2
 
-Only these TOC identifiers exist:
+Only these TOC identifiers exist (unchanged):
 
 ```
 SavedVariables: RelaxRaidDB
 SavedVariablesPerCharacter: RelaxRaidCharDB
 ```
 
-R2 writes only `RelaxRaidDB.version = 1` and `RelaxRaidDB.prep`:
+R2 writes `RelaxRaidDB.version = 1` and `RelaxRaidDB.prep.version = 2`.
+The prep layout is **not** the account/character schema version or the wire
+protocol version. R2 is unreleased: a prep version-1 store is **discarded**, not
+migrated. A root/character version above 1, or prep version above 2, latches
+Store read-only and is left byte-for-byte untouched. Every put also rechecks
+these versions. Resetting a version externally cannot clear the load-time latch.
+`RelaxRaidCharDB` remains R1's `{version=1, logger=boolean-or-absent}`. No new
+save name or per-character field exists; unrelated account-root keys survive.
+
+The exact layout (the string contains TAB bytes, shown as Lua `\t` escapes):
 
 ```lua
 RelaxRaidDB = {
     version = 1,
     prep = {
-        version = 1,
-        nights = {
+        version = 2,
+        nights = { -- dense 1-based array, insertion order
             {
                 day = 20832,
-                windows = {
+                reports = { -- canonical whole-name key -> dense list of bodies
+                    ["alia-stone-pvp-eu"] = {
+                        "1\t0.2.0\tAlia-Stone-PvP-EU\tMAGE\t60\tu\tready\t1800000000\t-\tn\tn",
+                    },
+                },
+                windows = { -- dense 1-based array, insertion order
                     {
                         openedAt = 1800000000,
                         reports = {
                             ["alia-stone-pvp-eu"] = {
                                 receivedAt = 1800000000,
-                                report = { -- fields listed above
-                                    protocol = 1,
-                                    name = "Alia-Stone-PvP-EU",
-                                    -- ...
-                                },
+                                report = 1, -- index in this night's reports[key]
                             },
                         },
                     },
@@ -215,35 +239,86 @@ RelaxRaidDB = {
 }
 ```
 
-`RelaxRaidCharDB` remains R1's `{version=1, logger=boolean-or-absent}`; R2 adds
-no per-character fields. Existing unrelated account-root keys are retained.
+A report body is a **string in the eleven-field wire grammar above**, not an
+expanded Lua field table. It has no `P1` fragment header, compression, hash,
+executable text, or second stored copy. The later app reader resolves
+`night.reports[key][window.reports[key].report]`, parses that body as data, and
+uses the window's `receivedAt` for matching to fights. `model.PrepReport` does
+not change; implementing that Go reader belongs to the later prep lane.
+App 1.8.0 checks the TOC title, manifest-matching addon Version, save names,
+load files and dependency prohibition, not the inner prep version.
 
-`day = floor((receiverServerTime - 43200) / 86400)`: a UTC-noon storage bucket
-that does not split an evening at midnight. It is **not** the app's content-
-derived `nightId`. The app must match reports to fights using receiver times.
-A window begins with the first accepted report, or the first report after an
-encounter end. Join/ready reports in the same window replace that character's
-previous report. Arrival order, with the receiver's own timestamp, wins; a
-sender's clock cannot make its old report outrank a later receipt. Reload
-retains the last window. Empty windows are not persisted.
+For each character in each night, only the **latest** retained body participates
+in deduplication. Equality covers every `Prep.validate` field except `sentAt`,
+including `reason`, original name spelling and list order. Canonical encoding
+makes that comparison deterministic: omit exactly field 8 for equality, not
+for storage. Unknown extra input keys are not validated fields and are dropped.
+Consecutive equal reports reuse the same index, even across 80 windows. A-B-A
+is three stored entries, not a lookup of the first A. An equal report retains
+the first body's `sentAt`; each receipt still updates its own window timestamp.
 
-Caps: 3 night buckets, 80 windows per night, 40 characters per window, 9600
-reports total. Oldest inserted nights/windows are removed; a full player map
-evicts its oldest receiver timestamp (whole-name lexical tie-break) before
-inserting a new player. Known versions are rebuilt from validated bounded
-fields at load; malformed records are discarded. Unknown future root/prep or
-character versions block all Store writes and are left unchanged. Writers
-recheck supported root/prep versions, not only the initialization decision.
+**Byte accounting:** `Store.put` re-encodes the validated report through
+`Wire.encode` and counts the Lua string length of that canonical body. The
+same computation applies to received reports, the own-copy send path and load.
+There is no caller-supplied length to trust and no persistent byte counter.
+Realm-less names are normalized before encoding, so the stored canonical size
+includes the appended realm, rather than the shorter incoming name spelling.
+Only distinct appended bodies spend bytes; timestamps on reused window rows
+are not charged. The inclusive budget is **100,000 body bytes per character
+per night**, not serialized table bytes and not a shared raid budget.
 
-A filled maximum-field synthetic store, including 19 `notScored` slots per
-report, measured 38881331 bytes using the test's canonical compact Lua-literal
-serializer; the review-fix reload measurement was 2.691 seconds under lupa.
-The test fills all 9600 records, asserts a 50 MiB
-compact serialization budget, reloads and compares the entire serialization.
-This is **not** measured WoW file formatting, Lua heap size or native frame
-latency. Tables and Blizzard serialization add overhead. Newer-save byte
-preservation is tested with canonical serialization before/after all writer
-paths; native client's file-order/whitespace behavior is not asserted.
+When appending exceeds the budget, remove that character's oldest body(s) until
+it fits. Remove that character from every window referring to each dropped
+body; decrement its higher indices as the dense list shifts. Other characters'
+bodies, indices and receive times do not change. Empty windows are removed.
+When window/player-cap eviction leaves a character with no window references,
+remove its entire body list too. Older bodies for a still-referenced character
+remain until its own byte budget evicts them, even if its latest receipt
+replaced their last individual reference. No sender-guild check is added: a
+non-guild raid member's report is retained by an enabled logger as before.
+
+`day = floor((receiverServerTime - 43200) / 86400)` is the unchanged UTC-noon
+bucket, not the app's content-derived `nightId`. A window starts on the first
+accepted report or first report after an encounter end. Within a window, the
+last accepted receipt for a character wins regardless of sender time. Reload
+retains the last window. Caps remain **3 nights, 80 windows/night, 40
+characters/window** (at most 9600 references), not a new cap on distinct bodies.
+Oldest inserted nights/windows are removed. A full window evicts its oldest
+receiver timestamp, with the whole-name lexical tie-break, before inserting a
+new character. These policies are independent of per-character budget eviction.
+
+Load rebuilds only version 2, validates the bounded windows and their numeric
+indices, and decodes/re-encodes referenced characters' body lists. Lists must be
+dense and bounded; malformed bodies/forged identities are dropped with index
+remapping. Budget admission walks newest-first, then restores oldest-first
+list order. Invalid references, empty windows/nights and orphan character lists
+are discarded. No received or saved body is executed.
+
+### Measured synthetic fill and its scope
+
+The tightened fill saturates each of 40 characters' budgets on each of 3 nights
+with distinct maximum-field reports (including 19 `notScored` slots), then fills
+all 80 windows with references. Measured canonical compact serialization:
+**13,528,853 bytes**, **7,560 bodies**, **11,816,280 body bytes**, **9,600 window
+references**. The test asserts **16 MiB**, not the former 50 MiB, reloads and
+compares the entire serialization exactly. The final detailed run measured
+4.866 seconds to reload under lupa. See `evidence/R2.md` for the command output. Body strings avoid the expanded-field table overhead that
+would otherwise make a 100,000-wire-byte budget much larger on disk.
+
+This is the architect's fixed-40-character fill, **not a universal 16 MiB cap
+under roster churn**: 40 is a per-window cap, not a per-night identity cap.
+Changing the character roster between windows can retain more than 40 distinct
+characters per night. A separate rotating-roster probe, with only one maximum-
+field body for each of 3200 identities/night, measured 17,761,373 bytes across
+3 nights (9600 references and bodies, 15,004,800 body bytes). That exceeds
+16 MiB even without filling those characters' individual budgets. No unapproved
+nightly character cap or shared byte budget was added. The distinction is an
+open sizing-policy question, not silently resolved by dropping other senders'
+history.
+
+The measurement is not native WoW file formatting, Lua heap size or frame
+latency. Newer-save preservation uses canonical serialization before/after all
+writer paths; native file-order/whitespace behavior is not asserted.
 
 ## Client API evidence
 
@@ -313,6 +388,8 @@ RequestTimePlayed's possible default chat output, Coach audit performance and
 Blizzard SavedVariables formatting/flush. Mocks do not certify these. Restricted
 or unknown clients remain silent and unknown preparation is never scored as zero.
 
-No R2 spec disagreement was found. Explicit DEC-40 and PHASE1-BRIEF supersede
-older logger-default and packaging wording. R2 does not modify the separate
-app upload/raw-log policies or compute a score.
+Explicit DEC-40 and PHASE1-BRIEF supersede older logger-default and packaging
+wording. The rotating-roster size boundary above remains open for the architect;
+the requested per-character budget and unchanged per-window cap are implemented
+without inventing a global cap. R2 does not modify app upload/raw-log policies
+or compute a score.
