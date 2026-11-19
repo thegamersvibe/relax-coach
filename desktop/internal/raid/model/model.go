@@ -278,6 +278,7 @@ type PrepReport struct {
 	BetterGear            []PrepGear // better items in bags, one row per slot
 	GearChecked           bool       // false: "not checked" (Coach or its data absent)
 	GearUnreadable        bool       // checked, but the answer could not be read
+	NotScored             []int64    // checked slots whose worn item could not be scored (Forever customs); listed, not blanked
 	Reason                string     // "join", "ready" or "encounter"
 	SenderClock, Stamped  int64
 }

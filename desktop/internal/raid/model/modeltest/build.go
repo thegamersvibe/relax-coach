@@ -460,6 +460,12 @@ func (b *PrepBuilder) GearUnreadable() *PrepBuilder {
 	return b
 }
 
+// NotScored marks gear checked and lists slots whose worn item could not be scored.
+func (b *PrepBuilder) NotScored(slots ...int64) *PrepBuilder {
+	b.r.GearChecked, b.r.NotScored = true, append(b.r.NotScored, slots...)
+	return b
+}
+
 // Reason sets the send reason: "join", "ready" or "encounter".
 func (b *PrepBuilder) Reason(r string) *PrepBuilder { b.r.Reason = r; return b }
 

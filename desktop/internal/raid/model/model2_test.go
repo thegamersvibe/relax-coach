@@ -160,7 +160,7 @@ func TestResultTypesThroughBuilders(t *testing.T) {
 		t.Error("no Rank means unranked (dungeon run, not enough data)")
 	}
 	pr := modeltest.Prep("Cato-PvP-EU", "MAGE", 60, 1, "1.8.1").Played(3600).Consumable("flask", 13512, 2).
-		ConsumablesUnreadable().Gear(model.PrepGear{Slot: 1, WornID: 111, BagID: 12345}).GearUnreadable().
+		ConsumablesUnreadable().Gear(model.PrepGear{Slot: 1, WornID: 111, BagID: 12345}).NotScored(13, 14).GearUnreadable().
 		Reason("ready").Clock(1000, 1002).Build()
 	allSet(t, pr)
 	allSet(t, pr.Consumables[0])
@@ -172,6 +172,12 @@ func TestResultTypesThroughBuilders(t *testing.T) {
 	if !reflect.DeepEqual(pr.Consumables, []model.PrepConsumable{{Category: "flask", ItemID: 13512, Count: 2}}) ||
 		!reflect.DeepEqual(pr.BetterGear, []model.PrepGear{{Slot: 1, WornID: 111, BagID: 12345}}) {
 		t.Errorf("prep rows: %+v %+v", pr.Consumables, pr.BetterGear)
+	}
+	if !reflect.DeepEqual(pr.NotScored, []int64{13, 14}) {
+		t.Errorf("not scored: %v", pr.NotScored)
+	}
+	if ns := modeltest.Prep("Cato-PvP-EU", "MAGE", 60, 1, "1.8.1").NotScored(5).Build(); !ns.GearChecked || ns.GearUnreadable || len(ns.NotScored) != 1 {
+		t.Errorf("a not-scored slot is checked gear, not unreadable: %+v", ns)
 	}
 	g := modeltest.Prep("Cato-PvP-EU", "MAGE", 60, 1, "1.8.1").Build()
 	if g.GearChecked || g.GearUnreadable || g.ConsumablesUnreadable || g.PlayedAtLevelS.Present || g.Reason != "" {

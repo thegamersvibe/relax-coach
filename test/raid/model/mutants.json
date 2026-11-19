@@ -178,5 +178,11 @@
     "old": "b.f.Classes[p.ID] = class",
     "new": "b.f.Classes[p.ID] = \"\"",
     "killed_by": "TestFightWithEveryNewField"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.r.GearChecked, b.r.NotScored = true, append(b.r.NotScored, slots...)",
+    "new": "b.r.NotScored = append(b.r.NotScored, slots...)",
+    "killed_by": "TestResultTypesThroughBuilders"
   }
 ]
