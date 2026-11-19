@@ -6,7 +6,8 @@ Lua runs in-process through lupa (Lua 5.1), the library test/harness.py uses, pi
 
 Modelled, and nothing else:
   - LoggingCombat(on) and its read: the read lags by `log_lag` seconds; a start is ignored for
-    `start_ignored_after_zone` seconds after a zone change.
+    `start_ignored_after_zone` seconds after a zone change (answering the read's value, or true with
+    `ignored_start_says_on`, added by R1: the client can take a start without error and ignore it).
   - The advancedCombatLogging setting through C_CVar.GetCVar/SetCVar, with `refuse_cvar_write` making the
     write fail and leave the value unchanged.
   - The addon restriction state (`restricted`, set by the test): C_ChatInfo.SendAddonMessage while restricted
@@ -46,11 +47,12 @@ return function() local v = setmetatable({}, mt); made[v] = true; return v end,
 
 
 class Client:
-    def __init__(self, log_lag=0.0, start_ignored_after_zone=0.0):
+    def __init__(self, log_lag=0.0, start_ignored_after_zone=0.0, ignored_start_says_on=False):
         self.lua = lupa.LuaRuntime(unpack_returned_tuples=True)
         self.now = 0.0
         self.log_lag = log_lag
         self.start_ignored_after_zone = start_ignored_after_zone
+        self.ignored_start_says_on = ignored_start_says_on
         self.zone_changed_at = None
         self._log = [(float("-inf"), False)]  # (time the value took effect, value)
         self.ignored_starts = 0
@@ -152,6 +154,8 @@ class Client:
         on = bool(on)
         if on and self.zone_changed_at is not None and self.now - self.zone_changed_at < self.start_ignored_after_zone:
             self.ignored_starts += 1
+            if self.ignored_start_says_on:  # taken without error, answered "on", and still ignored
+                return True
             return self._logging_combat()
         self._log.append((self.now, on))
         return on

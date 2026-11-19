@@ -77,7 +77,7 @@ class LogTests(unittest.TestCase):
 
     def test_outdoor_raid_map_from_data(self):
         c = boot()
-        c.run("RelaxRaid.modules.Log.OUTDOOR_RAID_MAPS = {9001}")
+        c.run("RelaxRaid.modules.Log.outdoorRaidMaps = {9001}")
         c.enter("none", 9001)
         c.advance(60)
         self.assertTrue(truth(c))
@@ -92,19 +92,52 @@ class LogTests(unittest.TestCase):
         self.assertTrue(truth(c), "on by the last retry")
         c.advance(60)
         self.assertEqual(c.ignored_starts, 3, "tries at 0, 3 and 6 s fall in the ignored window")
-        self.assertEqual(starts(c), 4, "the start the client accepted is trusted: no extra header lines")
+        self.assertEqual(starts(c), 4, "the read confirms at 15 s, so no start after the one at 10 s")
         self.assertEqual(says(c, ON_LINE), 1)
         self.assertEqual(says(c, REMIND_LOG), 0)
 
-    def test_accepted_start_is_trusted_over_a_lagging_read(self):
-        # the read lags 8 s, longer than the gap between tries: an accepted start is not repeated (P2: each
-        # start while logging is on writes another header line)
+    def test_call_taken_without_error_and_ignored_is_retried(self):
+        # PLAN.md 7.1 point 5, required: the 0 s call returns without error (and even says "on") but is
+        # ignored, the read stays off, and logging must be on after a later retry
+        c = Client(log_lag=5, start_ignored_after_zone=10, ignored_start_says_on=True)
+        c.guild = OFFICER
+        c.load_addon(ADDON)
+        c.enter("none", 0, initial=True)
+        c.enter("raid", 409)
+        c.advance(0)
+        self.assertEqual(c.ignored_starts, 1)
+        self.assertFalse(truth(c))
+        self.assertEqual(says(c, ON_LINE), 0, "no chat line at the call")
+        c.advance(30)
+        self.assertTrue(truth(c), "a later retry started it")
+        c.advance(60)
+        self.assertEqual(c.ignored_starts, 3)
+        self.assertEqual(says(c, ON_LINE), 1)
+        self.assertEqual(says(c, REMIND_LOG), 0)
+
+    def test_retries_until_the_read_confirms(self):
+        # the read lags 8 s, longer than the gap between tries: only the read stops the retries, so the start
+        # at 10 s is repeated once at 15 s (one extra header line, which the parser accepts: PROBES P2 item 3)
         c = boot(lag=8, ignore=10)
         c.enter("raid", 409)
         c.advance(60)
-        self.assertEqual(starts(c), 4, "0, 3, 6 ignored; 10 accepted; 15, 20, 30 trust it")
+        self.assertEqual(starts(c), 5, "0, 3, 6 ignored; 10 taken; 15 repeats it; 20 reads on")
         self.assertTrue(truth(c))
         self.assertEqual(says(c, ON_LINE), 1)
+
+    def test_status_uses_our_call_only_for_its_answer(self):
+        c = boot(lag=8)
+        c.advance(20)
+        c.enter("raid", 409)
+        c.advance(1)
+        c.slash("/relaxraid status")
+        self.assertIn("combat logging: started 1 s ago, waiting for the game to confirm.", c.chat[-1])
+        c.advance(10)
+        c.slash("/relaxraid status")
+        self.assertIn("combat logging: on.", c.chat[-1])
+        c2 = boot(guild=MEMBER)
+        c2.slash("/relaxraid status")
+        self.assertIn("combat logging: off.", c2.chat[-1])
 
     def test_start_accepted_only_at_the_last_try(self):
         c = boot(lag=5, ignore=25)
@@ -239,7 +272,7 @@ class LogTests(unittest.TestCase):
         c = boot(guild=("Fake Guild", "Rank A", 0))
         self.assertTrue(c.setting_value("RELAXRAID_LOGGER"))
         c.slash("/relaxraid status")
-        self.assertIn("logger on for this character (default: officer rank)", c.chat[-1])
+        self.assertIn("logger on for this character (default: officer rank)", c.chat[-2])
 
     def test_officer_rank_unreadable_gives_logger_off_and_hint(self):
         # PLAN.md 7: officer rank unreadable: logger off, hint shown
@@ -257,6 +290,36 @@ class LogTests(unittest.TestCase):
         self.assertEqual(c.log_calls, [])
         self.assertEqual(says(c, "internal error"), 0)
         self.assertFalse(c.setting_value("RELAXRAID_LOGGER"))
+
+    def test_officer_rank_names_case_insensitive(self):
+        saved = {"RelaxRaid.modules.Log.officerRankNames": '{"Raid Lead"}'}
+        c = boot(guild=("Fake Guild", "raid LEAD", 6), saved=saved)
+        self.assertTrue(c.setting_value("RELAXRAID_LOGGER"), "the name matches though the index does not")
+        c2 = Client()
+        c2.guild = ("Fake Guild", "RAID lead", c2.secret())
+        c2.load_addon(ADDON, saved)
+        self.assertTrue(c2.setting_value("RELAXRAID_LOGGER"), "a listed name decides even with the index secret")
+        self.assertEqual(says(c2, HINT), 0)
+        c3 = boot(guild=("Fake Guild", "Raider", 6), saved=saved)
+        self.assertFalse(c3.setting_value("RELAXRAID_LOGGER"))
+
+    def test_shipped_officer_data(self):
+        c = boot()
+        self.assertEqual(list(c.run("return RelaxRaid.modules.Log.officerRankIndexes").values()), [0, 1])
+        self.assertEqual(len(c.run("return RelaxRaid.modules.Log.officerRankNames")), 0)
+        self.assertEqual(len(c.run("return RelaxRaid.modules.Log.outdoorRaidMaps")), 0)
+
+    def test_panel_failure_leaves_the_slash_command(self):
+        c = Client()
+        c.guild = MEMBER
+        c.run("Settings.RegisterVerticalLayoutCategory = function() error('no panel') end")
+        c.load_addon(ADDON)
+        c.enter("none", 0, initial=True)
+        c.slash("/relaxraid logger on")
+        self.assertIs(c.run("return RelaxRaidCharDB.logger"), True)
+        c.enter("party", 329)
+        c.advance(60)
+        self.assertTrue(truth(c))
 
     def test_rank_index_not_a_number_is_unreadable(self):
         c = boot(guild=("Fake Guild", "Rank B", "1"))

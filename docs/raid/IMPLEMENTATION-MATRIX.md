@@ -10,7 +10,7 @@
 | Row | REQ ID | Target | PR / slice | Depends on | Owner | Implementation files | Status | Validation |
 |---|---|---|---|---|---|---|---|---|
 | IMP-001 | REQ-LOG-01 | forever | R1 | R0 | builder | `addon/RelaxRaid/{RelaxRaid.toc,Core.lua,Log.lua}` | built, in review | V-001 |
-| IMP-002 | REQ-LOG-02 | forever | R1 | R0 | builder | `addon/RelaxRaid/{RelaxRaid.toc,Core.lua,Log.lua}` | built, in review; officer rank list pending | V-002 |
+| IMP-002 | REQ-LOG-02 | forever | R1 | R0 | builder | `addon/RelaxRaid/{RelaxRaid.toc,Core.lua,Log.lua}` | built, in review | V-002 |
 | IMP-003 | REQ-LOG-03 | forever | R4 | R0 | unassigned | `desktop/internal/raid/fights`, glue in `desktop/` | planned | V-003 |
 | IMP-004 | REQ-ADD-01 | forever | R2 | R1 | unassigned | `addon/RelaxRaid/{Prep.lua,Wire.lua,Store.lua}` | planned | V-004 |
 | IMP-005 | REQ-ADD-02 | forever | R2 | R1 | unassigned | `addon/RelaxRaid/{Prep.lua,Wire.lua,Store.lua}` | planned | V-005 |

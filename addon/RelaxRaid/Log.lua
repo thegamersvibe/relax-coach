@@ -6,8 +6,9 @@
 --
 -- Client quirks (PROBES.md P2, reported by the Forever Logs Companion author, not observed by us): a start is
 -- ignored for about 10 s after a loading screen, the read lags a start by about 5 s, and each start while
--- logging is already on writes another header line. So the start is retried on a schedule, every try reads
--- first, and a start the client accepted is trusted for a while instead of the lagging read.
+-- logging is already on writes another header line. So the start is retried on a schedule and every try reads
+-- first: only the client's read stops the retries (PLAN.md 7.1 point 5). The client can take a start without
+-- error and still ignore it, so our own call never stops a retry; its age is used only for the status answer.
 --
 -- Client API, each confirmed in Gethe/wow-ui-source@eac30af597e5aaa43a60f6675ef5fdcea100375f (build 70790):
 --   LoggingCombat()/LoggingCombat(true)           SlashCommands.lua:858-862 (/combatlog)
@@ -26,12 +27,15 @@ local Log = RR.module("Log")
 -- Data -------------------------------------------------------------------------------------------------------
 Log.SCHEDULE = {0, 3, 6, 10, 15, 20, 30} -- seconds after entering: try the start (donor's 3..30 s, plus at once)
 Log.CHECK_AT = 40                         -- one last read; still off means the reminder
-Log.TRUST = 35                            -- an accepted start is believed this long over the lagging read
+Log.TRUST = 35                            -- status only: our own start this recent is reported as "started"
 Log.RANK_WAIT = 15                        -- guild data still missing this long after login: rank unreadable
--- Guild rank indexes that default the logger on (0 is the guild master). Officer ranks: PENDING عقيل R1-Q1.
-Log.OFFICER_RANKS = {0, 1}
+-- Officer ranks (PLAN.md 7.1 point 1, confirmed by the owner): the top two ranks. A character defaults to
+-- logger when either list matches. Indexes follow the rank's position (0 is the guild master), so a guild
+-- that reorders its ranks must revisit them. Names are compared case-insensitively.
+Log.officerRankIndexes = {0, 1}
+Log.officerRankNames = {}
 -- Instance map ids of raids that are not inside an instance. None is known yet; the list is data.
-Log.OUTDOOR_RAID_MAPS = {}
+Log.outdoorRaidMaps = {}
 Log.DB_VERSION = 1
 
 local REMIND_LOG = "could not turn combat logging on. Type /combatlog now; the game answers \"Combat being logged\"."
@@ -91,18 +95,27 @@ function Log.readRank()
     local okG, inGuild = pcall(IsInGuild)
     if not okG or isSecret(inGuild) then return "unreadable" end
     if not inGuild then return "noguild" end
-    local ok, guildName, _, index = pcall(GetGuildInfo, "player")
+    local ok, guildName, rankName, index = pcall(GetGuildInfo, "player")
     if not ok then return "unreadable" end
-    if guildName == nil and index == nil then return "pending" end
-    if index == nil or isSecret(index) or type(index) ~= "number" then return "unreadable" end
-    local okM, officer = pcall(function()
-        for i = 1, #Log.OFFICER_RANKS do
-            if index == Log.OFFICER_RANKS[i] then return true end
+    if guildName == nil and index == nil and rankName == nil then return "pending" end
+    local indexOk = index ~= nil and not isSecret(index) and type(index) == "number"
+    local nameOk = rankName ~= nil and not isSecret(rankName) and type(rankName) == "string"
+    -- a listed name decides alone; otherwise the index must be readable to say "member"
+    local okM, result = pcall(function()
+        if nameOk then
+            local lower = string.lower(rankName)
+            for i = 1, #Log.officerRankNames do
+                if lower == string.lower(Log.officerRankNames[i]) then return "officer" end
+            end
         end
-        return false
+        if not indexOk then return "unreadable" end
+        for i = 1, #Log.officerRankIndexes do
+            if index == Log.officerRankIndexes[i] then return "officer" end
+        end
+        return "member"
     end)
     if not okM then return "unreadable" end
-    return officer and "officer" or "member"
+    return result
 end
 
 local function settleRank(final)
@@ -131,8 +144,8 @@ function Log.where()
         return kind .. ":" .. tostring(mapId)
     end
     if mapId ~= nil then
-        for i = 1, #Log.OUTDOOR_RAID_MAPS do
-            if Log.OUTDOOR_RAID_MAPS[i] == mapId then return "raid:" .. tostring(mapId) end
+        for i = 1, #Log.outdoorRaidMaps do
+            if Log.outdoorRaidMaps[i] == mapId then return "raid:" .. tostring(mapId) end
         end
     end
     return nil
@@ -164,10 +177,9 @@ function Log.try(run)
     if state.run ~= run then return end
     if Log.logger() ~= true then return end -- off: nothing; nil: the rank is not in yet, a later try goes
     if not run.advDone then advanced(run) end
-    if readOn() then confirm(run) return end
-    if run.accepted and RR.now() - run.accepted < Log.TRUST then return end
-    local ok, started = pcall(LoggingCombat, true)
-    if ok and started == true then run.accepted = RR.now() end
+    if readOn() then confirm(run) return end -- only the read stops a retry
+    local ok = pcall(LoggingCombat, true)
+    if ok then run.calledAt = RR.now() end
 end
 
 function Log.final(run)
@@ -211,6 +223,14 @@ function Log.status()
     local on = Log.logger()
     local why = Log.chosen() and "your choice" or ("default: " .. RANK_WORDS[state.rank])
     RR.say("logger " .. (on == nil and "not decided yet" or on and "on" or "off") .. " for this character (" .. why .. ").")
+    local run = state.run
+    if readOn() then
+        RR.say("combat logging: on.")
+    elseif run and run.calledAt and RR.now() - run.calledAt < Log.TRUST then
+        RR.say(string.format("combat logging: started %d s ago, waiting for the game to confirm.", RR.now() - run.calledAt))
+    else
+        RR.say("combat logging: off.")
+    end
 end
 
 local function slash(msg)

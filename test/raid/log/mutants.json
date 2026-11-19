@@ -8,24 +8,10 @@
   },
   {
     "file": "addon/RelaxRaid/Log.lua",
-    "old": "    if readOn() then confirm(run) return end\n    if run.accepted",
-    "new": "    if run.accepted",
+    "old": "    if readOn() then confirm(run) return end -- only the read stops a retry\n",
+    "new": "",
     "killed_by": "test_already_on_with_advanced_off_turns_advanced_on_only",
     "why": "read first"
-  },
-  {
-    "file": "addon/RelaxRaid/Log.lua",
-    "old": "    if run.accepted and RR.now() - run.accepted < Log.TRUST then return end\n",
-    "new": "",
-    "killed_by": "test_accepted_start_is_trusted_over_a_lagging_read",
-    "why": "trust window"
-  },
-  {
-    "file": "addon/RelaxRaid/Log.lua",
-    "old": "if ok and started == true then run.accepted = RR.now() end",
-    "new": "if ok then run.accepted = RR.now() end",
-    "killed_by": "test_start_ignored_10s_read_lags_5s",
-    "why": "trust any start"
   },
   {
     "file": "addon/RelaxRaid/Log.lua",
@@ -64,7 +50,7 @@
   },
   {
     "file": "addon/RelaxRaid/Log.lua",
-    "old": " or type(index) ~= \"number\"",
+    "old": " and type(index) == \"number\"",
     "new": "",
     "killed_by": "test_rank_index_not_a_number_is_unreadable",
     "why": "non-number rank read"
@@ -85,8 +71,8 @@
   },
   {
     "file": "addon/RelaxRaid/Log.lua",
-    "old": "if index == Log.OFFICER_RANKS[i] then return true end",
-    "new": "if index ~= Log.OFFICER_RANKS[i] then return true end",
+    "old": "if index == Log.officerRankIndexes[i] then return \"officer\" end",
+    "new": "if index ~= Log.officerRankIndexes[i] then return \"officer\" end",
     "killed_by": "test_member_rank_is_not_a_logger",
     "why": "officer match inverted"
   },
@@ -155,7 +141,7 @@
   },
   {
     "file": "addon/RelaxRaid/Log.lua",
-    "old": "            if Log.OUTDOOR_RAID_MAPS[i] == mapId then return \"raid:\" .. tostring(mapId) end\n",
+    "old": "            if Log.outdoorRaidMaps[i] == mapId then return \"raid:\" .. tostring(mapId) end\n",
     "new": "",
     "killed_by": "test_outdoor_raid_map_from_data",
     "why": "outdoor list ignored"
@@ -183,8 +169,8 @@
   },
   {
     "file": "addon/RelaxRaid/Log.lua",
-    "old": "local ok, started = pcall(LoggingCombat, true)",
-    "new": "local ok, started = true, LoggingCombat(true)",
+    "old": "    local ok = pcall(LoggingCombat, true)\n    if ok",
+    "new": "    local ok = LoggingCombat(true) ~= nil or true\n    if ok",
     "killed_by": "test_logging_api_throws",
     "why": "start unguarded"
   },
@@ -194,5 +180,33 @@
     "new": "    C_CVar.SetCVar(\"advancedCombatLogging\", \"1\")",
     "killed_by": "test_setting_api_throws",
     "why": "write unguarded"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    local ok = pcall(LoggingCombat, true)\n    if ok then run.calledAt = RR.now() end",
+    "new": "    if run.calledAt and RR.now() - run.calledAt < Log.TRUST then return end\n    local ok = pcall(LoggingCombat, true)\n    if ok then run.calledAt = RR.now() end",
+    "killed_by": "test_call_taken_without_error_and_ignored_is_retried",
+    "why": "own call stops retries"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "                if lower == string.lower(Log.officerRankNames[i]) then return \"officer\" end",
+    "new": "                if rankName == Log.officerRankNames[i] then return \"officer\" end",
+    "killed_by": "test_officer_rank_names_case_insensitive",
+    "why": "names case-sensitive"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    elseif run and run.calledAt and RR.now() - run.calledAt < Log.TRUST then",
+    "new": "    elseif false then",
+    "killed_by": "test_status_uses_our_call_only_for_its_answer",
+    "why": "status ignores our call"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "Log.officerRankIndexes = {0, 1}",
+    "new": "Log.officerRankIndexes = {0, 1, 2}",
+    "killed_by": "test_shipped_officer_data",
+    "why": "shipped ranks changed"
   }
 ]
