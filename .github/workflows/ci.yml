@@ -55,7 +55,7 @@ jobs:
           done
       - name: Relax Quest Planner tests (private-data suites skip on CI)
         run: |
-          for t in ui_shell_test bridge_skip_test journey_integration journey_picker engine_test journey_private nil_quest_test refresh_correctness_test; do
+          for t in ui_shell_test bridge_skip_test journey_integration journey_picker engine_test journey_private nil_quest_test refresh_correctness_test journal_test dungeon_route_test; do
             python -I -B test/planner/$t.py
           done
       - name: Relax Raid modules (Lua and Python)

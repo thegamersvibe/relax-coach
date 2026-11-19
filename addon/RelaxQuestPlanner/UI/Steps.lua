@@ -2,6 +2,9 @@
 -- Never mark a quest done just because the player clicked a button.
 local RQP = RelaxQuestPlanner
 local UI = RQP.UI
+-- Quest, NPC, zone and journal text is shown as plain text: a "|" is shown as "|", never read as a
+-- texture, colour or link code. Escaped once, here (Journey's copy is escaped in Journey/Bridge.lua).
+local function plain(v) return (tostring(v or ""):gsub("|","||")) end
 local VERB = {accept="Pick up", complete="Do", turnin="Turn in"}
 
 local function questFlag(api, q, fallback)
@@ -66,7 +69,7 @@ function UI.BlockingReason(s, P, route)
           local rec = RQP.Data and RQP.Data.Quest and RQP.Data.Quest(q)
           name = rec and rec.name
         end
-        return "Needs: " .. (name or ("quest " .. tostring(q))) .. (active and " (pick up)" or " (turn in)")
+        return "Needs: " .. plain(name or ("quest " .. tostring(q))) .. (active and " (pick up)" or " (turn in)")
       end
     end
     local lvl = RQP.Number(s.level) or RQP.Number(s.reqLevel)
@@ -108,14 +111,19 @@ function UI.PickStep(route, P)
     end
   end
   local firstHere, firstAct, firstUndone, left = nil, nil, nil, 0
+  local actionBlock
   for i, s in ipairs(route.steps or {}) do
     if not stepDone(s, P) then
       left = left + 1
       if not (s.kind == "turnin" and keepActive[s.q]) then
         firstUndone = firstUndone or i
         if actionable(s, P, route) then
-          firstAct = firstAct or i
-          if (map and s.map == map) or (zone and s.zone == zone) then firstHere = firstHere or i end
+          local block=s.block or 0
+          if not actionBlock or block<actionBlock then firstAct,firstHere,actionBlock=nil,nil,block end
+          if block==actionBlock then
+            firstAct = firstAct or i
+            if (map and s.map == map) or (zone and s.zone == zone) then firstHere = firstHere or i end
+          end
         end
       end
     end
@@ -142,15 +150,69 @@ function UI.RouteIssues(route)
   return tostring(#issues) .. " route issue(s): " .. table.concat(parts, " - ")
 end
 
+local function blockName(block,title)
+  if block==1 then return "Before you go" end
+  if block==2 then return "Inside "..title end
+  if block==3 then return "After the run" end
+  if block==4 then return "Next run" end
+end
+local function routeDetails(route)
+  if UI.detailsRoute~=route then
+    UI.detailsRoute=route
+    if UI.extrasFrame then UI.extrasFrame:Hide() end
+  end
+  local count=route.extraCount or 0
+  local notes=route.preRunNotes or {}
+  if count==0 and #notes==0 then
+    if UI.extrasButton then UI.extrasButton:Hide() end
+    return
+  end
+  if not UI.extrasButton then
+    UI.extrasButton=UI.Button(UI.frame,"",444,12,-304,function()
+      if not UI.extrasFrame then
+        UI.extrasFrame=UI.Frame("RelaxQuestPlannerExtras",470,330)
+        UI.Header(UI.extrasFrame,"Route notes and extra quests",400)
+        UI.CloseButton(UI.extrasFrame,function() UI.extrasFrame:Hide() end)
+        local scroll=CreateFrame("ScrollFrame",nil,UI.extrasFrame,"UIPanelScrollFrameTemplate")
+        scroll:SetPoint("TOPLEFT",UI.extrasFrame,"TOPLEFT",12,-42); scroll:SetSize(422,274)
+        local child=CreateFrame("Frame",nil,scroll); child:SetSize(420,1); scroll:SetScrollChild(child)
+        UI.extrasChild=child
+        UI.extrasText=UI.Text(child,"GameFontHighlightSmall",0,0,414)
+        scroll:EnableMouseWheel(true)
+        scroll:SetScript("OnMouseWheel",function(self,delta)
+          self:SetVerticalScroll(math.max(0,math.min(self:GetVerticalScrollRange(),self:GetVerticalScroll()-delta*40)))
+        end)
+      end
+      local lines={}
+      if #(UI.route.preRunNotes or {})>0 then
+        lines[#lines+1]="Before you go"
+        for _,n in ipairs(UI.route.preRunNotes) do lines[#lines+1]=plain(n.text) end
+      end
+      if #(UI.route.extras or {})>0 then
+        lines[#lines+1]="More quests use this dungeon (class, crafting or set quests)"
+        for _,q in ipairs(UI.route.extras) do lines[#lines+1]=plain(q.name).." ("..tostring(q.q)..")" end
+      end
+      UI.extrasText:SetText(table.concat(lines,"\n\n"))
+      local height=UI.extrasText.GetStringHeight and UI.extrasText:GetStringHeight() or #lines*40
+      UI.extrasChild:SetHeight(math.max(274,height+12))
+      UI.extrasFrame:Show()
+    end)
+    UI.extrasButton:SetHeight(38)
+  end
+  UI.frame:SetHeight(math.max(UI.frame:GetHeight(),350))
+  UI.extrasButton:SetText(count>0 and (count.." more quests use this dungeon (class, crafting or set quests)") or "Before you go: preparation notes")
+  UI.extrasButton:Show()
+end
 function UI.RenderRoute(P)
   if not UI.frame then return end
   local route = UI.route
   if not route then return end
+  routeDetails(route)
   P = P or RQP.Player.Snapshot() -- one snapshot per render, not up to three
   local index, left, canDo = UI.PickStep(route, P)
   UI.current = index and route.steps[index]
   local qleft = UI.QuestsLeft(route, P)
-  UI.title:SetText((route.title or "Quest route") .. "  (" .. tostring(qleft) .. (qleft == 1 and " quest left)" or " quests left)"))
+  UI.title:SetText(plain(route.title or "Quest route") .. "  (" .. tostring(qleft) .. (qleft == 1 and " quest left)" or " quests left)"))
   if not UI.current then
     UI.line1:SetText(#(route.steps or {}) == 0 and "No available route steps." or "|cff33ff99All done.|r")
     UI.line2:SetText("")
@@ -160,16 +222,22 @@ function UI.RenderRoute(P)
     return
   end
   local s = UI.current
+  local header=blockName(s.block,plain(route.title or "dungeon"))
+  if header then UI.title:SetText(UI.title:GetText().."\n"..header) end
   local hex = UI.KIND_HEX and UI.KIND_HEX[s.kind] or "ffffff"
-  UI.line1:SetText("|cff" .. hex .. (VERB[s.kind] or s.kind or "Quest") .. "|r  " .. (s.name or tostring(s.q)))
+  UI.line1:SetText("|cff" .. hex .. (VERB[s.kind] or s.kind or "Quest") .. "|r  " .. plain(s.name or tostring(s.q)))
   local c = UI.THEME and UI.THEME.kind[s.kind]
   if UI.stepStripe and c then UI.stepStripe:SetColorTexture(c[1], c[2], c[3], 1) end
-  local where = s.who and (s.who .. (s.zone and (" - " .. s.zone) or "")) or (s.zone or "")
+  local who = type(s.who)=="string" and plain(s.who) or nil
+  local zone = type(s.zone)=="string" and plain(s.zone) or nil
+  local where = who and (who .. (zone and (" - " .. zone) or "")) or (zone or "")
   local x, y = RQP.Number(s.x), RQP.Number(s.y)
   if x and y then where = where .. (" (%.1f, %.1f)"):format(x, y) end
   UI.line2:SetText(where)
-  UI.tags:SetText((s.source or "unknown source") .. "  ·  " .. (s.confidence or "unverified"))
-  local note = s.note or ""
+  local tags=(s.source or "unknown source") .. "  ·  " .. (s.confidence or "unverified")
+  if RQP.Data and RQP.Data.FDJ and not RQP.Data.FDJ() then tags=tags.."  ·  Journal missing: limited data" end
+  UI.tags:SetText(tags)
+  local note = plain(s.note)
   if s.below then
     local floor = RQP.Number(route.floor)
     local reason = note ~= "" and note or "optional quest / reward"

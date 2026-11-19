@@ -11,10 +11,37 @@ E.MaskContains=member
 local holidays={[-366]=true,[-22]=true,[-284]=true,[-369]=true,[-364]=true,[-1002]=true,
     [-1003]=true,[-370]=true,[-41]=true,[-375]=true,[-376]=true,[-1006]=true,[-1005]=true}
 local never={race=true,class=true,blacklisted=true,repeatable=true,holiday=true,superseded=true,
-    exclusive=true,breadcrumbObsolete=true,expired=true,overLevel=true}
-local function static(r,p)
+    exclusive=true,breadcrumbObsolete=true,expired=true,overLevel=true,unavailable=true}
+local function overlap(a,b)
+    while a>0 and b>0 do
+        if a%2==1 and b%2==1 then return true end
+        a,b=math.floor(a/2),math.floor(b/2)
+    end
+    return false
+end
+local function journalFaction(r,j)
+    if not j or (j.faction~="Alliance" and j.faction~="Horde") then return nil,false end
+    local masks=D.Enums().factionRaceMasks or {}
+    local a=overlap(r.races,masks.Alliance or 0)
+    local h=overlap(r.races,masks.Horde or 0)
+    local faction=a~=h and (a and "Alliance" or "Horde") or nil
+    return faction,faction~=nil and faction~=j.faction
+end
+local function requiredLevel(r,g)
+    local j=g.tailored and D.Journal(r.id)
+    return math.max(r.reqLevel,j and j.requires or 0)
+end
+local function static(r,p,tailored)
     if D.Blacklisted(r.id) then return "blacklisted" end
-    if r.races~=0 and not member(r.races,p.raceMask) then return "race" end
+    local j=tailored and D.Journal(r.id)
+    local faction,conflict=journalFaction(r,j)
+    if r.races~=0 and not member(r.races,p.raceMask) and not (conflict and faction~=p.faction) then return "race" end
+    if j then
+        if r.races==0 and (j.faction=="Alliance" or j.faction=="Horde") and j.faction~=p.faction then return "race" end
+        if r.classes==0 and j.classOnly and p.class and j.classOnly:upper()~=p.class then return "class" end
+        if j.unavailableRaces and (j.unavailableRaces[p.race] or j.unavailableRaces[p.raceID]) then return "race" end
+        if j.unavailable then return "unavailable" end
+    end
     if r.classes~=0 and not member(r.classes,p.classMask) then return "class" end
     -- Without QuestieDB, FDJ's explicit faction/class metadata still applies.
     if (r.faction=="Alliance" or r.faction=="Horde") and r.faction~=p.faction then return "race" end
@@ -94,7 +121,7 @@ local function gates(q,p,done,log,level,g)
     if not r then return {{"unknownQuest",q}} end
     if done[q] then return {"done"} end
     if log[q] then return {"inlog"} end
-    local st=static(r,p); if st then return {st} end
+    local st=static(r,p,g.tailored); if st then return {st} end
     local why={}
     local function add(k,v) why[#why+1]={k,v} end
     if #r.single>0 then
@@ -122,7 +149,7 @@ local function gates(q,p,done,log,level,g)
     if r.disabledBy and log[r.disabledBy] then add("disabledBy",r.disabledBy) end
     -- Lookahead relaxes only the minimum level, never the character's upper cap.
     if r.maxLevel and p.level>r.maxLevel then return {"overLevel"} end
-    if r.reqLevel>level then add("level",r.reqLevel) end
+    if requiredLevel(r,g)>level then add("level",requiredLevel(r,g)) end
     if nonempty(r.skill) or nonempty(r.ranks) or nonempty(r.spec) then add("profession",firstGate(r.skill,r.ranks)) end
     if nonempty(r.minRep) or nonempty(r.maxRep) then add("reputation",firstGate(r.minRep,r.maxRep)) end
     if nonempty(r.spell) then add("spell",r.spell) end
@@ -253,6 +280,34 @@ local function classify(r)
 end
 local oldInvalidate=E.Invalidate
 function E.Invalidate() oldInvalidate(); classifications={}; addonLists=nil end
+local function journalTargets(name,p,g,entries)
+    local listed,targets,extras={},{},{}
+    for _,j in ipairs(entries) do listed[j.id]=j end
+    for _,q in ipairs(D.AllQuestIds()) do
+        local r=D.Quest(q); local j=listed[q]
+        local exclusion=r and static(r,p,true)
+        -- A logged repeatable stays (it is being done); a holiday quest never enters the plan, even when
+        -- it is also repeatable. static() keeps its reason order: E.State must not change.
+        if r and not p.done[q] and (not exclusion or (exclusion=="repeatable" and p.log[q] and not holidays[r.zone])) then
+            local st=state(q,p,p.done,p.log,60,g)
+            local grey=g.floor>0 and r.qLevel>0 and r.qLevel<g.floor and not p.log[q]
+            if not never[st] and not grey then
+                if j then
+                    if not j.hideFromMainList then targets[#targets+1]=q end
+                elseif classify(r)[name] then
+                    if p.log[q] then targets[#targets+1]=q
+                    else extras[#extras+1]={q=q,name=r.name} end
+                end
+            end
+        end
+        tick()
+    end
+    table.sort(targets,function(a,b)
+        local x,y=D.Quest(a).qLevel,D.Quest(b).qLevel
+        if x~=y then return x<y end; return a<b
+    end)
+    return targets,extras
+end
 local function dungeonTargets(name,p,g)
     name=D.CanonicalDungeon(name)
     if not addonLists then
@@ -407,6 +462,175 @@ local function dependencies(q,p,g,planned)
     end
     return D.Keys(needs),active,parentActive
 end
+local function journalPlace(text,dungeon)
+    if type(text)~="string" or text=="" then return nil end
+    local lower=text:lower()
+    if lower:find("outside",1,true) then return "outside" end
+    if lower:find("inside",1,true) then return "inside" end
+    for _,d in ipairs(D.FOREVER_DUNGEONS) do
+        if d.name==D.CanonicalDungeon(dungeon) then
+            if lower:find(d.name:lower(),1,true) then return "inside" end
+            for _,alias in ipairs(d.aliases or {}) do
+                if lower:find(alias:lower(),1,true) then return "inside" end
+            end
+        end
+    end
+    return "outside"
+end
+local function where(kind,r,dungeon)
+    local j=D.Journal(r.id)
+    local text=j and j[kind=="accept" and "pickup" or "turnin"]
+    local journalWhere=journalPlace(text,dungeon)
+    local sources=starters(r,kind=="turnin")
+    local hasArea=false
+    for _,d in ipairs(D.Dungeons()) do if d.name==D.CanonicalDungeon(dungeon) and #d.areaIds>0 then hasArea=true end end
+    if hasArea then
+        for _,s in ipairs(sources) do
+            if (s.kind=="npc" or s.kind=="object") and s.name and s.zone then
+                local place=D.DungeonForArea(s.zone)==D.CanonicalDungeon(dungeon) and "inside" or "outside"
+                return place,journalWhere~=nil and place~=journalWhere,text
+            end
+        end
+    end
+    if journalWhere then return journalWhere,false,text end
+    if kind=="accept" then
+        local itemID=j and j.startItem and j.startItem[1]
+        if type(itemID)=="number" then
+            sources[#sources+1]={kind="item",sources=itemSources(itemID)}
+        end
+        for _,s in ipairs(sources) do
+            if s.kind=="item" and D.DungeonForArea(singleSourceZone(s.sources,true))==D.CanonicalDungeon(dungeon) then
+                return "inside",false,text
+            end
+        end
+        if j and j.startsInDungeon then return "inside",false,text end
+    end
+    return "unknown",false,text
+end
+local function objectivePlace(r,dungeon,target)
+    -- A dungeon category is membership, not work. A known talk/delivery quest
+    -- completes at its turn-in; it must not invent an instance visit before an
+    -- outside breadcrumb can unlock the real dungeon objective. Supplements
+    -- have no objective data, which is different from a known empty objective set.
+    if r.source=="QuestieDB" then
+        local work=false
+        for _,objectives in pairs(r.objectives) do
+            if nonempty(objectives) then work=true; break end
+        end
+        if not work then
+            -- No objective rows. Where the work is, in this order: QuestieDB's end trigger (an
+            -- escort's or an explore spot's zone), the planner's inside list (Core/PlaceData.lua),
+            -- else a talk/delivery quest, placed where it is turned in.
+            local here=D.CanonicalDungeon(dungeon)
+            local zones=D.Trigger(r.id)
+            -- A trigger zone that is this dungeon means inside work. A trigger in another zone decides
+            -- nothing (an escort's end trigger can carry the outdoor entrance zone): fall through.
+            if zones then
+                for zone in pairs(zones) do
+                    if type(zone)=="number" and zone>0 and D.DungeonForArea(zone)==here then return "inside" end
+                end
+            end
+            local listed=D.PlaceInside(r.id)
+            if listed and D.CanonicalDungeon(listed)==here then return "inside" end
+            local place=where("turnin",r,dungeon)
+            if place=="unknown" then place=where("accept",r,dungeon) end
+            return place
+        end
+    end
+    local known,inside=false,false
+    local function add(zone)
+        if type(zone)=="number" and zone>0 then
+            known=true
+            if D.DungeonForArea(zone)==D.CanonicalDungeon(dungeon) then inside=true end
+        end
+    end
+    for index,kind in ipairs({"npc","object","item"}) do
+        for _,objective in ipairs(r.objectives[index] or {}) do
+            local id=type(objective)=="table" and objective[1]
+            if type(id)=="number" then
+                if kind=="item" then for _,s in ipairs(itemSources(id)) do add(s.zone) end
+                else local row=kind=="npc" and D.Npc(id) or D.Object(id); if row then add(row.zone) end end
+            end
+        end
+    end
+    for _,objective in ipairs(r.objectives[5] or {}) do
+        if type(objective)=="table" and type(objective[1])=="table" then
+            for _,id in ipairs(objective[1]) do local n=D.Npc(id); if n then add(n.zone) end end
+        end
+    end
+    if not known then add(r.zone) end
+    if known then return inside and "inside" or "outside" end
+    if target or where("accept",r,dungeon)=="inside" or where("turnin",r,dungeon)=="inside" then return "inside" end
+    return "outside"
+end
+local function note(s,text)
+    if text and text~="" then s.note=(s.note and s.note.."; " or "")..text end
+end
+local function journalStep(s,r,route,target)
+    if s.kind=="complete" then
+        s.where=objectivePlace(r,route.title,target)
+    else
+        local conflict,text
+        s.where,conflict,text=where(s.kind,r,route.title)
+        if text and not s.who then s.note=text end
+        if conflict then note(s,"sources disagree") end
+        if s.where=="unknown" then note(s,s.kind=="accept" and "pickup location not confirmed" or "turn-in location not confirmed") end
+        local j=D.Journal(r.id)
+        if s.kind=="accept" and s.where=="inside" then
+            local item=j and j.startItem
+            if item and type(item[2])=="string" then note(s,"Starts from item "..item[2].." inside "..route.title)
+            else note(s,"Pick up inside "..route.title) end
+        elseif s.kind=="turnin" and s.where=="inside" then note(s,"Turn in inside "..route.title) end
+    end
+    if s.where=="inside" then s.zone=route.title end
+    -- Unknown starts in block 1 and only inherits what it depends on (routeBlocks): a step whose
+    -- place is not confirmed must not push the route into a later run by itself.
+    s.block=s.where=="inside" and 2 or 1
+end
+local function preRunNotes(route)
+    route.preRunNotes={}
+    for _,id in ipairs(route.plan) do
+        local j=D.Journal(id)
+        if j then
+            local bring,needs={},{}
+            local function item(v)
+                if type(v)=="table" and type(v[2])=="string" then bring[#bring+1]=v[2] end
+            end
+            item(j.requiredItem)
+            for _,v in ipairs(j.requiredItems or {}) do item(v) end
+            if j.profession then needs[#needs+1]=j.profession end
+            if j.attunement then needs[#needs+1]=j.attunement end
+            local text={}
+            if #bring>0 then text[#text+1]="Bring: "..table.concat(bring,", ") end
+            if #needs>0 then text[#text+1]="Needs: "..table.concat(needs,", ") end
+            if #text>0 then route.preRunNotes[#route.preRunNotes+1]={q=id,block=1,text=table.concat(text,"; ")} end
+        end
+    end
+end
+local function routeBlocks(nodes,p,route,targets)
+    local byKey={}
+    for _,n in ipairs(nodes) do
+        byKey[n.key]=n
+        local s=n.step
+        if s.kind=="turnin" and s.where=="outside" and p.ready[s.q]
+            and objectivePlace(D.Quest(s.q),route.title,targets[s.q])=="inside" then s.block=3 end
+    end
+    local changed=true
+    while changed do
+        changed=false
+        for _,n in ipairs(nodes) do
+            local s=n.step; local block=s.block
+            for dep in pairs(n.deps) do
+                local parent=byKey[dep].step.block
+                block=math.max(block,parent)
+                if s.where=="outside" and parent==2 then block=math.max(block,3)
+                elseif s.where=="inside" and parent>=3 then block=4 end -- unknown never raises
+            end
+            if block~=s.block then s.block=block; changed=true end
+            tick()
+        end
+    end
+end
 local function step(kind,r,p,floor,needs,active,parentActive)
     local s={kind=kind,q=r.id,name=r.name,needs=needs,activeNeeds=active,parentActive=parentActive,
         below=r.qLevel<floor,levelOK=r.reqLevel<=p.level,source=r.source or "QuestieDB",
@@ -422,7 +646,7 @@ local function step(kind,r,p,floor,needs,active,parentActive)
                 s.note="Starts from item "..(source.name or tostring(source.id))..(z and " (known drop source)" or " (world drop / source unknown)")
             else pin=D.Pin(source.kind,source.id) end
         elseif r.fdj then
-            s.note=(kind=="accept" and r.fdj.pickup or r.fdj.turnin) or "Location unknown (addon supplement)"
+            s.note=r.fdj[kind=="accept" and "pickup" or "turnin"] or "Location unknown (addon supplement)"
             if kind=="accept" then pin=D.Pin("quest",r.id) end
         else s.note="Location unknown; check your quest log" end
     else
@@ -435,6 +659,57 @@ local function step(kind,r,p,floor,needs,active,parentActive)
         s.note=(s.note and s.note..". " or "").."Below floor: your choice — "..why
     end
     return s
+end
+-- Hints are action-order edges, never quest gates. Add them only after real
+-- action dependencies, rejecting any edge that can reach back to its child.
+local function orderHints(route,p,nodes,byQuest)
+    route.orderHints,route.droppedHints={},{}
+    local source=D.FDJ()
+    if not source then return end
+    local byKey={}; for _,n in ipairs(nodes) do byKey[n.key]=n end
+    local function reaches(from,target,seen)
+        if from==target then return true end
+        if seen[from] then return false end; seen[from]=true
+        for dep in pairs(byKey[from].deps) do
+            if reaches(dep,target,seen) then return true end
+        end
+        return false
+    end
+    local function pick(group)
+        -- Any completed choice satisfies the hint, without ordering its siblings.
+        for _,id in ipairs(group.ids) do if p.done[id] then return nil end end
+        for _,id in ipairs(group.ids) do if byQuest[id] then return id end end
+    end
+    for _,target in ipairs(D.Keys(source.QUEST_PREREQ_CHAINS)) do
+        if byQuest[target] then
+            local groups={}
+            for _,s in ipairs(source.QUEST_PREREQ_CHAINS[target]) do
+                local r=D.Quest(s.id)
+                if not s.itemStep and r and r.source=="QuestieDB" and s.id<1000000 then
+                    local previous=groups[#groups]
+                    if s.choice and previous and previous.choice==s.choice then
+                        previous.ids[#previous.ids+1]=s.id
+                    else groups[#groups+1]={ids={s.id},choice=s.choice} end
+                end
+            end
+            groups[#groups+1]={ids={target}}
+            for i=2,#groups do
+                local a,b=pick(groups[i-1]),pick(groups[i])
+                if a and b and a~=b then
+                    local before=byQuest[a].turnin
+                    local after=byQuest[b].accept or byQuest[b].complete or byQuest[b].turnin
+                    local hint={before=a,after=b}
+                    if reaches(before.key,after.key,{}) then
+                        route.droppedHints[#route.droppedHints+1]=hint
+                    else
+                        after.deps[before.key]=true
+                        route.orderHints[#route.orderHints+1]=hint
+                    end
+                end
+                tick()
+            end
+        end
+    end
 end
 local function actions(route,p,g,targets)
     local planned=planSet(route.plan,{})
@@ -451,7 +726,7 @@ local function actions(route,p,g,targets)
             tick()
         end
         metadata[q]={needs=needs,active=active,parentActive=parentActive,index=index}
-        if r.reqLevel>p.level then blocked[q]=true end
+        if requiredLevel(r,g)>p.level then blocked[q]=true end
         tick()
     end
     -- A lower-level child cannot be presented now if its required parent is later.
@@ -469,6 +744,11 @@ local function actions(route,p,g,targets)
     for _,q in ipairs(route.plan) do for _,id in ipairs(metadata[q].needs) do isPrerequisite[id]=true end end
     local function node(kind,r,m,priority)
         local s=step(kind,r,p,route.floor,m.needs,m.active,m.parentActive)
+        if g.tailored then
+            journalStep(s,r,route,targets[r.id])
+            local _,conflict=journalFaction(r,D.Journal(r.id))
+            if conflict then s.note=(s.note or "").."; check faction" end
+        end
         local n={step=s,deps={},priority=priority,index=m.index,key=kind..":"..r.id}
         nodes[#nodes+1]=n; byQuest[r.id]=byQuest[r.id] or {}; byQuest[r.id][kind]=n
         return n
@@ -477,6 +757,8 @@ local function actions(route,p,g,targets)
         local r,m=D.Quest(q),metadata[q]
         if blocked[q] then
             local s=step("accept",r,p,route.floor,m.needs,m.active,m.parentActive)
+            if g.tailored then journalStep(s,r,route,targets[r.id]) end
+            s.reqLevel=requiredLevel(r,g); s.levelOK=s.reqLevel<=p.level
             if s.levelOK then s.note=(s.note or "").."; prerequisite is level-locked" end
             route.later[#route.later+1]=s
         else
@@ -487,7 +769,7 @@ local function actions(route,p,g,targets)
             local complete
             if not p.ready[q] then
                 complete=node("complete",r,m,targets[q] and 3 or 1)
-                if targets[q] then complete.step.zone=route.title end
+                if targets[q] and not route.journal then complete.step.zone=route.title end
                 if accept then complete.deps[accept.key]=true end
             end
             local turn=node("turnin",r,m,isPrerequisite[q] and 1 or 4)
@@ -512,9 +794,19 @@ local function actions(route,p,g,targets)
         end
         tick()
     end
+    if route.journal then
+        orderHints(route,p,nodes,byQuest)
+        routeBlocks(nodes,p,route,targets)
+        preRunNotes(route)
+    end
     local emitted={}
     local function less(a,b)
-        if a.priority~=b.priority then return a.priority<b.priority end
+        if route.journal then
+            if a.step.block~=b.step.block then return a.step.block<b.step.block end
+            local rank={accept=0,complete=1,turnin=2}
+            if rank[a.step.kind]~=rank[b.step.kind] then return rank[a.step.kind]<rank[b.step.kind] end
+        end
+        if not route.journal and a.priority~=b.priority then return a.priority<b.priority end
         local az,bz=a.step.zone or "~",b.step.zone or "~"
         if az~=bz then return az<bz end
         if a.index~=b.index then return a.index<b.index end
@@ -543,9 +835,16 @@ local function build(title,goal,p,opts)
     local ok,reason=D.Ready()
     if not ok then route.issues[1]={"missingData",reason}; return route end
     if D.Source()~="QuestieDB" then route.issues[#route.issues+1]={"limitedData",reason} end
-    local g=graph(p)
+    -- Tailoring belongs to this route only; never mutate the graph E.State uses.
+    local g=copy(graph(p))
     g.floor=floor
-    local targets=goal and {goal} or dungeonTargets(title,p,g)
+    local entries=not goal and D.JournalDungeon(title)
+    local targets
+    if entries then
+        g.tailored=true; route.journal=true
+        targets,route.extras=journalTargets(D.CanonicalDungeon(title),p,g,entries)
+        route.extraCount=#route.extras
+    else targets=goal and {goal} or dungeonTargets(title,p,g) end
     local targetSet={}
     for _,q in ipairs(targets) do
         targetSet[q]=true; resolve(q,p,g,route.plan,{},route.issues); tick()
