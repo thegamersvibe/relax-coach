@@ -10,6 +10,7 @@ This is a **legacy Coach-only archive**, not the current combined guild download
 - **App first:** apps before 1.8.0 need **Check App Update → Update App** first; the download is now `RelaxCoach-RaidBundle-1.8.0.zip`. Exit WoW and start it again after the update (new addon folder).
 - **Guide content 4.00.12** (127 guides, adds Riverglades 43/44). **Alliance guides 30–60 stop on 18 December 2026** until a newer content update ships; Horde guides are not affected.
 - **Relax Quest Planner 0.4.0:** dungeon chains tailored to each character; dungeon steps come last, split into **Before you go**, **Inside <dungeon>**, **After the run** and **Next run**.
+- **Hot items (app, Farming page):** per auction house, up to 10 items clearly up since yesterday, from AH Profit's saved scans, with a small chart.
 - Coach and the app are **1.8.0**; Relax Journey (`4.00.04`) is unchanged.
 - **Not tested in game: alpha, owner's decision.**
 
