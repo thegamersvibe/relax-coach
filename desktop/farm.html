@@ -48,6 +48,19 @@
  {{else}}<p class="subtle">No bank contents saved yet: open your bank in game with AH Profit enabled, then /reload.</p>{{end}}
 </div>
 
+<div class="card" id="farm-hot"><h3>Hot items <small class="subtle">up since yesterday</small></h3>
+ {{with .Hot}}{{if .Message}}<p class="subtle">{{.Message}}</p>{{else}}<table class="farm-table"><thead><tr><th>Item</th><th class="num">Now</th><th class="num">Since yesterday</th><th class="num">Usual price</th><th class="num">Against usual</th><th>Spike</th><th>Chart</th></tr></thead><tbody>
+ {{range $h := .Houses}}<tr data-house="{{$h.House}}" class="hot-source"><td colspan="7"><small class="subtle">{{$h.Source}}{{if not $h.LastScan.IsZero}}, last scan {{ago $h.LastScan}}{{end}}.{{if $h.ChangeOnly}} Not enough history yet for a baseline; this compares today with yesterday only.{{end}}{{if $h.Checked}} {{$h.Checked}} items checked{{if $h.Dropped}}, {{$h.Dropped}} left out by the filters{{end}}.{{end}}</small></td></tr>
+ {{if $h.Message}}<tr data-house="{{$h.House}}"><td colspan="7" class="subtle">{{$h.Message}}</td></tr>{{end}}
+ {{range $h.Rows}}<tr data-house="{{$h.House}}"><td>{{.Name}}{{if .Gatherable}} <small class="subtle" title="gatherable">(gather)</small>{{end}}</td><td class="num">{{coin .Now}}</td><td class="num">+{{.ChangePct}}%{{if eq .PrevDays 2}} <small class="subtle">since 2 days ago</small>{{end}}</td>
+  {{if $h.ChangeOnly}}<td class="num subtle" colspan="2">not enough days yet</td>{{else}}<td class="num"><span title="median of {{.BaseDays}} days">{{coin .Baseline}}</span></td><td class="num">{{if ge .AgainstPct 0}}+{{end}}{{.AgainstPct}}%</td>{{end}}
+  <td>{{if .Spike}}<span class="hot-spike">spike</span> <small class="subtle">highest in {{.SpikeDays}} days</small>{{end}}</td>
+  <td>{{with .Chart}}<svg class="hot-chart" width="{{.W}}" height="{{.H}}" viewBox="0 0 {{.W}} {{.H}}" role="img" aria-label="price per recorded day"><path d="{{.Path}}" fill="none" stroke="currentColor" stroke-width="1.5"/>{{if .HasDot}}<circle cx="{{.DotX}}" cy="{{.DotY}}" r="2.5" fill="currentColor"/>{{end}}</svg>{{end}}</td></tr>{{end}}{{end}}
+ <tr data-house=""><td colspan="7" class="subtle">Pick an auction house to see its hot items.</td></tr>
+ </tbody></table>
+ <p class="scope">From AH Profit's daily history of your own scans: one price per day, the day's lowest; days are UTC days. "Usual price" is the median of the earlier days on file (at most 21). Listings count units, not sellers, so one seller with 20 units counts as 20.</p>{{end}}{{end}}
+</div>
+
 <div class="card" id="farm-gathering"><h3>Gathering <small class="subtle">nodes you and your guild picked</small></h3>
  {{if .Gathering}}<table class="farm-table"><thead><tr><th>Map</th><th class="num">Nodes</th><th>Kinds</th><th>Last picked</th><th>Picked by</th></tr></thead><tbody>
  {{range .Gathering}}<tr><td>{{.Name}}</td><td class="num">{{.Nodes}}</td><td>{{if .KindNames}}{{join .KindNames ", "}}{{if gt .Kinds (len .KindNames)}} <small class="subtle">+{{sub .Kinds (len .KindNames)}} unnamed</small>{{end}}{{else}}{{.Kinds}}{{end}}</td><td>{{if .Last.IsZero}}unknown{{else}}{{ago .Last}}{{end}}</td><td>{{join .Who ", "}}</td></tr>{{end}}
