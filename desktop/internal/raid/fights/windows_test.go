@@ -51,7 +51,7 @@ func TestRunEndsAtZoneOut(t *testing.T) {
 	es := []model.Event{{Kind: model.Header, TimeMs: 0}, modeltest.At(1).Zone(42, "Invented Halls", 2).Build()}
 	es = append(es, boss(7, 1000)...)
 	out := es[len(es)-1].TimeMs + 100
-	es = append(es, modeltest.At(out).Zone(0, "Outside", 0).Build(), hit(out+600000))
+	es = append(es, modeltest.At(out).Zone(0, "Outside", 0).Build(), modeltest.At(out+252000).Zone(0, "Invented Road", 0).Build(), hit(out+600000))
 	r := only(t, build(t, es, params()))
 	if r.EndMs != out {
 		t.Fatalf("run ends %d, want zone-out %d", r.EndMs, out)

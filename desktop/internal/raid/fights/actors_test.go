@@ -48,6 +48,8 @@ func TestBossUnitsRolesAndEffectiveTotals(t *testing.T) {
 		who := bram
 		if i < 3 {
 			who = alia
+		} else if i == 9 {
+			who = cato // three is exactly half the top player's six landed swings
 		}
 		e := modeltest.At(int64(1010+i)).Src(giant).Dst(who).Damage(10, -1).Landed().Build()
 		es = append(es, e)

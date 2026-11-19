@@ -20,7 +20,9 @@ import (
 // No defaults are compiled into this package.
 type Params struct {
 	PullGapMs, TailMs, LowConfidenceFightMs int64
+	ReentryGapMs                            int64
 	TankMinBossSwingShare                   float64
+	TankMinTopRatio                         float64
 	HealerRequiresNotTank                   bool
 	HealerMinHealingDamageRatio             float64
 	HealerStrictlyGreater                   bool
@@ -74,7 +76,14 @@ func collect(events iter.Seq[model.Event], p Params) (Result, error) {
 	instance, difficulty := int64(0), int64(0)
 	enabled, knownZone := true, false
 	inferred := false
+	pendingExit := false
+	var exitMs int64
 	flush := func(end int64, cut bool) {
+		if pendingExit {
+			// Later outside lines (including headers/EOF) cannot move the exit.
+			end, cut = exitMs, false
+			pendingExit = false
+		}
 		if len(segment) == 0 {
 			return
 		}
@@ -95,12 +104,29 @@ func collect(events iter.Seq[model.Event], p Params) (Result, error) {
 			continue
 		}
 		if e.Kind == model.ZoneChange && e.Zone != nil {
-			if !knownZone || e.Zone.InstanceID != instance {
-				flush(e.TimeMs, false)
-				instance, difficulty = e.Zone.InstanceID, e.Zone.Difficulty
-				knownZone = true
-				enabled = instance != 0
+			next := e.Zone.InstanceID
+			if !enabled && knownZone && next == 0 {
+				continue // repeated outside zones do not restart the re-entry clock
 			}
+			if pendingExit && next == instance && e.TimeMs-exitMs < p.ReentryGapMs {
+				pendingExit, enabled = false, true
+				continue
+			}
+			if enabled && knownZone && next == instance {
+				continue
+			}
+			if enabled && instance != 0 && next == 0 && len(segment) > 0 {
+				// Delay the run boundary, but retain the exit to close the fight.
+				pendingExit, exitMs = true, e.TimeMs
+				segment = append(segment, e)
+			} else {
+				// Any different non-zero instance commits the pending exit, even
+				// if it is unlisted or has no fights of its own.
+				flush(e.TimeMs, false)
+				instance, difficulty = next, e.Zone.Difficulty
+			}
+			knownZone = true
+			enabled = next != 0
 			continue
 		}
 		if !enabled {
@@ -146,6 +172,10 @@ func splitRun(events []model.Event, instance, difficulty, end int64, cut bool, p
 		ended = false
 	}
 	for _, e := range events {
+		if e.Kind == model.ZoneChange {
+			finish() // re-entry joins runs, never fights across an exit
+			continue
+		}
 		start := e.Kind == model.EncounterStart && e.Enc != nil
 		stop := e.Kind == model.EncounterEnd && e.Enc != nil
 		if start {
@@ -212,10 +242,15 @@ func combat(e model.Event) bool {
 }
 
 func validate(p Params) error {
-	if p.PullGapMs < 0 || p.TailMs < 0 || p.LowConfidenceFightMs < 0 || p.InstanceKind == nil || p.BossUnitSelection != "highest_max_health_damaged_creature" {
+	if p.PullGapMs < 0 || p.TailMs < 0 || p.LowConfidenceFightMs < 0 || p.ReentryGapMs <= 0 || p.InstanceKind == nil || p.BossUnitSelection != "highest_max_health_damaged_creature" {
 		return errors.New("fights: invalid window, instance classifier or boss selection")
 	}
-	if math.IsNaN(p.TankMinBossSwingShare) || math.IsInf(p.TankMinBossSwingShare, 0) || p.TankMinBossSwingShare < 0 || p.TankMinBossSwingShare > 1 || math.IsNaN(p.HealerMinHealingDamageRatio) || math.IsInf(p.HealerMinHealingDamageRatio, 0) || p.HealerMinHealingDamageRatio < 0 {
+	for _, ratio := range []float64{p.TankMinBossSwingShare, p.TankMinTopRatio} {
+		if math.IsNaN(ratio) || math.IsInf(ratio, 0) || ratio <= 0 || ratio > 1 {
+			return errors.New("fights: invalid tank ratio")
+		}
+	}
+	if math.IsNaN(p.HealerMinHealingDamageRatio) || math.IsInf(p.HealerMinHealingDamageRatio, 0) || p.HealerMinHealingDamageRatio < 0 {
 		return errors.New("fights: invalid role ratio")
 	}
 	return nil

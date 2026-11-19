@@ -18,8 +18,8 @@ var cato = modeltest.Player("Cato-PvP-EU")
 var giant = modeltest.Creature("Invented Granite Keeper", 81)
 
 func params() Params {
-	return Params{PullGapMs: 10000, TailMs: 2500, LowConfidenceFightMs: 45000,
-		TankMinBossSwingShare: .3, HealerRequiresNotTank: true, HealerMinHealingDamageRatio: 1,
+	return Params{PullGapMs: 10000, TailMs: 2500, LowConfidenceFightMs: 45000, ReentryGapMs: 1800000,
+		TankMinBossSwingShare: .15, TankMinTopRatio: .5, HealerRequiresNotTank: true, HealerMinHealingDamageRatio: 1,
 		HealerStrictlyGreater: true, BossUnitSelection: "highest_max_health_damaged_creature",
 		InstanceKind: func(id, size int64) (model.RunKind, bool) {
 			if id == 42 {

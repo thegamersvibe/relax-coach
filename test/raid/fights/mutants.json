@@ -19,7 +19,7 @@
   },
   {
     "file": "desktop/internal/raid/fights/fights.go",
-    "old": "enabled = instance != 0",
+    "old": "enabled = next != 0",
     "new": "enabled = true",
     "killed_by": "TestRunEndsAtZoneOut"
   },
@@ -75,7 +75,7 @@
     "file": "desktop/internal/raid/fights/timeline.go",
     "old": "/float64(total) >= p.TankMinBossSwingShare",
     "new": "/float64(total) > p.TankMinBossSwingShare",
-    "killed_by": "TestBossUnitsRolesAndEffectiveTotals"
+    "killed_by": "TestTankLandedShareAndTopRatio"
   },
   {
     "file": "desktop/internal/raid/fights/timeline.go",
@@ -172,5 +172,101 @@
     "old": "|| (powerType.Present && powerType.V == healthCostPowerType)",
     "new": "|| false",
     "killed_by": "TestNoPowerSampleWithoutABarOrFromHealthCost"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "e.TimeMs-exitMs < p.ReentryGapMs",
+    "new": "e.TimeMs-exitMs <= p.ReentryGapMs",
+    "killed_by": "TestReentryGapBoundary"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "pendingExit && next == instance &&",
+    "new": "pendingExit && next != 0 &&",
+    "killed_by": "TestReentryDifferentInstance"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "flush(e.TimeMs, false)\n\t\t\t\tinstance, difficulty = next, e.Zone.Difficulty",
+    "new": "if !pendingExit {\n\t\t\t\t\tflush(e.TimeMs, false)\n\t\t\t\t}\n\t\t\t\tinstance, difficulty = next, e.Zone.Difficulty",
+    "killed_by": "TestReentryDifferentInstance"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "float64(swings[a.ID]) >= float64(top)*p.TankMinTopRatio",
+    "new": "float64(swings[a.ID]) > float64(top)*p.TankMinTopRatio",
+    "killed_by": "TestTankLandedShareAndTopRatio"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "float64(swings[a.ID]) >= float64(top)*p.TankMinTopRatio",
+    "new": "float64(swings[a.ID]) >= float64(top)*0",
+    "killed_by": "TestTankLandedShareAndTopRatio"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "e.TimeMs-exitMs < p.ReentryGapMs",
+    "new": "e.TimeMs-exitMs >= 0",
+    "killed_by": "TestReentryGapBoundary"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "continue // repeated outside zones do not restart the re-entry clock",
+    "new": "exitMs = e.TimeMs\n\t\t\t\tcontinue",
+    "killed_by": "TestReentryGapBoundary"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "end, cut = exitMs, false",
+    "new": "end, cut = exitMs+p.ReentryGapMs, false",
+    "killed_by": "TestRunEndsAtZoneOut"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "finish() // re-entry joins runs, never fights across an exit",
+    "new": "// Do not close the fight at an exit.",
+    "killed_by": "TestReentryClosesFightAtExit"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "p.ReentryGapMs <= 0",
+    "new": "p.ReentryGapMs < 0",
+    "killed_by": "TestReentryGapMustBePositive"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "ratio <= 0 || ratio > 1",
+    "new": "ratio < 0 || ratio > 1",
+    "killed_by": "TestTankTopRatioConfigAndValidation"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "math.IsNaN(ratio)",
+    "new": "false",
+    "killed_by": "TestTankTopRatioConfigAndValidation"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "top = max(top, swings[a.ID])",
+    "new": "top = min(top, swings[a.ID])",
+    "killed_by": "TestTankLandedShareAndTopRatio"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "p.InstanceKind(instance, size)",
+    "new": "p.InstanceKind(instance, 0)",
+    "killed_by": "TestUnlistedInstanceGroupSize"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "r.Kind, r.Listed = p.InstanceKind(instance, size)",
+    "new": "r.Kind, r.Listed = p.InstanceKind(instance, size)\n\t\tr.Listed = true",
+    "killed_by": "TestUnlistedInstanceGroupSize"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "for _, a := range f.Players {\n\t\ttop = max(top, swings[a.ID])\n\t}",
+    "new": "for _, count := range swings {\n\t\ttop = max(top, count)\n\t}",
+    "killed_by": "TestTankTopTakerIsPlayerNotPet"
   }
 ]

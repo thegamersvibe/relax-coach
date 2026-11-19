@@ -23,7 +23,16 @@ No model edits, real log contents, dependencies, upload, UI or installation.
 - Gaps use hostile combat evidence (damage, misses, interrupts, dispels), not
   idle aura/heal/cast chatter. The exact configured gap stays in one pull;
   a strictly larger gap starts another. Boss tail is inclusive and is cut by
-  a new encounter start, header, or zone boundary. Run end is the zone-out line.
+  a new encounter start, header, or zone boundary. A return to the same instance
+  continues the run only when zone-out to zone-in is strictly under
+  `Params.ReentryGapMs` (caller default 1800000 ms) with no intervening non-zero
+  instance entry. The exit still closes the fight/tail; outside lines and zone
+  markers never enter fight events. A header always starts a new run.
+  Run `EndMs` keeps the existing zone-out timestamp convention: the final exit
+  after any accepted returns, or the first exit if there is no return. Repeated
+  outside-zone changes do not move it or restart the gap. Fight events end at
+  the last included line inside the instance. Empty detours emit no run; a
+  detour with fights emits its own run (two versus three runs for A/B/A).
 - A first non-encounter pull with no observed quiet interval is conservatively
   partial/unscored. EOF/header cuts mark the run partial, not a completed boss.
 - File-local ids use `anchor:position`; complete boss ids use server fields

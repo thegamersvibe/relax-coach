@@ -12,6 +12,13 @@ a field's meaning, or adding a field or a flag, raises `formatVersion`.
 - `formatVersion` starts at 1. A reader refuses a file whose `formatVersion` is newer than it knows,
   and refuses a flag or an enumeration value it does not know.
 - `kind` is `raid`. A dungeon run has its own file (last section).
+- One file covers one run. Leaving and returning to the same instance continues that run only when
+  zone-out to zone-in is strictly under the configured re-entry gap (default 30 minutes) and no
+  different non-zero instance was entered in between. A header starts a new run. Outside lines
+  belong to no fight; each exit closes the current fight/tail. The run's end boundary remains its
+  final zone-out timestamp (the first zone-out if it never returns), not a later outside line or
+  repeated outside-zone change. Empty instance visits produce no run file; visits with fights do.
+  All complete boss fights on both sides of an accepted return contribute to the same `nightId`.
 - Players are keyed by the character name **exactly as the log wrote it**, the whole string. The file
   has **no `siteCharacterId` and no `siteName` field**: the site links names when a file is uploaded
   (PLAN.md 6.1, 6.2), and the app has no site client before W6.

@@ -104,10 +104,15 @@ func makeDetail(f model.Fight, p Params) Detail {
 			dead[e.Dst.ID] = true
 		}
 	}
+	var top int64
+	for _, a := range f.Players {
+		top = max(top, swings[a.ID])
+	}
 	// f shares the map with its caller but never modifies any caller-owned event.
 	for _, a := range f.Players {
 		tl := d.Timelines[a.ID]
-		tank := total > 0 && swings[a.ID] > 0 && float64(swings[a.ID])/float64(total) >= p.TankMinBossSwingShare
+		tank := total > 0 && swings[a.ID] > 0 && float64(swings[a.ID])/float64(total) >= p.TankMinBossSwingShare &&
+			float64(swings[a.ID]) >= float64(top)*p.TankMinTopRatio
 		ratio := float64(tl.DamageDone) * p.HealerMinHealingDamageRatio
 		healer := float64(tl.HealingDone) > ratio
 		if !p.HealerStrictlyGreater {
