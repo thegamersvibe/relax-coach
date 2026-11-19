@@ -18,6 +18,7 @@ ON_LINE = "combat logging is on"
 REMIND_LOG = "could not turn combat logging on"
 REMIND_ADV = "could not turn Advanced Combat Logging on"
 HINT = "could not read your guild rank"
+SIZE_HINT = "Combat logs are large"
 
 
 def boot(guild=OFFICER, loaded=True, lag=0.0, ignore=0.0, saved=None, refuse=False, player_logging=False,
@@ -189,7 +190,7 @@ class LogTests(unittest.TestCase):
         c.advance(20)
         self.assertEqual(says(c, HINT), 1, "unreadable, not waiting for guild data forever")
         self.assertEqual(says(c, "internal error"), 0)
-        self.assertFalse(c.setting_value("RELAXRAID_LOGGER"))
+        self.assertIs(c.run("return RelaxRaid.modules.Log.logger(\'party\')"), False, "the dungeon default carries the officer rule")
 
     def test_chat_line_reads_the_advanced_setting_when_it_speaks(self):
         c = boot(lag=5, ignore=10, advanced="1")
@@ -222,6 +223,79 @@ class LogTests(unittest.TestCase):
         c2.enter("party", 329)
         c2.advance(45)
         self.assertEqual(says(c2, ON_LINE), 2, "a new entry says it again")
+
+    # --- DEC-40 (PLAN.md 6B.4): raids log for every guild member, dungeons for the officer ranks -------------
+    def test_dec40_member_logs_raids_not_dungeons(self):
+        c = boot(guild=MEMBER)
+        c.enter("raid", 409)
+        c.advance(60)
+        self.assertTrue(truth(c), "a non-officer guild member logs a raid")
+        self.assertEqual(says(c, ON_LINE), 1)
+        self.assertEqual(says(c, SIZE_HINT), 1, "the size hint for a default non-officer logger")
+        c2 = boot(guild=MEMBER)
+        c2.enter("party", 329)
+        c2.advance(60)
+        self.assertEqual(c2.log_calls, [], "the same character in a dungeon does not")
+        self.assertEqual(says(c2, SIZE_HINT), 0)
+
+    def test_dec40_officer_logs_both_without_the_size_hint(self):
+        for kind, mapid in (("raid", 409), ("party", 329)):
+            c = boot(guild=OFFICER)
+            c.enter(kind, mapid)
+            c.advance(60)
+            self.assertTrue(truth(c), kind)
+            self.assertEqual(says(c, SIZE_HINT), 0, "officers are not told")
+
+    def test_dec40_stored_off_stays_off_in_both(self):
+        for guild in (MEMBER, OFFICER):
+            for kind, mapid in (("raid", 409), ("party", 329)):
+                c = boot(guild=guild, saved={"RelaxRaidCharDB": "{version = 1, logger = false}"})
+                c.enter(kind, mapid)
+                c.advance(60)
+                self.assertEqual(c.log_calls, [], (guild, kind))
+
+    def test_dec40_not_in_a_guild_stays_off(self):
+        c = boot(guild=None)
+        c.enter("raid", 409)
+        c.advance(60)
+        self.assertEqual(c.log_calls, [])
+        self.assertEqual(c.chat, [])
+
+    def test_dec40_unreadable_rank_raid_on_dungeon_off_with_hint(self):
+        def unreadable():
+            c = Client()
+            c.guild = ("Fake Guild", "Rank B", c.secret())
+            c.load_addon(ADDON)
+            c.enter("none", 0, initial=True)
+            return c
+        c = unreadable()
+        c.enter("raid", 409)
+        c.advance(60)
+        self.assertTrue(truth(c), "in the guild is enough for a raid")
+        c2 = unreadable()
+        c2.enter("party", 329)
+        c2.advance(60)
+        self.assertEqual(c2.log_calls, [], "a dungeon needs the officer rule")
+        self.assertEqual(says(c2, HINT), 1)
+
+    def test_dec40_size_hint_once_per_session(self):
+        c = boot(guild=MEMBER)
+        for _ in range(3):
+            c.enter("raid", 409)
+            c.advance(60)
+            c.enter("none", 0)
+        self.assertEqual(says(c, SIZE_HINT), 1)
+        self.assertTrue(all(ord(ch) < 128 for line in c.chat for ch in line), "ASCII only")
+
+    def test_dec40_default_rule_table(self):
+        c = boot()
+        rule = c.run("return RelaxRaid.modules.Log.default")
+        cases = {("officer", "raid"): True, ("member", "raid"): True, ("unreadable", "raid"): True,
+                 ("pending", "raid"): True, ("noguild", "raid"): False,
+                 ("officer", "party"): True, ("member", "party"): False, ("unreadable", "party"): False,
+                 ("pending", "party"): None, ("noguild", "party"): False}
+        for (rank, kind), want in cases.items():
+            self.assertEqual(rule(rank, kind), want, (rank, kind))
 
     def test_retries_until_the_read_confirms(self):
         # the read lags 8 s, longer than the gap between tries: only the read stops the retries, so the start
@@ -370,12 +444,12 @@ class LogTests(unittest.TestCase):
     # --- REQ-LOG-02 -----------------------------------------------------------------------------------------
     def test_member_rank_is_not_a_logger(self):
         c = boot(guild=MEMBER)
-        c.enter("raid", 409)
+        c.enter("party", 329)
         c.advance(60)
         self.assertEqual(c.log_calls, [])
         self.assertEqual(c.cvar_writes, [])
         self.assertEqual(c.chat, [])
-        self.assertFalse(c.setting_value("RELAXRAID_LOGGER"))
+        self.assertIs(c.run("return RelaxRaid.modules.Log.logger(\'party\')"), False, "the dungeon default carries the officer rule")
 
     def test_officer_rank_is_a_logger(self):
         c = boot(guild=("Fake Guild", "Rank A", 0))
@@ -393,12 +467,12 @@ class LogTests(unittest.TestCase):
         self.assertIn("/relaxraid logger on", c.chat[-1])
         c.fire("PLAYER_GUILD_UPDATE", "player")
         c.fire("PLAYER_GUILD_UPDATE", "player")
-        c.enter("raid", 409)
+        c.enter("party", 329)
         c.advance(60)
         self.assertEqual(says(c, HINT), 1, "once")
         self.assertEqual(c.log_calls, [])
         self.assertEqual(says(c, "internal error"), 0)
-        self.assertFalse(c.setting_value("RELAXRAID_LOGGER"))
+        self.assertIs(c.run("return RelaxRaid.modules.Log.logger(\'party\')"), False, "the dungeon default carries the officer rule")
 
     def test_officer_rank_names_case_insensitive(self):
         saved = {"RelaxRaid.modules.Log.officerRankNames": '{"Raid Lead"}'}
@@ -410,7 +484,7 @@ class LogTests(unittest.TestCase):
         self.assertTrue(c2.setting_value("RELAXRAID_LOGGER"), "a listed name decides even with the index secret")
         self.assertEqual(says(c2, HINT), 0)
         c3 = boot(guild=("Fake Guild", "Raider", 6), saved=saved)
-        self.assertFalse(c3.setting_value("RELAXRAID_LOGGER"))
+        self.assertIs(c3.run("return RelaxRaid.modules.Log.logger(\'party\')"), False, "the dungeon default carries the officer rule")
 
     def test_shipped_officer_data(self):
         c = boot()
@@ -433,12 +507,12 @@ class LogTests(unittest.TestCase):
     def test_rank_index_not_a_number_is_unreadable(self):
         c = boot(guild=("Fake Guild", "Rank B", "1"))
         self.assertEqual(says(c, HINT), 1)
-        self.assertFalse(c.setting_value("RELAXRAID_LOGGER"))
+        self.assertIs(c.run("return RelaxRaid.modules.Log.logger(\'party\')"), False, "the dungeon default carries the officer rule")
 
     def test_guild_data_late_then_officer(self):
         # guild data arrives after the last try (the wait for it is set longer here), so only a restart helps
         c = boot(loaded=False, saved={"RelaxRaid.modules.Log.RANK_WAIT": "600"})
-        c.enter("raid", 409)                   # logged in straight into a raid
+        c.enter("party", 329)                   # logged in straight into a raid
         c.advance(35)
         self.assertEqual(c.log_calls, [], "nothing until the rank is known")
         c.guild_loaded = True
@@ -450,7 +524,7 @@ class LogTests(unittest.TestCase):
 
     def test_guild_data_never_comes(self):
         c = boot(loaded=False)
-        c.enter("raid", 409)
+        c.enter("party", 329)
         c.advance(60)
         self.assertEqual(says(c, HINT), 1, "unreadable after the wait")
         self.assertEqual(c.log_calls, [])
@@ -494,15 +568,50 @@ class LogTests(unittest.TestCase):
         self.assertEqual(len(cat), 1)
         self.assertTrue(cat[0]["registered"])
         self.assertIsNotNone(c.settings["RELAXRAID_LOGGER"]["checkbox"])
-        c.enter("party", 329)
-        c.advance(35)                          # after the last try of this entry
-        c.click_setting("RELAXRAID_LOGGER", True)
-        self.assertIs(c.run("return RelaxRaidCharDB.logger"), True)
-        self.assertTrue(c.setting_value("RELAXRAID_LOGGER"))
-        c.advance(60)
-        self.assertTrue(truth(c), "turning it on inside a dungeon starts now")
+        self.assertTrue(c.setting_value("RELAXRAID_LOGGER"), "a member's box shows the raid default: on")
         c.click_setting("RELAXRAID_LOGGER", False)
-        self.assertIs(c.run("return RelaxRaidCharDB.logger"), False)
+        self.assertIs(c.run("return RelaxRaidCharDB.logger"), False, "an explicit off is stored")
+        self.assertFalse(c.setting_value("RELAXRAID_LOGGER"))
+        c.click_setting("RELAXRAID_LOGGER", True)
+        self.assertIsNone(c.run("return RelaxRaidCharDB.logger"), "ticking back returns to the default, not 'on'")
+        # not in a guild: the default is off; ticking stores on and starts now inside a dungeon
+        c2 = boot(guild=None)
+        self.assertFalse(c2.setting_value("RELAXRAID_LOGGER"))
+        c2.enter("party", 329)
+        c2.advance(35)                         # after the last try of this entry
+        c2.click_setting("RELAXRAID_LOGGER", True)
+        self.assertIs(c2.run("return RelaxRaidCharDB.logger"), True)
+        c2.advance(60)
+        self.assertTrue(truth(c2), "turning it on inside a dungeon starts now")
+        c2.click_setting("RELAXRAID_LOGGER", False)
+        self.assertIsNone(c2.run("return RelaxRaidCharDB.logger"), "unticking returns to the default")
+
+    def test_status_shows_the_default_per_instance_type(self):
+        c = boot(guild=MEMBER)
+        c.slash("/relaxraid status")
+        self.assertIn("logger for this character: default, on in raids, off in dungeons (not an officer rank).", c.chat[-2])
+        c.slash("/relaxraid logger off")
+        c.slash("/relaxraid status")
+        self.assertIn("logger off for this character (your choice).", c.chat[-2])
+
+    def test_size_hint_waits_for_a_settled_rank(self):
+        # an officer whose guild data loads after he is inside a raid is not told the non-officer line
+        c = boot(guild=OFFICER, loaded=False, saved={"RelaxRaid.modules.Log.RANK_WAIT": "600"})
+        c.enter("raid", 409)
+        c.advance(5)
+        c.guild_loaded = True
+        c.fire("PLAYER_GUILD_UPDATE", "player")
+        c.advance(60)
+        self.assertTrue(truth(c))
+        self.assertEqual(says(c, SIZE_HINT), 0)
+        # a member in the same position is told once the rank says member
+        c2 = boot(guild=MEMBER, loaded=False, saved={"RelaxRaid.modules.Log.RANK_WAIT": "600"})
+        c2.enter("raid", 409)
+        c2.advance(5)
+        self.assertEqual(says(c2, SIZE_HINT), 0, "not while the rank is pending")
+        c2.guild_loaded = True
+        c2.fire("PLAYER_GUILD_UPDATE", "player")
+        self.assertEqual(says(c2, SIZE_HINT), 1)
 
     def test_newer_save_left_untouched(self):
         saved = '{version = 2, logger = false, future = {a = 1}}'
