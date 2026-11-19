@@ -29,7 +29,10 @@ const oldAppUnknownFile = "archive path is outside the fixed guild allowlist: In
 var oldAppRaidFiles = []string{
 	"Interface/AddOns/RelaxRaid/Core.lua",
 	"Interface/AddOns/RelaxRaid/Log.lua",
+	"Interface/AddOns/RelaxRaid/Prep.lua",
 	"Interface/AddOns/RelaxRaid/RelaxRaid.toc",
+	"Interface/AddOns/RelaxRaid/Store.lua",
+	"Interface/AddOns/RelaxRaid/Wire.lua",
 }
 
 const oldAppManualURL = "https://github.com/thegamersvibe/relax-coach/releases/latest"
