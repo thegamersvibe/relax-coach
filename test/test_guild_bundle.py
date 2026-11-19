@@ -411,6 +411,37 @@ class GuildBuilderExeTests(unittest.TestCase):
                 self.assertEqual(self.standalone.read_bytes(),b'MZstale synthetic fixture\n')
                 self.assertFalse((self.root/'dist/guild-package').exists())
 
+class GuildInstallerScriptTests(unittest.TestCase):
+    """Static contract only: PowerShell/Windows execution is a separate gate."""
+    def test_installer_allowlist_accepts_only_the_raid_root(self):
+        script=(ROOT/'scripts/Install-RelaxCoach.ps1').read_text()
+        match=re.search(r"\$rel -notmatch '([^']+)'",script)
+        assert match is not None,'installer allowlist missing'
+        pattern=re.compile(match.group(1),re.I)  # PowerShell -notmatch ignores case.
+        for path in ('Interface/AddOns/RelaxRaid/RelaxRaid.toc','Interface/AddOns/RelaxRaid/sub/Log.lua',
+                     'interface/addons/relaxraid/Core.lua'):
+            self.assertIsNotNone(pattern.search(path),path)
+        for path in ('Interface/AddOns/RelaxRaidExtra/Core.lua','WTF/RelaxRaid.lua','RelaxRaid/Core.lua'):
+            self.assertIsNone(pattern.search(path),path)
+
+    def test_installer_raid_slot_and_required_toc_mirror_planner(self):
+        script=(ROOT/'scripts/Install-RelaxCoach.ps1').read_text()
+        for pattern in (r"\$planner=@.*\nif\(\$planner -and.*\n",r"if\(\$planner\) \{\n.*\n.*\n\}"):
+            match=re.search(pattern,script)
+            assert match is not None,'planner contract missing'
+            raid=match.group(0).replace('planner','raid').replace('RelaxQuestPlanner','RelaxRaid')
+            self.assertIn(raid,script)
+        self.assertIn('foreach($s in $slots)',script)
+        self.assertIn('if($s.existed) { Copy-Item -LiteralPath $s.target -Destination $s.backup -Recurse }',script)
+        restore=(ROOT/'scripts/Restore-RelaxCoach.ps1').read_text()
+        # Restore is already slot-driven: the newly recorded raid slot takes the
+        # same remove/copy/hash-verification path as the planner, without a fork.
+        self.assertIn('foreach($slot in $state.slots)',restore)
+        self.assertIn('Remove-Item -LiteralPath $slot.target -Recurse -Force',restore)
+        self.assertIn('Copy-Item -LiteralPath $slot.backup -Destination $slot.target -Recurse',restore)
+        self.assertIn('New target survived rollback:',restore)
+        self.assertIn('Rollback verification failed:',restore)
+
 class GuildBundleTests(unittest.TestCase):
     def test_release_inputs_keep_independent_coach_identity_at_144(self):
         toc=(ROOT/'addon/ForeverCoach/ForeverCoach.toc').read_text()

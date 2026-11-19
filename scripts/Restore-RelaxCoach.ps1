@@ -2,6 +2,8 @@
 param([string]$Backup=$PSScriptRoot)
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
+# Installation records optional RelaxQuestPlanner and RelaxRaid slots too.
+# Restore every recorded slot: replace a prior copy, or remove a fresh install; never touch WTF.
 $state=Get-Content -LiteralPath (Join-Path $Backup 'installation.json') -Raw | ConvertFrom-Json
 foreach($slot in $state.slots) { if($slot.existed -and !(Test-Path -LiteralPath $slot.backup)) { throw "Missing backup; restoration refused: $($slot.backup)" } }
 $exe=($state.slots | Where-Object {$_.source -eq 'RelaxCoach.exe'}).target
