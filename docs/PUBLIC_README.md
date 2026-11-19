@@ -2,7 +2,14 @@
 
 A leveling coach for **World of Warcraft: Forever**, with a Windows application for reports and addon updates.
 
-This is a **legacy Coach-only archive**, not the current combined guild download. For Coach, Journey and guide content together, use `RelaxCoach-Bundle-1.7.2.zip` on [release v1.7.2](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.7.2). A current release need not contain a Coach-only ZIP.
+This is a **legacy Coach-only archive**, not the current combined guild download. For Coach, Journey and guide content together, use `RelaxCoach-RaidBundle-1.8.0.zip` on [release v1.8.0](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.8.0). A current release need not contain a Coach-only ZIP.
+
+## What's new in v1.8.0 (combined bundle)
+
+- **Relax Raid 0.1.0, the raid logger:** turns the game's combat log and Advanced Combat Logging on when you enter a raid. Raids log for every guild member; dungeons only for officer ranks. **Don't delete your combat log** (several hundred MB a night); the guild needs it for raid reports. `/rraid status`, `/rraid logger on|off|default`.
+- **App first:** apps before 1.8.0 need **Check App Update → Update App** first; the download is now `RelaxCoach-RaidBundle-1.8.0.zip`. Exit WoW and start it again after the update (new addon folder).
+- Coach and the app are **1.8.0**; Relax Journey (`4.00.04`), guide content (`4.00.08`) and Relax Quest Planner (`0.3.0`) are unchanged.
+- **Not tested in game: alpha, owner's decision.**
 
 ## What's new in v1.7.2 (combined bundle)
 
@@ -27,7 +34,7 @@ Download the latest available Coach ZIP from [the releases list](https://github.
 - Run **RelaxCoach.exe** for the Windows app. Choose **Coach Report** or **Updates** inside the application window (app 1.5.1 and later also has **Get started**, which installs the current bundle from the app). Microsoft WebView2 Runtime is required; Windows installations commonly already include it.
 - Set the game folder when prompted. Your game may be on any drive.
 - **Using CurseForge, Wago/WowUp or Journey Guide Manager?** Remove Journey from its list or turn off its auto-update: it can overwrite Relax Journey. When the Journey folder is not Relax Journey, the app says so (Updates and Get started) and, if Journey is loaded, Coach mentions it once per session in chat. **Repair** installs Relax Journey again and keeps the other copy in `RelaxCoachBackups`; it needs a published Relax Coach release (Check must find one). If you keep the normal Journey on purpose, you can ignore the note.
-- **On app 1.7.0 or 1.7.1:** use **Updates → Update everything** (or **Update App** first, then **Updates → Check → Update**) for the 1.7.2 bundle; the app updates itself first. Apps older than 1.7.0 still need **Check App Update → Update App** first, then **Update Addon** (**Updates → Check → Update** on recent apps), because their safety lists do not recognize the flight media file shipped in 1.7.0.
+- **On app 1.7.x:** use **Check App Update → Update App** first, then **Updates → Check → Update** (or **Updates → Update everything**) for the 1.8.0 raid bundle; apps before 1.8.0 report it as app-only until they have updated themselves, because it adds the Relax Raid folder. Apps older than 1.7.0 also need **Update App** first.
 - App 1.4.1 supports **Update App**; older apps need one manual EXE replacement. The combined bundle name (`RelaxCoach-Bundle-<version>.zip`, from 1.5.0) is recognized by **app 1.5.0** or later, but its current file set requires **app 1.7.0**; apps before 1.5.0 report it as an app-only release until **Update App** has run. The bundle installs and updates Coach, Journey, Relax Quest Planner and guide content together, with checksum verification, backup and rollback. From app 1.5.2 WoW can stay open; the app then says whether `/reload` is enough or WoW must be restarted (new files), and asks you to close WoW only if a file is in use (usually nothing is changed then; if the way back is blocked as well, the earlier folders stay in `RelaxCoachBackups` and **Repair**/**Update** finishes it after WoW is closed). Older apps and the PowerShell installer need WoW closed. Unrelated addons, SavedVariables and the running app are not replaced by this action. From app 1.6.0, **Update everything** on the Updates page does the app, the bundle and the installed More addons in that order with one click (the app first, so it always knows the files it installs), and after an app update the new app updates the addons by itself when WoW is closed.
 
 The Windows executable is unsigned. Follow your usual antivirus review process; do not disable protection globally. The addon works without the Windows app.

@@ -9,13 +9,13 @@ Three **separate WoW Forever addons**, plus a native Windows report app:
 
 ## Download
 
-**[Download release v1.7.2](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.7.2)**:
+**[Download release v1.8.0](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.8.0)**:
 
-- `RelaxCoach-Bundle-1.7.2.zip` — the three independent addons (Coach, Journey, Relax Quest Planner 0.3.0), Journey guide content **4.00.08**, the Windows app and optional installer/restore scripts. From v1.5.0 the combined download has this new name; earlier releases used `RelaxCoach-Guild-<version>.zip`.
+- `RelaxCoach-RaidBundle-1.8.0.zip` — the four independent addons (Coach, Journey, Relax Quest Planner 0.3.0, Relax Raid 0.1.0), Journey guide content **4.00.08**, the Windows app and optional installer/restore scripts. From v1.8.0 the combined download is named `RelaxCoach-RaidBundle-<version>.zip` because it adds the Relax Raid folder; v1.5.0 to v1.7.2 used `RelaxCoach-Bundle-<version>.zip`, and earlier releases `RelaxCoach-Guild-<version>.zip`.
 - `RelaxCoach.exe` — app-only download, for updating the application separately.
 - `SHA256SUMS.txt` — checksums for these release assets.
 
-**On app 1.7.0?** Use **Updates → Update everything**, or **Check App Update → Update App** first and then **Updates → Check → Update**. Because this release includes a new app, app 1.7.0 and 1.7.1 update themselves before they install the newer addons. After the addon update, follow the app's restart advice.
+**On app 1.7.x?** Run **Check App Update → Update App** first, then **Updates → Check → Update** (or use **Updates → Update everything**). Apps before 1.8.0 do not know the new Relax Raid folder: they report this release as app-only and do not install it until the app has updated itself. After the addon update, exit WoW completely and start it again, because Relax Raid is a new addon folder.
 
 **On an app older than 1.7.0?** Run **Check App Update → Update App** first, then **Update Addon** (**Updates → Check → Update** on recent apps). App 1.6.0/1.6.1 also offers **Updates → Update everything**, which does the app first. Older apps' safety lists do not recognize the new media file and refuse the addon bundle without changing any addon files. A first updater attempt may leave an empty `RelaxCoachBackups` folder. Update the app even if an earlier app-update failure lets you try the addon update directly.
 
@@ -23,7 +23,16 @@ Three **separate WoW Forever addons**, plus a native Windows report app:
 
 **On app 1.4.x?** Use **Check App Update → Update App** first, then close WoW and use **Check for updates → Update Addon**. Apps before 1.5.0 cannot install the bundle (from 1.5.0) and report it as an app-only release until the app is updated. App 1.4.0 needs one manual EXE replacement with Relax Coach closed before it can update itself.
 
-There is deliberately no Coach-only `RelaxCoach-1.7.2.zip`: older apps must not report a completed addon update while leaving the guide content behind. The previous app-only v1.4.1 release remains unchanged.
+There is deliberately no Coach-only `RelaxCoach-1.8.0.zip`: older apps must not report a completed addon update while leaving the guide content behind. The previous app-only v1.4.1 release remains unchanged.
+
+## What's new in v1.8.0
+
+- **New addon: Relax Raid 0.1.0 — the raid logger.** When you enter a raid, Relax Raid turns on the game's combat log and Advanced Combat Logging for you, so the guild has a full record of every raid night. Raids log for **every guild member** by default; five-player dungeons log only for the officer ranks. Characters outside a guild never log.
+- **Don't delete your combat log.** It is large (several hundred MB a raid night) and is the raw material for later raid reports. Keep `WoWCombatLog` files until the guild has collected them.
+- **`/rraid`** (or `/relaxraid`): `/rraid status` shows whether this character logs and whether logging is on now; `/rraid logger on`, `off` or `default` changes it for this character. The same switch is in **Options → AddOns → Relax Raid**. If the game could not turn logging on, Relax Raid tells you to type `/combatlog` yourself.
+- **App first:** this release adds the Relax Raid folder, so apps before 1.8.0 must run **Check App Update → Update App** first, then **Updates → Check → Update** (or **Updates → Update everything**). The download is now `RelaxCoach-RaidBundle-1.8.0.zip`.
+- Coach and the Windows app move to **1.8.0**. Relax Journey (`4.00.04`), guide content (`4.00.08`) and Relax Quest Planner (`0.3.0`) are unchanged.
+- **Not tested in game: alpha, owner's decision.** Offline tests do not validate native Forever behavior or the Windows update flow.
 
 ## What's new in v1.7.2
 
@@ -192,7 +201,7 @@ Use the included `Restore-RelaxCoach.ps1 -Backup <backup-folder>` with WoW close
 ## Coverage and known limits
 
 - Optional installed providers: GearQuest Forever for comparable item scores, ForeverDungeonJournal for dungeon information. Unknown or incomparable gear is shown as unscored, not assigned an invented score.
-- Included Journey code: `4.00.04`; Relax package/Coach version: `1.7.2`; guide-content version: `4.00.08`. The original signed catalog and guide bytes are retained. The content's existing validity date is **18 December 2026**; this release does not remove expiry checks.
+- Included Journey code: `4.00.04`; Relax package/Coach version: `1.8.0`; guide-content version: `4.00.08`. The original signed catalog and guide bytes are retained. The content's existing validity date is **18 December 2026**; this release does not remove expiry checks.
 - This is not a claim of complete coverage for every custom Forever class/spec/item or every leveling route. Some route entries are stubs.
 - An intermittent blank native window occurred during development. The final local candidate passed ten restart/Refresh cycles and a more-than-three-minute minimize/restore test, but the earlier root cause was not conclusively identified. If the window is blank, close and reopen it and report the issue.
 
