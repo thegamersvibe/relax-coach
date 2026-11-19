@@ -120,7 +120,7 @@ end
 
 local function settleRank(final)
     local rank = Log.readRank()
-    if rank == "pending" and final then rank = "unreadable" end
+    if rank == "pending" and (final or state.rank == "unreadable") then rank = "unreadable" end
     local before = Log.logger()
     state.rank = rank
     if rank == "unreadable" and not Log.chosen() and not state.hinted then
@@ -152,19 +152,34 @@ function Log.where()
 end
 
 -- The switch -------------------------------------------------------------------------------------------------
+-- A secret or a failed read is "unknown": not on, so the retries go on.
 local function readOn()
     local ok, on = pcall(LoggingCombat)
-    return ok and on == true
+    if not ok or isSecret(on) then return false end
+    return on == true
+end
+
+local function advancedIsOn()
+    local ok, value = pcall(function() return C_CVar.GetCVar("advancedCombatLogging") end)
+    return ok and not isSecret(value) and value == "1"
 end
 
 local function advanced(run)
     run.advDone = true
-    local ok, value = pcall(C_CVar.GetCVar, "advancedCombatLogging")
-    if ok and value == "1" then run.adv = true return end
-    pcall(C_CVar.SetCVar, "advancedCombatLogging", "1")
-    local ok2, value2 = pcall(C_CVar.GetCVar, "advancedCombatLogging")
-    run.adv = ok2 and value2 == "1"
+    if advancedIsOn() then run.adv = true return end
+    pcall(function() return C_CVar.SetCVar("advancedCombatLogging", "1") end)
+    run.adv = advancedIsOn()
     if not run.adv then RR.say(REMIND_ADV) end -- once per entry; the write is not retried
+end
+
+-- Each step of a try stands alone: a throw in one cannot skip the next.
+local function step(label, fn, ...)
+    local ok, result = pcall(fn, ...)
+    if not ok then
+        RR.errors[label] = (RR.errors[label] or 0) + 1
+        return nil
+    end
+    return result
 end
 
 local function confirm(run)
@@ -176,16 +191,16 @@ end
 function Log.try(run)
     if state.run ~= run then return end
     if Log.logger() ~= true then return end -- off: nothing; nil: the rank is not in yet, a later try goes
-    if not run.advDone then advanced(run) end
-    if readOn() then confirm(run) return end -- only the read stops a retry
+    if not run.advDone then step("Log.advanced", advanced, run) end
+    if step("Log.read", readOn) then step("Log.confirm", confirm, run) return end -- only the read stops a retry
     local ok = pcall(LoggingCombat, true)
     if ok then run.calledAt = RR.now() end
 end
 
 function Log.final(run)
     if state.run ~= run or Log.logger() ~= true then return end
-    if not run.advDone then advanced(run) end
-    if readOn() then confirm(run) return end
+    if not run.advDone then step("Log.advanced", advanced, run) end
+    if step("Log.read", readOn) then step("Log.confirm", confirm, run) return end
     if not run.reminded then
         run.reminded = true
         RR.say(REMIND_LOG)
@@ -204,8 +219,12 @@ function Log.begin(key)
 end
 
 -- Called on every loading screen and zone change. Leaving an instance only forgets the run: never "off".
+local UNSETTLED = {pending = true, unreadable = true, noguild = true}
+
 function Log.check()
     if not RR.loaded then return end
+    -- the rank may have come in without PLAYER_GUILD_UPDATE: read it again at every loading screen until known
+    if UNSETTLED[state.rank] and not Log.chosen() then settleRank(false) end
     local key = Log.where()
     if not key then
         state.run = nil

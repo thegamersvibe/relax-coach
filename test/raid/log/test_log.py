@@ -99,7 +99,7 @@ class LogTests(unittest.TestCase):
     def test_call_taken_without_error_and_ignored_is_retried(self):
         # PLAN.md 7.1 point 5, required: the 0 s call returns without error (and even says "on") but is
         # ignored, the read stays off, and logging must be on after a later retry
-        c = Client(log_lag=5, start_ignored_after_zone=10, ignored_start_says_on=True)
+        c = Client(log_lag=5, start_ignored_after_zone=10, start_result="true")
         c.guild = OFFICER
         c.load_addon(ADDON)
         c.enter("none", 0, initial=True)
@@ -114,6 +114,72 @@ class LogTests(unittest.TestCase):
         self.assertEqual(c.ignored_starts, 3)
         self.assertEqual(says(c, ON_LINE), 1)
         self.assertEqual(says(c, REMIND_LOG), 0)
+
+    def test_required_matrix_whatever_a_start_returns(self):
+        # PLAN.md 7.1 point 5 and review round 1: ignore windows 2/10/25 s x read lag 0/5 s x a start that
+        # returns true while ignored, nil, or the state: logging is on by the end in every case
+        for result in ("true", "nil", "state"):
+            for ignore in (2, 10, 25):
+                for lag in (0, 5):
+                    with self.subTest(result=result, ignore=ignore, lag=lag):
+                        c = Client(log_lag=lag, start_ignored_after_zone=ignore, start_result=result)
+                        c.guild = OFFICER
+                        c.load_addon(ADDON)
+                        c.enter("none", 0, initial=True)
+                        c.enter("raid", 409)
+                        c.advance(31)
+                        self.assertTrue(truth(c), "on by the last retry")
+                        c.advance(60)
+                        self.assertEqual(says(c, ON_LINE), 1)
+                        self.assertEqual(says(c, REMIND_LOG), 0)
+                        self.assertEqual(says(c, "internal error"), 0)
+
+    def test_secret_read_is_unknown_and_retries_go_on(self):
+        c = boot()
+        c.run("LoggingCombat = function(on) if on == nil then return secret() end return true end")
+        c.enter("raid", 409)
+        c.advance(60)
+        self.assertEqual(c.run("local n = 0 for _ in pairs(RelaxRaid.errors) do n = n + 1 end return n"), 0)
+        self.assertEqual(says(c, ON_LINE), 0, "a secret read never confirms")
+        self.assertEqual(says(c, REMIND_LOG), 1)
+        self.assertEqual(says(c, "internal error"), 0)
+
+    def test_setting_api_missing_does_not_skip_the_start(self):
+        c = boot()
+        c.run("C_CVar = nil")
+        c.enter("raid", 409)
+        c.advance(60)
+        self.assertTrue(truth(c), "the start still ran")
+        self.assertEqual(says(c, REMIND_ADV), 1)
+        self.assertEqual(says(c, ON_LINE), 1)
+        self.assertEqual(says(c, "internal error"), 0)
+
+    def test_a_throw_in_one_step_skips_nothing_else(self):
+        c = boot()
+        c.run("RelaxRaid.say = (function(say) return function(t) if t:find('Advanced Combat Logging') then error('x') end say(t) end end)(RelaxRaid.say)")
+        c.refuse_cvar_write = True
+        c.enter("raid", 409)
+        c.advance(0)
+        self.assertTrue(truth(c), "the advanced step threw; the start in the same try still ran")
+        c.advance(60)
+        self.assertEqual(says(c, ON_LINE), 1)
+
+    def test_rank_arrives_late_without_an_event(self):
+        c = boot(loaded=False)
+        c.advance(20)                          # the wait ran out: unreadable, hint said
+        self.assertEqual(says(c, HINT), 1)
+        c.guild_loaded = True                  # data now readable, but no PLAYER_GUILD_UPDATE
+        c.enter("party", 329)
+        c.advance(60)
+        self.assertTrue(truth(c), "read again at the loading screen")
+        self.assertEqual(says(c, ON_LINE), 1)
+
+    def test_not_in_a_guild_at_load_then_in_one(self):
+        c = boot(guild=None)
+        c.guild = OFFICER                      # joined (or the guild flag came late), no event
+        c.enter("raid", 409)
+        c.advance(60)
+        self.assertTrue(truth(c))
 
     def test_retries_until_the_read_confirms(self):
         # the read lags 8 s, longer than the gap between tries: only the read stops the retries, so the start

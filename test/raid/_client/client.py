@@ -6,8 +6,8 @@ Lua runs in-process through lupa (Lua 5.1), the library test/harness.py uses, pi
 
 Modelled, and nothing else:
   - LoggingCombat(on) and its read: the read lags by `log_lag` seconds; a start is ignored for
-    `start_ignored_after_zone` seconds after a zone change (answering the read's value, or true with
-    `ignored_start_says_on`, added by R1: the client can take a start without error and ignore it).
+    `start_ignored_after_zone` seconds after a zone change. What a start returns is unknown on Forever, so
+    `start_result` (added by R1) picks it: "state" (the read's value), "true" (true even when ignored) or "nil".
   - The advancedCombatLogging setting through C_CVar.GetCVar/SetCVar, with `refuse_cvar_write` making the
     write fail and leave the value unchanged.
   - The addon restriction state (`restricted`, set by the test): C_ChatInfo.SendAddonMessage while restricted
@@ -47,12 +47,12 @@ return function() local v = setmetatable({}, mt); made[v] = true; return v end,
 
 
 class Client:
-    def __init__(self, log_lag=0.0, start_ignored_after_zone=0.0, ignored_start_says_on=False):
+    def __init__(self, log_lag=0.0, start_ignored_after_zone=0.0, start_result="state"):
         self.lua = lupa.LuaRuntime(unpack_returned_tuples=True)
         self.now = 0.0
         self.log_lag = log_lag
         self.start_ignored_after_zone = start_ignored_after_zone
-        self.ignored_start_says_on = ignored_start_says_on
+        self.start_result = start_result  # "state": a start answers the state; "true": always true; "nil": nothing
         self.zone_changed_at = None
         self._log = [(float("-inf"), False)]  # (time the value took effect, value)
         self.ignored_starts = 0
@@ -154,11 +154,13 @@ class Client:
         on = bool(on)
         if on and self.zone_changed_at is not None and self.now - self.zone_changed_at < self.start_ignored_after_zone:
             self.ignored_starts += 1
-            if self.ignored_start_says_on:  # taken without error, answered "on", and still ignored
+            if self.start_result == "true":  # taken without error, answered "on", and still ignored
                 return True
+            if self.start_result == "nil":
+                return None
             return self._logging_combat()
         self._log.append((self.now, on))
-        return on
+        return None if self.start_result == "nil" else on
 
     def _get_cvar(self, name):
         return self.cvars.get(name)

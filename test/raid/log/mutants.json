@@ -8,7 +8,7 @@
   },
   {
     "file": "addon/RelaxRaid/Log.lua",
-    "old": "    if readOn() then confirm(run) return end -- only the read stops a retry\n",
+    "old": "    if step(\"Log.read\", readOn) then step(\"Log.confirm\", confirm, run) return end -- only the read stops a retry\n",
     "new": "",
     "killed_by": "test_already_on_with_advanced_off_turns_advanced_on_only",
     "why": "read first"
@@ -43,7 +43,7 @@
   },
   {
     "file": "addon/RelaxRaid/Log.lua",
-    "old": "    run.adv = ok2 and value2 == \"1\"",
+    "old": "    run.adv = advancedIsOn()",
     "new": "    run.adv = true",
     "killed_by": "test_setting_write_refused",
     "why": "no read-back"
@@ -64,7 +64,7 @@
   },
   {
     "file": "addon/RelaxRaid/Log.lua",
-    "old": "    if rank == \"pending\" and final then rank = \"unreadable\" end\n",
+    "old": "    if rank == \"pending\" and (final or state.rank == \"unreadable\") then rank = \"unreadable\" end\n",
     "new": "",
     "killed_by": "test_guild_data_never_comes",
     "why": "wait forever for rank"
@@ -176,7 +176,7 @@
   },
   {
     "file": "addon/RelaxRaid/Log.lua",
-    "old": "    pcall(C_CVar.SetCVar, \"advancedCombatLogging\", \"1\")",
+    "old": "    pcall(function() return C_CVar.SetCVar(\"advancedCombatLogging\", \"1\") end)",
     "new": "    C_CVar.SetCVar(\"advancedCombatLogging\", \"1\")",
     "killed_by": "test_setting_api_throws",
     "why": "write unguarded"
@@ -208,5 +208,40 @@
     "new": "Log.officerRankIndexes = {0, 1, 2}",
     "killed_by": "test_shipped_officer_data",
     "why": "shipped ranks changed"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    if not ok or isSecret(on) then return false end\n    return on == true",
+    "new": "    return ok and (on == true or isSecret(on))",
+    "killed_by": "test_secret_read_is_unknown_and_retries_go_on",
+    "why": "secret read counts as on"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    if not run.advDone then step(\"Log.advanced\", advanced, run) end\n    if step(\"Log.read\", readOn) then step(\"Log.confirm\", confirm, run) return end -- only",
+    "new": "    if not run.advDone then advanced(run) end\n    if step(\"Log.read\", readOn) then step(\"Log.confirm\", confirm, run) return end -- only",
+    "killed_by": "test_a_throw_in_one_step_skips_nothing_else",
+    "why": "advanced step not isolated"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    local ok, value = pcall(function() return C_CVar.GetCVar(\"advancedCombatLogging\") end)",
+    "new": "    local ok, value = pcall(C_CVar.GetCVar, \"advancedCombatLogging\")",
+    "killed_by": "test_setting_api_missing_does_not_skip_the_start",
+    "why": "CVar table indexed outside pcall"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "    if UNSETTLED[state.rank] and not Log.chosen() then settleRank(false) end\n",
+    "new": "",
+    "killed_by": "test_rank_arrives_late_without_an_event",
+    "why": "rank not re-read at loading screens"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "local UNSETTLED = {pending = true, unreadable = true, noguild = true}",
+    "new": "local UNSETTLED = {pending = true, unreadable = true}",
+    "killed_by": "test_not_in_a_guild_at_load_then_in_one",
+    "why": "not-in-guild not re-read"
   }
 ]
