@@ -44,6 +44,9 @@ type farmRef struct {
 	Items map[int]farmItemRef
 	Nodes map[int]string // AH Profit's node-name hash -> name (unambiguous hashes only)
 	Maps  map[int]string // uiMapID -> zone name
+	// Gather: items in AH Profit's bundled farm data (FarmData.lua ITEMS), the
+	// materials the Farming page knows as gatherable.
+	Gather map[int]bool
 }
 
 type farmRefCache struct {
@@ -157,7 +160,7 @@ func readAddonFile(game, addon, file string) (string, string, error) {
 // missing or unreadable file only means fewer names; it is never an error
 // for the page. cache avoids reparsing unchanged files on every refresh.
 func loadFarmRef(game string, cache *farmRefCache) farmRef {
-	ref := farmRef{Items: map[int]farmItemRef{}, Nodes: map[int]string{}, Maps: map[int]string{}}
+	ref := farmRef{Items: map[int]farmItemRef{}, Nodes: map[int]string{}, Maps: map[int]string{}, Gather: map[int]bool{}}
 	if game == "" {
 		return ref
 	}
@@ -309,6 +312,9 @@ func addFarmData(ref *farmRef, d map[string]any) {
 			it.Vendor, it.VendorKnown = v, true
 		}
 		ref.Items[id] = it
+		if ref.Gather != nil {
+			ref.Gather[id] = true
+		}
 	}
 	clash := map[int]bool{}
 	for _, row := range List(d["3"]) {

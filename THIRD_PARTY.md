@@ -9,6 +9,22 @@ Each generated block names the data file, file hash and build. The archive,
 verdict logic and English reason strings are not bundled. Regenerate/check with
 `python -I -B tools/gen_cleanup_uses.py /path/KeepOrToss-1.7.0.zip --check`.
 
+## Relax Quest Planner runtime adapters
+
+RQP reads installed QuestieDB and ForeverDungeonJournal at runtime only. No quest,
+NPC, item or location records from either addon are shipped by the dungeon-chain
+feature. The existing optional DungeonGuideForever adapter is unchanged.
+
+The journal overlay reads `id`, `name`, `faction`, `classOnly`, `requires`, `pickup`,
+`turnin`, `startsInDungeon`, `startItem`, `startObject`, `hideFromMainList`,
+`requiredItem`, `requiredItems`, `profession`, `attunement`, `repeatable`,
+`unavailable` and `unavailableRaces`, including entries already in QuestieDB.
+It also reads runtime page membership and ordered chains (`choice`, `itemStep`);
+existing level, prerequisite-detail and map-pin reads remain. Foreign fields are
+validated and snapshotted under protected calls; an unsupported layout becomes
+no journal. QuestieDB remains the prerequisite and exact NPC-position source.
+Fixtures contain invented records, not donor extracts. No new data source is added.
+
 ## Travel supplication
 
 - File: `addon/ForeverCoach/Media/Reactions/flight.mp3`

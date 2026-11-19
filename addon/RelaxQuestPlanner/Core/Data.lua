@@ -5,6 +5,8 @@ RQP.Data = RQP.Data or {}
 local D = RQP.Data
 local lib, questAPI, fdj, dg, checked, reason, supplements, ids, dungeons, areaMap
 local quests, npcs, objects, items, dungeonByArea = {}, {}, {}, {}, {}
+local journal, journalDungeons
+local triggers = {} -- D.Trigger cache
 local blacklist = {}
 local function tick() if RQP.Engine and RQP.Engine.Checkpoint then RQP.Engine.Checkpoint() end end
 local function tbl(v) return type(v)=="table" and v or {} end
@@ -64,10 +66,93 @@ local function errorText(err)
 end
 D.Error = errorText
 
+-- Snapshot only the runtime fields we consume. All foreign indexing happens
+-- inside one protected, non-yielding read; consumers never retain donor tables.
+local function journalSnapshot(source)
+    local budget=60000
+    local function value(v,depth)
+        budget=budget-1; assert(budget>=0 and depth<=6, "journal budget")
+        local t=type(v)
+        if t=="string" then return v end -- raw; escaped once where it is shown (UI/Steps.lua, Journey/Bridge.lua)
+        if t=="boolean" then return v end
+        if t=="number" then assert(v==v and math.abs(v)<math.huge); return v end
+        if t~="table" then return nil end
+        local out={}
+        for k,x in pairs(v) do
+            assert(type(k)=="string" or type(k)=="number", "journal key")
+            out[k]=value(x,depth+1)
+        end
+        return out
+    end
+    local fields={id="number",name="string",level="scalar",requires="number",faction="string",
+        classOnly="string",pickup="string",turnin="string",startsInDungeon="boolean",
+        startItem="table",startObject="table",hideFromMainList="boolean",requiredItem="table",
+        requiredItems="table",profession="string",attunement="string",repeatable="boolean",
+        unavailable="boolean",unavailableRaces="table",map="table",choice="scalar",itemStep="boolean",
+        mapID="number",x="number",y="number",targetName="string",label="string"}
+    local function record(v)
+        assert(type(v)=="table", "journal record")
+        local out={}
+        for k,t in pairs(fields) do
+            local x=v[k]
+            if x~=nil then
+                assert(type(x)==t or (t=="scalar" and scalar(x)~=nil), "journal field")
+                out[k]=value(x,0)
+            end
+        end
+        return out
+    end
+    local out={DB={},invalidPages={},QUEST_PREREQ_CHAINS={},QUEST_PREREQ_DETAILS={},QUEST_START_MAPS={}}
+    assert(type(source.DB)=="table", "journal pages")
+    for name,page in pairs(source.DB) do
+        assert(type(name)=="string", "journal page name")
+        local ok,list=pcall(function()
+            assert(type(page)=="table" and type(page.quests)=="table", "journal page")
+            -- ipairs alone silently accepts id-keyed/sparse pages as empty or
+            -- truncated. Only a dense sequence (including {}) is supported.
+            local count=0
+            for k in pairs(page.quests) do
+                budget=budget-1; assert(budget>=0, "journal budget")
+                assert(type(k)=="number" and k>=1 and k%1==0, "journal sequence")
+                count=count+1
+            end
+            local entries={}
+            for i=1,count do
+                local v=page.quests[i]
+                assert(type(v)=="table", "journal entry")
+                if type(v.id)=="number" then entries[#entries+1]=record(v) end
+            end
+            return entries
+        end)
+        if ok then out.DB[name]={quests=list}
+        else out.invalidPages[name]=true end
+    end
+    for _,key in ipairs({"QUEST_PREREQ_CHAINS","QUEST_PREREQ_DETAILS","QUEST_START_MAPS"}) do
+        local src=source[key]
+        assert(src==nil or type(src)=="table", "journal index")
+        for id,v in pairs(src or {}) do
+            if type(id)=="number" then
+                if key=="QUEST_PREREQ_CHAINS" then
+                    assert(type(v)=="table", "journal chain")
+                    local list={}
+                    for _,s in ipairs(v) do
+                        assert(type(s)=="table", "journal step")
+                        if type(s.id)=="number" then list[#list+1]=record(s) end
+                    end
+                    out[key][id]=list
+                else out[key][id]=record(v) end
+            end
+        end
+    end
+    return out
+end
+
 function D.Reset()
+    journal,journalDungeons=nil,nil
     lib,fdj,dg,checked,reason,supplements,ids,dungeons,areaMap=nil,nil,nil,nil,nil,nil,nil,nil,nil
     questAPI=nil
     quests,npcs,objects,items,dungeonByArea,blacklist={},{},{},{},{},{}
+    triggers={}
     if RQP.Engine and RQP.Engine.Invalidate then RQP.Engine.Invalidate() end
 end
 
@@ -81,7 +166,11 @@ function D.Ready()
             lib=candidate; questAPI=candidate.Quest or _G.QuestDB
         else reason="QuestieDB contract 4 unavailable: "..tostring(why or supported) end
     end
-    if type(_G.ForeverDungeonJournal_NS)=="table" then fdj=_G.ForeverDungeonJournal_NS end
+    local ok, snapshot=pcall(function()
+        local source=_G.ForeverDungeonJournal_NS
+        if type(source)=="table" then return journalSnapshot(source) end
+    end)
+    if ok then fdj=snapshot end
     -- DungeonGuideForever normally keeps its namespace private. Never reach into
     -- another addon's locals; use it only if that addon explicitly exports a global.
     local global=_G.DungeonGuideForever_NS or _G.DungeonGuideForever
@@ -97,6 +186,23 @@ function D.Source() D.Ready(); return lib and "QuestieDB" or "FDJ-only" end
 function D.Enums() D.Ready(); return lib and lib.Enum or {} end
 function D.Blacklisted(id) D.Ready(); return blacklist[id]==true end
 function D.FDJ() D.Ready(); return fdj end
+-- Quests whose work is inside a dungeon although QuestieDB gives them no objective rows and no end
+-- trigger (Core/PlaceData.lua): the dungeon name, or nil. The list is optional data.
+-- QuestieDB's end trigger (escort or explore: { text, { [zoneID] = points } }), read only when asked:
+-- the planner needs it just for quests without objective rows, and every field read costs time.
+function D.Trigger(id)
+    D.Ready()
+    if triggers[id]==nil then
+        local t=questAPI and read(questAPI,id,"triggerEnd")
+        triggers[id]=type(t)=="table" and type(t[2])=="table" and t[2] or false
+    end
+    return triggers[id] or nil
+end
+function D.PlaceInside(id)
+    local t=RQP.PlaceInside
+    local v=type(t)=="table" and t[id]
+    return type(v)=="string" and v or nil
+end
 function D.DungeonQuestie() D.Ready(); return dg end
 
 local fieldMap={name="name",reqLevel="requiredLevel",qLevel="questLevel",races="requiredRaces",
@@ -120,7 +226,8 @@ local function normalize(r,id)
     for _,k in ipairs(zeroIsAbsent) do
         if not present(r[k]) then r[k]=nil end
     end
-    r.reqLevel=r.reqLevel or 0; r.qLevel=r.qLevel or 0
+    r.reqLevel=r.reqLevel or 0; r.qLevel=tonumber(r.qLevel) or 0
+    if r.qLevel~=r.qLevel or math.abs(r.qLevel)==math.huge then r.qLevel=0 end
     r.races=r.races or 0; r.classes=r.classes or 0
     return r
 end
@@ -275,6 +382,43 @@ function D.CanonicalDungeon(name)
     local dungeon=canonicalOf[name]
     return dungeon and dungeon.name or name
 end
+local function loadJournal()
+    if journal then return end
+    D.Ready()
+    local entries,pages={},{}
+    local source=fdj
+    if source then
+        local invalid={}
+        for page in pairs(source.invalidPages) do
+            local canonical=canonicalOf[page]
+            if canonical then invalid[canonical.name]=true end
+        end
+        for _,page in ipairs(keys(source.DB)) do
+            local canonical=canonicalOf[page]
+            -- One malformed wing invalidates the merged dungeon, not unrelated
+            -- pages; never present a partial journal as authoritative membership.
+            if canonical and not invalid[canonical.name] then
+                local name=canonical.name
+                pages[name]=pages[name] or {}
+                for _,v in ipairs(source.DB[page].quests) do
+                    if not entries[v.id] then entries[v.id]=v end
+                    local found=false
+                    for _,entry in ipairs(pages[name]) do if entry.id==v.id then found=true; break end end
+                    if not found then pages[name][#pages[name]+1]=v end
+                    tick()
+                end
+            end
+        end
+    end
+    journal,journalDungeons=entries,pages
+end
+function D.JournalDungeon(name)
+    loadJournal(); return journalDungeons[D.CanonicalDungeon(name)]
+end
+function D.Journal(id)
+    loadJournal(); return journal[id]
+end
+
 local function zones()
     if dungeons then return end
     D.Ready(); local byName,byArea={},{}

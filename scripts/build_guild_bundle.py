@@ -120,7 +120,7 @@ def main():
         if missing:raise SystemExit('Missing reaction audio: '+', '.join(sorted(missing)))
     raid_version=check_raid_toc(names) if raid else None
     rows=[{'path':name,'sha256':digest(p),'bytes':p.stat().st_size} for p,name in inputs]
-    manifest={'project':'Relax Coach','kind':'guild-combined','version':a.version,'journeyVersion':'4.00.04','contentVersion':'4.00.08'}
+    manifest={'project':'Relax Coach','kind':'guild-combined','version':a.version,'journeyVersion':'4.00.04','contentVersion':'4.00.12'}
     if planner_version:manifest['plannerVersion']=planner_version
     if raid_version:manifest['raidVersion']=raid_version
     manifest['files']=rows
