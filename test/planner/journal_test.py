@@ -16,6 +16,8 @@ def array(t):
 
 
 def plain(t):
+    if isinstance(t, tuple):
+        return [plain(v) for v in t]
     if hasattr(t, 'items'):
         return {k: plain(v) for k, v in t.items()}
     return t
@@ -195,6 +197,66 @@ class MembershipTests(unittest.TestCase):
         import json
         expected = json.loads((ROOT / 'test/planner/fixtures/no_journal_routes.json').read_text())
         self.assertEqual(json.loads(json.dumps(golden_routes())), expected)
+
+
+def chain_harness(**kw):
+    rows = {id: q(name, zoneOrSort=INSIDE) for id, name in
+            ((A, 'Copper errand'), (B, 'Tin errand'), (C, 'Zinc errand'), (T, 'Alloy errand'))}
+    return Harness(rows, [dict(id=T, name='Alloy errand')],
+                   {T: [dict(id=id, name=rows[id]['name']) for id in (C, B, A)]}, **kw)
+
+
+class HintTests(unittest.TestCase):
+    def test_three_step_chain_orders_turnin_before_next_accept(self):
+        h = chain_harness(); route = h.route()
+        keys = [(s.kind, s.q) for s in array(route.steps)]
+        for before, after in ((C, B), (B, A), (A, T)):
+            self.assertLess(keys.index(('turnin', before)), keys.index(('accept', after)))
+
+    def test_hint_does_not_change_any_quest_state_or_gate(self):
+        import json
+        expected = json.loads((ROOT / 'test/planner/fixtures/journal_states.json').read_text())
+        actual = {}
+        for phase in ('fresh', 'active', 'done'):
+            h = chain_harness(log=[dict(id=T, complete=False)] if phase == 'active' else (),
+                              done=[C] if phase == 'done' else ())
+            before = h.states(); h.route()
+            self.assertEqual(h.states(), before)
+            actual[phase] = before
+        self.assertEqual(json.loads(json.dumps(actual)), expected)
+
+    def test_item_and_unknown_steps_are_skipped_by_hints(self):
+        h = chain_harness()
+        h.g.ForeverDungeonJournal_NS.QUEST_PREREQ_CHAINS[T] = to_lua(h.lua, [
+            dict(id=C, name='Zinc errand'), dict(id=1810001, name='Copper token', itemStep=True),
+            dict(id=810090, name='Missing errand'), dict(id=A, name='Copper errand')])
+        h.r.Data.Reset()
+        route = h.route(); keys = [(s.kind, s.q) for s in array(route.steps)]
+        self.assertLess(keys.index(('turnin', C)), keys.index(('accept', A)))
+        self.assertNotIn(1810001, array(route.plan)); self.assertNotIn(810090, array(route.plan))
+        self.assertFalse(any(i[1] == 'actionCycle' for i in array(route.issues)))
+
+    def test_choice_group_satisfied_by_one_completed_member(self):
+        h = chain_harness(done=[C])
+        h.g.ForeverDungeonJournal_NS.QUEST_PREREQ_CHAINS[T] = to_lua(h.lua, [
+            dict(id=C, name='Zinc errand', choice=1), dict(id=B, name='Tin errand', choice=1),
+            dict(id=A, name='Copper errand')])
+        h.r.Data.Reset()
+        route = h.route()
+        keys = [(s.kind, s.q) for s in array(route.steps)]
+        # The old target claims still include B; the hint must not force B before A.
+        self.assertLess(keys.index(('accept', A)), keys.index(('turnin', B)))
+        self.assertTrue(route.orderHints is not None, 'route order-hint diagnostics missing')
+        self.assertFalse(any(x.before == B and x.after == A for x in array(route.orderHints)))
+
+    def test_conflicting_hint_is_dropped_not_action_cycle(self):
+        h = chain_harness()
+        h.g.TEST_ROWS[C].preQuestGroup = to_lua(h.lua, [B])  # opposes C -> B hint
+        h.r.Data.Reset(); route = h.route()
+        self.assertIsNotNone(route.droppedHints, 'dropped hint diagnostics missing')
+        self.assertTrue(any(x.before == C and x.after == B for x in array(route.droppedHints)))
+        self.assertFalse(any(i[1] == 'actionCycle' for i in array(route.issues)))
+        self.assertEqual(len(route.steps), 12)
 
 
 if __name__ == '__main__':

@@ -488,6 +488,57 @@ local function step(kind,r,p,floor,needs,active,parentActive)
     end
     return s
 end
+-- Hints are action-order edges, never quest gates. Add them only after real
+-- action dependencies, rejecting any edge that can reach back to its child.
+local function orderHints(route,p,nodes,byQuest)
+    route.orderHints,route.droppedHints={},{}
+    local source=D.FDJ()
+    if not source then return end
+    local byKey={}; for _,n in ipairs(nodes) do byKey[n.key]=n end
+    local function reaches(from,target,seen)
+        if from==target then return true end
+        if seen[from] then return false end; seen[from]=true
+        for dep in pairs(byKey[from].deps) do
+            if reaches(dep,target,seen) then return true end
+        end
+        return false
+    end
+    local function pick(group)
+        -- Any completed choice satisfies the hint, without ordering its siblings.
+        for _,id in ipairs(group.ids) do if p.done[id] then return nil end end
+        for _,id in ipairs(group.ids) do if byQuest[id] then return id end end
+    end
+    for _,target in ipairs(D.Keys(source.QUEST_PREREQ_CHAINS)) do
+        if byQuest[target] then
+            local groups={}
+            for _,s in ipairs(source.QUEST_PREREQ_CHAINS[target]) do
+                local r=D.Quest(s.id)
+                if not s.itemStep and r and r.source=="QuestieDB" and s.id<1000000 then
+                    local previous=groups[#groups]
+                    if s.choice and previous and previous.choice==s.choice then
+                        previous.ids[#previous.ids+1]=s.id
+                    else groups[#groups+1]={ids={s.id},choice=s.choice} end
+                end
+            end
+            groups[#groups+1]={ids={target}}
+            for i=2,#groups do
+                local a,b=pick(groups[i-1]),pick(groups[i])
+                if a and b and a~=b then
+                    local before=byQuest[a].turnin
+                    local after=byQuest[b].accept or byQuest[b].complete or byQuest[b].turnin
+                    local hint={before=a,after=b}
+                    if reaches(before.key,after.key,{}) then
+                        route.droppedHints[#route.droppedHints+1]=hint
+                    else
+                        after.deps[before.key]=true
+                        route.orderHints[#route.orderHints+1]=hint
+                    end
+                end
+                tick()
+            end
+        end
+    end
+end
 local function actions(route,p,g,targets)
     local planned=planSet(route.plan,{})
     -- Evaluate acceptance during the async build, never while repainting the UI.
@@ -569,6 +620,7 @@ local function actions(route,p,g,targets)
         end
         tick()
     end
+    if route.journal then orderHints(route,p,nodes,byQuest) end
     local emitted={}
     local function less(a,b)
         if a.priority~=b.priority then return a.priority<b.priority end
