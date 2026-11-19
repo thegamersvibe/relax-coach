@@ -24,7 +24,7 @@
 | IMP-013 | REQ-PAR-05 | forever | R4 | R0 | unassigned | `desktop/internal/raid/fights`, glue in `desktop/` | planned | V-013 |
 | IMP-014 | REQ-PAR-06 | forever | R4 | R0 | unassigned | `desktop/internal/raid/fights`, glue in `desktop/` | planned | V-014 |
 | IMP-015 | REQ-PAR-07 | forever | R10 | R7 | unassigned | `desktop/internal/raid/result` | planned | V-015 |
-| IMP-016 | REQ-PAR-08 | forever | R3 | R0 | unassigned | `desktop/internal/raid/{logfmt,fixture}` | planned | V-016 |
+| IMP-016 | REQ-PAR-09 | forever | R15b, R15c; W8, W9 | R4, W8 | unassigned | `desktop/internal/raid/rawstore`, app upload/download glue; site access and retention | planned (phase 2); R3 uploads nothing | V-016 |
 | IMP-017 | REQ-SCO-01 | forever | R7 | R0 | unassigned | `desktop/internal/raid/score` | planned | V-017 |
 | IMP-018 | REQ-SCO-02 | forever | R7 | R0 | unassigned | `desktop/internal/raid/score` | planned | V-018 |
 | IMP-019 | REQ-SCO-03 | forever | R7 | R0 | unassigned | `desktop/internal/raid/score` | planned | V-019 |
@@ -113,7 +113,7 @@ Statuses: `planned`, `in progress`, `implemented`, `verified`, `blocked`, `defer
 | V-013 | REQ-PAR-05 / R4 | forever; build unknown | unit | none yet | Acceptance column of REQ-PAR-05 | not run | not run |
 | V-014 | REQ-PAR-06 / R4 | forever; build unknown | unit | none yet | Acceptance column of REQ-PAR-06 | not run | not run |
 | V-015 | REQ-PAR-07 / R10 | forever; build unknown | unit | none yet | Acceptance column of REQ-PAR-07 | not run | not run |
-| V-016 | REQ-PAR-08 / R3 | forever; build unknown | unit | none yet | Acceptance column of REQ-PAR-08 | not run | not run |
+| V-016 | REQ-PAR-09 / R15b, R15c; W8, W9 | forever; build unknown | integration | none yet | Upload, download and decompress to identical SHA-256; refuse member/anonymous reads; expired or deleted logs are absent. Replaces the superseded R3 upload-path prohibition. | not run (phase 2) | not run |
 | V-017 | REQ-SCO-01 / R7 | forever; build unknown | unit | none yet | Acceptance column of REQ-SCO-01 | not run | not run |
 | V-018 | REQ-SCO-02 / R7 | forever; build unknown | unit | none yet | Acceptance column of REQ-SCO-02 | not run | not run |
 | V-019 | REQ-SCO-03 / R7 | forever; build unknown | unit | none yet | Acceptance column of REQ-SCO-03 | not run | not run |
