@@ -41,10 +41,25 @@ function R:Denied(zone, faction)
     return false
 end
 
+-- Whole-word, plain-text find (Lua patterns escaped): "Lord Kri" never matches inside "Lord Kristoff", and an
+-- apostrophe is part of a word, so "Hakkar" never matches inside "Atal'Hakkar".
+local function esc(s) return (s:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0")) end
+local function hasWord(text, name)
+    if type(text) ~= "string" or type(name) ~= "string" or name == "" then return false end
+    return text:find("%f[%w']" .. esc(name) .. "%f[^%w']") ~= nil
+end
+R.HasWord = hasWord
+
+-- A zone is a dungeon when the Dungeon Journal knows it, or it is (or contains as whole words) one of the
+-- dungeon base names in rules (GearQuest says "Blackrock Spire", the journal "Upper Blackrock Spire").
 local function isDungeon(zone)
+    if type(zone) ~= "string" or zone == "" then return false end
     local fdj = _G.ForeverDungeonJournal_NS
     if fdj and type(fdj.DB) == "table" and fdj.DB[zone] then return true end
     for name in pairs(FC:Rules().factionDungeons or {}) do if name == zone then return true end end
+    for _, name in ipairs((FC:Rules().dungeons or {}).names or {}) do
+        if zone == name or hasWord(zone, name) then return true end
+    end
     return false
 end
 R.IsDungeon = isDungeon
@@ -65,6 +80,74 @@ function R:QuestDungeon(q)
     return self._qd[q]
 end
 
+local function raidList() return (FC:Rules().raids or {}) end
+-- NPCs that drop loot inside a raid zone in the GearQuest data itself: raid mobs the rules don't list (a recipe
+-- whose pattern "drops from" one of them is raid loot too).
+local learned = setmetatable({}, { __mode = "k" })
+function R:LearnRaidNpcs(factTables)
+    local rl, out = raidList(), {}
+    local zones = {}
+    for _, z in ipairs(rl.zones or {}) do zones[z] = true end
+    for _, t in ipairs(factTables or {}) do
+        if type(t) == "table" then
+            local cached = learned[t]
+            if not cached then
+                cached = {}
+                for _, f in pairs(t) do
+                    if type(f) == "table" and zones[f.zone] and type(f.npc) == "string" and f.npc ~= "" then cached[f.npc] = f.zone end
+                end
+                learned[t] = cached
+            end
+            for npc, z in pairs(cached) do out[npc] = z end
+        end
+    end
+    self._raidNpcs = out
+end
+-- The names a source text says something drops from, lower case: "Drops from A." and "The pattern drops from A in
+-- Uldaman, from B, C, and D in Zul'Farrak." give A, B, C and D (places and brackets removed).
+local function dropNames(text)
+    local out = {}
+    for seg in text:lower():gmatch("drops from ([^%.|]*)") do
+        seg = seg:gsub("%b()", ""):gsub(";", ","):gsub(" and ", ","):gsub(" or ", ",")
+        for part in (seg .. ","):gmatch("([^,]*),") do
+            part = part:gsub("^%s*from%s+", ""):gsub("%s+in%s+.*$", ""):gsub("^%s+", ""):gsub("%s+$", "")
+            if part ~= "" then out[part] = true end
+        end
+    end
+    return out
+end
+R.DropNames = dropNames
+-- The raid (or "World bosses") an item comes from, or nil. Fails closed on places: a raid zone or raid mob named
+-- anywhere in the record's zone, NPC or text (second sources included), a raid quest it rewards, or a sourceType of
+-- "raid". A boss, world boss or raid NPC counts only where it is the source: the record's NPC, or a name in a
+-- "drops from" list (so "Avatar of Hakkar" and the quest "The God Hakkar" are not Hakkar).
+function R:Raid(zone, f)
+    local rl = raidList()
+    for _, z in ipairs(rl.zones or {}) do if z == zone then return zone end end
+    if type(f) ~= "table" then return nil end
+    local text = table.concat({ type(f.instructions) == "string" and f.instructions or "",
+        type(f.npc) == "string" and f.npc or "", type(f.zone) == "string" and f.zone or "" }, " | ")
+    for _, z in ipairs(rl.zones or {}) do if hasWord(text, z) then return z end end
+    local drops = dropNames(text)
+    local npc = type(f.npc) == "string" and f.npc:lower() or nil
+    local function source(name) name = name:lower(); return drops[name] or npc == name end
+    for _, boss in ipairs(rl.worldBosses or {}) do
+        if source(boss) then return rl.worldBossName or "World bosses" end
+    end
+    for boss, raid in pairs(rl.bosses or {}) do if source(boss) then return raid end end
+    for mob, raid in pairs(rl.mobs or {}) do if hasWord(text, mob) then return raid end end
+    for name, raid in pairs(self._raidNpcs or {}) do if source(name) then return raid end end
+    for quest, raid in pairs(rl.quests or {}) do
+        if text:find("quest '" .. quest .. "'", 1, true) then return raid end
+    end
+    if f.sourceType == "raid" then return (type(zone) == "string" and zone ~= "" and zone) or "unknown raid" end
+    return nil
+end
+function R:RaidOpen(raid)
+    for _, z in ipairs(raidList().open or {}) do if z == raid then return true end end
+    return false
+end
+
 -- Classify a GearQuest item fact for this player.
 -- Returns kind, factor (0..1 practicality multiplier), label (human text), blockedReason (or nil)
 function R:Place(f, snap, route)
@@ -78,14 +161,20 @@ function R:Place(f, snap, route)
         return "craft", P.craftNoProfession or 0.8, "crafted (buy it or ask a crafter)", nil
     end
     if generic then return "world", P.worldDrop or 0.55, "random world drop", nil end
+    -- A record with no zone (and not crafted or a random world drop) is never a pick, whatever its seller:
+    -- nobody can travel to "location unknown".
     if not zone or zone == "" then
-        return "unknown", P.unknownZone or 0.7, "location unknown", nil
+        return "unknown", 0, "location unknown", "no zone: nowhere to travel"
     end
     local parent = self:Parent(zone)
     if not (f.zoneOpen or generic or f.sourceType == "rare_npc") and (self:Denied(zone, snap.faction) or self:Denied(parent, snap.faction)) then
         return "denied", 0, zone, "in a " .. (snap.faction == "Alliance" and "Horde" or "Alliance") .. " area"
     end
     local here = snap.zone and snap.zone.parent
+    local GA = FC:Rules().gearAdvice or {}
+    local maxLevel = snap.level >= (GA.maxLevel or 60)
+    local raid = self:Raid(zone, f)
+    if raid then return "raid", P.dungeon or 0.88, "raid: " .. raid, nil end
     local dungeon = isDungeon(zone)
     if not dungeon and type(f.instructions) == "string" then
         -- quest rewards from dungeon quests name the dungeon only in the text
@@ -105,10 +194,15 @@ function R:Place(f, snap, route)
         if lo and snap.level < lo - 3 then
             return "denied", 0, zone, "dungeon is for level " .. lo .. "+"
         end
-        if route[parent] then return "dungeon", P.dungeon or 0.88, "dungeon: " .. zone .. where, nil end
+        if route[parent] or maxLevel then return "dungeon", P.dungeon or 0.88, "dungeon: " .. zone .. where, nil end
         return "offroute", P.offRoute or 0.65, "dungeon: " .. zone .. where .. " (off your route)", nil
     end
+    -- At max level route wording and route factors mean nothing: a zone is just a place.
+    if maxLevel then return "zone", P.here or 1, zone, nil end
     if rz then
+        if rz.to < snap.level - (GA.behindLevels or 6) then
+            return "behind", P.behind or 0.5, zone .. " (levels " .. rz.from .. "-" .. rz.to .. ", behind you)", nil
+        end
         if rz.from > snap.level then
             return "route", P.routeSoon or 0.97, zone .. " (your route, level " .. rz.from .. ")", nil
         end

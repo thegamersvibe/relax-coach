@@ -39,6 +39,16 @@ type DungeonQuest struct {
 type OwnedView struct {
 	Name, Slot string
 	Gain       int
+	// GainText is the shown percentage ("+12%", ">100%"), empty when too few slots are scored to state one.
+	GainText string
+}
+
+// pctText is the addon's one display rule for a gain percentage (Gear.lua G.PctText): above 100 it reads ">100%".
+func pctText(n int) string {
+	if n > 100 {
+		return ">100%"
+	}
+	return fmt.Sprintf("%d%%", n)
 }
 
 func money(c float64) string {
@@ -121,10 +131,14 @@ func enrich(cv *CharView, c, s, g map[string]any, sess []any) {
 		}
 		if b := M(e["best"]); b != nil {
 			sv.BestName, sv.BestHow, sv.BestSource, sv.BestWhere = S(b["name"]), S(b["how"]), S(b["source"]), S(b["where"])
-			if _, ok := e["gapPct"]; ok && sv.Status != "unknown" && sv.Status != "unreadable" {
-				sv.GapPct = max(0, min(100, int(N(e["gapPct"]))))
+			_, hasGap := e["gapPct"]
+			gap := max(0, int(N(e["gapPct"])))
+			// pctHidden: too few slots are scored to state a number; the pick still counts as an upgrade.
+			if hasGap && sv.Status != "unknown" && sv.Status != "unreadable" && e["pctHidden"] != true {
+				sv.GapPct = min(100, gap) // colour scale
+				sv.GapText = pctText(gap)
 			}
-			if sv.Equipped && sv.GapPct >= 12 {
+			if sv.Equipped && hasGap && sv.Status != "unknown" && sv.Status != "unreadable" && gap >= 12 {
 				cv.GearUpgrades++
 			}
 		}
@@ -143,6 +157,8 @@ func enrich(cv *CharView, c, s, g map[string]any, sess []any) {
 	switch cv.GearStatus {
 	case "missing":
 		cv.GearNote = "Gear checks are off: install GearQuest Forever."
+	case "layout":
+		cv.GearNote = "Gear checks are off: GearQuest changed its data format. Update Relax Coach."
 	case "classdata", "nodata":
 		cv.GearNote = "Gear checks are off: enable your class's GearQuest Forever module, then /reload."
 	}
@@ -185,7 +201,11 @@ func enrich(cv *CharView, c, s, g map[string]any, sess []any) {
 		if unassessed[S(om["label"])] {
 			continue
 		}
-		cv.Owned = append(cv.Owned, OwnedView{S(om["name"]), S(om["label"]), int(N(om["gain"]))})
+		ov := OwnedView{Name: S(om["name"]), Slot: S(om["label"]), Gain: int(N(om["gain"]))}
+		if om["pctHidden"] != true {
+			ov.GainText = "+" + pctText(ov.Gain)
+		}
+		cv.Owned = append(cv.Owned, ov)
 	}
 
 	// Talents: tree split vs points actually available (spent + unspent)

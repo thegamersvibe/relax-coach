@@ -9,13 +9,13 @@ Three **separate WoW Forever addons**, plus a native Windows report app:
 
 ## Download
 
-**[Download release v1.7.1](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.7.1)**:
+**[Download release v1.7.2](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.7.2)**:
 
-- `RelaxCoach-Bundle-1.7.1.zip` — the three independent addons (Coach, Journey, Relax Quest Planner 0.3.0), Journey guide content **4.00.08**, the Windows app and optional installer/restore scripts. From v1.5.0 the combined download has this new name; earlier releases used `RelaxCoach-Guild-<version>.zip`.
+- `RelaxCoach-Bundle-1.7.2.zip` — the three independent addons (Coach, Journey, Relax Quest Planner 0.3.0), Journey guide content **4.00.08**, the Windows app and optional installer/restore scripts. From v1.5.0 the combined download has this new name; earlier releases used `RelaxCoach-Guild-<version>.zip`.
 - `RelaxCoach.exe` — app-only download, for updating the application separately.
 - `SHA256SUMS.txt` — checksums for these release assets.
 
-**On app 1.7.0?** Use **Updates → Update everything**, or **Check App Update → Update App** first and then **Updates → Check → Update**. Because this release includes a new app, app 1.7.0 updates itself before it installs the newer addons. After the addon update, follow the app's restart advice for the new planner files.
+**On app 1.7.0?** Use **Updates → Update everything**, or **Check App Update → Update App** first and then **Updates → Check → Update**. Because this release includes a new app, app 1.7.0 and 1.7.1 update themselves before they install the newer addons. After the addon update, follow the app's restart advice.
 
 **On an app older than 1.7.0?** Run **Check App Update → Update App** first, then **Update Addon** (**Updates → Check → Update** on recent apps). App 1.6.0/1.6.1 also offers **Updates → Update everything**, which does the app first. Older apps' safety lists do not recognize the new media file and refuse the addon bundle without changing any addon files. A first updater attempt may leave an empty `RelaxCoachBackups` folder. Update the app even if an earlier app-update failure lets you try the addon update directly.
 
@@ -23,7 +23,17 @@ Three **separate WoW Forever addons**, plus a native Windows report app:
 
 **On app 1.4.x?** Use **Check App Update → Update App** first, then close WoW and use **Check for updates → Update Addon**. Apps before 1.5.0 cannot install the bundle (from 1.5.0) and report it as an app-only release until the app is updated. App 1.4.0 needs one manual EXE replacement with Relax Coach closed before it can update itself.
 
-There is deliberately no Coach-only `RelaxCoach-1.7.1.zip`: older apps must not report a completed addon update while leaving the guide content behind. The previous app-only v1.4.1 release remains unchanged.
+There is deliberately no Coach-only `RelaxCoach-1.7.2.zip`: older apps must not report a completed addon update while leaving the guide content behind. The previous app-only v1.4.1 release remains unchanged.
+
+## What's new in v1.7.2
+
+- **Gear advice works again on current GearQuest.** GearQuest now ships its pick lists in a packed layout; Coach 1.7.1 could not read it and said GearQuest had no data for your class. Coach reads both the packed and the old layout. If GearQuest changes its format again, Coach and the app say so ("GearQuest changed its data format") instead of asking you to enable it.
+- **No battleground rewards in gear advice.** Items from battleground quartermasters and honor vendors (for example Outrunner's Bow from Illiyana Moonblaze in Ashenvale, which needs Silverwing Sentinels reputation) are no longer suggested.
+- **A trip must be worth it.** A suggestion must gain enough against your whole equipped set: about 1% for something nearby or on your route, 3% for a dungeon, 5% for a zone behind you (more than 6 levels below you) or off your route. Small upgrades far away are dropped. Percentages are now the gain over the item you wear, and are shown once at least 8 slots can be scored.
+- **Level 60:** no route wording, no vendor items with no known seller or place, and raid loot only for raids open on Forever. None are open yet (the first raid opens 9 December), so raid drops, raid-boss loot and raid-kill reward quests are not suggested for now.
+- Coach and the Windows app move to **1.7.2**. Relax Journey (`4.00.04`), guide content (`4.00.08`) and Relax Quest Planner (`0.3.0`) are unchanged. Rules data moves to **1.3.0**.
+- **Update:** on app 1.7.0 or 1.7.1 use **Updates → Update everything**, or **Check App Update → Update App** first and then **Updates → Check → Update**.
+- **Not tested in game: alpha, owner's decision.** Offline tests do not validate native Forever behavior or the Windows update flow.
 
 ## What's new in v1.7.1
 
@@ -182,7 +192,7 @@ Use the included `Restore-RelaxCoach.ps1 -Backup <backup-folder>` with WoW close
 ## Coverage and known limits
 
 - Optional installed providers: GearQuest Forever for comparable item scores, ForeverDungeonJournal for dungeon information. Unknown or incomparable gear is shown as unscored, not assigned an invented score.
-- Included Journey code: `4.00.04`; Relax package/Coach version: `1.7.1`; guide-content version: `4.00.08`. The original signed catalog and guide bytes are retained. The content's existing validity date is **18 December 2026**; this release does not remove expiry checks.
+- Included Journey code: `4.00.04`; Relax package/Coach version: `1.7.2`; guide-content version: `4.00.08`. The original signed catalog and guide bytes are retained. The content's existing validity date is **18 December 2026**; this release does not remove expiry checks.
 - This is not a claim of complete coverage for every custom Forever class/spec/item or every leveling route. Some route entries are stubs.
 - An intermittent blank native window occurred during development. The final local candidate passed ten restart/Refresh cycles and a more-than-three-minute minimize/restore test, but the earlier root cause was not conclusively identified. If the window is blank, close and reopen it and report the issue.
 
@@ -197,7 +207,7 @@ Relax branding and Coach are maintained by **TheGamersVibe**. Coach is MIT-licen
 ```sh
 python3 scripts/build_rules_lua.py
 uv run --with lupa python test/harness.py
-(cd desktop && go test -race ./... && go vet ./...)
+(cd desktop && go test -race -timeout 20m ./... && go vet ./...)
 # Windows build; Go must support the version specified by desktop/go.mod:
 (cd desktop && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags '-H windowsgui' -o ../dist/RelaxCoach.exe .)
 python3 scripts/build_guild_bundle.py --exe dist/RelaxCoach.exe

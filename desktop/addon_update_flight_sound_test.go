@@ -6,7 +6,7 @@ import (
 )
 
 func TestFlightSoundNewVersionsRequireExactMedia(t *testing.T) {
-	for _, version := range []string{"1.7.0", "1.7.0+reviewed", "1.7.1", "2.0.0"} {
+	for _, version := range []string{"1.7.0", "1.7.0+reviewed", "1.7.1", "1.7.2", "2.0.0"} {
 		t.Run("accepted/"+version, func(t *testing.T) {
 			result, err := campfireApply(t, version, funModeEntries(version))
 			if err != nil || result.Version != version {

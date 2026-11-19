@@ -39,17 +39,17 @@ func readWinres(t *testing.T) (meta struct {
 	return meta
 }
 
-func TestAppResourceVersionMatches171(t *testing.T) {
+func TestAppResourceVersionMatches172(t *testing.T) {
 	meta := readWinres(t)
 	v := meta.Version["#1"]["0000"]
 	info := v.Info["0409"]
 	for _, s := range []string{Version, info["FileVersion"], info["ProductVersion"]} {
-		if s != "1.7.1" {
+		if s != "1.7.2" {
 			t.Errorf("stale app/resource version %q", s)
 		}
 	}
 	for _, s := range []string{v.Fixed.FileVersion, v.Fixed.ProductVersion} {
-		if s != "1.7.1.0" {
+		if s != "1.7.2.0" {
 			t.Errorf("stale fixed version %q", s)
 		}
 	}
@@ -68,12 +68,12 @@ func TestAppResourceVersionMatches171(t *testing.T) {
 		t.Fatal("compiled resource has no VS_FIXEDFILEINFO")
 	}
 	for _, offset := range []int{8, 16} {
-		if binary.LittleEndian.Uint32(b[at+offset:]) != 0x00010007 || binary.LittleEndian.Uint32(b[at+offset+4:]) != 0x00010000 {
+		if binary.LittleEndian.Uint32(b[at+offset:]) != 0x00010007 || binary.LittleEndian.Uint32(b[at+offset+4:]) != 0x00020000 {
 			t.Error("compiled Windows version resource is stale")
 		}
 	}
 	var encoded bytes.Buffer
-	for _, c := range utf16.Encode([]rune("1.7.1")) {
+	for _, c := range utf16.Encode([]rune("1.7.2")) {
 		binary.Write(&encoded, binary.LittleEndian, c)
 	}
 	if !bytes.Contains(b, encoded.Bytes()) {
@@ -103,7 +103,7 @@ func TestAppResourceDeclaresSafeManifest(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := string(b)
-	for _, want := range []string{`requestedExecutionLevel level="asInvoker" uiAccess="false"`, "permonitorv2", `name="TheGamersVibe.RelaxCoach" version="1.7.1.0"`, "{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"} {
+	for _, want := range []string{`requestedExecutionLevel level="asInvoker" uiAccess="false"`, "permonitorv2", `name="TheGamersVibe.RelaxCoach" version="1.7.2.0"`, "{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("compiled manifest is stale: missing %s (regenerate with go-winres)", want)
 		}

@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-var Version = "1.7.1" // May be overridden with -X main.Version for private verification builds.
+var Version = "1.7.2" // May be overridden with -X main.Version for private verification builds.
 const Repo = "thegamersvibe/relax-coach"
 const RulesSchema = 1
 
@@ -65,6 +65,7 @@ type SlotView struct {
 	BestWhere, Status, Note                   string
 	Equipped, Weapon                          bool
 	GapPct                                    int
+	GapText                                   string // shown gain: "45%", ">100%" (pctText)
 }
 
 type TalentView struct {
