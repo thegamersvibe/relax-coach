@@ -274,6 +274,10 @@ func buildHotHouse(key string, H, L, S map[string]any, items map[int]farmItemRef
 			}
 			q, _ := ahpInt(lq[k], 1e9)
 			it.now, it.listed, it.nowDay = p, q, ahpScanDay(t)
+			// Its day already has a row: the day's lowest wins (one price per day).
+			if n := len(rows); n > 0 && rows[n-1].Day == it.nowDay {
+				it.now, it.listed = rows[n-1].price(), rows[n-1].Listed
+			}
 		} else {
 			continue
 		}

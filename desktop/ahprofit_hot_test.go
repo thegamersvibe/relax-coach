@@ -277,6 +277,23 @@ func TestHotLivePriceWithoutTodayRow(t *testing.T) {
 	}
 }
 
+// The live price is one moment; when its day already has a row, the day's
+// lowest wins (one price per day), so a day that was also cheap is not "up".
+func TestHotLivePriceYieldsToItsDaysRow(t *testing.T) {
+	db := hotSave(map[int][]ahpHistRow{
+		1: append(series(hotToday-2, 20, 1000, 1000, 1000, 1000, 1000, 1000), ahpHistRow{hotToday - 1, 6000, 1050, 30}),
+		2: append(series(hotToday-2, 20, 1000, 1000, 1000, 1000, 1000, 1000), ahpHistRow{hotToday - 1, 6000, 0, 30}),
+	})
+	L := M(M(db["live"])["Realm|Alliance"])
+	for _, k := range []string{"1", "2"} {
+		M(L["p"])[k], M(L["q"])[k], M(L["t"])[k] = float64(6000), float64(9), float64(hotNow.Unix()-13*3600)
+	}
+	hh := hotHouse(t, db)
+	if !reflect.DeepEqual(hotIDs(hh), []int{2, 1}) || hh.Rows[0].Now != 6000 || hh.Rows[1].Now != 1050 || hh.Rows[1].Spike {
+		t.Fatalf("item 1 was 1050 at its cheapest that day: rows %+v", hh.Rows)
+	}
+}
+
 // A missing day is a gap in the line (a new M), not a zero; today is last and marked.
 func TestHotChartGap(t *testing.T) {
 	c := hotChart(series(hotToday, 20, 1000, 1000, 0, 1000, 1500), hotToday, 1500)
