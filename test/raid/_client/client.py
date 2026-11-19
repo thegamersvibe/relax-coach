@@ -79,6 +79,7 @@ class Client:
         self.prefixes = []
         self.player_name = "Alia-Stone"
         self.realm = "PvP-EU"
+        self.normalized_realm = "PvP-EU"
         self.player_class = "MAGE"
         self.level = 60
         self.wall = 1800000000
@@ -119,6 +120,26 @@ class Client:
 
     def run(self, code):
         return self.lua.execute(code)
+
+    def watch_chat_frames(self):
+        """Trap chat-frame globals/methods/hooks without changing event delivery."""
+        self.chat_touches = []
+        self.lua.globals()["CHAT_TOUCH"] = self.chat_touches.append
+        self.run("""
+            local function watched(k)
+                return type(k)=='string' and (k:match('^ChatFrame') or k=='DEFAULT_CHAT_FRAME')
+            end
+            local frame=setmetatable({}, {
+                __index=function(_,k) CHAT_TOUCH('method:'..k); return function() end end,
+                __newindex=function(_,k) CHAT_TOUCH('write:'..k) end})
+            DEFAULT_CHAT_FRAME=nil
+            setmetatable(_G, {
+                __index=function(_,k) if watched(k) then CHAT_TOUCH('read:'..k); return frame end end,
+                __newindex=function(t,k,v)
+                    if watched(k) then CHAT_TOUCH('global:'..k) else rawset(t,k,v) end
+                end})
+            hooksecurefunc=function(...) CHAT_TOUCH('hooksecurefunc') end
+        """)
 
     def load_addon(self, folder, saved=None, files=None):
         """Load an addon the way the client does: the toc's files in order, each called with (name, namespace),
@@ -305,6 +326,7 @@ class Client:
         g.UnitAffectingCombat = lambda unit: self.combat
         g.IsInRaid = lambda: self.in_raid
         g.UnitFullName = lambda unit: (self.player_name, self.realm)
+        g["GetNormalizedRealmName"] = lambda: self.normalized_realm
         g.UnitClass = lambda unit: ("Mage", self.player_class, 8)
         g.UnitLevel = lambda unit: self.level
         g.GetServerTime = lambda: int(self.wall + self.now)

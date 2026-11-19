@@ -23,7 +23,12 @@ function Prep.read(fn, ...)
 end
 function Prep.identity()
     local ok, name, realm = pcall(UnitFullName, "player")
-    if ok and Prep.text(name, 64) and Prep.text(realm, 32) then return name .. "-" .. realm end
+    if not ok or not Prep.plain(realm) then return "unreadable" end
+    if realm == nil then realm = Prep.read(GetNormalizedRealmName) end
+    if Prep.text(name, 64) and Prep.text(realm, 32) and Prep.nameKey(realm) then
+        local full = name .. "-" .. realm
+        if Prep.nameKey(full) then return full end
+    end
     return "unreadable"
 end
 -- Class/subclass IDs are client enums, not a guessed item catalogue.
@@ -68,7 +73,7 @@ function Prep.gear()
         or type(coach.Snapshot) ~= "function" or type(coach.Gear.Audit) ~= "function" then return "not checked" end
     -- Read Coach's public snapshot/audit at use time, so load order is irrelevant.
     -- Never read GearQuest, Journey or the shared item database directly.
-    local ok, result = pcall(function()
+    local ok, result, notScored = pcall(function()
         local snap = coach:Snapshot()
         local audit = coach.Gear:Audit(snap)
         if not Prep.plain(audit) or type(audit) ~= "table" then return "unreadable" end
@@ -79,10 +84,13 @@ function Prep.gear()
             or snap.baginfo.known ~= true then return "unreadable" end
         if not Prep.plain(audit.owned) or type(audit.owned) ~= "table" or #audit.owned > 19
             or type(audit.slots) ~= "table" then return "unreadable" end
-        for _, slot in pairs(audit.slots) do
-            if not Prep.plain(slot) or type(slot) ~= "table" or not Prep.plain(slot.scoreStatus)
-                or slot.scoreStatus == "unreadable" or slot.scoreStatus == "unknown" then return "unreadable" end
+        local unscored = {}
+        for inv, slot in pairs(audit.slots) do
+            if not Prep.number(inv, 1, 19) or not Prep.plain(slot) or type(slot) ~= "table" or not Prep.plain(slot.scoreStatus)
+                or slot.scoreStatus == "unreadable" then return "unreadable" end
+            if slot.scoreStatus == "unknown" then unscored[#unscored+1] = inv end
         end
+        table.sort(unscored)
         local out = {}
         for i = 1, #audit.owned do
             local row = audit.owned[i]
@@ -95,18 +103,29 @@ function Prep.gear()
             if not Prep.number(worn, 0, 999999999) then return "unreadable" end
             out[#out + 1] = {slot=row.inv, wornID=worn, bagID=row.id}
         end
-        return out
+        return out, unscored
     end)
-    return ok and result or "unreadable"
+    if not ok then return "unreadable" end
+    return result, notScored
 end
 -- One validator for wire input, saved input and optional-provider output.
 Prep.reasons = {join=true, ready=true, encounter=true}
 local classes = {WARRIOR=true, PALADIN=true, HUNTER=true, ROGUE=true, PRIEST=true,
     SHAMAN=true, MAGE=true, WARLOCK=true, DRUID=true, unreadable=true}
 function Prep.nameKey(name)
-    if not Prep.text(name, 96) or name == "unreadable" or name:find("[^%a%d '%-]")
+    if not Prep.text(name, 96) or name == "unreadable" or name:find("[^%a%d '%-\128-\255]")
         or name:find("^ ") or name:find(" $") or name:find("  ") then return nil end
     return string.lower(name) -- retain the WHOLE name; never split surnames/realm labels
+end
+-- Only a bare name gets the local normalized realm; never strip an explicit suffix.
+function Prep.fullName(name)
+    if not Prep.nameKey(name) then return nil end
+    if not name:find("-", 1, true) then
+        local realm = Prep.read(GetNormalizedRealmName)
+        if not Prep.text(realm, 32) or not Prep.nameKey(realm) then return nil end
+        name = name .. "-" .. realm
+    end
+    if Prep.nameKey(name) then return name end
 end
 function Prep.array(t, cap)
     if not Prep.plain(t) or type(t) ~= "table" then return nil end
@@ -126,7 +145,9 @@ function Prep.validate(r)
         or not Prep.plain(r.playedLevel) or not (r.playedLevel == "unreadable" or Prep.number(r.playedLevel, 0, 999999999))
         or not Prep.text(r.reason, 16) or not Prep.reasons[r.reason]
         or not Prep.number(r.sentAt, 0, 9999999999) then return nil end
-    local copy = {protocol=1, addonVersion=r.addonVersion, name=r.name, class=r.class,
+    local name = Prep.fullName(r.name)
+    if not name then return nil end
+    local copy = {protocol=1, addonVersion=r.addonVersion, name=name, class=r.class,
         level=r.level, playedLevel=r.playedLevel, reason=r.reason, sentAt=r.sentAt}
     if not Prep.plain(r.consumables) or not Prep.plain(r.gear) then return nil end
     if r.consumables == "unreadable" then copy.consumables = "unreadable"
@@ -145,8 +166,20 @@ function Prep.validate(r)
             copy.consumables[i] = {category=row.category, itemID=row.itemID, count=row.count}
         end
     end
-    if r.gear == "not checked" or r.gear == "unreadable" then copy.gear = r.gear
+    if not Prep.plain(r.notScored) then return nil end
+    if r.gear == "not checked" or r.gear == "unreadable" then
+        if r.notScored ~= nil then return nil end
+        copy.gear = r.gear
     else
+        local count = Prep.array(r.notScored, 19)
+        if not count then return nil end
+        local seen = {}
+        copy.notScored = {}
+        for i = 1, count do
+            local slot = r.notScored[i]
+            if not Prep.number(slot, 1, 19) or seen[slot] then return nil end
+            seen[slot], copy.notScored[i] = true, slot
+        end
         local n = Prep.array(r.gear, 19)
         if not n then return nil end
         copy.gear = {}
@@ -165,9 +198,16 @@ function Prep.requestPlayed()
     played, playedAt, playedLevel = nil, nil, nil
     pcall(RequestTimePlayed)
 end
-function Prep.Init()
-    Prep.requestPlayed()
+local playedJoined = false
+local function playedGroup()
+    if not RR.loaded then return end
+    local inRaid = Prep.read(IsInRaid)
+    if inRaid == true and not playedJoined then Prep.requestPlayed() end
+    -- Unreadable membership is not evidence of leaving and must not rearm /played.
+    if type(inRaid) == "boolean" then playedJoined = inRaid end
 end
+RR.on("GROUP_ROSTER_UPDATE", "Prep", playedGroup)
+RR.on("PLAYER_ENTERING_WORLD", "Prep", playedGroup)
 RR.on("TIME_PLAYED_MSG", "Prep", function(_, _, seconds)
     local level = Prep.read(UnitLevel, "player")
     played, playedAt, playedLevel = nil, nil, nil
@@ -175,16 +215,17 @@ RR.on("TIME_PLAYED_MSG", "Prep", function(_, _, seconds)
         played, playedAt, playedLevel = seconds, Prep.clock(), level
     end
 end)
-RR.on("PLAYER_LEVEL_UP", "Prep", function() Prep.requestPlayed() end)
+RR.on("PLAYER_LEVEL_UP", "Prep", function() played, playedAt, playedLevel = nil, nil, nil end)
 function Prep.build(reason)
     local _, _, class = pcall(UnitClass, "player")
     local level = Prep.read(UnitLevel, "player")
     local version = Prep.read(C_AddOns and C_AddOns.GetAddOnMetadata, RR.name, "Version")
     local clock, elapsedClock = Prep.read(GetServerTime), Prep.clock()
+    local gear, notScored = Prep.gear()
     return {protocol = 1, addonVersion = Prep.text(version, 24) and version or "unreadable",
         name = Prep.identity(), class = Prep.text(class, 16) and class or "unreadable",
         level = Prep.number(level, 1, 60) and level or "unreadable",
         playedLevel = (level == 60 and playedLevel == 60 and played and playedAt and elapsedClock and elapsedClock >= playedAt)
-            and math.min(999999999, played + math.floor(elapsedClock - playedAt)) or "unreadable", consumables = Prep.consumables(), gear = Prep.gear(),
+            and math.min(999999999, played + math.floor(elapsedClock - playedAt)) or "unreadable", consumables = Prep.consumables(), gear = gear, notScored = notScored,
         reason = reason, sentAt = Prep.number(clock, 0, 9999999999) and clock or "unreadable"}
 end

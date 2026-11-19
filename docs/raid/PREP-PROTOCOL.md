@@ -13,6 +13,8 @@ unchanged. No dependency or SavedVariables name was added.
 - `playedLevel`: seconds at level 60, or `unreadable`;
 - `consumables`: at most 32 `{category, itemID, count}` rows, or `unreadable`;
 - `gear`: at most 19 `{slot, wornID, bagID}` rows, `not checked`, or `unreadable`;
+- `notScored`: at most 19 unique slot numbers 1..19 when gear was checked
+  (an empty list means none); absent when gear is `not checked` or `unreadable`;
 - `reason`: `join`, `ready`, or `encounter`; `sentAt`: sender's server clock.
 
 The bag scan is bounded to bags 0 through 4, at most 100 slots each. Zero
@@ -35,12 +37,23 @@ existing `owned` and `slots` result. Source contract:
 read GearQuest, Journey, or the item database itself, does not reproduce Coach's
 ranking, and has no load-order dependency. Missing Coach/audit/provider data
 means `not checked`; throwing, secret, malformed or partially unreadable data
-means `unreadable`. The provider is queried again on the next collection, so a
-provider loaded later can work without restarting Relax Raid.
+means `unreadable`. In particular, a worn slot with `scoreStatus = "unreadable"`
+keeps the entire gear field unreadable; an unreadable worn ID never becomes an
+empty slot. A slot with `scoreStatus = "unknown"` instead enters `notScored`, in
+ascending slot order, without hiding the other known `audit.owned` upgrades.
+Coach already skips unscored slots for owned upgrades; its ranking is unchanged.
+The provider is queried again on the next collection, so a provider loaded
+later can work without restarting Relax Raid.
 
-`RequestTimePlayed()` is requested on addon initialization and level-up. A
-readable `TIME_PLAYED_MSG` is cached only in memory and aged by readable elapsed
-time; a level mismatch or unreadable clock gives `unreadable`. It is **label
+`RequestTimePlayed()` is requested once per observed raid join, not at addon
+initialization, login, every world entry, or level-up. Group/world events observe
+a readable false-to-true membership transition (the first true this session is
+a join); unreadable membership does not rearm the request. A readable leave
+allows one request at the next join. Level-up invalidates the cache only.
+No Blizzard chat frame is hooked, edited, hidden, or unregistered from
+`TIME_PLAYED_MSG`; any default `/played` output is left to the client. A readable
+`TIME_PLAYED_MSG` is cached only in memory and aged by readable elapsed time;
+a level mismatch or unreadable clock gives `unreadable`. It is **label
 input only**. No threshold or score is computed by this addon. ADD-05's
 configurable `newAt60` label and unchanged-score acceptance belong to the app's
 R5/R7 scoring work; the addon tests prove no points field is produced.
@@ -48,16 +61,26 @@ R5/R7 scoring work; the addon tests prove no points field is produced.
 ## Identity
 
 The own full name is `UnitFullName("player")`'s two documented strings joined
-with a hyphen. Received names are never split, realm-stripped, translated from
-log names, or guessed. The whole lowercased string is the key everywhere;
-original spelling is retained in the report. Name limit: 96 bytes, letters,
-digits, single spaces, apostrophes and hyphens. Controls, pipes and leading,
-trailing or repeated spaces are rejected. Different realm suffixes stay
-separate. Missing/secret own identity cannot be encoded for sending.
+with a hyphen. A readable nil realm uses `GetNormalizedRealmName()`; a secret,
+throwing or malformed identity is not repaired. On receive, a hyphen-free sender
+or claimed name gets `-<GetNormalizedRealmName()>` before the forged-name check.
+A missing, secret, throwing, empty or malformed normalized realm fails closed.
+An already-qualified name is never split or realm-stripped. The same rule is
+used by validation and Store's independent forged-name check. Original spelling
+is retained, including the explicitly appended realm. Different realms stay
+separate; this is not a combat-log actor-name conversion.
 
-Exact live Forever addon-sender versus UnitFullName spelling remains unverified.
-A mismatch is deliberately dropped and counted, not repaired. The app must not
-assume this string can be converted into a combat-log actor by splitting it.
+Name limit: 96 bytes; ASCII letters/digits, single spaces, apostrophes, hyphens,
+and bytes 0x80..0xFF (including UTF-8 accented names). Bytes below 0x20, DEL 0x7F,
+TAB, pipe, comma, semicolon, and leading/trailing/repeated spaces remain rejected.
+Keys lowercase the whole name with Lua's ASCII folding; UTF-8 bytes are retained,
+not Unicode case-folded or transliterated. Missing/secret own identity cannot be
+encoded. Unusable receive sender/claimed names increment `Wire.stats.badName`;
+other malformed envelopes/field counts increment the existing invalid counter
+when parsed. Valid but different normalized identities increment `forged`.
+
+Exact live Forever sender spelling remains unverified beyond this defensive
+same-realm normalization; other mismatches are dropped and counted.
 
 ## Wire grammar
 
@@ -81,10 +104,14 @@ maximum chunk: 200 bytes; maximum assembled body: 4096 bytes. The sender's
 maximum header plus chunk is 219 bytes. No compression, code evaluation or
 custom escaping is used.
 
-Body: exactly ten TAB-delimited fields:
+Body: exactly eleven TAB-delimited fields. R2 is unreleased: the appended
+`notScored` field deliberately keeps protocol/body version **1** and prefix
+`RLXR1`/kind `P1`. This is a pre-release grammar revision, not compatibility with
+a shipped ten-field body. The decoder rejects **every other field count**,
+including ten and twelve, and still rejects every unknown version.
 
 ```
-1  addonVersion  name  class  level  playedLevel  reason  sentAt  consumables  gear
+1  addonVersion  name  class  level  playedLevel  reason  sentAt  consumables  gear  notScored
 ```
 
 (The spaces above stand for TAB bytes.) Unknown scalar is `u`. Lists use `-`
@@ -93,7 +120,13 @@ not checked. Consumable rows are `category,itemID,count`, gear rows are
 `slot,wornID,bagID`; rows are separated by semicolons. Free-text fields reject
 control characters and pipes; numerical/category fields have a closed grammar.
 Worn ID 0 means Coach explicitly confirmed an empty slot, never an unreadable
-slot. The same `Prep.validate` copies and validates wire and saved reports.
+slot. `notScored` is a comma-separated list of unique canonical slot numbers
+1..19, `-` for a checked-empty list, `n` with unchecked gear, and `u` with
+unreadable gear. It is always the eleventh wire field, even when absent from the
+saved report. Mismatched gear/list markers, duplicates, holes, out-of-range
+slots and lists over 19 entries are rejected. The same `Prep.validate` copies
+and validates wire and saved reports. Pre-release checked-gear saved rows without
+`notScored` do not meet the revised shape and are discarded on validation.
 
 ### Scheduling and rates (builder-selected limits)
 
@@ -109,7 +142,9 @@ slot. The same `Prep.validate` copies and validates wire and saved reports.
   60-second interval, including failures. No retry of a client-refused fragment;
   the next ordinary trigger may try a new report.
 - At collection and **immediately before each client send**, require readable
-  `IsInRaid == true`, both combat booleans false, both chat-restriction booleans
+  `IsInRaid == true`, readable `IsInInstance()` boolean and type `none`, `raid`,
+  or `party` (never `pvp` or `arena`; unknown types fail closed), both combat
+  booleans false, both chat-restriction booleans
   false, all six `GetAddOnRestrictionState` results Inactive (0), and no locally
   observed active encounter. Absent/throwing/secret/unknown answers fail closed.
   In particular Activating (1) is not safe. No restriction is bypassed.
@@ -192,7 +227,7 @@ previous report. Arrival order, with the receiver's own timestamp, wins; a
 sender's clock cannot make its old report outrank a later receipt. Reload
 retains the last window. Empty windows are not persisted.
 
-Caps: 3 night buckets, 32 windows per night, 40 characters per window, 3840
+Caps: 3 night buckets, 80 windows per night, 40 characters per window, 9600
 reports total. Oldest inserted nights/windows are removed; a full player map
 evicts its oldest receiver timestamp (whole-name lexical tie-break) before
 inserting a new player. Known versions are rebuilt from validated bounded
@@ -200,9 +235,10 @@ fields at load; malformed records are discarded. Unknown future root/prep or
 character versions block all Store writes and are left unchanged. Writers
 recheck supported root/prep versions, not only the initialization decision.
 
-A filled maximum-field synthetic store measured 14976611 bytes using the test's
-canonical compact Lua-literal serializer; its initial reload measurement was
-0.940 seconds under lupa. The test fills all 3840 records, asserts a 20 MiB
+A filled maximum-field synthetic store, including 19 `notScored` slots per
+report, measured 38881331 bytes using the test's canonical compact Lua-literal
+serializer; the review-fix reload measurement was 2.691 seconds under lupa.
+The test fills all 9600 records, asserts a 50 MiB
 compact serialization budget, reloads and compares the entire serialization.
 This is **not** measured WoW file formatting, Lua heap size or native frame
 latency. Tables and Blizzard serialization add overhead. Newer-save byte
@@ -220,6 +256,7 @@ operation in a live client is not. No API is inferred from Retail memory.
 | Direct API/event used by R2 | Pinned file:line | Contract used |
 |---|---|---|
 | `UnitFullName` | `A/UnitDocumentation.lua:1224-1237` | unit name and server; identity may be secret |
+| `GetNormalizedRealmName` (new in review fix) | `A/PlayerScriptDocumentation.lua:651-657` | no arguments; non-nil cstring; guarded despite declaration |
 | `UnitClass` | `A/UnitDocumentation.lua:911` | class token is second return |
 | `UnitLevel` | `A/UnitDocumentation.lua:2474` | local level, guarded |
 | `C_AddOns.GetAddOnMetadata` | `A/AddOnsDocumentation.lua:165` | Version metadata |
@@ -235,6 +272,7 @@ operation in a live client is not. No API is inferred from Retail memory.
 | `GetTime` (via RR and Prep) | `Blizzard_FrameXML/Shared/LowHealthFrame.lua:161` | elapsed scheduling/aging clock |
 | `issecretvalue` | `Blizzard_GamepadSmartNavigation/SecureHelper.lua:6` | detect before comparing/indexing/formatting |
 | `IsInRaid` | `Blizzard_UnitFrame/Shared/GroupFrameVisibility.lua:6,10` | raid membership; source use, fail closed on unreadable |
+| `IsInInstance` (new in R2 send gate; already used by Log) | `A/InstanceDocumentation.lua:170-177` | no arguments; bool plus instance-type cstring; check both returns |
 | `InCombatLockdown` | `A/RestrictedActionsDocumentation.lua:45-51` | explicit boolean false required |
 | `UnitAffectingCombat` | `A/UnitDocumentation.lua:614` | player combat; explicit false required |
 | `C_ChatInfo.InChatMessagingLockdown` | `A/ChatInfoDocumentation.lua:293-299` | namespace API, not guessed global |

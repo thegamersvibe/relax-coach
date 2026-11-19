@@ -13,8 +13,8 @@
   },
   {
     "file": "addon/RelaxRaid/Prep.lua",
-    "old": "gear = Prep.gear(),",
-    "new": "gear = {},",
+    "old": "local gear, notScored = Prep.gear()",
+    "new": "local gear, notScored = {}, {}",
     "killed_by": "test_absent_providers_are_not_checked"
   },
   {
@@ -28,5 +28,37 @@
     "old": "if audit.status == \"missing\" or audit.status == \"layout\" or audit.status == \"classdata\" or audit.status == \"nodata\" then return \"not checked\" end",
     "new": "if audit.status ~= \"ok\" then return {} end",
     "killed_by": "test_coach_audit_supplies_better_ring"
+  },
+  {
+    "id": "H32",
+    "note": "prep: reads bag 5",
+    "file": "addon/RelaxRaid/Prep.lua",
+    "old": "for bag = 0, 4 do",
+    "new": "for bag = 0, 5 do",
+    "killed_by": "test_scan_never_reads_bag_five"
+  },
+  {
+    "id": "H35",
+    "note": "prep: unreadable worn becomes empty",
+    "file": "addon/RelaxRaid/Prep.lua",
+    "old": "if not Prep.number(worn, 0, 999999999) then return \"unreadable\" end",
+    "new": "if not Prep.number(worn, 0, 999999999) then worn = 0 end",
+    "killed_by": "test_unreadable_worn_id_never_becomes_empty"
+  },
+  {
+    "id": "H36",
+    "note": "prep: leading space name",
+    "file": "addon/RelaxRaid/Prep.lua",
+    "old": "or name:find(\"^ \")",
+    "new": "or false",
+    "killed_by": "test_name_whitespace_and_separators_rejected"
+  },
+  {
+    "id": "H37",
+    "note": "prep: duplicate consumable rows",
+    "file": "addon/RelaxRaid/Prep.lua",
+    "old": "or seen[row.itemID] then return nil end",
+    "new": "then return nil end",
+    "killed_by": "test_duplicate_consumable_ids_rejected"
   }
 ]

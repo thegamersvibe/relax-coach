@@ -40,8 +40,13 @@ function Wire.encode(report)
         for _, row in ipairs(r.gear) do g[#g+1] = fmt(row.slot) .. "," .. fmt(row.wornID) .. "," .. fmt(row.bagID) end
         g = #g == 0 and "-" or table.concat(g, ";")
     else g = r.gear == "not checked" and "n" or "u" end
+    local ns = {}
+    if r.notScored then
+        for i, slot in ipairs(r.notScored) do ns[i] = fmt(slot) end
+        ns = #ns == 0 and "-" or table.concat(ns, ",")
+    else ns = r.gear == "not checked" and "n" or "u" end
     local body = table.concat({"1", r.addonVersion, r.name, r.class, fmt(r.level), fmt(r.playedLevel),
-        r.reason, fmt(r.sentAt), c, g}, "\t")
+        r.reason, fmt(r.sentAt), c, g, ns}, "\t")
     if #body > Wire.MAX_BODY then return nil end
     return body
 end
@@ -63,10 +68,24 @@ end
 function Wire.decode(body)
     local P = RR.modules.Prep
     if not P or not P.plain(body) or type(body) ~= "string" or #body > Wire.MAX_BODY then return nil end
-    local f = split(body, "\t", 10)
-    if not f or #f ~= 10 or f[1] ~= "1" then return nil end
+    local f = split(body, "\t", 11)
+    if not f or #f ~= 11 or f[1] ~= "1" then return nil end
+    f[3] = P.fullName(f[3])
+    if not f[3] then return nil, "badName" end
+    local gear, notScored = rows(f[10], "gear"), nil
+    if type(gear) == "table" then
+        notScored = f[11] == "-" and {} or split(f[11], ",", 19)
+        if not notScored then return nil end
+        for i, slot in ipairs(notScored) do
+            local n = integer(slot)
+            if not P.number(n, 1, 19) then return nil end
+            notScored[i] = n
+        end
+    elseif not ((gear == "not checked" and f[11] == "n") or (gear == "unreadable" and f[11] == "u")) then
+        return nil
+    end
     return P.validate({protocol=1, addonVersion=f[2], name=f[3], class=f[4], level=integer(f[5]),
-        playedLevel=integer(f[6]), reason=f[7], sentAt=integer(f[8]), consumables=rows(f[9], "bags"), gear=rows(f[10], "gear")})
+        playedLevel=integer(f[6]), reason=f[7], sentAt=integer(f[8]), consumables=rows(f[9], "bags"), gear=gear, notScored=notScored})
 end
 
 local registered, joined, nextID = false, false, 0
@@ -74,6 +93,9 @@ local encounter = false
 function Wire.allowed()
     local P = RR.modules.Prep
     if not P then return false end
+    local ok, inside, instanceType = pcall(IsInInstance)
+    if not ok or not P.plain(inside) or type(inside) ~= "boolean" or not P.text(instanceType, 16)
+        or not (instanceType == "none" or instanceType == "raid" or instanceType == "party") then return false end
     for kind = 0, 5 do -- Combat, Encounter, ChallengeMode, PvPMatch, Map, Chat (pinned enum)
         if P.read(C_RestrictedActions and C_RestrictedActions.GetAddOnRestrictionState, kind) ~= 0 then return false end
     end
@@ -187,7 +209,9 @@ function Wire.receive(prefix, text, channel, sender)
     local P, S = RR.modules.Prep, RR.modules.Store
     if not P or not S or not registered or P.read(IsInRaid) ~= true then return end
     if not P.plain(prefix) or prefix ~= Wire.PREFIX or not P.plain(channel) or channel ~= "RAID"
-        or not P.plain(text) or type(text) ~= "string" or #text > 240 or not P.nameKey(sender) then return end
+        or not P.plain(text) or type(text) ~= "string" or #text > 240 then return end
+    sender = P.fullName(sender)
+    if not sender then Wire.count("badName"); return end
     local now = RR.now()
     if not P.plain(now) or type(now) ~= "number" or now < 0 or now > 9999999999 then return end
     if not charge(receiveTimes, 2400, now) then Wire.count("receiveLimited"); return end
@@ -230,8 +254,8 @@ function Wire.receive(prefix, text, channel, sender)
     if a.count ~= total then return end
     peer.active = nil
     peer.done[id] = now
-    local r = Wire.decode(table.concat(a.chunks))
-    if not r then Wire.count("invalid"); return end
+    local r, why = Wire.decode(table.concat(a.chunks))
+    if not r then Wire.count(why or "invalid"); return end
     if P.nameKey(r.name) ~= key then Wire.count("forged"); return end
     if S.put(sender, r) then Wire.count("received") end
 end

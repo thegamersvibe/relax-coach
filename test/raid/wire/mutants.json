@@ -96,10 +96,106 @@
     "new": "or false",
     "killed_by": "test_unknown_body_version"
   },
-{
-  "file": "addon/RelaxRaid/Wire.lua",
-  "old": "#attempts >= 60 or now - lastPart < 0.5",
-  "new": "false or now - lastPart < 0.5",
-  "killed_by": "test_send_rolling_minute_budget"
-}
+  {
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "#attempts >= 60 or now - lastPart < 0.5",
+    "new": "false or now - lastPart < 0.5",
+    "killed_by": "test_send_rolling_minute_budget"
+  },
+  {
+    "id": "H01",
+    "note": "send: drop local encounter flag",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "return not encounter and P.read(IsInRaid) == true and",
+    "new": "return P.read(IsInRaid) == true and",
+    "killed_by": "test_observed_encounter_blocks_even_with_inactive_client_flags"
+  },
+  {
+    "id": "H02",
+    "note": "send: restriction kinds 0..4",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "for kind = 0, 5 do",
+    "new": "for kind = 0, 4 do",
+    "killed_by": "test_each_restriction_kind_independently_blocks"
+  },
+  {
+    "id": "H03",
+    "note": "send: restriction kinds 2..5",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "for kind = 0, 5 do",
+    "new": "for kind = 2, 5 do",
+    "killed_by": "test_each_restriction_kind_independently_blocks"
+  },
+  {
+    "id": "H04",
+    "note": "recv: any channel",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "or not P.plain(channel) or channel ~= \"RAID\"\n",
+    "new": "or not P.plain(channel)\n",
+    "killed_by": "test_receive_requires_raid_distribution"
+  },
+  {
+    "id": "H05",
+    "note": "recv: 2400-byte message",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "or #text > 240 then",
+    "new": "or #text > 2400 then",
+    "killed_by": "test_oversize_packets_do_not_spend_receive_budget"
+  },
+  {
+    "id": "H07",
+    "note": "recv: 600/peer/min",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "if not charge(peer.times, 60, now)",
+    "new": "if not charge(peer.times, 600, now)",
+    "killed_by": "test_per_peer_minute_cap_boundary_and_recovery"
+  },
+  {
+    "id": "H08",
+    "note": "recv: global 24000",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "if not charge(receiveTimes, 2400, now)",
+    "new": "if not charge(receiveTimes, 24000, now)",
+    "killed_by": "test_global_minute_cap_precedes_peer_admission"
+  },
+  {
+    "id": "H11",
+    "note": "send: no 10s between reports",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "and now - lastReport >= 10 then",
+    "new": "and now - lastReport >= 0 then",
+    "killed_by": "test_different_reasons_still_wait_ten_seconds"
+  },
+  {
+    "id": "H14",
+    "note": "send: no fragment spacing",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "or now - lastPart < 0.5 then",
+    "new": "or now - lastPart < 0 then",
+    "killed_by": "test_fragment_spacing_uses_read_clock_not_timer_assumption"
+  },
+  {
+    "id": "H16",
+    "note": "recv: no assembled byte cap",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "if a.bytes > Wire.MAX_BODY then peer.active = nil; peer.done[id] = now; Wire.count(\"invalid\"); return end",
+    "new": "",
+    "killed_by": "test_assembled_limit_precedes_decode"
+  },
+  {
+    "id": "H17",
+    "note": "recv: replay check gone",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "if peer.done[id] then Wire.count(\"replay\"); return end",
+    "new": "",
+    "killed_by": "test_replay_drop_is_counted_without_overwrite"
+  },
+  {
+    "id": "H20",
+    "note": "recv: outside a raid",
+    "file": "addon/RelaxRaid/Wire.lua",
+    "old": "if not P or not S or not registered or P.read(IsInRaid) ~= true then return end",
+    "new": "if not P or not S or not registered then return end",
+    "killed_by": "test_outside_raid_cannot_seed_receive_assembly"
+  }
 ]

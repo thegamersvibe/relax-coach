@@ -2,7 +2,7 @@
 -- Version/layout/caps and API evidence: docs/raid/PREP-PROTOCOL.md.
 local _, RR = ...
 local Store = RR.module("Store")
-Store.VERSION, Store.MAX_NIGHTS, Store.MAX_WINDOWS, Store.MAX_PLAYERS = 1, 3, 32, 40
+Store.VERSION, Store.MAX_NIGHTS, Store.MAX_WINDOWS, Store.MAX_PLAYERS = 1, 3, 80, 40
 Store.stats = {}
 local newWindow = false
 function Store.count(key)
@@ -62,7 +62,7 @@ function Store.put(sender, report)
     local P, L = RR.modules.Prep, RR.modules.Log
     if not P or not L or L.logger("raid") ~= true or P.read(IsInRaid) ~= true then return false end
     local r = P.validate(report)
-    local key = P.nameKey(sender)
+    local key = P.nameKey(P.fullName(sender))
     if not r or not key then Store.count("invalid"); return false end
     if P.nameKey(r.name) ~= key then Store.count("forged"); return false end
     local now = P.read(GetServerTime)
