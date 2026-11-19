@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "version": "1.0.0",
-  "source": "Our class-study reports: warrior-rogue.md, paladin-shaman.md, priest-druid.md, mage-warlock-hunter.md. Qualitative seed only; no spell IDs or talent mapping. Empty cast_signatures deliberately leave spec unknown.",
+  "version": "1.1.0",
+  "source": "Our class-study reports: warrior-rogue.md, paladin-shaman.md, priest-druid.md, mage-warlock-hunter.md. Qualitative seed only; no spell IDs or talent mapping. Empty cast_signatures deliberately leave spec unknown. R5 review round 1: Rockbiter wording from class-study/paladin-shaman.md:153,158,163; remove unsupported expanded support names/references per :45,211-212.",
   "profiles": [
     {
       "id": "WARRIOR.arms",
@@ -200,13 +200,9 @@
         "blessing_of_wisdom",
         "blessing_of_kings",
         "greater_blessing_of_might",
-        "greater_blessing_of_wisdom",
-        "greater_blessing_of_kings",
         "devotion_aura",
         "retribution_aura",
         "concentration_aura",
-        "fire_resistance_aura",
-        "frost_resistance_aura",
         "shadow_resistance_aura",
         "judgement_of_light",
         "judgement_of_wisdom",
@@ -215,7 +211,7 @@
       "comparison": "Keep deep Retribution separate from Shockadin; match creature type and melee access.",
       "uncalibrated": false,
       "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
-      "source": "class-study/paladin-shaman.md; PALADIN - retribution. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+      "source": "class-study/paladin-shaman.md; PALADIN - retribution. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec). Support names not written in full in class-study/paladin-shaman.md:45,211-212 removed rather than expanded from memory."
     },
     {
       "id": "PALADIN.holy",
@@ -262,13 +258,9 @@
         "blessing_of_wisdom",
         "blessing_of_kings",
         "greater_blessing_of_might",
-        "greater_blessing_of_wisdom",
-        "greater_blessing_of_kings",
         "devotion_aura",
         "retribution_aura",
         "concentration_aura",
-        "fire_resistance_aura",
-        "frost_resistance_aura",
         "shadow_resistance_aura",
         "judgement_of_light",
         "judgement_of_wisdom",
@@ -277,7 +269,7 @@
       "comparison": "Match tank/party assignment, urgent healing opportunity and mana support.",
       "uncalibrated": false,
       "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
-      "source": "class-study/paladin-shaman.md; PALADIN - holy. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+      "source": "class-study/paladin-shaman.md; PALADIN - holy. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec). Support names not written in full in class-study/paladin-shaman.md:45,211-212 removed rather than expanded from memory."
     },
     {
       "id": "PALADIN.protection",
@@ -325,13 +317,9 @@
         "blessing_of_wisdom",
         "blessing_of_kings",
         "greater_blessing_of_might",
-        "greater_blessing_of_wisdom",
-        "greater_blessing_of_kings",
         "devotion_aura",
         "retribution_aura",
         "concentration_aura",
-        "fire_resistance_aura",
-        "frost_resistance_aura",
         "shadow_resistance_aura",
         "judgement_of_light",
         "judgement_of_wisdom",
@@ -340,7 +328,7 @@
       "comparison": "Match active tanking exposure, enemies and incoming damage schools.",
       "uncalibrated": false,
       "calibration_note": "Documented archetype, not a validated raid benchmark; only observed runtime baselines may be used.",
-      "source": "class-study/paladin-shaman.md; PALADIN - protection. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+      "source": "class-study/paladin-shaman.md; PALADIN - protection. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec). Support names not written in full in class-study/paladin-shaman.md:45,211-212 removed rather than expanded from memory."
     },
     {
       "id": "PALADIN.shockadin",
@@ -385,13 +373,9 @@
         "blessing_of_wisdom",
         "blessing_of_kings",
         "greater_blessing_of_might",
-        "greater_blessing_of_wisdom",
-        "greater_blessing_of_kings",
         "devotion_aura",
         "retribution_aura",
         "concentration_aura",
-        "fire_resistance_aura",
-        "frost_resistance_aura",
         "shadow_resistance_aura",
         "judgement_of_light",
         "judgement_of_wisdom",
@@ -400,7 +384,7 @@
       "comparison": "Separate hybrid cohort and actual damage/healing role; no cross-spec output floor.",
       "uncalibrated": true,
       "calibration_note": "Experimental or insufficiently established raid archetype; no calibrated Output comparison.",
-      "source": "class-study/paladin-shaman.md; PALADIN - shockadin. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+      "source": "class-study/paladin-shaman.md; PALADIN - shockadin. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec). Support names not written in full in class-study/paladin-shaman.md:45,211-212 removed rather than expanded from memory."
     },
     {
       "id": "HUNTER.beast_mastery",
@@ -1027,7 +1011,7 @@
       "pets": "totems",
       "spells": [
         {
-          "name": "Rockbiter Weapon"
+          "name": "Rockbiter"
         },
         {
           "name": "Earth Shock"
@@ -1066,7 +1050,7 @@
       "comparison": "Experimental assignment/exposure cohort; small-group intent does not establish raid viability.",
       "uncalibrated": true,
       "calibration_note": "Experimental or insufficiently established raid archetype; no calibrated Output comparison.",
-      "source": "class-study/paladin-shaman.md; SHAMAN - enhancement_tank. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec)."
+      "source": "class-study/paladin-shaman.md; SHAMAN - enhancement_tank. Names only; no validated cast-only discriminator (hybrid/shared spells are not proof of spec). Rockbiter: exact wording in class-study/paladin-shaman.md:153,158,163."
     },
     {
       "id": "SHAMAN.restoration",

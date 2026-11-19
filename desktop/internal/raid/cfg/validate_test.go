@@ -120,7 +120,12 @@ func TestValidateCatalogues(t *testing.T) {
 		file string
 		edit func(map[string]any)
 	}{
-		{"support.json", func(d map[string]any) { d["effects"].([]any)[0].(map[string]any)["scope"] = "unknown" }},
+		{"support.json", func(d map[string]any) {
+			e := d["effects"].([]any)[0].(map[string]any)
+			e["scope"] = "unknown"
+			e["credit"] = true
+			e["verified"] = true
+		}},
 		{"support.json", func(d map[string]any) { e := d["effects"].([]any); e[1] = e[0] }},
 		{"support.json", func(d map[string]any) {
 			e := d["effects"].([]any)[0].(map[string]any)

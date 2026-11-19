@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "version": "1.0.0",
-  "source": "Our class-study/paladin-shaman.md scope matrix, roles-and-systems.md section 3 and class reports. Null stacks means unverified; personal effects earn no support credit. Duplicate non-stacking coverage is split equally between actual providers.",
+  "version": "1.1.0",
+  "source": "Our class-study/paladin-shaman.md scope matrix, roles-and-systems.md section 3 and class reports. Null stacks means unverified; personal effects earn no support credit. Duplicate non-stacking coverage is split equally between actual providers. R5 review round 1: verified is a conservative source gate for scope and known same-effect stacking, not runtime certification; any unverified/unknown seed effect has credit=false. Removed expanded names absent verbatim from class-study/paladin-shaman.md:45,211-212 (Greater Wisdom/Kings and Fire/Frost Resistance Aura).",
   "effects": [
     {
       "id": "battle_shout",
@@ -11,9 +11,10 @@
       "scope": "raid",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/warrior-rogue.md cross-cutting",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/warrior-rogue.md cross-cutting; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "sunder_armor",
@@ -24,8 +25,9 @@
       "stacks": false,
       "exclusive_group": "major_armor",
       "credit": true,
-      "source": "class-study/roles-and-systems.md section 3",
-      "note": "Credit actual eligible recipients; no inferred damage gain."
+      "source": "class-study/roles-and-systems.md section 3; R5 review round 1: verified=true records the documented scope/non-stacking or personal-effect classification, not runtime attribution.",
+      "note": "Credit actual eligible recipients; no inferred damage gain.",
+      "verified": true
     },
     {
       "id": "thunder_clap",
@@ -35,9 +37,10 @@
       "scope": "enemy",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/roles-and-systems.md section 3",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/roles-and-systems.md section 3; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "demoralizing_shout",
@@ -47,9 +50,10 @@
       "scope": "enemy",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/roles-and-systems.md section 3",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/roles-and-systems.md section 3; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "expose_armor",
@@ -60,8 +64,9 @@
       "stacks": false,
       "exclusive_group": "major_armor",
       "credit": true,
-      "source": "class-study/roles-and-systems.md section 3",
-      "note": "Credit actual eligible recipients; no inferred damage gain."
+      "source": "class-study/roles-and-systems.md section 3; R5 review round 1: verified=true records the documented scope/non-stacking or personal-effect classification, not runtime attribution.",
+      "note": "Credit actual eligible recipients; no inferred damage gain.",
+      "verified": true
     },
     {
       "id": "hemorrhage",
@@ -72,8 +77,9 @@
       "stacks": false,
       "exclusive_group": "",
       "credit": false,
-      "source": "class-study/warrior-rogue.md cross-cutting",
-      "note": "Credit actual eligible recipients; no inferred damage gain."
+      "source": "class-study/warrior-rogue.md cross-cutting; R5 review round 1: verified=true records the documented scope/non-stacking or personal-effect classification, not runtime attribution.",
+      "note": "Credit actual eligible recipients; no inferred damage gain.",
+      "verified": true
     },
     {
       "id": "improved_kidney_shot",
@@ -84,8 +90,9 @@
       "stacks": false,
       "exclusive_group": "",
       "credit": false,
-      "source": "class-study/warrior-rogue.md cross-cutting",
-      "note": "Credit actual eligible recipients; no inferred damage gain."
+      "source": "class-study/warrior-rogue.md cross-cutting; R5 review round 1: verified=true records the documented scope/non-stacking or personal-effect classification, not runtime attribution.",
+      "note": "Credit actual eligible recipients; no inferred damage gain.",
+      "verified": true
     },
     {
       "id": "blessing_of_might",
@@ -95,9 +102,10 @@
       "scope": "single",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "blessing_of_wisdom",
@@ -107,9 +115,10 @@
       "scope": "single",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "blessing_of_kings",
@@ -119,9 +128,10 @@
       "scope": "single",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "greater_blessing_of_might",
@@ -131,33 +141,10 @@
       "scope": "class",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
-    },
-    {
-      "id": "greater_blessing_of_wisdom",
-      "spell": {
-        "name": "Greater Blessing of Wisdom"
-      },
-      "scope": "class",
-      "stacks": null,
-      "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
-    },
-    {
-      "id": "greater_blessing_of_kings",
-      "spell": {
-        "name": "Greater Blessing of Kings"
-      },
-      "scope": "class",
-      "stacks": null,
-      "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "devotion_aura",
@@ -167,9 +154,10 @@
       "scope": "party",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "retribution_aura",
@@ -179,9 +167,10 @@
       "scope": "party",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "concentration_aura",
@@ -191,33 +180,10 @@
       "scope": "party",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
-    },
-    {
-      "id": "fire_resistance_aura",
-      "spell": {
-        "name": "Fire Resistance Aura"
-      },
-      "scope": "raid",
-      "stacks": null,
-      "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
-    },
-    {
-      "id": "frost_resistance_aura",
-      "spell": {
-        "name": "Frost Resistance Aura"
-      },
-      "scope": "raid",
-      "stacks": null,
-      "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "shadow_resistance_aura",
@@ -227,9 +193,10 @@
       "scope": "raid",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "judgement_of_light",
@@ -239,9 +206,10 @@
       "scope": "enemy",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Keep original applier distinct from a Sacred Arbiter refresher. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Keep original applier distinct from a Sacred Arbiter refresher. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "judgement_of_wisdom",
@@ -251,9 +219,10 @@
       "scope": "enemy",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Keep original applier distinct from a Sacred Arbiter refresher. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Keep original applier distinct from a Sacred Arbiter refresher. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "judgement_of_the_crusader",
@@ -263,9 +232,10 @@
       "scope": "enemy",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Keep original applier distinct from a Sacred Arbiter refresher. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Keep original applier distinct from a Sacred Arbiter refresher. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "windfury_totem",
@@ -275,9 +245,10 @@
       "scope": "raid",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "flametongue_totem",
@@ -287,9 +258,10 @@
       "scope": "raid",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "strength_of_earth_totem",
@@ -299,9 +271,10 @@
       "scope": "raid",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "grace_of_air_totem",
@@ -311,9 +284,10 @@
       "scope": "raid",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "fire_resistance_totem",
@@ -323,9 +297,10 @@
       "scope": "raid",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "frost_resistance_totem",
@@ -335,9 +310,10 @@
       "scope": "raid",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "nature_resistance_totem",
@@ -347,9 +323,10 @@
       "scope": "raid",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "mana_spring_totem",
@@ -359,9 +336,10 @@
       "scope": "party",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Provisional party interpretation of group wording; runtime scope unverified. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note. Scope qualification: class-study/paladin-shaman.md:195,218.",
+      "note": "Provisional party interpretation of group wording; runtime scope unverified. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "mana_tide_totem",
@@ -371,9 +349,10 @@
       "scope": "party",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Provisional party interpretation of group wording; runtime scope unverified. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note. Scope qualification: class-study/paladin-shaman.md:195,218.",
+      "note": "Provisional party interpretation of group wording; runtime scope unverified. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "healing_stream_totem",
@@ -383,9 +362,10 @@
       "scope": "party",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Provisional party interpretation of group wording; runtime scope unverified. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note. Scope qualification: class-study/paladin-shaman.md:195,218.",
+      "note": "Provisional party interpretation of group wording; runtime scope unverified. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "tremor_totem",
@@ -395,9 +375,10 @@
       "scope": "party",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "grounding_totem",
@@ -407,9 +388,10 @@
       "scope": "party",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "poison_cleansing_totem",
@@ -419,9 +401,10 @@
       "scope": "party",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "disease_cleansing_totem",
@@ -431,9 +414,10 @@
       "scope": "party",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "stoneskin_totem",
@@ -443,9 +427,10 @@
       "scope": "party",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "windwall_totem",
@@ -455,9 +440,10 @@
       "scope": "party",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "stormstrike",
@@ -468,8 +454,9 @@
       "stacks": false,
       "exclusive_group": "",
       "credit": false,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain."
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=true records the documented scope/non-stacking or personal-effect classification, not runtime attribution.",
+      "note": "Credit actual eligible recipients; no inferred damage gain.",
+      "verified": true
     },
     {
       "id": "rage_of_the_farseer",
@@ -480,8 +467,9 @@
       "stacks": false,
       "exclusive_group": "",
       "credit": false,
-      "source": "class-study/paladin-shaman.md scope matrix",
-      "note": "Credit actual eligible recipients; no inferred damage gain."
+      "source": "class-study/paladin-shaman.md scope matrix; R5 review round 1: verified=true records the documented scope/non-stacking or personal-effect classification, not runtime attribution.",
+      "note": "Credit actual eligible recipients; no inferred damage gain.",
+      "verified": true
     },
     {
       "id": "prayer_of_fortitude",
@@ -491,9 +479,10 @@
       "scope": "raid",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/priest-druid.md cross-cutting",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/priest-druid.md cross-cutting; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "prayer_of_spirit",
@@ -503,9 +492,10 @@
       "scope": "raid",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/priest-druid.md cross-cutting",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/priest-druid.md cross-cutting; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "prayer_of_shadow_protection",
@@ -515,9 +505,10 @@
       "scope": "raid",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/priest-druid.md cross-cutting",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/priest-druid.md cross-cutting; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "fear_ward",
@@ -527,9 +518,10 @@
       "scope": "single",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/priest-druid.md",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/priest-druid.md; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "dark_inspiration",
@@ -540,8 +532,9 @@
       "stacks": false,
       "exclusive_group": "",
       "credit": true,
-      "source": "class-study/priest-druid.md shadow",
-      "note": "Credit actual eligible recipients; no inferred damage gain."
+      "source": "class-study/priest-druid.md shadow; R5 review round 1: verified=true records the documented scope/non-stacking or personal-effect classification, not runtime attribution.",
+      "note": "Credit actual eligible recipients; no inferred damage gain.",
+      "verified": true
     },
     {
       "id": "vampiric_embrace",
@@ -551,9 +544,10 @@
       "scope": "party",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/priest-druid.md shadow",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/priest-druid.md shadow; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "shadow_weaving",
@@ -564,8 +558,9 @@
       "stacks": false,
       "exclusive_group": "",
       "credit": false,
-      "source": "class-study/priest-druid.md shadow",
-      "note": "Credit actual eligible recipients; no inferred damage gain."
+      "source": "class-study/priest-druid.md shadow; R5 review round 1: verified=true records the documented scope/non-stacking or personal-effect classification, not runtime attribution.",
+      "note": "Credit actual eligible recipients; no inferred damage gain.",
+      "verified": true
     },
     {
       "id": "gift_of_the_wild",
@@ -575,9 +570,10 @@
       "scope": "raid",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/priest-druid.md cross-cutting",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/priest-druid.md cross-cutting; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "mark_of_the_wild",
@@ -587,9 +583,10 @@
       "scope": "single",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/priest-druid.md",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/priest-druid.md; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "thorns",
@@ -599,9 +596,10 @@
       "scope": "single",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/priest-druid.md",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/priest-druid.md; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "innervate",
@@ -611,9 +609,10 @@
       "scope": "single",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/priest-druid.md",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/priest-druid.md; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "faerie_fire",
@@ -624,8 +623,9 @@
       "stacks": false,
       "exclusive_group": "",
       "credit": true,
-      "source": "class-study/priest-druid.md",
-      "note": "Credit actual eligible recipients; no inferred damage gain."
+      "source": "class-study/priest-druid.md; R5 review round 1: verified=true records the documented scope/non-stacking or personal-effect classification, not runtime attribution. Non-stacking: class-study/roles-and-systems.md:243.",
+      "note": "Credit actual eligible recipients; no inferred damage gain.",
+      "verified": true
     },
     {
       "id": "leader_of_the_pack",
@@ -636,8 +636,9 @@
       "stacks": false,
       "exclusive_group": "druid_crit",
       "credit": true,
-      "source": "class-study/priest-druid.md cross-cutting",
-      "note": "Credit actual eligible recipients; no inferred damage gain."
+      "source": "class-study/priest-druid.md cross-cutting; R5 review round 1: verified=true records the documented scope/non-stacking or personal-effect classification, not runtime attribution.",
+      "note": "Credit actual eligible recipients; no inferred damage gain.",
+      "verified": true
     },
     {
       "id": "moonkin_aura",
@@ -648,8 +649,9 @@
       "stacks": false,
       "exclusive_group": "druid_crit",
       "credit": true,
-      "source": "class-study/priest-druid.md cross-cutting",
-      "note": "Credit actual eligible recipients; no inferred damage gain."
+      "source": "class-study/priest-druid.md cross-cutting; R5 review round 1: verified=true records the documented scope/non-stacking or personal-effect classification, not runtime attribution.",
+      "note": "Credit actual eligible recipients; no inferred damage gain.",
+      "verified": true
     },
     {
       "id": "insect_swarm",
@@ -659,9 +661,10 @@
       "scope": "enemy",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/priest-druid.md balance",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/priest-druid.md balance; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "arcane_intellect",
@@ -671,9 +674,10 @@
       "scope": "single",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/mage-warlock-hunter.md",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/mage-warlock-hunter.md; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "arcane_brilliance",
@@ -683,9 +687,10 @@
       "scope": "raid",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/mage-warlock-hunter.md",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/mage-warlock-hunter.md; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "improved_scorch",
@@ -696,8 +701,9 @@
       "stacks": false,
       "exclusive_group": "",
       "credit": false,
-      "source": "class-study/mage-warlock-hunter.md cross-cutting",
-      "note": "Credit actual eligible recipients; no inferred damage gain."
+      "source": "class-study/mage-warlock-hunter.md cross-cutting; R5 review round 1: verified=true records the documented scope/non-stacking or personal-effect classification, not runtime attribution.",
+      "note": "Credit actual eligible recipients; no inferred damage gain.",
+      "verified": true
     },
     {
       "id": "winters_chill",
@@ -708,8 +714,9 @@
       "stacks": false,
       "exclusive_group": "",
       "credit": false,
-      "source": "class-study/mage-warlock-hunter.md cross-cutting",
-      "note": "Credit actual eligible recipients; no inferred damage gain."
+      "source": "class-study/mage-warlock-hunter.md cross-cutting; R5 review round 1: verified=true records the documented scope/non-stacking or personal-effect classification, not runtime attribution.",
+      "note": "Credit actual eligible recipients; no inferred damage gain.",
+      "verified": true
     },
     {
       "id": "curse_of_the_elements",
@@ -719,9 +726,10 @@
       "scope": "enemy",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/mage-warlock-hunter.md",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/mage-warlock-hunter.md; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "curse_of_recklessness",
@@ -731,9 +739,10 @@
       "scope": "enemy",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/mage-warlock-hunter.md",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/mage-warlock-hunter.md; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "curse_of_tongues",
@@ -743,9 +752,10 @@
       "scope": "enemy",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/mage-warlock-hunter.md",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/mage-warlock-hunter.md; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "curse_of_weakness",
@@ -755,9 +765,10 @@
       "scope": "enemy",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/mage-warlock-hunter.md",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/mage-warlock-hunter.md; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "blood_pact",
@@ -767,9 +778,10 @@
       "scope": "party",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/mage-warlock-hunter.md",
-      "note": "Requires an active Imp; absent from no-pet builds. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/mage-warlock-hunter.md; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Requires an active Imp; absent from no-pet builds. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "improved_shadow_bolt",
@@ -780,8 +792,9 @@
       "stacks": false,
       "exclusive_group": "",
       "credit": false,
-      "source": "class-study/mage-warlock-hunter.md",
-      "note": "Credit actual eligible recipients; no inferred damage gain."
+      "source": "class-study/mage-warlock-hunter.md; R5 review round 1: verified=true records the documented scope/non-stacking or personal-effect classification, not runtime attribution.",
+      "note": "Credit actual eligible recipients; no inferred damage gain.",
+      "verified": true
     },
     {
       "id": "hunters_mark",
@@ -792,8 +805,9 @@
       "stacks": false,
       "exclusive_group": "",
       "credit": true,
-      "source": "class-study/mage-warlock-hunter.md",
-      "note": "Credit actual eligible recipients; no inferred damage gain."
+      "source": "class-study/mage-warlock-hunter.md; R5 review round 1: verified=true records the documented scope/non-stacking or personal-effect classification, not runtime attribution. Non-stacking: class-study/roles-and-systems.md:215.",
+      "note": "Credit actual eligible recipients; no inferred damage gain.",
+      "verified": true
     },
     {
       "id": "furious_howl",
@@ -804,8 +818,9 @@
       "stacks": null,
       "exclusive_group": "",
       "credit": false,
-      "source": "class-study/mage-warlock-hunter.md and roles-and-systems.md section 3.2 disagree",
-      "note": "Class report says party; systems report says party/raid from beta data. Withhold coverage credit until live scope is verified."
+      "source": "class-study/mage-warlock-hunter.md and roles-and-systems.md section 3.2 disagree; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Class report says party; systems report says party/raid from beta data. Withhold coverage credit until live scope is verified.",
+      "verified": false
     },
     {
       "id": "trueshot_aura",
@@ -815,9 +830,10 @@
       "scope": "raid",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/mage-warlock-hunter.md",
-      "note": "Ranged AP only, and only when the actual build supplies it. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/mage-warlock-hunter.md; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Ranged AP only, and only when the actual build supplies it. Cross-provider stacking remains unverified.",
+      "verified": false
     },
     {
       "id": "power_infusion",
@@ -827,9 +843,10 @@
       "scope": "single",
       "stacks": null,
       "exclusive_group": "",
-      "credit": true,
-      "source": "class-study/priest-druid.md discipline",
-      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified."
+      "credit": false,
+      "source": "class-study/priest-druid.md discipline; R5 review round 1: verified=false and credit=false retain the unverified scope/stacking qualification in note.",
+      "note": "Credit actual eligible recipients; no inferred damage gain. Cross-provider stacking remains unverified.",
+      "verified": false
     }
   ],
   "overlap": "split_equally"

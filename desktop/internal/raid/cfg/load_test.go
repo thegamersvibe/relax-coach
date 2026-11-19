@@ -123,7 +123,7 @@ func rescoreStored(t *testing.T, dir, nightPath, resultPath string) sampleResult
 	for _, rule := range c.Encounters.Encounters {
 		if rule.ID == 77 && rule.TargetRule != nil && rule.TargetRule.Mode == "boss_and_units" {
 			for _, unit := range rule.TargetRule.Units {
-				if unit.Name == "Synthetic add" {
+				if unit.Matches(78) {
 					output += n.AddDamage
 				}
 			}
@@ -202,7 +202,7 @@ func TestReloadProfile(t *testing.T) {
 }
 func TestReloadEncounter(t *testing.T) {
 	b, a := reloadCase(t, "encounters-enabled.json", func(d map[string]any) {
-		d["encounters"] = []any{map[string]any{"id": 77, "name": "Synthetic boss", "source": "synthetic test evidence", "boss_units": []any{}, "mechanics": []any{}, "target_rule": map[string]any{"mode": "boss_and_units", "units": []any{map[string]any{"name": "Synthetic add", "source": "synthetic test evidence"}}}}}
+		d["encounters"] = []any{map[string]any{"id": 77, "name": "Synthetic boss", "source": "synthetic test evidence", "boss_units": []any{}, "mechanics": []any{}, "target_rule": map[string]any{"mode": "boss_and_units", "units": []any{map[string]any{"id": 78, "name": "Synthetic add", "source": "synthetic test evidence"}}}}}
 	})
 	if a.Score <= b.Score || a.Coverage != b.Coverage {
 		t.Fatalf("before=%+v after=%+v", b, a)

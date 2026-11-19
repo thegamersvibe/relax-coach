@@ -6,10 +6,14 @@ import (
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/model"
 )
 
+// Matches compares an observed NPC id. Name is only a label, including on localized logs.
+func (s CreatureSelector) Matches(npcID int64) bool { return s.ID > 0 && s.ID == npcID }
+
 // InstanceKind uses the listed kind first, then only the encounter's group
 // size. listed=false MUST be reported by the caller, including for inferred
 // raids; a five-player group does not establish an unknown instance as dungeon.
 func (c *Config) InstanceKind(instanceID, groupSize int64) (kind model.RunKind, listed bool) {
+	c = c.readOnly()
 	for _, i := range c.Instances.Instances {
 		if i.ID == instanceID {
 			if i.Kind == "raid" {
@@ -26,9 +30,10 @@ func (c *Config) InstanceKind(instanceID, groupSize int64) (kind model.RunKind, 
 
 // Profile looks up a canonical CLASS.spec id. Unknown/ambiguous ids stay unknown.
 func (c *Config) Profile(id string) (Profile, bool) {
+	c = c.readOnly()
 	for _, p := range c.Specs.Profiles {
 		if p.ID == id {
-			return p, true
+			return copyProfile(p), true
 		}
 	}
 	return Profile{}, false
@@ -36,9 +41,10 @@ func (c *Config) Profile(id string) (Profile, bool) {
 
 // Encounter consults enabled rules only, never research candidates.
 func (c *Config) Encounter(id int64) (EncounterRule, bool) {
+	c = c.readOnly()
 	for _, e := range c.Encounters.Encounters {
 		if e.ID == id {
-			return e, true
+			return copyEncounter(e), true
 		}
 	}
 	return EncounterRule{}, false
@@ -47,6 +53,7 @@ func (c *Config) Encounter(id int64) (EncounterRule, bool) {
 // OutputTargets defaults to encounter boss units, even for an unknown boss.
 // This policy is independent of BossUnits, which identifies tanking exposure.
 func (c *Config) OutputTargets(encounterID int64) TargetRule {
+	c = c.readOnly()
 	if e, ok := c.Encounter(encounterID); ok && e.TargetRule != nil {
 		return *e.TargetRule
 	}

@@ -12,6 +12,7 @@ type Metadata struct {
 
 // Config is one complete snapshot. A failed Load never returns a partial one.
 type Config struct {
+	snapshot    *Config // private validated state; exported fields are detached copies
 	Scoring     Scoring
 	Specs       Specs
 	SpecIDs     SpecIDs
@@ -183,6 +184,7 @@ type SupportEffect struct {
 	Stacks         *bool  `json:"stacks"` // null means unverified; never assume additive credit
 	ExclusiveGroup string `json:"exclusive_group"`
 	Credit         bool   `json:"credit"`
+	Verified       bool   `json:"verified"` // sourced scope/stacking, not runtime attribution
 	Source         string `json:"source"`
 	Note           string `json:"note"`
 }
@@ -204,7 +206,7 @@ type Encounters struct {
 }
 
 // BossUnits replaces R4's maximum-health heuristic when nonempty; selectors
-// identify creature types/names, not per-pull GUIDs. TargetRule is a separate
+// identify NPC ids only, not names or per-pull GUIDs. TargetRule is a separate
 // output policy and MUST NOT change which units supply the tank swing denominator.
 type EncounterRule struct {
 	ID         int64              `json:"id"`
@@ -215,8 +217,8 @@ type EncounterRule struct {
 	Mechanics  []Mechanic         `json:"mechanics"`
 }
 type CreatureSelector struct {
-	ID     int64  `json:"id,omitempty"`
-	Name   string `json:"name,omitempty"`
+	ID     int64  `json:"id"`
+	Name   string `json:"name,omitempty"` // optional label, never a matching key
 	Source string `json:"source"`
 }
 type TargetRule struct {

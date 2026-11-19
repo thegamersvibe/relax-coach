@@ -36,5 +36,7 @@ func Load(dir string) (*Config, error) {
 	if err := c.validate(); err != nil {
 		return nil, err
 	}
-	return c, nil
+	view := c.clone()
+	view.snapshot = c
+	return &view, nil
 }

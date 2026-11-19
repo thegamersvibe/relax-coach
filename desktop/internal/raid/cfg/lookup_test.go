@@ -80,8 +80,8 @@ func TestBossOnlyDefaultAndOverrides(t *testing.T) {
 	dir := copyData(t)
 	change(t, dir, "encounters-enabled.json", func(d map[string]any) {
 		r := syntheticRule()
-		r["boss_units"] = []any{map[string]any{"name": "Synthetic left boss", "source": "synthetic log"}, map[string]any{"name": "Synthetic right boss", "source": "synthetic log"}}
-		r["target_rule"] = map[string]any{"mode": "boss_and_units", "units": []any{map[string]any{"name": "Synthetic required add", "source": "synthetic log"}}}
+		r["boss_units"] = []any{map[string]any{"id": 81, "name": "Synthetic left boss", "source": "synthetic log"}, map[string]any{"id": 82, "name": "Synthetic right boss", "source": "synthetic log"}}
+		r["target_rule"] = map[string]any{"mode": "boss_and_units", "units": []any{map[string]any{"id": 83, "name": "Synthetic required add", "source": "synthetic log"}}}
 		d["encounters"] = []any{r}
 	})
 	c = load(t, dir)

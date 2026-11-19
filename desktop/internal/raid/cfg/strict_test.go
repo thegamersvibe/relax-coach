@@ -10,7 +10,7 @@ import (
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/cfg"
 )
 
-func refused(t *testing.T, dir, file string) {
+func refused(t *testing.T, dir, file string) error {
 	t.Helper()
 	path := filepath.Join(dir, file)
 	before, err := os.ReadFile(path)
@@ -24,6 +24,7 @@ func refused(t *testing.T, dir, file string) {
 	if !strings.Contains(err.Error(), file) {
 		t.Fatalf("error lacks file context: %v", err)
 	}
+	validationErr := err
 	after, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
@@ -31,6 +32,7 @@ func refused(t *testing.T, dir, file string) {
 	if !bytes.Equal(before, after) {
 		t.Fatal("invalid/newer config was rewritten")
 	}
+	return validationErr
 }
 
 func TestRejectUnknownKeys(t *testing.T) {
