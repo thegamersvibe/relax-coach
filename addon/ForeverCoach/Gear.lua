@@ -78,6 +78,8 @@ end
 -- "item slotIdx lo hi rank specIdx score extraIdx". Read with our own parser (written from the format),
 -- once per table, faction and spec. Malformed lines are skipped and counted.
 local packedCache = setmetatable({}, { __mode = "k" })
+local KNOWN_SLOT = {}
+for _, s in pairs(G.SLOTS) do KNOWN_SLOT[s] = true end
 function G.Unpack(packed, faction, spec)
     if type(packed) ~= "table" or type(packed.slots) ~= "table" or type(packed.specs) ~= "table"
         or type(packed.rows) ~= "table" then return nil end
@@ -91,9 +93,13 @@ function G.Unpack(packed, faction, spec)
     local text = packed.rows[faction]
     if type(text) == "string" then
         for line in text:gmatch("[^\r\n]+") do
-            local id, si, lo, hi, rank, sp, score = line:match("^(%d+) (%d+) (%d+) (%d+) (%d+) (%d+) (%d+%.?%d*) %d+$")
+            local id, si, lo, hi, rank, sp, score, ex = line:match("^(%d+) (%d+) (%d+) (%d+) (%d+) (%d+) (%d+%.?%d*) (%d+)$")
             local slot = si and packed.slots[tonumber(si)]
-            if not (id and type(slot) == "string" and packed.specs[tonumber(sp)]) then bad = bad + 1
+            local n = tonumber(score)
+            ex = tonumber(ex)
+            -- a usable row: a slot we score, a known spec, a finite score, and an extras index that exists (0 = none)
+            if not (id and type(slot) == "string" and KNOWN_SLOT[slot] and packed.specs[tonumber(sp)] and n and n < 1e9
+                and (ex == 0 or (type(packed.extras) == "table" and packed.extras[ex] ~= nil))) then bad = bad + 1
             elseif specIdx and tonumber(sp) == specIdx then
                 rows[#rows + 1] = { tonumber(id), slot, tonumber(lo), tonumber(hi), tonumber(rank), spec, faction, tonumber(score) }
             end
@@ -112,13 +118,21 @@ function G:Tables(class, faction, spec)
     local D = GQ.Data
     local facts = D[p .. "ItemFacts"] or (class == "PALADIN" and D.itemFacts)
     local factTables = { facts, D[p .. "Early1to9Facts"] }
-    if type(D[p .. "Picks"]) == "table" then return { D[p .. "Picks"], D[p .. "Early1to9"] }, factTables, "array", 0 end
+    -- packed first: an old or stub array beside it must not hide the real data
     local packed = D[p .. "PicksPacked"]
     if packed ~= nil then
         local rows, bad = G.Unpack(packed, faction, spec)
         if rows then return { rows, D[p .. "Early1to9"] }, factTables, "packed", bad end
     end
+    if type(D[p .. "Picks"]) == "table" then return { D[p .. "Picks"], D[p .. "Early1to9"] }, factTables, "array", 0 end
     if facts or packed ~= nil then return nil, nil, "layout" end
+end
+
+-- One display rule for a gain percentage, shared with the app: above 100 it reads ">100%".
+function G.PctText(n)
+    n = tonumber(n) or 0
+    if n > 100 then return ">100%" end
+    return tostring(math.floor(n + 0.5)) .. "%"
 end
 
 function G.Short(s)
@@ -135,6 +149,8 @@ end
 
 local function raceKey(r) return (type(r) == "string" and r or ""):gsub("%s", ""):gsub("Undead", "Scourge") end
 
+local KNOWN_SOURCE = { world_drop = true, quest_reward = true, vendor = true, boss_drop = true, profession = true,
+    unsourced = true, rare_npc = true, raid_trash = true, object_drop = true, container = true, fishing = true }
 -- Hard blocks: the player can't get this item (now). Returns reason or nil, plus soft notes.
 function G:Eligibility(f, snap)
     if not f then return "unknown item" end
@@ -155,17 +171,22 @@ function G:Eligibility(f, snap)
         if race ~= "Skyborne" and ins:find(pat, 1, true) then return why end
     end
     if f.sourceType == "unsourced" then return "no known source" end
+    -- fail closed on a source kind we don't know ("raid" is handled by the raid rule below)
+    if f.sourceType ~= "raid" and not KNOWN_SOURCE[f.sourceType] then return "unknown source kind" end
     -- Battleground and honor rewards are never trip advice (they need battleground reputation or honor).
     local pvp = rules.pvpVendors or {}
     for _, z in ipairs(pvp.zones or {}) do if f.zone == z then return "battleground reward" end end
     for _, npc in ipairs(pvp.npcs or {}) do
-        if f.npc == npc or ins:find("Bought from " .. npc, 1, true) then return "battleground reward" end
+        -- any mention: a second seller in the text counts as much as the first
+        if f.npc == npc or FC.Route.HasWord(ins, npc) then return "battleground reward" end
     end
     for _, pat in ipairs(pvp.patterns or {}) do if ins:find(pat, 1, true) then return "battleground reward" end end
     -- A record with no zone (a vendor with or without a seller) is blocked in Route:Place ("location unknown").
     -- Raid drops only for raids marked open in Forever.
     local raid = FC.Route:Raid(f.zone, f)
-    if raid and not FC.Route:RaidOpen(raid) then return "raid not open in Forever yet" end
+    if raid and not FC.Route:RaidOpen(raid) then
+        return raid == ((rules.raids or {}).worldBossName or "World bosses") and "world boss: not open in Forever yet" or "raid not open in Forever yet"
+    end
     local notes = {}
     if type(f.reqRep) == "table" then
         for _, rr in ipairs(f.reqRep) do
@@ -244,6 +265,7 @@ function G:Audit(snap)
     if rows == 0 then out.status = "nodata"; return out end
 
     -- Evaluate every candidate once: eligibility + practicality.
+    FC.Route:LearnRaidNpcs(factTables)
     local ranked = {}
     for slot, set in pairs(cands) do
         local list = {}
@@ -254,8 +276,12 @@ function G:Audit(snap)
                 local blocked, notes = self:Eligibility(f, snap)
                 local kind, factor, label, deny = FC.Route:Place(f, snap, route)
                 if not blocked and not deny then
+                    -- the bar's kind: an off-route dungeon is still a dungeon, a crafted item is still crafted
+                    local barKind = kind
+                    if kind == "offroute" and type(label) == "string" and label:sub(1, 8) == "dungeon:" then barKind = "dungeon"
+                    elseif f and f.sourceType == "profession" then barKind = "craft" end
                     list[#list + 1] = {
-                        id = id, score = cnd.score, rank = cnd.rank, practical = cnd.score * factor, kind = kind, where = label,
+                        id = id, score = cnd.score, rank = cnd.rank, practical = cnd.score * factor, kind = kind, where = label, barKind = barKind,
                         name = f and f.name, source = f and f.sourceType, how = G.Short(f and f.instructions), notes = notes,
                         loc = FC:EquipLoc(id),
                     }
@@ -288,11 +314,16 @@ function G:Audit(snap)
         if s then total, scored = total + s, scored + 1 end
     end
     out.totalScore, out.scoredSlots = total, scored
-    local barOn = scored >= (GA.minScoredSlots or 8) and total > 0
+    -- The bar applies whenever something is scored; with fewer than minScoredSlots only the percentage is hidden.
+    local barOn = scored > 0 and total > 0
+    local pctHidden = scored < (GA.minScoredSlots or 8)
+    local average = scored > 0 and total / scored or 0
+    -- gain * 100 >= bar * total, with a little slack so a decimal exactly on the bar is not lost to rounding
+    local function clears(gain, bar) return gain * 100 >= bar * total - 1e-6 * math.max(1, total) end
     local function worthIt(c, have, eqId)
         if not barOn or c.id == eqId then return true end
-        local bar = (GA.tripPct or {})[c.kind] or GA.tripDefault or 5
-        return (c.score - (have or 0)) / total * 100 >= bar
+        local bar = (GA.tripPct or {})[c.barKind or c.kind] or GA.tripDefault or 5
+        return clears(c.score - (have or 0), bar)
     end
     local taken = {}
     local function pick(slot, exclude, have, eqId)
@@ -326,6 +357,8 @@ function G:Audit(snap)
             if other then exclude[other.id] = true end
         end
         local have = entry.score or (entry.scoreStatus == "empty" and 0) or nil
+        -- an equipped item without a score is unknown, not nothing: count it as an average scored slot
+        if have == nil and entry.scoreStatus == "unknown" then have = average end
         local best = pick(slot, exclude, have, eq and eq.id)
         if inv == 16 then mhBest = best end
         if inv == 17 then
@@ -340,7 +373,7 @@ function G:Audit(snap)
         elseif best and entry.score then
             -- gain over the equipped item; shown only when enough slots are scored to judge the whole set
             entry.gapPct = entry.score > 0 and math.max(0, math.floor((best.score - entry.score) / entry.score * 100 + 0.5)) or 100
-            entry.pctHidden = not barOn or nil
+            entry.pctHidden = pctHidden or nil
         elseif best and entry.scoreStatus == "empty" then
             entry.gapPct = 100
         end
@@ -366,10 +399,12 @@ function G:Audit(snap)
                     local have = e and (e.scoreStatus == "empty" and 0 or e.score)
                     if have and (not worstScore or have < worstScore) then worst, worstScore = inv, have end
                 end
-                if worst and worstScore and s > worstScore * 1.03 and not (out.slots[worst].id == it.id) then
+                -- an upgrade in the bags must pass the same total-score bar as a trip (bags: 1%)
+                local worth = not barOn or clears(s - (worstScore or 0), (GA.tripPct or {}).bags or 1)
+                if worst and worstScore and s > worstScore * 1.03 and worth and not (out.slots[worst].id == it.id) then
                     local gain = worstScore > 0 and math.floor((s - worstScore) / worstScore * 100 + 0.5) or 100
                     out.owned[#out.owned + 1] = { id = it.id, link = it.link, inv = worst, label = self.LABELS[worst], gain = gain,
-                        name = (f and f.name) or (it.link and it.link:match("%[(.-)%]")) }
+                        pctHidden = pctHidden or nil, name = (f and f.name) or (it.link and it.link:match("%[(.-)%]")) }
                 end
             end
         end

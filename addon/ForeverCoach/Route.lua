@@ -41,10 +41,24 @@ function R:Denied(zone, faction)
     return false
 end
 
+-- Whole-word, plain-text find (Lua patterns escaped): "Lord Kri" never matches inside "Lord Kristoff".
+local function esc(s) return (s:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0")) end
+local function hasWord(text, name)
+    if type(text) ~= "string" or type(name) ~= "string" or name == "" then return false end
+    return text:find("%f[%w]" .. esc(name) .. "%f[^%w]") ~= nil
+end
+R.HasWord = hasWord
+
+-- A zone is a dungeon when the Dungeon Journal knows it, or it is (or contains as whole words) one of the
+-- dungeon base names in rules (GearQuest says "Blackrock Spire", the journal "Upper Blackrock Spire").
 local function isDungeon(zone)
+    if type(zone) ~= "string" or zone == "" then return false end
     local fdj = _G.ForeverDungeonJournal_NS
     if fdj and type(fdj.DB) == "table" and fdj.DB[zone] then return true end
     for name in pairs(FC:Rules().factionDungeons or {}) do if name == zone then return true end end
+    for _, name in ipairs((FC:Rules().dungeons or {}).names or {}) do
+        if zone == name or hasWord(zone, name) then return true end
+    end
     return false
 end
 R.IsDungeon = isDungeon
@@ -66,18 +80,48 @@ function R:QuestDungeon(q)
 end
 
 local function raidList() return (FC:Rules().raids or {}) end
--- The raid an item comes from (instance zone, raid boss, or raid quest), or nil.
+-- NPCs that drop loot inside a raid zone in the GearQuest data itself: raid mobs the rules don't list (a recipe
+-- whose pattern "drops from" one of them is raid loot too).
+local learned = setmetatable({}, { __mode = "k" })
+function R:LearnRaidNpcs(factTables)
+    local rl, out = raidList(), {}
+    local zones = {}
+    for _, z in ipairs(rl.zones or {}) do zones[z] = true end
+    for _, t in ipairs(factTables or {}) do
+        if type(t) == "table" then
+            local cached = learned[t]
+            if not cached then
+                cached = {}
+                for _, f in pairs(t) do
+                    if type(f) == "table" and zones[f.zone] and type(f.npc) == "string" and f.npc ~= "" then cached[f.npc] = f.zone end
+                end
+                learned[t] = cached
+            end
+            for npc, z in pairs(cached) do out[npc] = z end
+        end
+    end
+    self._raidNpcs = out
+end
+-- The raid (or "World bosses") an item comes from, or nil. Fails closed: any source naming a raid zone, raid boss,
+-- raid mob, raid quest or world boss, in the record's zone, NPC or text (second sources included), or a sourceType
+-- of "raid", makes it a raid item.
 function R:Raid(zone, f)
     local rl = raidList()
     for _, z in ipairs(rl.zones or {}) do if z == zone then return zone end end
     if type(f) ~= "table" then return nil end
-    local ins = type(f.instructions) == "string" and f.instructions or ""
-    for boss, raid in pairs(rl.bosses or {}) do
-        if f.npc == boss or ins:find("Drops from " .. boss, 1, true) then return raid end
+    local text = table.concat({ type(f.instructions) == "string" and f.instructions or "",
+        type(f.npc) == "string" and f.npc or "", type(f.zone) == "string" and f.zone or "" }, " | ")
+    for _, z in ipairs(rl.zones or {}) do if hasWord(text, z) then return z end end
+    for _, boss in ipairs(rl.worldBosses or {}) do
+        if hasWord(text, boss) then return rl.worldBossName or "World bosses" end
     end
+    for boss, raid in pairs(rl.bosses or {}) do if hasWord(text, boss) then return raid end end
+    for mob, raid in pairs(rl.mobs or {}) do if hasWord(text, mob) then return raid end end
+    for npc, raid in pairs(self._raidNpcs or {}) do if hasWord(text, npc) then return raid end end
     for quest, raid in pairs(rl.quests or {}) do
-        if ins:find("quest '" .. quest .. "'", 1, true) then return raid end
+        if text:find("quest '" .. quest .. "'", 1, true) then return raid end
     end
+    if f.sourceType == "raid" then return (type(zone) == "string" and zone ~= "" and zone) or "unknown raid" end
     return nil
 end
 function R:RaidOpen(raid)

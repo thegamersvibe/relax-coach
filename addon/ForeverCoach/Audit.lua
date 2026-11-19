@@ -110,7 +110,7 @@ function A:Run(c)
         -- owned upgrades first: free and instant
         for i, o in ipairs(gear.owned or {}) do
             if i > 3 then break end
-            add(F, 88, "Gear", "Upgrade in your bags: " .. tostring(o.name) .. " for " .. tostring(o.label), "Equip it (about +" .. o.gain .. "% for that slot)", { where = "in your bags", kind = "gear" })
+            add(F, 88, "Gear", "Upgrade in your bags: " .. tostring(o.name) .. " for " .. tostring(o.label), o.pctHidden and "Equip it" or ("Equip it (about +" .. FC.Gear.PctText(o.gain) .. " for that slot)"), { where = "in your bags", kind = "gear" })
         end
         local ownedSlot = {}
         for _, o in ipairs(gear.owned or {}) do ownedSlot[o.inv] = true end
@@ -127,7 +127,7 @@ function A:Run(c)
                 if e.scoreStatus == "empty" and lvl >= 5 and not early then
                     add(F, 30 + 40 * w, "Gear", "Empty " .. e.label .. " slot", how, { where = b.where, kind = "gear" })
                 elseif e.scoreStatus ~= "empty" and e.scoreStatus ~= "unknown" and gap and gap >= (T.gearUpgradePct or 12) then
-                    local better = e.pctHidden and " is better" or (" is " .. gap .. "% better")
+                    local better = e.pctHidden and " is better" or (" is " .. FC.Gear.PctText(gap) .. " better")
                     add(F, (25 + math.min(gap, 60) / 2) * (0.5 + w / 2) + 10 * w, "Gear", e.label .. ": " .. bestName .. better, how,
                         { where = b.where, estimate = e.scoreStatus == "estimated" or nil, kind = "gear" })
                 end
