@@ -5,6 +5,7 @@ package modeltest
 import (
 	"fmt"
 	"hash/fnv"
+	"reflect"
 
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/model"
 )
@@ -308,16 +309,35 @@ func Wipe(fightID string, first int, following ...int) model.Wipe {
 	return model.Wipe{FightID: fightID, FirstDeath: first, Following: following}
 }
 
-// Evidence builds one part's evidence; counts are given as name, value pairs.
+// Evidence builds one part's evidence; counts are given as name, value pairs with any integer type.
+// A key without a value, a non-string key or a non-integer value panics: a test mistake is never dropped.
 func Evidence(text string, atMs []int64, counts ...any) model.Evidence {
+	if len(counts)%2 != 0 {
+		panic(fmt.Sprintf("modeltest.Evidence: key %v has no value", counts[len(counts)-1]))
+	}
 	ev := model.Evidence{Text: text, AtMs: atMs}
-	for i := 0; i+1 < len(counts); i += 2 {
+	for i := 0; i < len(counts); i += 2 {
+		key, ok := counts[i].(string)
+		if !ok {
+			panic(fmt.Sprintf("modeltest.Evidence: key %v is not a string", counts[i]))
+		}
 		if ev.Counts == nil {
 			ev.Counts = map[string]int64{}
 		}
-		ev.Counts[counts[i].(string)] = int64(counts[i+1].(int))
+		ev.Counts[key] = toInt64(counts[i+1])
 	}
 	return ev
+}
+
+func toInt64(v any) int64 {
+	r := reflect.ValueOf(v)
+	switch r.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return r.Int()
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return int64(r.Uint())
+	}
+	panic(fmt.Sprintf("modeltest.Evidence: value %v (%T) is not an integer", v, v))
 }
 
 // Part builds a measured part (score in tenths).
@@ -400,20 +420,32 @@ func Prep(name, class string, level, protocol int64, addonVersion string) *PrepB
 // Played sets the time played at this level in seconds.
 func (b *PrepBuilder) Played(s int64) *PrepBuilder { b.r.PlayedAtLevelS = model.Some(s); return b }
 
-// Consumable sets a category's count.
-func (b *PrepBuilder) Consumable(category string, n int64) *PrepBuilder {
-	if b.r.Consumables == nil {
-		b.r.Consumables = map[string]int64{}
-	}
-	b.r.Consumables[category] = n
+// Consumable appends a consumable in bags.
+func (b *PrepBuilder) Consumable(category string, itemID, count int64) *PrepBuilder {
+	b.r.Consumables = append(b.r.Consumables, model.PrepConsumable{Category: category, ItemID: itemID, Count: count})
 	return b
 }
 
-// Gear marks gear checked and records better items in bags (slot to item id).
-func (b *PrepBuilder) Gear(better map[int64]int64) *PrepBuilder {
-	b.r.GearChecked, b.r.BetterGear = true, better
+// ConsumablesUnreadable marks the bag read as failed.
+func (b *PrepBuilder) ConsumablesUnreadable() *PrepBuilder {
+	b.r.ConsumablesUnreadable = true
 	return b
 }
+
+// Gear marks gear checked and appends better items in bags.
+func (b *PrepBuilder) Gear(rows ...model.PrepGear) *PrepBuilder {
+	b.r.GearChecked, b.r.BetterGear = true, append(b.r.BetterGear, rows...)
+	return b
+}
+
+// GearUnreadable marks gear checked but unreadable.
+func (b *PrepBuilder) GearUnreadable() *PrepBuilder {
+	b.r.GearChecked, b.r.GearUnreadable = true, true
+	return b
+}
+
+// Reason sets the send reason: "join", "ready" or "encounter".
+func (b *PrepBuilder) Reason(r string) *PrepBuilder { b.r.Reason = r; return b }
 
 // Clock sets the sender's clock and the time the report was stamped on receipt.
 func (b *PrepBuilder) Clock(sender, stamped int64) *PrepBuilder {

@@ -120,7 +120,7 @@ type Event struct {
 	Enc                        *Encounter // EncounterStart and EncounterEnd only
 	Zone                       *Zone      // ZoneChange only
 	Info                       *Combatant // CombatantInfo only
-	Raw                        []string   // Other and CombatantInfo only
+	Raw                        []string   // Other, CombatantInfo and Header only
 }
 
 // Encounter is what an ENCOUNTER_START or ENCOUNTER_END line carries.
@@ -264,16 +264,31 @@ type NightScore struct {
 	Fights   []FightScore
 }
 
-// PrepReport is one member's prep report (PLAN contract 3): written by prep, read by score.
+// PrepReport is one member's prep report (PLAN contract 3, DESIGN 10.1): written by prep, read by score.
+// It carries everything the addon sends, because bag contents cannot be recovered after the night.
 type PrepReport struct {
-	Protocol, Level      int64
-	AddonVersion, Name   string
-	Class                string
-	PlayedAtLevelS       Opt              // unset means unreadable
-	Consumables          map[string]int64 // by category
-	BetterGear           map[int64]int64  // slot to item id
-	GearChecked          bool
-	SenderClock, Stamped int64
+	Protocol, Level       int64
+	AddonVersion, Name    string
+	Class                 string
+	PlayedAtLevelS        Opt              // unset means unreadable
+	Consumables           []PrepConsumable // in bags; empty with ConsumablesUnreadable set means unreadable
+	ConsumablesUnreadable bool
+	BetterGear            []PrepGear // better items in bags, one row per slot
+	GearChecked           bool       // false: "not checked" (Coach or its data absent)
+	GearUnreadable        bool       // checked, but the answer could not be read
+	Reason                string     // "join", "ready" or "encounter"
+	SenderClock, Stamped  int64
+}
+
+// PrepConsumable is one consumable in bags: its category, item id and count.
+type PrepConsumable struct {
+	Category      string
+	ItemID, Count int64
+}
+
+// PrepGear is one better-gear slot: the worn item id and the better item id in bags.
+type PrepGear struct {
+	Slot, WornID, BagID int64
 }
 
 // RaidNight holds runs of kind RunRaid only.

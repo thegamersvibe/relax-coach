@@ -2,6 +2,7 @@ package model_test
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/model"
@@ -75,6 +76,19 @@ func TestFightWithEveryNewField(t *testing.T) {
 		Header("1.15.7", 22, true).Source("ab12", 4096)
 	allSet(t, run.Night())
 	allSet(t, run.Dungeon(329))
+	for _, src := range []model.Source{run.Night().Source, run.Dungeon(329).Source} {
+		allSet(t, src)
+		if src != (model.Source{SHA256: "ab12", Bytes: 4096}) {
+			t.Errorf("source on both run types: %+v", src)
+		}
+	}
+	allSet(t, enc)
+	allSet(t, *f.Events[1].Zone)
+	allSet(t, combatant)
+	if !reflect.DeepEqual(f.Events, events) || f.Combatants[0].PlayerID != tank.ID || f.Events[4].Amount != model.Some(100) ||
+		f.Events[1].Zone.Difficulty != 1 || f.Events[2].Info.PlayerID != tank.ID {
+		t.Errorf("events and combatant carried unchanged: %+v", f.Combatants)
+	}
 	if n := run.Night(); n.StartMs != 900 || n.OffsetH != 1 || n.Build != "1.15.7" || n.LogVersion != 22 || !n.Advanced || n.Source.Bytes != 4096 {
 		t.Errorf("night: %+v", n)
 	}
@@ -114,6 +128,9 @@ func TestResultTypesThroughBuilders(t *testing.T) {
 	}
 	part := modeltest.Part("mechanics", 873, ev)
 	allSet(t, part)
+	if !reflect.DeepEqual(part.Evidence, ev) {
+		t.Errorf("part keeps the whole evidence: %+v", part.Evidence)
+	}
 	if part.Tenths != model.Some(873) || part.Name != "mechanics" || modeltest.Unmeasured("utility").Tenths.Present {
 		t.Errorf("parts: %+v", part)
 	}
@@ -134,16 +151,45 @@ func TestResultTypesThroughBuilders(t *testing.T) {
 	if modeltest.NightScore(p, "spec").Score(1).Build().Rank.Present {
 		t.Error("no Rank means unranked (dungeon run, not enough data)")
 	}
-	pr := modeltest.Prep("Cato-PvP-EU", "MAGE", 60, 1, "1.8.1").Played(3600).Consumable("flask", 2).
-		Gear(map[int64]int64{1: 12345}).Clock(1000, 1002).Build()
+	pr := modeltest.Prep("Cato-PvP-EU", "MAGE", 60, 1, "1.8.1").Played(3600).Consumable("flask", 13512, 2).
+		ConsumablesUnreadable().Gear(model.PrepGear{Slot: 1, WornID: 111, BagID: 12345}).GearUnreadable().
+		Reason("ready").Clock(1000, 1002).Build()
 	allSet(t, pr)
+	allSet(t, pr.Consumables[0])
+	allSet(t, pr.BetterGear[0])
 	if pr.Name != "Cato-PvP-EU" || pr.Class != "MAGE" || pr.Level != 60 || pr.Protocol != 1 || pr.AddonVersion != "1.8.1" ||
-		pr.PlayedAtLevelS != model.Some(3600) || pr.Consumables["flask"] != 2 || !pr.GearChecked || pr.BetterGear[1] != 12345 ||
-		pr.SenderClock != 1000 || pr.Stamped != 1002 {
+		pr.PlayedAtLevelS != model.Some(3600) || pr.Reason != "ready" || pr.SenderClock != 1000 || pr.Stamped != 1002 {
 		t.Errorf("prep: %+v", pr)
 	}
-	if g := modeltest.Prep("Cato-PvP-EU", "MAGE", 60, 1, "1.8.1").Build(); g.GearChecked || g.PlayedAtLevelS.Present {
-		t.Error("gear not checked and played unreadable until set")
+	if !reflect.DeepEqual(pr.Consumables, []model.PrepConsumable{{Category: "flask", ItemID: 13512, Count: 2}}) ||
+		!reflect.DeepEqual(pr.BetterGear, []model.PrepGear{{Slot: 1, WornID: 111, BagID: 12345}}) {
+		t.Errorf("prep rows: %+v %+v", pr.Consumables, pr.BetterGear)
+	}
+	g := modeltest.Prep("Cato-PvP-EU", "MAGE", 60, 1, "1.8.1").Build()
+	if g.GearChecked || g.GearUnreadable || g.ConsumablesUnreadable || g.PlayedAtLevelS.Present || g.Reason != "" {
+		t.Error("defaults: gear not checked, nothing unreadable, played unreadable until set")
+	}
+	if c := modeltest.Prep("Cato-PvP-EU", "MAGE", 60, 1, "1.8.1").Gear().Build(); !c.GearChecked || c.GearUnreadable || len(c.BetterGear) != 0 {
+		t.Error("checked with nothing better is not unreadable")
+	}
+}
+
+// Evidence takes any integer type and refuses a mistake loudly.
+func TestEvidenceBuilderStrict(t *testing.T) {
+	ev := modeltest.Evidence("x", nil, "a", int8(1), "b", uint16(2), "c", int64(3))
+	if !reflect.DeepEqual(ev.Counts, map[string]int64{"a": 1, "b": 2, "c": 3}) {
+		t.Errorf("counts: %v", ev.Counts)
+	}
+	cases := map[string][]any{"has no value": {"a", 1, "b"}, "is not a string": {1, 1}, "is not an integer": {"a", 1.5}}
+	for name, args := range cases {
+		func() {
+			defer func() {
+				if msg, _ := recover().(string); !strings.Contains(msg, name) {
+					t.Errorf("want a panic naming the mistake (%s), got %q", name, msg)
+				}
+			}()
+			modeltest.Evidence("x", nil, args...)
+		}()
 	}
 }
 

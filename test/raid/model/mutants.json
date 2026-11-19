@@ -109,12 +109,6 @@
   },
   {
     "file": "desktop/internal/raid/model/modeltest/build.go",
-    "old": "b.r.GearChecked, b.r.BetterGear = true, better",
-    "new": "b.r.BetterGear = better",
-    "killed_by": "TestResultTypesThroughBuilders"
-  },
-  {
-    "file": "desktop/internal/raid/model/modeltest/build.go",
     "old": "return model.Part{Name: name, Tenths: model.Some(tenths), Evidence: ev}",
     "new": "return model.Part{Name: name, Tenths: model.Opt{V: tenths}, Evidence: ev}",
     "killed_by": "TestResultTypesThroughBuilders"
@@ -130,5 +124,47 @@
     "old": "b.r.SenderClock, b.r.Stamped = sender, stamped",
     "new": "b.r.SenderClock, b.r.Stamped = stamped, sender",
     "killed_by": "TestResultTypesThroughBuilders"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.r.GearChecked, b.r.BetterGear = true, append(b.r.BetterGear, rows...)",
+    "new": "b.r.BetterGear = append(b.r.BetterGear, rows...)",
+    "killed_by": "TestResultTypesThroughBuilders"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "return model.Part{Name: name, Tenths: model.Some(tenths), Evidence: ev}",
+    "new": "return model.Part{Name: name, Tenths: model.Some(tenths), Evidence: model.Evidence{Text: ev.Text}}",
+    "killed_by": "TestResultTypesThroughBuilders"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "\tif len(counts)%2 != 0 {\n\t\tpanic(",
+    "new": "\tif false && len(counts)%2 != 0 {\n\t\tpanic(",
+    "killed_by": "TestEvidenceBuilderStrict"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "\t\treturn int64(r.Uint())",
+    "new": "\t\treturn 0",
+    "killed_by": "TestEvidenceBuilderStrict"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "model.PrepConsumable{Category: category, ItemID: itemID, Count: count}",
+    "new": "model.PrepConsumable{Category: category, Count: count}",
+    "killed_by": "TestResultTypesThroughBuilders"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "func (b *PrepBuilder) Reason(r string) *PrepBuilder { b.r.Reason = r; return b }",
+    "new": "func (b *PrepBuilder) Reason(r string) *PrepBuilder { return b }",
+    "killed_by": "TestResultTypesThroughBuilders"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "r.source = model.Source{SHA256: sha256, Bytes: bytes}",
+    "new": "r.source = model.Source{Bytes: bytes}",
+    "killed_by": "TestFightWithEveryNewField"
   }
 ]
