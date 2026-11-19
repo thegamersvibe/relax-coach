@@ -303,22 +303,96 @@ func TestHotRankIsTheSmallerRise(t *testing.T) {
 	}
 }
 
-// Guild prices for a house this account never scanned: the unknown-house choice says guild-only.
-func TestHotGuildOnlyHouseWithoutOwnEntry(t *testing.T) {
-	db := hotSave(map[int][]ahpHistRow{1: steady(1500)})
+// Guild prices and no own history anywhere: the no-house choice says guild-only. With any own house it
+// does not, whichever house the guild prices are for.
+func TestHotGuildOnlyMember(t *testing.T) {
+	db := hotSave(map[int][]ahpHistRow{})
+	db["hist"] = map[string]any{}
 	db["shared"] = map[string]any{"Other|Horde": map[string]any{"p": map[string]any{"1": float64(100)}}}
-	h := buildHot(db, 3, true, hotHouses, nil, nil, hotNow)
+	h := buildHot(db, 3, true, nil, nil, nil, hotNow)
 	if !h.GuildOnly {
-		t.Fatal("guild prices for an unscanned house")
+		t.Fatal("guild prices, no own scans")
 	}
-	fv := FarmView{Present: true, Houses: hotHouses, Hot: h}
-	html, err := renderFarmBody(View{Farm: fv})
+	html, err := renderFarmBody(View{Farm: FarmView{Present: true, Hot: h}})
 	if err != nil || !strings.Contains(html, `<tr data-house=""><td colspan="7" class="subtle">Hot items need your own scans for now.`) {
 		t.Fatalf("render: %v", err)
 	}
-	db["shared"] = map[string]any{"Realm|Alliance": map[string]any{"p": map[string]any{"1": float64(100)}}}
-	if buildHot(db, 3, true, hotHouses, nil, nil, hotNow).GuildOnly {
-		t.Error("guild prices for a scanned house are not guild-only")
+	own := hotSave(map[int][]ahpHistRow{1: steady(1500)})
+	own["shared"] = map[string]any{"Other|Horde": map[string]any{"p": map[string]any{"1": float64(100)}}}
+	if buildHot(own, 3, true, hotHouses, nil, nil, hotNow).GuildOnly {
+		t.Error("an own house plus guild prices for another house is not guild-only")
+	}
+}
+
+// The house's day is the last FULL scan's day: one search today (a few items) does not empty the list.
+// The real-save shape: a full day yesterday, a tiny today.
+func TestHotPartialTodayKeepsTheFullScanDay(t *testing.T) {
+	y := hotToday - 1
+	hist := map[int][]ahpHistRow{}
+	for id := 1; id <= 20; id++ { // yesterday's full scan: 20 items, items 1-3 up
+		p := 1000
+		if id <= 3 {
+			p = 1500 + 100*id
+		}
+		hist[id] = series(y, 20, 1000, 1000, 1000, 1000, 1000, 1000, p)
+	}
+	hist[1] = append(hist[1], ahpHistRow{Day: hotToday, High: 1000, Listed: 20}) // searched again today, back to normal
+	hist[99] = series(hotToday, 20, 1000, 1000, 1000, 1000, 1000, 1000, 0, 3000) // a search today only
+	db := hotSave(hist)
+	L := M(M(db["live"])["Realm|Alliance"])
+	L["full"] = float64(hotNow.Unix() - 20*3600) // the last full scan: yesterday 16:00
+	check := func(label string) {
+		t.Helper()
+		hh := hotHouse(t, db)
+		if !reflect.DeepEqual(hotIDs(hh), []int{3, 2, 1}) || hh.DaysAgo != 1 || hh.Checked != 20 {
+			t.Fatalf("%s: rows %v days ago %d checked %d", label, hotIDs(hh), hh.DaysAgo, hh.Checked)
+		}
+		if hh.Rows[2].Now != 1600 || hh.Rows[2].Chart.DotX != hotChartW-2 {
+			t.Errorf("%s: item 1 is yesterday's price, its chart ends yesterday: %+v", label, hh.Rows[2])
+		}
+		html, _ := renderFarmBody(View{Farm: FarmView{Present: true, Houses: hotHouses, Hot: buildHot(db, 3, true, hotHouses, nil, nil, hotNow)}})
+		if !strings.Contains(html, "From yesterday&#39;s scan") && !strings.Contains(html, "From yesterday's scan") {
+			t.Errorf("%s: labelled from yesterday's scan", label)
+		}
+	}
+	check("full-scan time")
+	L["full"] = float64(0) // no full-scan time: the busiest-day rule picks yesterday too
+	check("busiest day")
+	// A full scan today makes today the day.
+	for id := 2; id <= 20; id++ {
+		hist[id] = append(hist[id], ahpHistRow{Day: hotToday, High: 1000, Listed: 20})
+	}
+	db = hotSave(hist)
+	if hh := hotHouse(t, db); hh.DaysAgo != 0 {
+		t.Errorf("a full scan today: days ago %d", hh.DaysAgo)
+	}
+	if d := hotHouseDay(map[int]int{10: 100, 11: 49, 12: 5}, nil, 12); d != 10 {
+		t.Errorf("49%% of the busiest day is not a full day: %d", d)
+	}
+	if d := hotHouseDay(map[int]int{10: 100, 11: 50, 12: 5}, nil, 12); d != 11 {
+		t.Errorf("50%% is: %d", d)
+	}
+}
+
+// "Not enough history yet" only when the house lacks the days; a mature house whose chosen-day items have
+// no earlier row reads "Nothing is clearly up". One item reads "1 item".
+func TestHotMatureHouseNothingUp(t *testing.T) {
+	db := hotSave(map[int][]ahpHistRow{
+		1: series(hotToday-1, 20, 1000, 1000, 1000, 1000, 1000, 1000, 1000), // a mature item, not seen today
+		2: series(hotToday, 20, 1000),                                       // new today, no earlier row
+		3: series(hotToday, 20, 1000, 1000),                                 // seen yesterday and today, flat
+	})
+	hh := hotHouse(t, db)
+	if hh.ChangeOnly || len(hh.Rows) != 0 || hh.Checked != 1 {
+		t.Fatalf("mature house: %+v", hh)
+	}
+	html, _ := renderFarmBody(View{Farm: FarmView{Present: true, Houses: hotHouses, Hot: buildHot(db, 3, true, hotHouses, nil, nil, hotNow)}})
+	if strings.Contains(html, "Not enough history yet") || !strings.Contains(html, "Nothing is clearly up.") || !strings.Contains(html, "1 item checked") {
+		t.Error("mature house: nothing up, singular count")
+	}
+	young := hotSave(map[int][]ahpHistRow{3: series(hotToday, 20, 1000, 1000)})
+	if hh := hotHouse(t, young); !hh.ChangeOnly {
+		t.Error("a house without the days is in first-weeks mode")
 	}
 }
 

@@ -23,6 +23,7 @@ const (
 	hotMaxAgainst        = 10  // Now at most this many times the baseline (and the previous day)
 	hotMinChangePct      = 20  // up at least this % since the previous recorded day
 	hotMinAgainstPct     = 20  // and at least this % against the usual price (baseline mode)
+	hotFullDayPct        = 50  // without a full-scan time: a day with at least this % of the busiest day's rows
 	hotSpikePct          = 50  // spike: Now at least this % above the baseline and above every earlier high
 	hotPrevMaxGap        = 2   // Previous is at most this many days before Now
 	hotChartDays         = 21  // the addon keeps 21 days
@@ -230,14 +231,14 @@ func buildHot(db map[string]any, ver int, verOK bool, houses []FarmHouse, items 
 	hist, live, shared := M(db["hist"]), M(db["live"]), M(db["shared"])
 	today := ahpScanDay(now)
 	out := FarmHot{Shown: true}
-	known := map[string]bool{}
-	for _, h := range houses {
-		known[h.Key] = true
+	// A member with guild prices and no own history anywhere gets the guild-only line on the no-house
+	// choice; with any own house it stays "pick an auction house".
+	own := false
+	for _, h := range hist {
+		own = own || len(M(h)) > 0
 	}
-	// Guild prices for a house this account never scanned itself: that member gets the guild-only line,
-	// not "pick an auction house" (the picker lists only scanned houses).
-	for k, raw := range shared {
-		if !known[k] && len(M(M(raw)["p"])) > 0 {
+	for _, raw := range shared {
+		if !own && len(M(M(raw)["p"])) > 0 {
 			out.GuildOnly = true
 		}
 	}
@@ -264,9 +265,10 @@ func buildHotHouse(key string, H, L, S map[string]any, items map[int]farmItemRef
 		}
 		return hh
 	}
-	// Decide the day for the whole house, not per item: the newest recorded day. Without a scan today the
-	// list is that day's against its previous day, for every item alike, labelled with the day, until a
-	// new scan. (A live price never stands in for a day: items would drop one by one as they pass 24 h.)
+	// Decide the day for the whole house, not per item: the day of the last full scan, so one search today
+	// does not empty the list. Without a scan today the list is that day's against its previous day, for
+	// every item alike, labelled with the day. (A live price never stands in for a day: items would drop
+	// one by one as they pass 24 h.)
 	type decoded struct {
 		id   int
 		rows []ahpHistRow
@@ -294,25 +296,34 @@ func buildHotHouse(key string, H, L, S map[string]any, items map[int]farmItemRef
 		hh.Message = "No scan today. Scan the auction house to see what moved."
 		return hh
 	}
-	hh.NowDay = time.Unix(ahpHistDay0+int64(newest)*86400, 0).UTC()
-	hh.DaysAgo = today - newest
+	perDay := map[int]int{}
+	for _, d := range all {
+		for _, r := range d.rows {
+			perDay[r.Day]++
+		}
+	}
+	day := hotHouseDay(perDay, L["full"], today)
+	hh.NowDay = time.Unix(ahpHistDay0+int64(day)*86400, 0).UTC()
+	hh.DaysAgo = today - day
 	var cands []hotItem
 	anyBaseline := false
 	for _, d := range all {
-		last := d.rows[len(d.rows)-1]
-		if last.Day != newest {
+		n := sort.Search(len(d.rows), func(i int) bool { return d.rows[i].Day > day }) // rows up to the day
+		rows := d.rows[:n]
+		if before := n - btoi(n > 0 && rows[n-1].Day == day); before >= hotMinDays {
+			anyBaseline = true // the house has the days, whether or not this item is on the chosen day
+		}
+		if n == 0 || rows[n-1].Day != day {
 			continue // not seen on that day
 		}
-		it := hotItem{id: d.id, rows: d.rows, now: last.price(), listed: last.Listed, nowDay: newest}
-		it.earlier = d.rows[:len(d.rows)-1]
+		last := rows[n-1]
+		it := hotItem{id: d.id, rows: rows, now: last.price(), listed: last.Listed, nowDay: day}
+		it.earlier = rows[:n-1]
 		e := it.earlier
 		if len(e) == 0 || it.nowDay-e[len(e)-1].Day > hotPrevMaxGap {
 			continue // no Previous within 2 days: skipped
 		}
 		it.prev = e[len(e)-1]
-		if len(e) >= hotMinDays {
-			anyBaseline = true
-		}
 		cands = append(cands, it)
 	}
 	hh.ChangeOnly = !anyBaseline
@@ -345,6 +356,27 @@ func buildHotHouse(key string, H, L, S map[string]any, items map[int]farmItemRef
 }
 
 // hotRank applies the filters and the rank value (plan 2) to one item.
+// hotHouseDay picks the house's day: the day of the last own full scan when the history holds rows on it,
+// else the newest day holding at least hotFullDayPct of the busiest day's rows. A partial (search) day is
+// never the day while a fuller one exists.
+func hotHouseDay(perDay map[int]int, full any, today int) int {
+	if t := ahpTime(full); !t.IsZero() {
+		if d := int((t.Unix() - ahpHistDay0) / 86400); d <= today && perDay[d] > 0 {
+			return d
+		}
+	}
+	busiest, day := 0, -1
+	for _, n := range perDay {
+		busiest = max(busiest, n)
+	}
+	for d, n := range perDay {
+		if n*100 >= busiest*hotFullDayPct && d > day {
+			day = d
+		}
+	}
+	return day
+}
+
 func hotRank(it hotItem, changeOnly bool) (FarmHotRow, bool) {
 	var prices, listed []int
 	high := 0
@@ -429,4 +461,11 @@ func hotChart(rows []ahpHistRow, nowDay, now int) FarmHotChart {
 	c.Path = b.String()
 	c.DotX, c.DotY, c.HasDot = x(nowDay), y(now), true
 	return c
+}
+
+func btoi(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }
