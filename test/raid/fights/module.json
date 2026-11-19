@@ -1,0 +1,16 @@
+{
+  "kind": "go",
+  "source": "desktop/internal/raid/fights/",
+  "test": [
+    "go",
+    "-C",
+    "desktop",
+    "test",
+    "-race",
+    "-count=1",
+    "./internal/raid/fights/..."
+  ],
+  "depends": [
+    "model"
+  ]
+}

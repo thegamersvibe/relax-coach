@@ -1,7 +1,7 @@
 # Night result file, format version 1
 
 The one file the Relax Coach app gives the Guild Logs site per raid night (REQ-WEB-01).
-Sources: DESIGN.md 10.2; PLAN.md section 4, items 4, 6, 7 and 8; PLAN.md section 4A (version 4.3, rows 1 to 16),
+Sources: DESIGN.md 10.2; PLAN.md section 4, items 4, 6, 7 and 8; PLAN.md section 4A (rows 1 to 19),
 which settles the open field points. The site's upload route (W2) and pages are written against this document. Changing
 a field's meaning, or adding a field or a flag, raises `formatVersion`.
 
@@ -30,17 +30,26 @@ a field's meaning, or adding a field or a flag, raises `formatVersion`.
 
 | Field | Type | Meaning |
 |---|---|---|
-| `nightId` | string, 64 lowercase hex | SHA-256 of the night's sorted fight ids joined by a newline (`\n`). Says *which night*. |
+| `nightId` | string, 64 lowercase hex | SHA-256 of the sorted ids of complete boss fights joined by a newline (`\n`, no trailing newline). Trash pulls and partial fights are excluded. Says *which night*. |
 | `contentHash` | string, 64 lowercase hex | SHA-256 of the file's bytes with the 64 characters of the `contentHash` value replaced by 64 zeros (`0`). Says *which scoring of it*. |
 
 The file on disk is always canonical (next section), so a reader checks `contentHash` on the raw bytes
 and never re-writes the file. On upload: same `nightId` and same `contentHash` changes nothing. Same `nightId` with a
 different `contentHash` is a re-score: it replaces the stored result, returns an approved night to
-"uploaded" and shows what changed (REQ-WEB-05). A night read from a second logger's file can have
-different fight ids, so a different `nightId`; the site treats it as a different night, and an
-officer removes the spare. Merging two logs is out of scope.
+"uploaded" and shows what changed (REQ-WEB-05). Two loggers who saw the same complete boss fights get the same boss ids and `nightId`, despite
+clock drift, different trash and logger-only failed casts. A missing/partial boss changes `nightId`;
+the site resolves overlapping nights. Phase 1 scores one source log; later merging is PLAN 6B.
 
-A fight id is a hash of the fight's own content, never a counter or a random value.
+A complete boss has both encounter lines. Its id is lowercase hex SHA-256 of these
+newline-joined values (no trailing newline): `boss`, instance id, encounter id, difficulty id,
+group size, end-line success, end-line fight length in milliseconds, then the distinct player
+ids from its `COMBATANT_INFO` lines in ascending byte order. Numbers are decimal. No timestamp,
+failed cast, or other logger-specific event enters this hash.
+
+Trash and partial fights have file-local ids: the preceding complete boss id (or `start`),
+a colon, and the one-based position after it. They are not matched between logs. Missing
+server numeric fields are `unknown`, never an invented zero. The normal complete boss
+contract requires all these fields; a malformed decoder must report the missing field.
 
 ## Canonical form
 
@@ -67,6 +76,8 @@ and does not write `87.0`), so the writer is its own small one, with a test per 
 | `nightId` | string | yes | See above. |
 | `contentHash` | string | yes | See above. |
 | `configVersion` | string | yes | Version of the scoring configuration used (REQ-PAR-07, REQ-SCO-10). |
+| `dataVersion` | string | optional | Shared item database release tag, present only when a measure read it; otherwise absent (4A row 18). |
+| `sourceLog` | object | optional | `{sha256, bytes}` of the entire unchanged raw log, including lines outside runs. No path or PC identifier (4A row 19). |
 | `gameBuild` | string or null | yes | Game build from the log header, as written; `null` if the log has none. |
 | `raid` | object | yes | `{"name": string, "instanceId": integer or null}`: the instance as the log names it. |
 | `start` | time pair | yes | Start of the first fight. |
@@ -77,16 +88,21 @@ and does not write `87.0`), so the writer is its own small one, with a test per 
 | `assignments` | array of assignment | yes | Empty when none were set. |
 | `softReserve` | | absent | Does not exist in format version 1. |
 
+`dataVersion` and `sourceLog` are optional additive fields: `formatVersion` remains 1.
+The parser retains each fight's raw byte range from its first line's `Offset` through
+its last line's `Offset + Len`, including the final line ending. Those ranges are
+local indexing metadata, not raw events added to the night file.
+
 ## Fight
 
 | Field | Type | Required | Meaning |
 |---|---|---|---|
-| `id` | string | yes | Content hash of the fight. |
+| `id` | string | yes | Complete-boss hash or file-local id, as above. |
 | `type` | string | yes | `boss` (bounded by its two encounter lines) or `pull`. |
 | `name` | string | yes | Encounter name for a boss, the main enemy's name as logged for a pull. |
 | `encounterId` | integer or null | yes | From the encounter line; `null` for a pull. |
 | `start` | time pair | yes | Fight start. |
-| `durationMs` | integer | yes | Start to end. |
+| `durationMs` | integer or null | yes | Boss: the end line's server fight length, never timestamp subtraction; `null` without that value. Pull: local end minus start. The configurable post-end tail belongs to the fight's events, not its server duration. |
 | `outcome` | string or null | yes | `kill` or `wipe` from the end line's success field; `null` for a pull or a fight without an end line. |
 | `partial` | boolean | yes | The log starts or ends inside the fight. |
 
@@ -186,7 +202,7 @@ A closed list. A reader refuses a flag it does not know; adding one raises `form
 ## Dungeon file
 
 Same structure and rules as the night file, with these differences. Its id (written in `nightId`) is
-built the same way, from the run's sorted fight ids.
+built the same way, from the run's sorted complete boss fight ids, excluding trash and partials.
 
 | Field or rule | Dungeon file |
 |---|---|
