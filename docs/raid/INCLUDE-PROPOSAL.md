@@ -13,6 +13,8 @@ proposes; it does not bundle anything. R0 adds no addon folder.
   R9a, R9b.
 - Out of scope here: the addon's code (R1 onward), the updater change (R9a) and the bundle
   change (R9b).
+- R1 adds the folder to the repository only. The bundle builder does not include it until R9b;
+  `test/raid/core` checks that.
 
 ## Source, revision, license and redistribution
 

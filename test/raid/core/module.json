@@ -1,0 +1,13 @@
+{
+  "kind": "lua",
+  "source": "addon/RelaxRaid/",
+  "test": [
+    "python3",
+    "-I",
+    "-B",
+    "test/raid/core/test_core.py"
+  ],
+  "depends": [
+    "_client"
+  ]
+}
