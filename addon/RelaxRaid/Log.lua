@@ -40,7 +40,8 @@ Log.DB_VERSION = 1
 
 local REMIND_LOG = "could not turn combat logging on. Type /combatlog now; the game answers \"Combat being logged\"."
 local REMIND_ADV = "could not turn Advanced Combat Logging on. Switch it on in Options > Network > Advanced Combat Logging."
-local HINT_RANK = "could not read your guild rank, so this character is not a logger. If you log raids, type /relaxraid logger on."
+local HINT_RANK = "could not read your guild rank, so this character does not log dungeons (raids still log). To log dungeons too, type /relaxraid logger on."
+local HINT_SIZE = "this raid is logged for you (raids log for every guild member). Combat logs are large (several hundred MB a raid night); do not delete them until they are uploaded."
 
 local state = {run = nil, seq = 0, rank = "pending", hinted = false, readOnly = false}
 Log.state = state
@@ -59,13 +60,28 @@ local function charDB()
     return db
 end
 
--- The logger setting: true or false, or nil while the default waits for the guild rank.
-function Log.logger()
+-- The default for (guild member, rank, instance type), DEC-40 (PLAN.md 6B.4): in a raid every guild member
+-- logs, rank or not; anywhere else (a five-player dungeon) only the officer ranks. Not in a guild: never.
+-- Returns true or false, or nil while a dungeon default still waits for the guild rank.
+function Log.default(rank, kind)
+    if rank == "noguild" then return false end
+    if kind == "raid" then return true end -- officer, member, unreadable or still loading: in the guild is enough
+    if rank == "officer" then return true end
+    if rank == "pending" then return nil end
+    return false
+end
+
+-- The instance type we are in ("raid", "party"), or nil outside.
+local function currentKind()
+    local key = (state.run and state.run.key) or Log.where()
+    return key and string.match(key, "^(%a+):") or nil
+end
+
+-- The logger setting: a stored choice, else the default for the instance we are in (or `kind`).
+function Log.logger(kind)
     local db = RelaxRaidCharDB
     if not state.readOnly and type(db) == "table" and type(db.logger) == "boolean" then return db.logger end
-    if state.rank == "officer" then return true end
-    if state.rank == "pending" then return nil end
-    return false
+    return Log.default(state.rank, kind or currentKind())
 end
 
 function Log.chosen()
@@ -129,6 +145,16 @@ local function settleRank(final)
         RR.say(HINT_RANK)
     end
     if before ~= true and Log.logger() == true then Log.restart() end
+    Log.sizeHint() -- decided only now that the rank may be settled
+end
+
+-- On by default for someone who is not an officer (DEC-40): once per session, in a raid, say what it costs on
+-- disk. Decided only on a settled rank: a pending rank may still turn out to be an officer's.
+function Log.sizeHint()
+    if state.sizeHinted or Log.chosen() or state.rank == "officer" or state.rank == "pending" then return end
+    if currentKind() ~= "raid" or Log.logger() ~= true then return end
+    state.sizeHinted = true
+    RR.say(HINT_SIZE)
 end
 
 -- Where we are -----------------------------------------------------------------------------------------------
@@ -222,6 +248,7 @@ function Log.begin(key)
     state.seq = state.seq + 1
     local run = {id = state.seq, key = key}
     state.run = run
+    Log.sizeHint()
     for i = 1, #Log.SCHEDULE do
         RR.after(Log.SCHEDULE[i], "Log.try", function() Log.try(run) end)
     end
@@ -249,10 +276,20 @@ end
 local RANK_WORDS = {officer = "officer rank", member = "not an officer rank", noguild = "not in a guild",
                     unreadable = "guild rank unreadable", pending = "waiting for guild data"}
 
+local function word(v)
+    return v == nil and "not decided yet" or v and "on" or "off"
+end
+
 function Log.status()
-    local on = Log.logger()
-    local why = Log.chosen() and "your choice" or ("default: " .. RANK_WORDS[state.rank])
-    RR.say("logger " .. (on == nil and "not decided yet" or on and "on" or "off") .. " for this character (" .. why .. ").")
+    local raid, dungeon = Log.default(state.rank, "raid"), Log.default(state.rank, "party")
+    if Log.chosen() then
+        RR.say("logger " .. word(Log.logger()) .. " for this character (your choice).")
+    elseif raid == dungeon then
+        RR.say("logger " .. word(raid) .. " for this character (default: " .. RANK_WORDS[state.rank] .. ").")
+    else -- the default differs by instance type (DEC-40): say both
+        RR.say("logger for this character: default, " .. word(raid) .. " in raids, " .. word(dungeon) ..
+            " in dungeons (" .. RANK_WORDS[state.rank] .. ").")
+    end
     local run = state.run
     if readOn() then
         RR.say("combat logging: on.")
@@ -282,8 +319,13 @@ local function panel()
     local category = Settings.RegisterVerticalLayoutCategory("Relax Raid")
     local setting = Settings.RegisterProxySetting(category, "RELAXRAID_LOGGER", Settings.VarType.Boolean,
         "Logger (this character)", false,
-        function() return Log.logger() == true end,
-        function(value) Log.setLogger(value == true) end)
+        -- shows the stored choice, else the raid default; setting it back to that default clears the choice,
+        -- so ticking and unticking returns to "default" instead of storing "off"
+        function() return Log.logger("raid") == true end,
+        function(value)
+            value = value == true
+            if value == (Log.default(state.rank, "raid") == true) then Log.setLogger(nil) else Log.setLogger(value) end
+        end)
     Settings.CreateCheckbox(category, setting,
         "Turn combat logging and Advanced Combat Logging on when this character enters a raid or dungeon.")
     Settings.RegisterAddOnCategory(category)

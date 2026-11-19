@@ -11,7 +11,7 @@ Three **separate WoW Forever addons**, plus a native Windows report app:
 
 **[Download release v1.7.2](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.7.2)**:
 
-- `RelaxCoach-Bundle-1.7.2.zip` — the three independent addons (Coach, Journey, Relax Quest Planner 0.4.0), Journey guide content **4.00.08**, the Windows app and optional installer/restore scripts. From v1.5.0 the combined download has this new name; earlier releases used `RelaxCoach-Guild-<version>.zip`.
+- `RelaxCoach-Bundle-1.7.2.zip` — the three independent addons (Coach, Journey, Relax Quest Planner 0.4.0), Journey guide content **4.00.12**, the Windows app and optional installer/restore scripts. From v1.5.0 the combined download has this new name; earlier releases used `RelaxCoach-Guild-<version>.zip`.
 - `RelaxCoach.exe` — app-only download, for updating the application separately.
 - `SHA256SUMS.txt` — checksums for these release assets.
 
@@ -31,7 +31,8 @@ There is deliberately no Coach-only `RelaxCoach-1.7.2.zip`: older apps must not 
 - **No battleground rewards in gear advice.** Items from battleground quartermasters and honor vendors (for example Outrunner's Bow from Illiyana Moonblaze in Ashenvale, which needs Silverwing Sentinels reputation) are no longer suggested.
 - **A trip must be worth it.** A suggestion must gain enough against your whole equipped set: about 1% for something nearby or on your route, 3% for a dungeon, 5% for a zone behind you (more than 6 levels below you) or off your route. Small upgrades far away are dropped. Percentages are now the gain over the item you wear, and are shown once at least 8 slots can be scored.
 - **Level 60:** no route wording, no vendor items with no known seller or place, and raid loot only for raids open on Forever. None are open yet (the first raid opens 9 December), so raid drops, raid-boss loot and raid-kill reward quests are not suggested for now.
-- Coach and the Windows app move to **1.7.2**. Relax Journey (`4.00.04`) and guide content (`4.00.08`) are unchanged; Relax Quest Planner moves to **0.4.0** (see its README). Rules data moves to **1.3.0**.
+- Coach and the Windows app move to **1.7.2**. Relax Journey (`4.00.04`) is unchanged; Relax Quest Planner moves to **0.4.0** (see its README). Rules data moves to **1.3.0**.
+- **Guide content 4.00.12:** 74 of the 201 guide files updated; the catalog now lists 127 guides (was 125). Relax Journey code stays `4.00.04`; the content's validity date is still **18 December 2026**.
 - **Update:** on app 1.7.0 or 1.7.1 use **Updates → Update everything**, or **Check App Update → Update App** first and then **Updates → Check → Update**.
 - **Not tested in game: alpha, owner's decision.** Offline tests do not validate native Forever behavior or the Windows update flow.
 
