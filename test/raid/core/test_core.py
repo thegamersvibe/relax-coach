@@ -109,7 +109,10 @@ class CoreTests(unittest.TestCase):
                 code = "\n".join(ln.split("--", 1)[0] for ln in f.read().splitlines())
             self.assertNotRegex(code, r"LoggingCombat\s*\(\s*(false|nil|0)\b", name)
             self.assertNotRegex(code, r"advancedCombatLogging\"\s*,\s*\"?0", name)
-            self.assertNotIn("SendAddonMessage", code, name)
+            if name != "Wire.lua":  # R2 owns the only client-send lookup; R1 stays receive/send-free.
+                self.assertNotIn("SendAddonMessage", code, name)
+            else:
+                self.assertEqual(code.count("C_ChatInfo.SendAddonMessage"), 1, "one guarded send site")
 
 
 if __name__ == "__main__":

@@ -60,6 +60,11 @@ jobs:
           done
       - name: Relax Raid modules (Lua and Python)
         run: python -I -B tools/raidtest.py --all --kind lua,py
+      - name: Relax Raid Lua mutation guards
+        run: |
+          for module in core log prep wire store; do
+            python -I -B tools/raidtest.py --mutants "$module"
+          done
 
   desktop-go:
     name: Desktop Go and UI

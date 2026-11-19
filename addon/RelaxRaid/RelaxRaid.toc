@@ -1,10 +1,13 @@
 ## Interface: 16001
 ## Title: Relax Raid
-## Notes: Relax raid tools: turns combat logging on for loggers in raids and dungeons. /relaxraid
+## Notes: Raid preparation reports and automatic combat logging. /relaxraid
 ## Author: TheGamersVibe
-## Version: 0.1.0
+## Version: 0.2.0
 ## SavedVariables: RelaxRaidDB
 ## SavedVariablesPerCharacter: RelaxRaidCharDB
 
 Core.lua
 Log.lua
+Prep.lua
+Wire.lua
+Store.lua

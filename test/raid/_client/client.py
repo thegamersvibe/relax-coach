@@ -11,7 +11,7 @@ Modelled, and nothing else:
   - The advancedCombatLogging setting through C_CVar.GetCVar/SetCVar, with `refuse_cvar_write` making the
     write fail and leave the value unchanged.
   - The addon restriction state (`restricted`, set by the test): C_ChatInfo.SendAddonMessage while restricted
-    is dropped, counted in `dropped`, and returns false.
+    is dropped, counted in `dropped`, and returns enum 11 (AddOnMessageLockdown); success is enum 0.
   - Instance type ("raid", "party", "none") and map id: IsInInstance(), GetInstanceInfo().
   - A clock the test moves: GetTime(), C_Timer.After(); timers fire in time order when advance() passes them.
   - Secret values: secret() returns a Lua value that raises on arithmetic, comparison and concatenation;
@@ -28,6 +28,11 @@ Added by R1 (each confirmed in the client listing at Gethe/wow-ui-source@eac30af
   - Every LoggingCombat call is kept in `log_calls` (its argument; None for a read with no argument, "nil-arg" for
     an explicit nil); every SetCVar in `cvar_writes`.
   - load_addon(): the toc's files in order with (name, namespace), then saved variables, then ADDON_LOADED.
+Added by R2 (pinned declarations are listed in docs/raid/PREP-PROTOCOL.md):
+  - Chat prefix registration and numeric send results; every send attempt and its clock are recorded even on failure.
+  - Independent combat/chat flags, six restriction states, raid membership, identity, class and level.
+  - Equipped bag slot reads and item class/subclass reads; no synthetic live-client success is implied.
+  - Server time, time-played requests and event delivery; no aura APIs (auras belong to the combat-log reader).
 API names are the client's own; each is confirmed in the client listing by the module that first uses it.
 """
 import os
@@ -62,6 +67,25 @@ class Client:
         self.cvar_writes = []  # every SetCVar call, refused or not
         self.restricted = False
         self.sent = []
+        self.send_attempts = []
+        self.send_times = []
+        self.in_raid = False
+        self.combat = False
+        self.lockdown = False
+        self.chat_lockdown = False
+        self.restrictions = {}
+        self.prefix_result = 0
+        self.send_result = 0
+        self.prefixes = []
+        self.player_name = "Alia-Stone"
+        self.realm = "PvP-EU"
+        self.normalized_realm = "PvP-EU"
+        self.player_class = "MAGE"
+        self.level = 60
+        self.wall = 1800000000
+        self.bags = {0: [None] * 16}
+        self.item_types = {}
+        self.played_requests = 0
         self.dropped = 0
         self.instance_type = "none"
         self.map_id = 0
@@ -96,6 +120,26 @@ class Client:
 
     def run(self, code):
         return self.lua.execute(code)
+
+    def watch_chat_frames(self):
+        """Trap chat-frame globals/methods/hooks without changing event delivery."""
+        self.chat_touches = []
+        self.lua.globals()["CHAT_TOUCH"] = self.chat_touches.append
+        self.run("""
+            local function watched(k)
+                return type(k)=='string' and (k:match('^ChatFrame') or k=='DEFAULT_CHAT_FRAME')
+            end
+            local frame=setmetatable({}, {
+                __index=function(_,k) CHAT_TOUCH('method:'..k); return function() end end,
+                __newindex=function(_,k) CHAT_TOUCH('write:'..k) end})
+            DEFAULT_CHAT_FRAME=nil
+            setmetatable(_G, {
+                __index=function(_,k) if watched(k) then CHAT_TOUCH('read:'..k); return frame end end,
+                __newindex=function(t,k,v)
+                    if watched(k) then CHAT_TOUCH('global:'..k) else rawset(t,k,v) end
+                end})
+            hooksecurefunc=function(...) CHAT_TOUCH('hooksecurefunc') end
+        """)
 
     def load_addon(self, folder, saved=None, files=None):
         """Load an addon the way the client does: the toc's files in order, each called with (name, namespace),
@@ -177,11 +221,30 @@ class Client:
         return True
 
     def _send(self, prefix, text, channel, target=None):
+        self.send_attempts.append((prefix, text, channel, target))
+        self.send_times.append(self.now)
         if self.restricted:
             self.dropped += 1
-            return False
+            return 11  # ChatConstantsDocumentation.lua:165, AddOnMessageLockdown
+        if self.send_result != 0:
+            return self.send_result
         self.sent.append((prefix, text, channel, target))
-        return True
+        return 0  # ChatConstantsDocumentation.lua:154, Success (not a bool)
+
+    def _prefix(self, prefix):
+        self.prefixes.append(prefix)
+        return self.prefix_result
+
+    def _request_played(self):
+        self.played_requests += 1
+
+    def _bag_item(self, bag, slot):
+        item = self.bags.get(bag, [])[slot - 1]
+        return self.lua.table_from(item) if isinstance(item, dict) else item
+
+    def _item_info(self, item):
+        cls, sub = self.item_types.get(item, (None, None))
+        return ("Invented item", None, 1, 60, 60, "", "", 20, "", 0, 0, cls, sub)
 
     def _in_instance(self):
         inside = self.instance_type != "none"
@@ -252,7 +315,28 @@ class Client:
         g.IsInInstance = self._in_instance
         g.GetInstanceInfo = self._instance_info
         g.C_CVar = self.lua.table_from({"GetCVar": self._get_cvar, "SetCVar": self._set_cvar})
-        g.C_ChatInfo = self.lua.table_from({"SendAddonMessage": self._send})
+        g.C_ChatInfo = self.lua.table_from({
+            "SendAddonMessage": self._send,
+            "RegisterAddonMessagePrefix": self._prefix,
+            "InChatMessagingLockdown": lambda: self.chat_lockdown,
+            "AreOutgoingAddonChatMessagesRestricted": lambda: self.restricted,
+        })
+        g.C_RestrictedActions = self.lua.table_from({"GetAddOnRestrictionState": lambda kind: self.restrictions.get(kind, 0)})
+        g.InCombatLockdown = lambda: self.lockdown
+        g.UnitAffectingCombat = lambda unit: self.combat
+        g.IsInRaid = lambda: self.in_raid
+        g.UnitFullName = lambda unit: (self.player_name, self.realm)
+        g["GetNormalizedRealmName"] = lambda: self.normalized_realm
+        g.UnitClass = lambda unit: ("Mage", self.player_class, 8)
+        g.UnitLevel = lambda unit: self.level
+        g.GetServerTime = lambda: int(self.wall + self.now)
+        g.RequestTimePlayed = self._request_played
+        g.C_AddOns = self.lua.table_from({"GetAddOnMetadata": lambda name, key: "0.2.0"})
+        g.C_Container = self.lua.table_from({
+            "GetContainerNumSlots": lambda bag: len(self.bags.get(bag, [])),
+            "GetContainerItemInfo": self._bag_item,
+        })
+        g.C_Item = self.lua.table_from({"GetItemInfo": self._item_info})
         g.C_Timer = self.lua.table_from({"After": self._after})
         g.secret = self.secret
         g.issecretvalue = issecret

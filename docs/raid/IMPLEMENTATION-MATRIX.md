@@ -12,11 +12,11 @@
 | IMP-001 | REQ-LOG-01 | forever | R1 | R0 | builder | `addon/RelaxRaid/{RelaxRaid.toc,Core.lua,Log.lua}` | built, in review | V-001 |
 | IMP-002 | REQ-LOG-02 | forever | R1 | R0 | builder | `addon/RelaxRaid/{RelaxRaid.toc,Core.lua,Log.lua}` | built, in review | V-002 |
 | IMP-003 | REQ-LOG-03 | forever | R4 | R0 | unassigned | `desktop/internal/raid/fights`, glue in `desktop/` | planned | V-003 |
-| IMP-004 | REQ-ADD-01 | forever | R2 | R1 | unassigned | `addon/RelaxRaid/{Prep.lua,Wire.lua,Store.lua}` | planned | V-004 |
-| IMP-005 | REQ-ADD-02 | forever | R2 | R1 | unassigned | `addon/RelaxRaid/{Prep.lua,Wire.lua,Store.lua}` | planned | V-005 |
-| IMP-006 | REQ-ADD-03 | forever | R2 | R1 | unassigned | `addon/RelaxRaid/{Prep.lua,Wire.lua,Store.lua}` | planned | V-006 |
-| IMP-007 | REQ-ADD-04 | forever | R2 | R1 | unassigned | `addon/RelaxRaid/{Prep.lua,Wire.lua,Store.lua}` | planned | V-007 |
-| IMP-008 | REQ-ADD-05 | forever | R2 | R1 | unassigned | `addon/RelaxRaid/{Prep.lua,Wire.lua,Store.lua}` | planned | V-008 |
+| IMP-004 | REQ-ADD-01 | forever | R2 | R1 | R2 builder | `addon/RelaxRaid/{Prep.lua,Wire.lua,Store.lua}` | implemented; simulator pass | V-004 |
+| IMP-005 | REQ-ADD-02 | forever | R2 | R1 | R2 builder | `addon/RelaxRaid/{Prep.lua,Wire.lua,Store.lua}` | implemented; simulator pass | V-005 |
+| IMP-006 | REQ-ADD-03 | forever | R2 | R1 | R2 builder | `addon/RelaxRaid/{Prep.lua,Wire.lua,Store.lua}` | implemented; simulator pass | V-006 |
+| IMP-007 | REQ-ADD-04 | forever | R2 | R1 | R2 builder | `addon/RelaxRaid/{Prep.lua,Wire.lua,Store.lua}` | implemented; simulator pass | V-007 |
+| IMP-008 | REQ-ADD-05 | forever | R2 | R1 | R2 builder | `addon/RelaxRaid/{Prep.lua,Wire.lua,Store.lua}` | implemented; app label acceptance pending R7 | V-008 |
 | IMP-009 | REQ-PAR-01 | forever | R3 | R0 | unassigned | `desktop/internal/raid/{logfmt,fixture}` | planned | V-009 |
 | IMP-010 | REQ-PAR-02 | forever | R3 | R0 | unassigned | `desktop/internal/raid/{logfmt,fixture}` | planned | V-010 |
 | IMP-011 | REQ-PAR-03 | forever | R4 | R0 | unassigned | `desktop/internal/raid/fights`, glue in `desktop/` | planned | V-011 |
@@ -101,11 +101,11 @@ Statuses: `planned`, `in progress`, `implemented`, `verified`, `blocked`, `defer
 | V-001 | REQ-LOG-01 / R1 | forever; mock client | simulator | `feat/raid-logger` | `raidtest.py log core`: raid and dungeon entry, start ignored 10 s with the read 5 s and 8 s behind, never off on every path, refused setting write, APIs that throw | pass; native not run (alpha, owner's decision) | simulator pass |
 | V-002 | REQ-LOG-02 / R1 | forever; mock client | simulator | `feat/raid-logger` | `raidtest.py log`: officer and member rank, rank secret or not a number, guild data late or never, no guild, choice saved and winning, panel checkbox, newer save untouched | pass; native not run (alpha, owner's decision) | simulator pass |
 | V-003 | REQ-LOG-03 / R4 | forever; build unknown | simulator | none yet | Acceptance column of REQ-LOG-03 | not run | not run |
-| V-004 | REQ-ADD-01 / R2 | forever; build unknown | simulator | none yet | Acceptance column of REQ-ADD-01 | not run | not run |
-| V-005 | REQ-ADD-02 / R2 | forever; build unknown | simulator | none yet | Acceptance column of REQ-ADD-02 | not run | not run |
-| V-006 | REQ-ADD-03 / R2 | forever; build unknown | simulator | none yet | Acceptance column of REQ-ADD-03 | not run | not run |
-| V-007 | REQ-ADD-04 / R2 | forever; build unknown | simulator | none yet | Acceptance column of REQ-ADD-04 | not run | not run |
-| V-008 | REQ-ADD-05 / R2 | forever; build unknown | simulator | none yet | Acceptance column of REQ-ADD-05 | not run | not run |
+| V-004 | REQ-ADD-01 / R2 | forever; pinned build 70790; mock client | simulator | `feat/raid-prep` | Flask/ring collection; unavailable and secret reads; [R2 evidence](evidence/R2.md) | pass for addon scope; native not run (alpha, owner's decision) | simulator pass |
+| V-005 | REQ-ADD-02 / R2 | forever; pinned build 70790; mock client | simulator | `feat/raid-prep` | Trigger, restriction-at-dispatch, cooldown, fragment, expiry and logout tests; [R2 evidence](evidence/R2.md) | pass for addon scope; native not run (alpha, owner's decision) | simulator pass |
+| V-006 | REQ-ADD-03 / R2 | forever; pinned build 70790; mock client | simulator | `feat/raid-prep` | Sender forgery, received time, retained bounds, full-store reload and newer-save identity; [R2 evidence](evidence/R2.md) | pass for addon scope; native not run (alpha, owner's decision) | simulator pass |
+| V-007 | REQ-ADD-04 / R2 | forever; pinned build 70790; mock client | simulator | `feat/raid-prep` | No optional providers gives not checked; late Coach audit queried at use time; [R2 evidence](evidence/R2.md) | pass for addon scope; native not run (alpha, owner's decision) | simulator pass |
+| V-008 | REQ-ADD-05 / R2 | forever; pinned build 70790; mock client | simulator | `feat/raid-prep` | Played-at-60 is sent as data and never points; configurable label/scoring acceptance belongs to R7; [R2 evidence](evidence/R2.md) | pass for addon scope; native not run (alpha, owner's decision) | addon data pass; scoring acceptance pending |
 | V-009 | REQ-PAR-01 / R3 | forever; build unknown | unit | none yet | Acceptance column of REQ-PAR-01 | not run | not run |
 | V-010 | REQ-PAR-02 / R3 | forever; build unknown | unit | none yet | Acceptance column of REQ-PAR-02 | not run | not run |
 | V-011 | REQ-PAR-03 / R4 | forever; build unknown | unit | none yet | Acceptance column of REQ-PAR-03 | not run | not run |

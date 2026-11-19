@@ -1,0 +1,125 @@
+extra-save EXPECTED RED 1
+test_app_180_contract (__main__.PrepTests.test_app_180_contract) ... FAIL
+
+======================================================================
+FAIL: test_app_180_contract (__main__.PrepTests.test_app_180_contract)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/test/raid/prep/test_prep.py", line 33, in test_app_180_contract
+    app_contract(Path(os.environ.get("RAID_CONTRACT_FOLDER", ADDON)))
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<checkout>/test/raid/prep/test_prep.py", line 23, in app_contract
+    assert sorted(saves) == [("savedvariables", "RelaxRaidDB"),
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                             ("savedvariablespercharacter", "RelaxRaidCharDB")], saves
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: [('savedvariables', 'RelaxRaidDB, RelaxRaidPrepDB'), ('savedvariablespercharacter', 'RelaxRaidCharDB')]
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (failures=1)
+
+extra-sv-key EXPECTED RED 1
+test_app_180_contract (__main__.PrepTests.test_app_180_contract) ... FAIL
+
+======================================================================
+FAIL: test_app_180_contract (__main__.PrepTests.test_app_180_contract)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/test/raid/prep/test_prep.py", line 33, in test_app_180_contract
+    app_contract(Path(os.environ.get("RAID_CONTRACT_FOLDER", ADDON)))
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<checkout>/test/raid/prep/test_prep.py", line 23, in app_contract
+    assert sorted(saves) == [("savedvariables", "RelaxRaidDB"),
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                             ("savedvariablespercharacter", "RelaxRaidCharDB")], saves
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: [('savedvariables', 'RelaxRaidDB'), ('savedvariablespercharacter', 'RelaxRaidCharDB'), ('savedvariablesfuture', 'OtherDB')]
+
+----------------------------------------------------------------------
+Ran 1 test in 0.002s
+
+FAILED (failures=1)
+
+texture EXPECTED RED 1
+test_app_180_contract (__main__.PrepTests.test_app_180_contract) ... FAIL
+
+======================================================================
+FAIL: test_app_180_contract (__main__.PrepTests.test_app_180_contract)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/test/raid/prep/test_prep.py", line 33, in test_app_180_contract
+    app_contract(Path(os.environ.get("RAID_CONTRACT_FOLDER", ADDON)))
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<checkout>/test/raid/prep/test_prep.py", line 28, in app_contract
+    assert not bad, bad
+           ^^^^^^^
+AssertionError: ['unexpected.tga']
+
+----------------------------------------------------------------------
+Ran 1 test in 0.004s
+
+FAILED (failures=1)
+
+dependencies EXPECTED RED 1
+test_app_180_contract (__main__.PrepTests.test_app_180_contract) ... FAIL
+
+======================================================================
+FAIL: test_app_180_contract (__main__.PrepTests.test_app_180_contract)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/test/raid/prep/test_prep.py", line 33, in test_app_180_contract
+    app_contract(Path(os.environ.get("RAID_CONTRACT_FOLDER", ADDON)))
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<checkout>/test/raid/prep/test_prep.py", line 25, in app_contract
+    assert not any(key.startswith("dep") or key.startswith("requireddep") for key, _ in rows), rows
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: [('interface', '16001'), ('title', 'Relax Raid'), ('notes', 'Raid preparation reports and automatic combat logging. /relaxraid'), ('author', 'TheGamersVibe'), ('version', '0.2.0'), ('savedvariables', 'RelaxRaidDB'), ('savedvariablespercharacter', 'RelaxRaidCharDB'), ('dependencies', 'ForeverCoach')]
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (failures=1)
+
+requireddeps EXPECTED RED 1
+test_app_180_contract (__main__.PrepTests.test_app_180_contract) ... FAIL
+
+======================================================================
+FAIL: test_app_180_contract (__main__.PrepTests.test_app_180_contract)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/test/raid/prep/test_prep.py", line 33, in test_app_180_contract
+    app_contract(Path(os.environ.get("RAID_CONTRACT_FOLDER", ADDON)))
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<checkout>/test/raid/prep/test_prep.py", line 25, in app_contract
+    assert not any(key.startswith("dep") or key.startswith("requireddep") for key, _ in rows), rows
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: [('interface', '16001'), ('title', 'Relax Raid'), ('notes', 'Raid preparation reports and automatic combat logging. /relaxraid'), ('author', 'TheGamersVibe'), ('version', '0.2.0'), ('savedvariables', 'RelaxRaidDB'), ('savedvariablespercharacter', 'RelaxRaidCharDB'), ('requireddeps', 'ForeverCoach')]
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (failures=1)
+
+dep-alias EXPECTED RED 1
+test_app_180_contract (__main__.PrepTests.test_app_180_contract) ... FAIL
+
+======================================================================
+FAIL: test_app_180_contract (__main__.PrepTests.test_app_180_contract)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/test/raid/prep/test_prep.py", line 33, in test_app_180_contract
+    app_contract(Path(os.environ.get("RAID_CONTRACT_FOLDER", ADDON)))
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<checkout>/test/raid/prep/test_prep.py", line 25, in app_contract
+    assert not any(key.startswith("dep") or key.startswith("requireddep") for key, _ in rows), rows
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: [('interface', '16001'), ('title', 'Relax Raid'), ('notes', 'Raid preparation reports and automatic combat logging. /relaxraid'), ('author', 'TheGamersVibe'), ('version', '0.2.0'), ('savedvariables', 'RelaxRaidDB'), ('savedvariablespercharacter', 'RelaxRaidCharDB'), ('depfuture', 'ForeverCoach')]
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (failures=1)
+
+RESULT: 6/6 app-1.8.0 contract mutations rejected
