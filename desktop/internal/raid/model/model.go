@@ -105,12 +105,38 @@ type Event struct {
 	SpellName                  string
 	Amount, Overkill, Absorbed Opt
 	Crit                       bool
-	HP, HPMax                  Opt    // of InfoUnit
-	InfoUnit                   string // the unit id the advanced block describes
-	X, Y                       Opt    // fixed point, 1/100 yard
-	DiedFlag                   Opt    // UNIT_DIED's last field; only V==0 is a death
-	ExtraSpellID               Opt    // the interrupted, dispelled or absorbing spell
-	Raw                        []string
+	HP, HPMax                  Opt        // of InfoUnit
+	InfoUnit                   string     // the unit id the advanced block describes
+	X, Y                       Opt        // fixed point, 1/100 yard
+	DiedFlag                   Opt        // UNIT_DIED's last field; only V==0 is a death
+	ExtraSpellID               Opt        // the interrupted, dispelled or absorbing spell
+	Offset, Len                int64      // byte position of the line in the source, and its length with the line ending
+	Overheal                   Opt        // heal lines only
+	MissType                   string     // the miss word as logged (ABSORB, DODGE, ...); "" on other kinds
+	AuraType                   string     // BUFF, DEBUFF or ""
+	InfoOwnerID                string     // the owner field of the advanced block; "" when not filled
+	Enc                        *Encounter // EncounterStart and EncounterEnd only
+	Zone                       *Zone      // ZoneChange only
+	Info                       *Combatant // CombatantInfo only
+	Raw                        []string   // Other and CombatantInfo only
+}
+
+// Encounter is what an ENCOUNTER_START or ENCOUNTER_END line carries.
+type Encounter struct {
+	ID         int64
+	Name       string
+	Difficulty int64
+	GroupSize  int64
+	InstanceID Opt // on the start line only
+	Success    Opt // on the end line only
+	FightMs    Opt // on the end line only: the server's fight length
+}
+
+// Zone is what a ZONE_CHANGE line carries.
+type Zone struct {
+	InstanceID int64 // 0 is the open world
+	Name       string
+	Difficulty int64
 }
 
 // IsDeath reports a real death: UNIT_DIED with its last field present and 0.
@@ -137,6 +163,16 @@ type Fight struct {
 	Partial        bool
 	GroupSize      int
 	Events         []Event
+	Boss           bool
+	InstanceID     int64
+	DifficultyID   int64
+	DurationMs     Opt // the server's fight length; never EndMs minus StartMs
+	Players        []Actor
+	Combatants     []Combatant
+	Owners         map[string]string // pet or guardian id -> owner id
+	Unowned        []string          // pet or guardian ids whose owner is not known
+	BossUnits      []string          // unit ids
+	Roles          map[string]string // player id -> "tank", "healer" or "dps"
 }
 
 // Combatant is a decoded COMBATANT_INFO line; fields not understood are kept raw.
@@ -172,8 +208,12 @@ type Death struct {
 
 // RaidNight holds runs of kind RunRaid only.
 type RaidNight struct {
-	Fights []Fight
-	Roster []Actor
+	Fights  []Fight
+	Roster  []Actor
+	Partial bool
+	Logger  Actor // the player whose lines carry the "mine" flag; empty if none
+	StartMs int64
+	OffsetH int8
 }
 
 // DungeonRun is one run of kind RunDungeon.
@@ -181,4 +221,8 @@ type DungeonRun struct {
 	Fights     []Fight
 	Roster     []Actor
 	InstanceID int64
+	Partial    bool
+	Logger     Actor // the player whose lines carry the "mine" flag; empty if none
+	StartMs    int64
+	OffsetH    int8
 }

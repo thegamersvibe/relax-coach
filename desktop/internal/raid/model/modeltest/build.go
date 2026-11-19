@@ -59,5 +59,75 @@ func (b *EventBuilder) Died(flag int64) *EventBuilder {
 	return b
 }
 
+// Spell sets the spell id and name.
+func (b *EventBuilder) Spell(id int64, name string) *EventBuilder {
+	b.e.SpellID, b.e.SpellName = id, name
+	return b
+}
+
+// Pos sets the line's byte position and length (with its line ending).
+func (b *EventBuilder) Pos(offset, length int64) *EventBuilder {
+	b.e.Offset, b.e.Len = offset, length
+	return b
+}
+
+// Heal makes a heal event.
+func (b *EventBuilder) Heal(amount, overheal int64) *EventBuilder {
+	b.e.Kind = model.Heal
+	b.e.Amount, b.e.Overheal = model.Some(amount), model.Some(overheal)
+	return b
+}
+
+// Miss makes a missed event with the miss word as logged (e.g. "DODGE", "ABSORB").
+func (b *EventBuilder) Miss(missType string) *EventBuilder {
+	b.e.Kind, b.e.MissType = model.Missed, missType
+	return b
+}
+
+// Aura makes an aura event of kind k (AuraApplied, AuraRemoved, ...) with auraType "BUFF" or "DEBUFF".
+func (b *EventBuilder) Aura(k model.Kind, auraType string) *EventBuilder {
+	b.e.Kind, b.e.AuraType = k, auraType
+	return b
+}
+
+// Owner sets the advanced block's owner field.
+func (b *EventBuilder) Owner(id string) *EventBuilder { b.e.InfoOwnerID = id; return b }
+
+// Zone makes a ZONE_CHANGE event.
+func (b *EventBuilder) Zone(instanceID int64, name string, difficulty int64) *EventBuilder {
+	b.e.Kind = model.ZoneChange
+	b.e.Zone = &model.Zone{InstanceID: instanceID, Name: name, Difficulty: difficulty}
+	return b
+}
+
+// Info makes a COMBATANT_INFO event.
+func (b *EventBuilder) Info(c model.Combatant) *EventBuilder {
+	b.e.Kind = model.CombatantInfo
+	b.e.Info = &c
+	return b
+}
+
 // Build returns the event.
 func (b *EventBuilder) Build() model.Event { return b.e }
+
+// Encounter returns an ENCOUNTER_START at startMs and an ENCOUNTER_END at endMs for enc, each carrying only
+// its own line's fields: the instance id on the start line; success and the fight length on the end line.
+func Encounter(enc model.Encounter, startMs, endMs int64) (start, end model.Event) {
+	s, e := enc, enc
+	s.Success, s.FightMs = model.Opt{}, model.Opt{}
+	e.InstanceID = model.Opt{}
+	return model.Event{TimeMs: startMs, Kind: model.EncounterStart, Enc: &s},
+		model.Event{TimeMs: endMs, Kind: model.EncounterEnd, Enc: &e}
+}
+
+// Fight builds a fight from enc and its events: start and end from the first and last event, the boss fields
+// from enc (an encounter id above 0 is a boss fight), DurationMs from the server's fight length only.
+func Fight(id string, enc model.Encounter, events ...model.Event) model.Fight {
+	f := model.Fight{ID: id, EncounterID: enc.ID, Name: enc.Name, Boss: enc.ID > 0,
+		InstanceID: enc.InstanceID.V, DifficultyID: enc.Difficulty, GroupSize: int(enc.GroupSize),
+		Success: enc.Success, DurationMs: enc.FightMs, Events: events}
+	if len(events) > 0 {
+		f.StartMs, f.EndMs = events[0].TimeMs, events[len(events)-1].TimeMs
+	}
+	return f
+}

@@ -10,5 +10,35 @@
     "old": "e.DiedFlag.Present && ",
     "new": "",
     "killed_by": "TestIsDeath"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "s.Success, s.FightMs = model.Opt{}, model.Opt{}",
+    "new": "s.FightMs = model.Opt{}",
+    "killed_by": "TestEncounterLinesCarryTheirOwnFields"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "e.InstanceID = model.Opt{}",
+    "new": "_ = e",
+    "killed_by": "TestEncounterLinesCarryTheirOwnFields"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "Boss: enc.ID > 0,",
+    "new": "Boss: true,",
+    "killed_by": "TestEncounterLinesCarryTheirOwnFields"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "DurationMs: enc.FightMs,",
+    "new": "DurationMs: model.Some(1),",
+    "killed_by": "TestEncounterLinesCarryTheirOwnFields"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.e.Amount, b.e.Overheal = model.Some(amount), model.Some(overheal)",
+    "new": "b.e.Amount = model.Some(amount)",
+    "killed_by": "TestFightWithEveryNewField"
   }
 ]
