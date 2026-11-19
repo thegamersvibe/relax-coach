@@ -345,6 +345,28 @@ class GuildBuilderExeTests(unittest.TestCase):
                 toc.write_text(text)
                 self.assert_builder_refuses_without_writes(message)
 
+    def test_raid_refuses_unsafe_load_names_even_when_present(self):
+        toc=self.raid_fixture()
+        original=toc.read_text()
+        for name in ('CON.lua','bad|name.lua','nonascii-\u00e9.lua','nested./Load.lua'):
+            with self.subTest(name=name):
+                p=self.root/'addon/RelaxRaid'/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_text('-- synthetic load\n')
+                toc.write_text(original+'\n'+name+'\n')
+                self.assert_builder_refuses_without_writes('Unsafe Relax Raid path')
+                p.unlink()
+
+    def test_raid_refuses_case_colliding_files_and_ancestors(self):
+        self.raid_fixture()
+        for names in (('Core.lua','CORE.lua'),('Lib/A.lua','lib/B.lua')):
+            with self.subTest(names=names):
+                added=[]
+                for name in names:
+                    p=self.root/'addon/RelaxRaid'/name
+                    if not p.exists():
+                        p.parent.mkdir(parents=True,exist_ok=True);p.write_text('-- synthetic\n');added.append(p)
+                self.assert_builder_refuses_without_writes('Case-colliding Relax Raid path')
+                for p in added:p.unlink()
+
     def test_planner_identity_is_checked(self):
         self.add_planner(title='Something Else')
         (self.root/'addon/ForeverCoach/ForeverCoach.toc').write_text('## Title: Relax Coach\n## Version: 1.5.0\n')
