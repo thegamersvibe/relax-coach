@@ -1,0 +1,37 @@
+[
+  {
+    "file": "addon/RelaxRaid/Core.lua",
+    "old": "    local ok, err = pcall(fn, ...)",
+    "new": "    local ok, err = true, fn(...)",
+    "killed_by": "test_handler_error_is_said_once_and_others_still_run",
+    "why": "handler unguarded"
+  },
+  {
+    "file": "addon/RelaxRaid/Core.lua",
+    "old": "        if not seen then RR.say(",
+    "new": "        if true then RR.say(",
+    "killed_by": "test_handler_error_is_said_once_and_others_still_run",
+    "why": "error said every time"
+  },
+  {
+    "file": "addon/RelaxRaid/Core.lua",
+    "old": "    if loaded ~= RR.name or RR.loaded then return end",
+    "new": "    if RR.loaded then return end",
+    "killed_by": "test_init_runs_once_for_our_addon_only",
+    "why": "any addon's ADDON_LOADED"
+  },
+  {
+    "file": "addon/RelaxRaid/Core.lua",
+    "old": "    C_Timer.After(seconds, function() RR.safe(label, fn) end)",
+    "new": "    C_Timer.After(seconds, fn)",
+    "killed_by": "test_timer_error_is_guarded",
+    "why": "timer unguarded"
+  },
+  {
+    "file": "addon/RelaxRaid/Core.lua",
+    "old": "        if m.Init then RR.safe(m.name .. \".Init\", m.Init, RR) end",
+    "new": "        if m.Init then m.Init(RR) end",
+    "killed_by": "test_init_error_does_not_stop_other_modules",
+    "why": "init unguarded"
+  }
+]
