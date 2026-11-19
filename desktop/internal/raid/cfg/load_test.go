@@ -90,7 +90,7 @@ func TestLoadConfig(t *testing.T) {
 	if len(s.Assignments) != 5 || s.Assignments[2].OutputToUtility != 15 {
 		t.Fatal("job table")
 	}
-	if len(c.Specs.Profiles) != 33 || len(c.SpecIDs.Classes) != 9 || len(c.Support.Effects) == 0 || len(c.Candidates.Encounters) != 22 || len(c.Encounters.Encounters) != 0 || c.Encounters.DefaultTargetRule != "boss_only" || len(c.Consumables.Categories) == 0 {
+	if len(c.Specs.Profiles) != 33 || len(c.SpecIDs.Classes) != 9 || len(c.Support.Effects) == 0 || len(c.Candidates.Encounters) != 22 || len(c.Encounters.Encounters) != 1 || c.Encounters.DefaultTargetRule != "boss_only" || len(c.Consumables.Categories) == 0 {
 		t.Fatal("missing catalogue")
 	}
 	if !reflect.DeepEqual(c.Realms.Labels, []string{"PvP-EU"}) || c.Instances.RaidGroupSizeAbove != 5 || len(c.Instances.Instances) != 1 || c.Instances.Instances[0].ID != 329 || c.Instances.Instances[0].Kind != "dungeon" {

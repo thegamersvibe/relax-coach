@@ -1,7 +1,26 @@
 {
   "schema": 1,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "source": "DESIGN REQ-ENC-01/02; PHASE1-BRIEF R4. No validated raid mechanics yet. Default counts encounter boss units only; multi-boss overrides require sourced creature selectors.",
   "default_target_rule": "boss_only",
-  "encounters": []
+  "encounters": [
+    {
+      "id": 478,
+      "name": "Balnazzar",
+      "source": "Stratholme (instance 329). Both real logs of one run show the boss as ONE unit, NPC 10812 named Grand Crusader Dathrohan, on all 828 of its lines including the transformed casts and its death; the max-health rule already picks it. The override is a guard; the page shows the encounter name.",
+      "boss_units": [
+        {
+          "id": 10812,
+          "name": "Grand Crusader Dathrohan",
+          "source": "both real logs of the 19 November Stratholme run"
+        },
+        {
+          "id": 10813,
+          "name": "Balnazzar",
+          "source": "Classic data; not seen in the Forever logs, harmless if it never appears"
+        }
+      ],
+      "mechanics": []
+    }
+  ]
 }
