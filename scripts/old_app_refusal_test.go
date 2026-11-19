@@ -9,9 +9,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -19,10 +21,24 @@ import (
 // Copied into an archive of the published app, NOT compiled with today's
 // installer. The expected messages are reviewed literals, not derived from
 // whichever error the installer happens to return.
-const oldAppUnknownFile = "archive path is outside the fixed guild allowlist: Interface/AddOns/ForeverCoach/Media/Reactions/flight.mp3"
+const oldAppVersion = "1.8.0"
+const oldAppUnknownFile = "archive path is outside the fixed guild allowlist: Interface/AddOns/RelaxRaid/Core.lua"
+
+// Reviewed against the real addon/RelaxRaid tree. Do not derive the expected
+// set from the archive: that could silently approve a second unknown root.
+var oldAppRaidFiles = []string{
+	"Interface/AddOns/RelaxRaid/Core.lua",
+	"Interface/AddOns/RelaxRaid/Log.lua",
+	"Interface/AddOns/RelaxRaid/RelaxRaid.toc",
+}
+
 const oldAppManualURL = "https://github.com/thegamersvibe/relax-coach/releases/latest"
-const oldAppFallbackError = oldAppUnknownFile + ". This release comes with app 1.7.0; if updating the app here does not work, download RelaxCoach.exe from " + oldAppManualURL
-const oldAppFirstError = "Update the app first: Relax Coach 1.7.0 needs app 1.7.0. Click Update App (or Update everything); the addons follow. If the app cannot update itself, download RelaxCoach.exe from " + oldAppManualURL
+const oldAppFallbackError = oldAppUnknownFile + ". This release comes with app 1.8.0; if updating the app here does not work, download RelaxCoach.exe from " + oldAppManualURL
+
+// v1.7.1 addon_update.go / native_bridge.go: a renamed asset is not Available,
+// so Check says app-only (NOT NeedsApp), and a forced Apply is not ready.
+const oldAppOnlyNote = "No compatible new addon update is available. This is an app-only release for this updater; no compatible addon bundle (RelaxCoach-Bundle-1.8.0.zip) is included. Use Update App separately."
+const oldAppFirstError = "this update is no longer ready: click Check, then try again"
 
 // Include directories (even empty staging/backup directories), symlinks and
 // every regular file, not just addon hashes. Directory mtimes change when a
@@ -126,7 +142,7 @@ func TestOldAppRefusalAssertions(t *testing.T) {
 			case "message-suffix":
 				err, wantReason = errors.New(oldAppFallbackError+"; second unknown path"), "message"
 			case "message-other-path":
-				err, wantReason = errors.New(strings.ReplaceAll(oldAppFallbackError, "flight.mp3", "different.mp3")), "message"
+				err, wantReason = errors.New(strings.ReplaceAll(oldAppFallbackError, "RelaxRaid/Core.lua", "Other/Core.lua")), "message"
 			case "empty-backup":
 				if err := os.Mkdir(filepath.Join(game, "RelaxCoachBackups"), 0700); err != nil {
 					t.Fatal(err)
@@ -140,10 +156,10 @@ func TestOldAppRefusalAssertions(t *testing.T) {
 				}
 				wantReason = "disk"
 			case "version":
-				addonPut(t, game, "Interface/AddOns/ForeverCoach/ForeverCoach.toc", "## Version: 1.7.0\n")
+				addonPut(t, game, "Interface/AddOns/ForeverCoach/ForeverCoach.toc", "## Version: 1.8.0\n")
 				wantReason = "version"
 			case "result":
-				result.Version, wantReason = "1.7.0", "result"
+				result.Version, wantReason = "1.8.0", "result"
 			case "file":
 				addonPut(t, game, "config.json", "changed")
 				wantReason = "disk"
@@ -194,26 +210,29 @@ func TestOldAppRefusalReplacementExecutable(t *testing.T) {
 	t.Logf("old app accepted replacement executable sha256=%x", sha256.Sum256(data))
 }
 
-// Condition 1 proves the FIRST refusal; this proves it is the ONLY one. The
-// real bundle with just the new media file and its manifest row removed must
-// install cleanly through the same published installer, so nothing else in
-// 1.7.0 (a stray file, a bad hash, a changed root) hides behind flight.mp3.
+// Remove exactly the reviewed raid files, their manifest rows and raidVersion
+// (unknown to the old strict JSON decoder). Everything else, including every
+// retained hash, must install through the published installer unchanged.
 func TestOldAppRefusalStrippedBundleInstalls(t *testing.T) {
 	payload, err := os.ReadFile(os.Getenv("RC_BUNDLE"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	const newFile = "Interface/AddOns/ForeverCoach/Media/Reactions/flight.mp3"
+	approved := map[string]bool{}
+	for _, name := range oldAppRaidFiles {
+		approved[name] = true
+	}
 	reader, err := zip.NewReader(bytes.NewReader(payload), int64(len(payload)))
 	if err != nil {
 		t.Fatal(err)
 	}
 	var out bytes.Buffer
 	w := zip.NewWriter(&out)
-	removedFile, removedRow, kept := false, false, 0
+	var removedFiles, removedRows []string
+	kept := 0
 	for _, f := range reader.File {
-		if f.Name == newFile {
-			removedFile = true
+		if approved[f.Name] {
+			removedFiles = append(removedFiles, f.Name)
 			continue
 		}
 		rc, err := f.Open()
@@ -230,14 +249,19 @@ func TestOldAppRefusalStrippedBundleInstalls(t *testing.T) {
 			if err := json.Unmarshal(data, &m); err != nil {
 				t.Fatal(err)
 			}
+			if len(m["raidVersion"]) == 0 {
+				t.Fatal("real raid manifest must declare raidVersion")
+			}
+			delete(m, "raidVersion")
 			var files []map[string]any
 			if err := json.Unmarshal(m["files"], &files); err != nil {
 				t.Fatal(err)
 			}
 			var keep []map[string]any
 			for _, row := range files {
-				if row["path"] == newFile {
-					removedRow = true
+				name, _ := row["path"].(string)
+				if approved[name] {
+					removedRows = append(removedRows, name)
 					continue
 				}
 				keep = append(keep, row)
@@ -263,21 +287,23 @@ func TestOldAppRefusalStrippedBundleInstalls(t *testing.T) {
 	if err := w.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if !removedFile || !removedRow {
-		t.Fatalf("real bundle must carry %s and its manifest row (file=%t row=%t)", newFile, removedFile, removedRow)
+	sort.Strings(removedFiles)
+	sort.Strings(removedRows)
+	if !reflect.DeepEqual(removedFiles, oldAppRaidFiles) || !reflect.DeepEqual(removedRows, oldAppRaidFiles) {
+		t.Fatalf("real bundle must carry exactly the reviewed raid files and rows: files=%q rows=%q", removedFiles, removedRows)
 	}
 	game := guildGame(t)
 	installed := strings.TrimPrefix(os.Getenv("RC_OLD"), "v")
 	addonPut(t, game, "Interface/AddOns/ForeverCoach/ForeverCoach.toc", "## Title: Relax Coach\n## Version: "+installed+"\n## SavedVariables: ForeverCoachDB\nCore.lua\n")
 	stripped := out.Bytes()
-	result, err := guildUpdaterForVersion(t, stripped, "1.7.0").apply(context.Background(), game, guildInfoForVersion("1.7.0"))
-	if err != nil || result.Version != "1.7.0" {
-		t.Fatalf("old app refused the 1.7.0 bundle even without %s: %+v %v", newFile, result, err)
+	result, err := guildUpdaterForVersion(t, stripped, "1.8.0").apply(context.Background(), game, guildInfoForVersion("1.8.0"))
+	if err != nil || result.Version != "1.8.0" {
+		t.Fatalf("old app refused the 1.8.0 bundle even without RelaxRaid: %+v %v", result, err)
 	}
-	if got := InstalledCoachVersion(game); got != "1.7.0" {
+	if got := InstalledCoachVersion(game); got != "1.8.0" {
 		t.Fatalf("installed version after stripped install = %q", got)
 	}
-	t.Logf("old app installed the stripped 1.7.0 bundle (%d archive entries, %d files updated); %s is the only refusal", kept, result.UpdatedFiles, newFile)
+	t.Logf("old app installed the stripped 1.8.0 bundle (%d archive entries, %d files updated); only RelaxRaid was removed", kept, result.UpdatedFiles)
 }
 
 func TestOldAppRefusesRealBundle(t *testing.T) {
@@ -285,8 +311,8 @@ func TestOldAppRefusesRealBundle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if os.Getenv("RC_VERSION") != "1.7.0" {
-		t.Fatal("refusal probe is pinned to 1.7.0")
+	if os.Getenv("RC_VERSION") != "1.8.0" {
+		t.Fatal("refusal probe is pinned to 1.8.0")
 	}
 	reader, err := zip.NewReader(bytes.NewReader(payload), int64(len(payload)))
 	if err != nil {
@@ -294,14 +320,15 @@ func TestOldAppRefusesRealBundle(t *testing.T) {
 	}
 	var unknown []string
 	for _, f := range reader.File {
-		if !addonGuildPath(strings.TrimSuffix(f.Name, "/"), f.Mode().IsDir(), addonPublicFilesForVersion("1.7.0"), addonGuildRootsFor("1.7.0")) {
+		if !addonGuildPath(strings.TrimSuffix(f.Name, "/"), f.Mode().IsDir(), addonPublicFilesForVersion("1.8.0"), addonGuildRootsFor("1.8.0")) {
 			unknown = append(unknown, f.Name)
 		}
 	}
-	if !reflect.DeepEqual(unknown, []string{"Interface/AddOns/ForeverCoach/Media/Reactions/flight.mp3"}) {
+	sort.Strings(unknown)
+	if !reflect.DeepEqual(unknown, oldAppRaidFiles) {
 		t.Fatalf("unexpected old-app unknown path set: %q", unknown)
 	}
-	t.Logf("only unknown path: %s", unknown[0])
+	t.Logf("complete unknown path set: %q", unknown)
 	// Freeze the actual old shell's error presentation as well as the bridge
 	// error. If the old UI changes, do not silently claim this is its message.
 	shell, err := os.ReadFile("native_shell.js")
@@ -312,6 +339,7 @@ func TestOldAppRefusesRealBundle(t *testing.T) {
 		!strings.Contains(string(shell), "const failText = (install,err) => verb(install)+' failed: '+err.message+' Check again before retrying.';") ||
 		!strings.Contains(string(shell), "const install = offer.Install === true, label = bundleVerb();") ||
 		!strings.Contains(string(shell), "const result = await rc.applyAddon(offer.Version);") ||
+		!strings.Contains(string(shell), ": (offer.Notes || 'No compatible new addon update is available.')+' No files changed.'") ||
 		!strings.Contains(string(shell), "} catch(err) { bundleStatus(label === 'Repair' ? 'Repair failed: '+err.message+' Check again before retrying.' : failText(install, err)); }") {
 		t.Fatal("old shell error presentation changed; review the exact user-facing message")
 	}
@@ -329,10 +357,33 @@ func TestOldAppRefusesRealBundle(t *testing.T) {
 					}
 					a := &App{}
 					a.setGame(game)
-					u := guildUpdaterForVersion(t, payload, "1.7.0")
-					release := guildInfoForVersion("1.7.0")
+					// The real release publishes ONLY the new name. Fallback below is a
+					// deliberately forced old-name offer to exercise the old installer;
+					// it is not reachable through normal Check on that release.
+					fallback := route == "installer-fallback"
+					u := guildUpdaterForVersion(t, payload, oldAppVersion)
+					release := guildInfoForVersion("1.8.0")
 					release.HasApp = true
-					calls := 0
+					calls, checks, downloads := 0, 0, 0
+					check := func(context.Context, string) (AddonReleaseInfo, error) { return release, nil }
+					if !fallback {
+						checker := addonTestUpdater(t, func(w http.ResponseWriter, r *http.Request) {
+							if r.URL.Path != "/repos/thegamersvibe/relax-coach/releases/latest" {
+								downloads++
+								t.Errorf("renamed release must not download: %s", r.URL.Path)
+								http.NotFound(w, r)
+								return
+							}
+							checks++
+							prefix := addonReleasePrefix + "download/v1.8.0/"
+							var assets []map[string]any
+							for _, name := range []string{"RelaxCoach-RaidBundle-1.8.0.zip", "SHA256SUMS.txt", "RelaxCoach.exe"} {
+								assets = append(assets, map[string]any{"name": name, "browser_download_url": prefix + name})
+							}
+							json.NewEncoder(w).Encode(map[string]any{"tag_name": "v1.8.0", "assets": assets})
+						})
+						check = checker.check
+					}
 					var installerErr error
 					b := newNativeBridge(a, false, nativeServices{
 						selfUpdate: func() bool { return true },
@@ -342,7 +393,7 @@ func TestOldAppRefusesRealBundle(t *testing.T) {
 							}
 							return "", "", nil
 						},
-						check: func(context.Context, string) (AddonReleaseInfo, error) { return release, nil },
+						check: check,
 						apply: func(ctx context.Context, game string, r AddonReleaseInfo) (AddonUpdateResult, error) {
 							calls++
 							result, err := u.apply(ctx, game, r)
@@ -358,13 +409,18 @@ func TestOldAppRefusesRealBundle(t *testing.T) {
 						t.Fatal(err)
 					}
 					offer := value.(nativeOffer)
-					fallback := route == "installer-fallback"
-					if offer.Available != fallback || offer.NeedsApp == fallback || offer.Install || offer.Repair {
+					if offer.Available != fallback || offer.NeedsApp || offer.Install || offer.Repair {
 						t.Fatalf("unexpected offer: %+v", offer)
 					}
-					value, err = b.Call("applyAddon", nativeArgs("1.7.0"))
+					if !fallback && (offer.Notes != oldAppOnlyNote || offer.Version != "" || checks != 1 || downloads != 0) {
+						t.Fatalf("renamed asset did not produce the exact app-only offer without downloads: %+v checks=%d downloads=%d", offer, checks, downloads)
+					}
+					value, err = b.Call("applyAddon", nativeArgs(oldAppVersion))
 					after := oldAppDiskSnapshot(t, game)
 					versionAfter := InstalledCoachVersion(game)
+					if !fallback && (!reflect.DeepEqual(before, after) || downloads != 0) {
+						t.Fatal("app-only route changed disk or downloaded a payload")
+					}
 					want, wantCalls := oldAppFirstError, 0
 					if fallback {
 						want, wantCalls = oldAppFallbackError, 1
@@ -399,9 +455,11 @@ func TestOldAppRefusesRealBundle(t *testing.T) {
 					if fallback && (installerErr == nil || installerErr.Error() != oldAppUnknownFile) {
 						t.Fatalf("unexpected installer refusal: %v", installerErr)
 					}
-					t.Logf("exact UI message: %s", "Update failed: "+err.Error()+" Check again before retrying.")
 					if fallback {
-						t.Log("NOTE: fallback is an allowlist refusal plus manual app link, not the normal 'Update the app first' message")
+						t.Logf("forced installer-fallback UI message: %s", "Update failed: "+err.Error()+" Check again before retrying.")
+					} else {
+						t.Logf("Check status prefix: %s No files changed.", offer.Notes)
+						t.Log("normal route: app-only release, no addon download; use Update App first")
 					}
 				})
 			}
