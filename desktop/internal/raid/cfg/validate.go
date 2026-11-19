@@ -35,7 +35,7 @@ func (s Scoring) validate() error {
 		return fmt.Errorf("invalid confidence thresholds or cohort minimums")
 	}
 	f := s.Fights
-	if f.PullGapMs <= 0 || f.TailMs < 0 || f.TankMinBossSwingShare <= 0 || !fraction(f.TankMinBossSwingShare) || f.HealerMinHealingDamageRatio <= 0 || f.BossUnitSelection != "highest_max_health_damaged_creature" {
+	if f.PullGapMs <= 0 || f.TailMs < 0 || f.TankMinBossSwingShare <= 0 || !fraction(f.TankMinBossSwingShare) || f.TankMinTopRatio <= 0 || !fraction(f.TankMinTopRatio) || f.ReentryGapMs <= 0 || f.HealerMinHealingDamageRatio <= 0 || f.BossUnitSelection != "highest_max_health_damaged_creature" {
 		return fmt.Errorf("invalid fights timing, role rule or boss-unit selection")
 	}
 	if len(s.RatioPoints) < 2 {

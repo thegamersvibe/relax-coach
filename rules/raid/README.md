@@ -57,8 +57,14 @@ All file structs embed `Metadata { Schema int; Version, Source string }`.
 - `Scoring.Fights.PullGapMs int64` = 10000; `TailMs int64` = 2500.
 - `Scoring.Confidence.LowConfidenceFightMs int64` = 45000;
   `ShortFightWeight float64` = 0.5 (R7 applies the weight).
-- `Scoring.Fights.TankMinBossSwingShare float64` = 0.3: **at least** this
-  fraction of boss units' landed swings, not the source-side swing stream.
+- `Scoring.Fights.TankMinBossSwingShare float64` = 0.15 and
+  `TankMinTopRatio float64` = 0.5: a tank takes **at least** 15% of the boss
+  units' landed swings (not the source-side swing stream) **and** at least half
+  as many as the top taker, so four tanks sharing a boss are all tanks.
+- `ReentryGapMs int64` = 1800000 (30 minutes, unproven: no log yet shows a
+  return): a ZONE_CHANGE out of an instance and back into the same instance id
+  within this gap, with no other instance in between, continues the run; lines
+  outside belong to no fight.
 - `HealerRequiresNotTank bool` = true, `HealerMinHealingDamageRatio float64`
   = 1, `HealerStrictlyGreater bool` = true. Test tank first; otherwise compare
   effective healing with damage done using the configured strictness. No swing

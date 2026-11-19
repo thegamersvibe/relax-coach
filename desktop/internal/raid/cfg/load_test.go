@@ -61,7 +61,7 @@ func TestLoadConfig(t *testing.T) {
 	if s.Fights.PullGapMs != 10000 || s.Fights.TailMs != 2500 || s.Confidence.LowConfidenceFightMs != 45000 {
 		t.Fatalf("fight defaults: %+v, %+v", s.Fights, s.Confidence)
 	}
-	if s.Fights.TankMinBossSwingShare != .3 || !s.Fights.HealerRequiresNotTank || s.Fights.HealerMinHealingDamageRatio != 1 || !s.Fights.HealerStrictlyGreater {
+	if s.Fights.TankMinBossSwingShare != .15 || s.Fights.TankMinTopRatio != .5 || s.Fights.ReentryGapMs != 1800000 || !s.Fights.HealerRequiresNotTank || s.Fights.HealerMinHealingDamageRatio != 1 || !s.Fights.HealerStrictlyGreater {
 		t.Fatalf("role defaults: %+v", s.Fights)
 	}
 	if !reflect.DeepEqual(s.Weights.DPS, cfg.PartWeights{Output: 35, Activity: 25, Mechanics: 20, Utility: 10, Preparation: 10}) ||

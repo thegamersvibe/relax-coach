@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "source": "Relax Raid DESIGN sections 7 and 9, DEC-03; PHASE1-BRIEF R4/R7. Starting parameters, not calibrated. Null parameters have no supplied starting value: consumers must leave that measure unmeasured, never substitute zero.",
   "weights": {
     "dps": {
@@ -64,7 +64,9 @@
   "fights": {
     "pull_gap_ms": 10000,
     "tail_ms": 2500,
-    "tank_min_boss_swing_share": 0.3,
+    "tank_min_boss_swing_share": 0.15,
+      "tank_min_top_ratio": 0.5,
+      "reentry_gap_ms": 1800000,
     "healer_requires_not_tank": true,
     "healer_min_healing_damage_ratio": 1,
     "healer_strictly_greater": true,

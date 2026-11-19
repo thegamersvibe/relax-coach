@@ -1,21 +1,128 @@
 [
-  {"file":"desktop/internal/raid/cfg/decode.go","old":"d.DisallowUnknownFields()","new":"// unknown keys accepted","killed_by":"TestRejectUnknownKeys"},
-  {"file":"desktop/internal/raid/cfg/decode.go","old":"if m.Schema != 1 {","new":"if false {","killed_by":"TestRejectVersions"},
-  {"file":"desktop/internal/raid/cfg/decode.go","old":"if seen[name] {","new":"if false {","killed_by":"TestRejectJSONShape"},
-  {"file":"desktop/internal/raid/cfg/decode.go","old":"return fmt.Errorf(\"%s.%s is required (keys are case sensitive)\", path, name)","new":"continue","killed_by":"TestRejectJSONShape"},
-  {"file":"desktop/internal/raid/cfg/decode.go","old":"key != name && strings.EqualFold(key, name)","new":"false && strings.EqualFold(key, name)","killed_by":"TestRejectCaseFoldedAliases"},
-  {"file":"desktop/internal/raid/cfg/validate.go","old":"if s.ID != 0 && s.Source == nil {","new":"if false {","killed_by":"TestSpellIDRequiresProvenance"},
-  {"file":"desktop/internal/raid/cfg/validate.go","old":"if !seen[id] {","new":"if false {","killed_by":"TestValidateProfiles"},
-  {"file":"desktop/internal/raid/cfg/validate.go","old":" || (oneOf(e.Scope, \"personal\", \"unknown\") && e.Credit)","new":"","killed_by":"TestValidateCatalogues"},
-  {"file":"desktop/internal/raid/cfg/validate.go","old":" || m.EvidenceSource.Kind != \"real_log\"","new":"","killed_by":"TestEnabledRulesRequireEvidence"},
-  {"file":"desktop/internal/raid/cfg/validate.go","old":"n.TrashShare > n.MaxTrashShare","new":"false","killed_by":"TestValidateScoring"},
-  {"file":"desktop/internal/raid/cfg/validate.go","old":" || n.WipeWeight >= n.KillWeight","new":"","killed_by":"TestValidateScoring"},
-  {"file":"desktop/internal/raid/cfg/lookup.go","old":"groupSize > c.Instances.RaidGroupSizeAbove","new":"groupSize >= c.Instances.RaidGroupSizeAbove","killed_by":"TestInstanceClassification"},
-  {"file":"desktop/internal/raid/cfg/lookup.go","old":"return model.RunRaid, false","new":"return model.RunRaid, true","killed_by":"TestInstanceClassification"},
-  {"file":"desktop/internal/raid/cfg/lookup.go","old":"if e.ID == id {","new":"if e.ID != id {","killed_by":"TestBossOnlyDefaultAndOverrides"},
-  {"file":"desktop/internal/raid/cfg/lookup.go","old":"Mode: c.Encounters.DefaultTargetRule","new":"Mode: \"all\"","killed_by":"TestBossOnlyDefaultAndOverrides"},
-  {"file":"desktop/internal/raid/cfg/load.go","old":"func Load(dir string) (*Config, error) {\n\tc := new(Config)","new":"var cached *Config\n\nfunc Load(dir string) (*Config, error) {\n\tif cached != nil { return cached, nil }; c := new(Config); cached = c","killed_by":"TestReloadWeight"},
-  {"file":"desktop/internal/raid/cfg/load.go","old":"func Load(dir string) (*Config, error) {\n\tc := new(Config)","new":"var cached *Config\n\nfunc Load(dir string) (*Config, error) {\n\tif cached != nil { return cached, nil }; c := new(Config); cached = c","killed_by":"TestReloadThreshold"},
-  {"file":"desktop/internal/raid/cfg/load.go","old":"func Load(dir string) (*Config, error) {\n\tc := new(Config)","new":"var cached *Config\n\nfunc Load(dir string) (*Config, error) {\n\tif cached != nil { return cached, nil }; c := new(Config); cached = c","killed_by":"TestReloadProfile"},
-  {"file":"desktop/internal/raid/cfg/load.go","old":"func Load(dir string) (*Config, error) {\n\tc := new(Config)","new":"var cached *Config\n\nfunc Load(dir string) (*Config, error) {\n\tif cached != nil { return cached, nil }; c := new(Config); cached = c","killed_by":"TestReloadEncounter"}
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "d.DisallowUnknownFields()",
+    "new": "// unknown keys accepted",
+    "killed_by": "TestRejectUnknownKeys"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "if m.Schema != 1 {",
+    "new": "if false {",
+    "killed_by": "TestRejectVersions"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "if seen[name] {",
+    "new": "if false {",
+    "killed_by": "TestRejectJSONShape"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "return fmt.Errorf(\"%s.%s is required (keys are case sensitive)\", path, name)",
+    "new": "continue",
+    "killed_by": "TestRejectJSONShape"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "key != name && strings.EqualFold(key, name)",
+    "new": "false && strings.EqualFold(key, name)",
+    "killed_by": "TestRejectCaseFoldedAliases"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if s.ID != 0 && s.Source == nil {",
+    "new": "if false {",
+    "killed_by": "TestSpellIDRequiresProvenance"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if !seen[id] {",
+    "new": "if false {",
+    "killed_by": "TestValidateProfiles"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": " || (oneOf(e.Scope, \"personal\", \"unknown\") && e.Credit)",
+    "new": "",
+    "killed_by": "TestValidateCatalogues"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": " || m.EvidenceSource.Kind != \"real_log\"",
+    "new": "",
+    "killed_by": "TestEnabledRulesRequireEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "n.TrashShare > n.MaxTrashShare",
+    "new": "false",
+    "killed_by": "TestValidateScoring"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": " || n.WipeWeight >= n.KillWeight",
+    "new": "",
+    "killed_by": "TestValidateScoring"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/lookup.go",
+    "old": "groupSize > c.Instances.RaidGroupSizeAbove",
+    "new": "groupSize >= c.Instances.RaidGroupSizeAbove",
+    "killed_by": "TestInstanceClassification"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/lookup.go",
+    "old": "return model.RunRaid, false",
+    "new": "return model.RunRaid, true",
+    "killed_by": "TestInstanceClassification"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/lookup.go",
+    "old": "if e.ID == id {",
+    "new": "if e.ID != id {",
+    "killed_by": "TestBossOnlyDefaultAndOverrides"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/lookup.go",
+    "old": "Mode: c.Encounters.DefaultTargetRule",
+    "new": "Mode: \"all\"",
+    "killed_by": "TestBossOnlyDefaultAndOverrides"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/load.go",
+    "old": "func Load(dir string) (*Config, error) {\n\tc := new(Config)",
+    "new": "var cached *Config\n\nfunc Load(dir string) (*Config, error) {\n\tif cached != nil { return cached, nil }; c := new(Config); cached = c",
+    "killed_by": "TestReloadWeight"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/load.go",
+    "old": "func Load(dir string) (*Config, error) {\n\tc := new(Config)",
+    "new": "var cached *Config\n\nfunc Load(dir string) (*Config, error) {\n\tif cached != nil { return cached, nil }; c := new(Config); cached = c",
+    "killed_by": "TestReloadThreshold"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/load.go",
+    "old": "func Load(dir string) (*Config, error) {\n\tc := new(Config)",
+    "new": "var cached *Config\n\nfunc Load(dir string) (*Config, error) {\n\tif cached != nil { return cached, nil }; c := new(Config); cached = c",
+    "killed_by": "TestReloadProfile"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/load.go",
+    "old": "func Load(dir string) (*Config, error) {\n\tc := new(Config)",
+    "new": "var cached *Config\n\nfunc Load(dir string) (*Config, error) {\n\tif cached != nil { return cached, nil }; c := new(Config); cached = c",
+    "killed_by": "TestReloadEncounter"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": " f.TankMinTopRatio <= 0 || !fraction(f.TankMinTopRatio) ||",
+    "new": "",
+    "killed_by": "TestValidateScoring"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": " f.ReentryGapMs <= 0 ||",
+    "new": "",
+    "killed_by": "TestValidateScoring"
+  }
 ]

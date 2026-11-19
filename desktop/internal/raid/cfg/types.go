@@ -90,7 +90,9 @@ type Healer struct {
 type Fights struct {
 	PullGapMs                   int64   `json:"pull_gap_ms"`
 	TailMs                      int64   `json:"tail_ms"`
-	TankMinBossSwingShare       float64 `json:"tank_min_boss_swing_share"`
+	TankMinBossSwingShare       float64 `json:"tank_min_boss_swing_share"` // at least this share of the boss units' landed swings
+	TankMinTopRatio             float64 `json:"tank_min_top_ratio"`        // and at least this fraction of the top taker's count
+	ReentryGapMs                int64   `json:"reentry_gap_ms"`            // out and back into the same instance within this: one run
 	HealerRequiresNotTank       bool    `json:"healer_requires_not_tank"`
 	HealerMinHealingDamageRatio float64 `json:"healer_min_healing_damage_ratio"`
 	HealerStrictlyGreater       bool    `json:"healer_strictly_greater"`
