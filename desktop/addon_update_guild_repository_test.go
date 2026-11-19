@@ -14,12 +14,15 @@ import (
 // The ZIP and temporary game stay in memory / t.TempDir, never in the checkout.
 // This is not evidence for the parent's separately built release archive/EXE.
 func TestGuildRepositoryRuntimeBytes(t *testing.T) {
-	const version = "1.7.2"
+	const version = "1.8.0"
 	entries := []addonZipEntry{}
 	sources := []string{"../addon/ForeverCoach", "../addon/Journey", "../content/Journey-Content"}
 	roots := append([]string{}, guildFixtureRoots...)
 	if addonBundleRelease(version) {
 		sources, roots = append(sources, "../addon/RelaxQuestPlanner"), append(roots, addonPlannerRoot)
+	}
+	if addonRaidRelease(version) {
+		sources, roots = append(sources, "../addon/RelaxRaid"), append(roots, addonRaidRoot)
 	}
 	for i, source := range sources {
 		err := filepath.WalkDir(source, func(p string, d os.DirEntry, err error) error {
@@ -67,6 +70,17 @@ func TestGuildRepositoryRuntimeBytes(t *testing.T) {
 			t.Fatal(err)
 		}
 		manifest["plannerVersion"] = meta["version"]
+	}
+	if addonRaidRelease(version) {
+		toc, err := os.ReadFile("../addon/RelaxRaid/RelaxRaid.toc")
+		if err != nil {
+			t.Fatal(err)
+		}
+		meta, _, err := addonTOCMetadata(toc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		manifest["raidVersion"] = meta["version"]
 	}
 	payload := guildZip(t, entries, manifest)
 	u := guildUpdaterForVersion(t, payload, version)

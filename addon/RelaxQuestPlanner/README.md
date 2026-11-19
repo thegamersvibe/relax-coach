@@ -142,7 +142,8 @@ The bundle manifest already admits these Lua files; no app/updater change is nee
 ## Install
 
 From **Relax Coach v1.5.0**, Relax Quest Planner ships inside the combined Relax
-Coach bundle (`RelaxCoach-Bundle-<version>.zip`) together with Coach, Relax
+Coach bundle (`RelaxCoach-Bundle-<version>.zip`; from v1.8.0
+`RelaxCoach-RaidBundle-<version>.zip`) together with Coach, Relax
 Journey and the guide content. It is no longer a separate patch zip and needs no
 Journey files merged by hand.
 
