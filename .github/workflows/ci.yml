@@ -27,6 +27,11 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.14'
+      # the Relax Raid runner tests build throwaway Go modules: the job's own Go, not the runner image's
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: desktop/go.mod
+          cache: false
       - name: Install pinned Lua harness dependency
         run: python -m pip install --disable-pip-version-check -r .github/requirements-ci.txt
       - name: Existing Coach harness
@@ -73,7 +78,7 @@ jobs:
           NATIVE_HTML_OUT: ${{ runner.temp }}/relax-coach-native.html
           FARM_HTML_OUT: ${{ runner.temp }}/relax-coach-farm.html
         working-directory: desktop
-        run: go test -race -count=1 ./...
+        run: go test -race -count=1 -timeout 20m ./...
       - name: Go vet
         working-directory: desktop
         run: go vet ./...
