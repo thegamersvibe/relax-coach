@@ -222,6 +222,20 @@ def client(before=""):
 
 
 class UIShellTests(unittest.TestCase):
+    def test_table_who_is_ignored_without_losing_location_or_step(self):
+        lua = client()
+        lua.execute(r'''
+          local U=RelaxQuestPlanner.UI
+          ROUTES["Alpha Keep"]={title="Alpha Keep",steps={
+            {kind="accept",q=810001,name="Copper task",who={},zone="Copper City",needs={}}
+          },later={},issues={}}
+          SlashCmdList.RELAXQUESTPLANNER("dungeon Alpha Keep"); DRAIN()
+          U.RenderRoute()
+          assert(U.current.q==810001)
+          assert(U.line2:GetText()=="Copper City", "discard malformed NPC, retain zone")
+          assert(not RelaxQuestPlannerDB.lastError)
+        ''')
+
     def test_journal_block_header_and_local_preference_respects_blocks(self):
         lua = client()
         lua.execute(r'''

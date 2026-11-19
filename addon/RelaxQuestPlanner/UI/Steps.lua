@@ -225,7 +225,9 @@ function UI.RenderRoute(P)
   UI.line1:SetText("|cff" .. hex .. (VERB[s.kind] or s.kind or "Quest") .. "|r  " .. (s.name or tostring(s.q)))
   local c = UI.THEME and UI.THEME.kind[s.kind]
   if UI.stepStripe and c then UI.stepStripe:SetColorTexture(c[1], c[2], c[3], 1) end
-  local where = s.who and (s.who .. (s.zone and (" - " .. s.zone) or "")) or (s.zone or "")
+  local who = type(s.who)=="string" and s.who or nil
+  local zone = type(s.zone)=="string" and s.zone or nil
+  local where = who and (who .. (zone and (" - " .. zone) or "")) or (zone or "")
   local x, y = RQP.Number(s.x), RQP.Number(s.y)
   if x and y then where = where .. (" (%.1f, %.1f)"):format(x, y) end
   UI.line2:SetText(where)

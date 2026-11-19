@@ -147,6 +147,99 @@ def golden_routes():
     return result
 
 
+class ReviewRegressionTests(unittest.TestCase):
+    def test_accepted_repeatable_remains_in_route(self):
+        rows = {A: q('Copper task', zoneOrSort=INSIDE),
+                B: q('Tin repeat', zoneOrSort=INSIDE, specialFlags=1)}
+        for listed in (True, False):
+            with self.subTest(listed=listed):
+                entries = [dict(id=A, name='Copper task')]
+                if listed: entries.append(dict(id=B, name='Tin repeat'))
+                h = Harness(rows, entries, log=[dict(id=B, complete=False)])
+                before = h.states()
+                self.assertEqual(array(h.route().plan), [A, B])
+                self.assertEqual(h.states(), before)
+                h.g.TEST_SNAPSHOT.log = h.lua.table()
+                self.assertNotIn(B, array(h.route().plan))
+
+    def test_missing_pickup_never_uses_turnin_text(self):
+        for supplement in (False, True):
+            with self.subTest(supplement=supplement):
+                h = location_harness(turnin='At Copper City', startsInDungeon=True)
+                if supplement:
+                    h.g.TEST_ROWS[A] = None
+                    h.r.Data.Reset()
+                route = h.route()
+                pickup = action(route, 'accept')
+                self.assertEqual((pickup.where, pickup.block), ('inside', 2))
+                self.assertNotIn('Copper City', pickup.note)
+                self.assertEqual(action(route, 'turnin').where, 'outside')
+
+    def test_id_keyed_page_falls_back_without_disabling_other_dungeons(self):
+        rows = {A: q('Copper task', zoneOrSort=INSIDE)}
+        h = Harness(rows)
+        expected = plain(h.route())
+        other = h.r.Data.FOREVER_DUNGEONS[1].name
+        h.g.ForeverDungeonJournal_NS = to_lua(h.lua, dict(DB={
+            h.name: dict(quests={A: dict(id=A, name='Copper task')}),
+            other: dict(quests=[dict(id=B, name='Tin task')])}))
+        h.r.Data.Reset()
+        self.assertIsNone(h.r.Data.JournalDungeon(h.name))
+        self.assertEqual(plain(h.route()), expected)
+        self.assertEqual(h.r.Data.JournalDungeon(other)[1].id, B)
+        # A valid empty array is a real page, not an unsupported representation.
+        h.g.ForeverDungeonJournal_NS.DB[h.name].quests = h.lua.table()
+        h.r.Data.Reset()
+        self.assertEqual(len(h.r.Data.JournalDungeon(h.name)), 0)
+        self.assertTrue(h.route().journal)
+
+    def test_sparse_or_malformed_wing_disables_the_merged_page(self):
+        for malformed in ({2: dict(id=A, name='Copper task')},
+                          {A: dict(id=A, name='Copper task')},
+                          {'questsById': {A: dict(id=A, name='Copper task')}}):
+            with self.subTest(malformed=malformed):
+                h = Harness()
+                d = h.r.Data.FOREVER_DUNGEONS[13]
+                h.g.ForeverDungeonJournal_NS = to_lua(h.lua, dict(DB={
+                    d.aliases[1]: dict(quests=malformed),
+                    d.aliases[2]: dict(quests=[dict(id=B, name='Tin task')])}))
+                h.r.Data.Reset()
+                self.assertIsNone(h.r.Data.JournalDungeon(d.name))
+                self.assertIsNone(h.r.Data.Journal(B))
+
+    def test_string_levels_are_safe_for_filter_sort_and_steps(self):
+        for level in ('20-25', '30'):
+            with self.subTest(level=level):
+                h = Harness({A: q('Copper task'), B: q('Tin task', questLevel=level)},
+                            [dict(id=A, name='Copper task'), dict(id=B, name='Tin task')])
+                route = h.route(mode='game')
+                self.assertIn(B, array(route.plan))
+                self.assertEqual(action(route, 'accept', B).level, 0 if level == '20-25' else 30)
+
+    def test_journal_display_text_is_escaped_before_route_export(self):
+        raw = '|TMetal:16|t |cffff0000Copper|r |Hquest:810099|hTin|h'
+        escaped = raw.replace('|', '||')
+        for supplement in (False, True):
+            with self.subTest(supplement=supplement):
+                h = location_harness(pickup='Inside '+raw, turnin='Outside '+raw,
+                    startItem=[882001, raw], requiredItem=[882002, raw],
+                    requiredItems=[[882003, raw]], profession=raw, attunement=raw)
+                entry = h.g.ForeverDungeonJournal_NS.DB[h.name].quests[1]
+                entry.name = raw
+                if supplement: h.g.TEST_ROWS[A] = None
+                h.r.Data.Reset()
+                route = h.route()
+                for kind in ('accept', 'turnin'):
+                    self.assertIn(escaped, action(route, kind).note)
+                self.assertIn(escaped, route.preRunNotes[1].text)
+                if supplement:
+                    self.assertEqual(action(route, 'accept').name, escaped)
+                h.g.ForeverDungeonJournal_NS.QUEST_START_MAPS = to_lua(h.lua,
+                    {A: dict(mapID=880003, x=0.5, y=0.5, targetName=raw)})
+                h.r.Data.Reset()
+                self.assertEqual(h.r.Data.Pin('quest', A).who, escaped)
+
+
 class MembershipTests(unittest.TestCase):
     def test_journal_membership_without_area_and_hidden_leadin(self):
         h = Harness({A: q('Copper lead', nextQuestInChain=B), B: q('Tin target')},
@@ -336,7 +429,8 @@ class BlockTests(unittest.TestCase):
     def test_second_run_after_outside_followup(self):
         h = Harness({
             A: q('Copper token', zoneOrSort=INSIDE, startedBy={1: [IN_NPC]}, finishedBy={1: [OUT_NPC]}),
-            B: q('Tin return', zoneOrSort=INSIDE, preQuestGroup=[A], startedBy={1: [OUT_NPC]}, finishedBy={1: [OUT_NPC]}),
+            B: q('Tin return', zoneOrSort=INSIDE, preQuestGroup=[A], startedBy={1: [OUT_NPC]},
+                 finishedBy={1: [OUT_NPC]}, objectives={1: [[IN_NPC]]}),
             C: q('Zinc return', zoneOrSort=INSIDE, preQuestGroup=[B], startedBy={1: [IN_NPC]}, finishedBy={1: [IN_NPC]}),
         }, [dict(id=id, name=name) for id,name in ((A,'Copper token'),(B,'Tin return'),(C,'Zinc return'))])
         route = h.route()
@@ -347,7 +441,8 @@ class BlockTests(unittest.TestCase):
         self.assertEqual([s.block for s in array(route.steps)], sorted(s.block for s in array(route.steps)))
 
     def test_bridge_preserves_actions_and_emits_one_header_per_block(self):
-        h = Harness({A: q('Copper task', zoneOrSort=INSIDE, startedBy={1: [OUT_NPC]}, finishedBy={1: [OUT_NPC]})},
+        h = Harness({A: q('Copper task', zoneOrSort=INSIDE, startedBy={1: [OUT_NPC]},
+                         finishedBy={1: [OUT_NPC]}, objectives={1: [[IN_NPC]]})},
                     [dict(id=A, name='Copper task', requiredItem=[882001, 'Copper kit', 1, 1])])
         route = h.route()
         h.lua.execute((ROOT / 'addon/RelaxQuestPlanner/Journey/Bridge.lua').read_text())

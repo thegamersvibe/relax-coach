@@ -72,7 +72,8 @@ local function journalSnapshot(source)
     local function value(v,depth)
         budget=budget-1; assert(budget>=0 and depth<=6, "journal budget")
         local t=type(v)
-        if t=="string" or t=="boolean" then return v end
+        if t=="string" then local text=v:gsub("|","||"); return text end
+        if t=="boolean" then return v end
         if t=="number" then assert(v==v and math.abs(v)<math.huge); return v end
         if t~="table" then return nil end
         local out={}
@@ -100,16 +101,30 @@ local function journalSnapshot(source)
         end
         return out
     end
-    local out={DB={},QUEST_PREREQ_CHAINS={},QUEST_PREREQ_DETAILS={},QUEST_START_MAPS={}}
+    local out={DB={},invalidPages={},QUEST_PREREQ_CHAINS={},QUEST_PREREQ_DETAILS={},QUEST_START_MAPS={}}
     assert(type(source.DB)=="table", "journal pages")
     for name,page in pairs(source.DB) do
-        assert(type(name)=="string" and type(page)=="table" and type(page.quests)=="table", "journal page")
-        local list={}
-        for _,v in ipairs(page.quests) do
-            assert(type(v)=="table", "journal entry")
-            if type(v.id)=="number" then list[#list+1]=record(v) end
-        end
-        out.DB[name]={quests=list}
+        assert(type(name)=="string", "journal page name")
+        local ok,list=pcall(function()
+            assert(type(page)=="table" and type(page.quests)=="table", "journal page")
+            -- ipairs alone silently accepts id-keyed/sparse pages as empty or
+            -- truncated. Only a dense sequence (including {}) is supported.
+            local count=0
+            for k in pairs(page.quests) do
+                budget=budget-1; assert(budget>=0, "journal budget")
+                assert(type(k)=="number" and k>=1 and k%1==0, "journal sequence")
+                count=count+1
+            end
+            local entries={}
+            for i=1,count do
+                local v=page.quests[i]
+                assert(type(v)=="table", "journal entry")
+                if type(v.id)=="number" then entries[#entries+1]=record(v) end
+            end
+            return entries
+        end)
+        if ok then out.DB[name]={quests=list}
+        else out.invalidPages[name]=true end
     end
     for _,key in ipairs({"QUEST_PREREQ_CHAINS","QUEST_PREREQ_DETAILS","QUEST_START_MAPS"}) do
         local src=source[key]
@@ -192,7 +207,8 @@ local function normalize(r,id)
     for _,k in ipairs(zeroIsAbsent) do
         if not present(r[k]) then r[k]=nil end
     end
-    r.reqLevel=r.reqLevel or 0; r.qLevel=r.qLevel or 0
+    r.reqLevel=r.reqLevel or 0; r.qLevel=tonumber(r.qLevel) or 0
+    if r.qLevel~=r.qLevel or math.abs(r.qLevel)==math.huge then r.qLevel=0 end
     r.races=r.races or 0; r.classes=r.classes or 0
     return r
 end
@@ -353,9 +369,16 @@ local function loadJournal()
     local entries,pages={},{}
     local source=fdj
     if source then
+        local invalid={}
+        for page in pairs(source.invalidPages) do
+            local canonical=canonicalOf[page]
+            if canonical then invalid[canonical.name]=true end
+        end
         for _,page in ipairs(keys(source.DB)) do
             local canonical=canonicalOf[page]
-            if canonical then
+            -- One malformed wing invalidates the merged dungeon, not unrelated
+            -- pages; never present a partial journal as authoritative membership.
+            if canonical and not invalid[canonical.name] then
                 local name=canonical.name
                 pages[name]=pages[name] or {}
                 for _,v in ipairs(source.DB[page].quests) do

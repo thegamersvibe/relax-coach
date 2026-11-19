@@ -285,7 +285,8 @@ local function journalTargets(name,p,g,entries)
     for _,j in ipairs(entries) do listed[j.id]=j end
     for _,q in ipairs(D.AllQuestIds()) do
         local r=D.Quest(q); local j=listed[q]
-        if r and not p.done[q] and not static(r,p,true) then
+        local exclusion=r and static(r,p,true)
+        if r and not p.done[q] and (not exclusion or (exclusion=="repeatable" and p.log[q])) then
             local st=state(q,p,p.done,p.log,60,g)
             local grey=g.floor>0 and r.qLevel>0 and r.qLevel<g.floor and not p.log[q]
             if not never[st] and not grey then
@@ -476,7 +477,7 @@ local function journalPlace(text,dungeon)
 end
 local function where(kind,r,dungeon)
     local j=D.Journal(r.id)
-    local text=j and (kind=="accept" and j.pickup or j.turnin)
+    local text=j and j[kind=="accept" and "pickup" or "turnin"]
     local journalWhere=journalPlace(text,dungeon)
     local sources=starters(r,kind=="turnin")
     local hasArea=false
@@ -505,6 +506,21 @@ local function where(kind,r,dungeon)
     return "unknown",false,text
 end
 local function objectivePlace(r,dungeon,target)
+    -- A dungeon category is membership, not work. A known talk/delivery quest
+    -- completes at its turn-in; it must not invent an instance visit before an
+    -- outside breadcrumb can unlock the real dungeon objective. Supplements
+    -- have no objective data, which is different from a known empty objective set.
+    if r.source=="QuestieDB" then
+        local work=false
+        for _,objectives in pairs(r.objectives) do
+            if nonempty(objectives) then work=true; break end
+        end
+        if not work then
+            local place=where("turnin",r,dungeon)
+            if place=="unknown" then place=where("accept",r,dungeon) end
+            return place
+        end
+    end
     local known,inside=false,false
     local function add(zone)
         if type(zone)=="number" and zone>0 then
@@ -612,7 +628,7 @@ local function step(kind,r,p,floor,needs,active,parentActive)
                 s.note="Starts from item "..(source.name or tostring(source.id))..(z and " (known drop source)" or " (world drop / source unknown)")
             else pin=D.Pin(source.kind,source.id) end
         elseif r.fdj then
-            s.note=(kind=="accept" and r.fdj.pickup or r.fdj.turnin) or "Location unknown (addon supplement)"
+            s.note=r.fdj[kind=="accept" and "pickup" or "turnin"] or "Location unknown (addon supplement)"
             if kind=="accept" then pin=D.Pin("quest",r.id) end
         else s.note="Location unknown; check your quest log" end
     else

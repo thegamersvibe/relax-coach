@@ -22,7 +22,9 @@ misbehaves in the native Forever client.
 - **Outside first:** **Before you go**, **Inside <dungeon>**, **After the run** and
   **Next run** separate preparation, inside pickups/objectives/turn-ins, outside
   follow-ups and a return trip. Known QuestieDB NPC/object zones win over journal
-  text; disagreements and unconfirmed locations are labelled. Preparation notes
+  text; disagreements and unconfirmed locations are labelled. Talk/delivery
+  quests use their endpoints rather than their dungeon category, so outside
+  breadcrumbs do not force an unnecessary second run. Preparation notes
   list journal-required items, professions and attunements without adding gates.
 - Journal chain order is a hint, not a new prerequisite. It never changes quest
   state or creates an action cycle; existing prerequisite claims remain intact.

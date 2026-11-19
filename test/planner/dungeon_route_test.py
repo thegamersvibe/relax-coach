@@ -8,6 +8,8 @@ from journal_test import Harness, ROOT, A, B, C, T, OUTSIDE, INSIDE, OUT_NPC, IN
 
 
 def quest(name, inside=False, pickup=OUT_NPC, turnin=OUT_NPC, **kw):
+    # Instance-work fixtures need an objective, not only a dungeon category.
+    kw.setdefault('objectives', {1: [[IN_NPC]]} if inside else {})
     return q(name, questLevel=30, zoneOrSort=INSIDE if inside else OUTSIDE,
              startedBy={1: [pickup]} if pickup else {}, finishedBy={1: [turnin]} if turnin else {}, **kw)
 
@@ -26,6 +28,30 @@ class DungeonRouteTests(unittest.TestCase):
         self.assertTrue(all(b in (1,2,3,4) for b in blocks), 'every action needs a route block')
         self.assertEqual(blocks, sorted(blocks))
         return route
+
+    def test_outside_talk_leads_do_not_force_a_second_run(self):
+        # Dungeon-tagged delivery breadcrumbs, but both NPCs are in cities.
+        # Follow-ups have real instance objectives, not just a dungeon category.
+        rows = {
+            A: quest('Copper introduction', True, nextQuestInChain=B, objectives={}),
+            B: quest('Tin components', True, preQuestGroup=[A], objectives={1: [[IN_NPC]]}),
+            C: quest('Zinc introduction', True, nextQuestInChain=T, objectives={1: [], 3: []}),
+            T: quest('Alloy records', True, preQuestGroup=[C], objectives={1: [[IN_NPC]]}),
+        }
+        js = entries({B: rows[B], T: rows[T]})
+        for log in ([], [dict(id=A, complete=False)], [dict(id=A, complete=True)]):
+            with self.subTest(log=log):
+                h = Harness(rows, js, level=31, log=log)
+                route = self.check_route(h)
+                for lead, target in ((A, B), (C, T)):
+                    self.assertEqual(action(route, 'turnin', lead).block, 1)
+                    for s in array(route.steps):
+                        if s.q == lead:
+                            self.assertEqual((s.where, s.block), ('outside', 1))
+                    self.assertEqual(action(route, 'accept', target).block, 1)
+                    self.assertEqual(action(route, 'complete', target).block, 2)
+                    self.assertEqual(action(route, 'turnin', target).block, 3)
+                self.assertFalse(any(s.block == 4 for s in array(route.steps)))
 
     def test_t1a_active_inside_turnin_and_two_missing_starters(self):
         rows = {
