@@ -207,7 +207,7 @@ Relax branding and Coach are maintained by **TheGamersVibe**. Coach is MIT-licen
 ```sh
 python3 scripts/build_rules_lua.py
 uv run --with lupa python test/harness.py
-(cd desktop && go test -race ./... && go vet ./...)
+(cd desktop && go test -race -timeout 20m ./... && go vet ./...)
 # Windows build; Go must support the version specified by desktop/go.mod:
 (cd desktop && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags '-H windowsgui' -o ../dist/RelaxCoach.exe .)
 python3 scripts/build_guild_bundle.py --exe dist/RelaxCoach.exe

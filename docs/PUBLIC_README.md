@@ -61,7 +61,7 @@ The technical source paths remain `addon/ForeverCoach` and `desktop`.
 
 - `python3 scripts/build_rules_lua.py`
 - `uv run --with lupa python test/harness.py` (also run with provider fixtures)
-- `cd desktop && go vet ./... && go test -race ./...`
+- `cd desktop && go vet ./... && go test -race -timeout 20m ./...`
 
 The legacy Coach-only asset is `RelaxCoach-<version>.zip`; it is deliberately not published for 1.4.2 and later. Current app addon updates require `RelaxCoach-Bundle-<version>.zip` (1.5.0 and later; it adds Relax Quest Planner, so apps before 1.5.0 must use Update App first). Releases 1.4.2 to 1.4.x used `RelaxCoach-Guild-<version>.zip`. App-only releases provide just `RelaxCoach.exe` and `SHA256SUMS.txt`; addon and combined guild ZIPs are included only when those packages are being released. The addon updater consumes published stable releases, not raw pushes to `main`; publishing a tested new release makes it available to players. Keep Journey and guide content out of the smaller Coach-only archive. Never include personal SavedVariables in either archive or this repository.
 
