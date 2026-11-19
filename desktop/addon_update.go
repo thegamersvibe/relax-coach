@@ -31,7 +31,8 @@ const addonBundleMinimumVersion = "1.5.0"
 // From addonRaidMinimumVersion the bundle also carries Relax Raid (PLAN R9a/R9b, app first). Apps before it
 // refuse that folder, so the bundle gets a new asset name again: an older app reports an app-only release
 // and asks for Update App first, before anything is downloaded. One constant: the release that first ships
-// RelaxRaid sets it; the app that knows the folder must be released before that.
+// RelaxRaid sets it. The app that knows the folder ships in that release or earlier (apps from 1.6.0 update
+// themselves first). That release must not also publish RelaxCoach-Bundle-<v>.zip (R9b's builder).
 const addonRaidMinimumVersion = "1.8.0"
 
 func addonRaidRelease(version string) bool {

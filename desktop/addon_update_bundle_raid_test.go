@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -266,17 +268,92 @@ func TestBundleRaidFailsClosed(t *testing.T) {
 	}
 }
 
-// The app before R9a (its fixed allowlist, simulated by the roots it knew) refuses the gate bundle without
-// changing any file: the app-first rule's other half (docs/raid/INCLUDE-PROPOSAL.md).
-func TestBundleRaidRefusedByThePreviousAllowlist(t *testing.T) {
+// SYNTHETIC (no real RelaxRaid bundle exists before R9b): the app before R9a, simulated by the roots it knew,
+// finds every path it does not know under Interface/AddOns/RelaxRaid/ and nowhere else, so it refuses the gate
+// bundle for that folder alone. The real gate (published old tag, real bundle, check_old_app_refuses_bundle.sh
+// re-pinned to the gate version) is R9b's.
+func TestBundleRaidSyntheticPreviousAppRefusesOnlyTheNewFolder(t *testing.T) {
 	gate := addonRaidMinimumVersion
-	payload := bundleZip(t, gate, nil)
 	old := addonGuildRootsFor("1.7.2")
-	if addonGuildPath(addonRaidRoot+"/RelaxRaid.toc", false, addonPublicFilesForVersion(gate), old) {
-		t.Fatal("the pre-R9a roots accept a RelaxRaid file")
+	coach := addonPublicFilesForVersion(gate)
+	unknown := []string{}
+	for _, e := range funModeEntries(gate) {
+		if !addonGuildPath(e.name, false, coach, old) {
+			unknown = append(unknown, e.name)
+		}
 	}
-	if len(payload) == 0 {
-		t.Fatal("empty fixture")
+	if len(unknown) != len(raidFixtureEntries()) {
+		t.Fatalf("paths the old app does not know: %v", unknown)
+	}
+	for _, name := range unknown {
+		if !strings.HasPrefix(name, addonRaidRoot+"/") {
+			t.Fatalf("the old app would also refuse %s, outside RelaxRaid", name)
+		}
+	}
+}
+
+// A gate release that also carries the old asset name: the new app takes the raid bundle only. A gate release
+// with only the old name is not offered.
+func TestRaidReleaseSelection(t *testing.T) {
+	gate := addonRaidMinimumVersion
+	old := "RelaxCoach-Bundle-" + gate + ".zip"
+	both := func(r map[string]any) {
+		r["assets"] = append(r["assets"].([]map[string]any), map[string]any{"name": old, "browser_download_url": addonReleasePrefix + "download/v" + gate + "/" + old})
+	}
+	onlyOld := func(r map[string]any) {
+		r["assets"].([]map[string]any)[0] = map[string]any{"name": old, "browser_download_url": addonReleasePrefix + "download/v" + gate + "/" + old}
+	}
+	for _, tc := range []struct {
+		name      string
+		mutate    func(map[string]any)
+		available bool
+	}{{"both names", both, true}, {"old name only", onlyOld, false}} {
+		t.Run(tc.name, func(t *testing.T) {
+			u := addonTestUpdater(t, func(w http.ResponseWriter, r *http.Request) {
+				body := guildTestRelease(gate)
+				tc.mutate(body)
+				json.NewEncoder(w).Encode(body)
+			})
+			got, err := u.check(context.Background(), "1.7.2")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Available != tc.available {
+				t.Fatalf("availability: %+v", got)
+			}
+			if tc.available && (got.AssetName != "RelaxCoach-RaidBundle-"+gate+".zip" || !strings.HasSuffix(got.AssetURL, "/RelaxCoach-RaidBundle-"+gate+".zip")) {
+				t.Fatalf("took %s (%s), want the raid bundle", got.AssetName, got.AssetURL)
+			}
+			if !tc.available && !strings.Contains(got.Notes, "RelaxCoach-RaidBundle-"+gate+".zip") {
+				t.Fatalf("reason does not name the raid bundle: %+v", got)
+			}
+		})
+	}
+}
+
+// A RelaxRaid folder below the gate (a manual copy, or left after a restore) is listed as present, does not make
+// the install partial, and the first gate bundle backs it up byte-for-byte and replaces it.
+func TestBundleRaidCopyBelowTheGateThenFirstGateBundle(t *testing.T) {
+	game := guildGame(t)
+	u := guildUpdaterForVersion(t, bundleZip(t, "1.7.2", nil), "1.7.2")
+	if _, err := u.apply(context.Background(), game, guildInfoForVersion("1.7.2")); err != nil {
+		t.Fatal(err)
+	}
+	before := raidManualCopy(t, game)
+	s := InstalledBundleState(game)
+	if s.State != "installed" || len(s.MissingFolders) != 0 || !strings.Contains(strings.Join(s.PresentFolders, ","), "RelaxRaid") {
+		t.Fatalf("state below the gate: %+v", s)
+	}
+	gate := addonRaidMinimumVersion
+	u = guildUpdaterForVersion(t, bundleZip(t, gate, nil), gate)
+	result, err := u.apply(context.Background(), game, guildInfoForVersion(gate))
+	if err != nil {
+		t.Fatal(err)
+	}
+	raidInstalledMatches(t, game)
+	sameHashes(t, "RelaxRaid backup", addonTreeHashes(t, filepath.Join(result.BackupPath, filepath.FromSlash(addonRaidRoot))), before)
+	if s := InstalledBundleState(game); s.State != "installed" {
+		t.Fatalf("state after the gate bundle: %+v", s)
 	}
 }
 
