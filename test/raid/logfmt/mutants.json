@@ -1,0 +1,92 @@
+[
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "if !ok {\n\t\treturn model.Event{}, UnknownWidth, true",
+    "new": "if !ok && false {\n\t\treturn model.Event{}, UnknownWidth, true",
+    "killed_by": "TestKnownWidthSkippedAndOptionalNumbersStayUnknown"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "v, err := strconv.ParseInt(s, 10, 64)\n\tif err != nil {\n\t\treturn model.Opt{}",
+    "new": "v, err := strconv.ParseInt(s, 10, 64)\n\tif err != nil {\n\t\treturn model.Some(0)",
+    "killed_by": "TestKnownWidthSkippedAndOptionalNumbersStayUnknown"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "return strings.Clone(s)",
+    "new": "return s",
+    "killed_by": "TestTypedEventsDoNotRetainWholeLines"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "e.InfoUnit, e.InfoOwnerID = absent(f[p]), absent(f[p+1])",
+    "new": "e.InfoUnit, e.InfoOwnerID = e.Src.ID, absent(f[p+1])",
+    "killed_by": "TestDamageLayoutsAndAdvancedAttribution"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "case model.Damage:\n",
+    "new": "case model.Damage:\n e.Raw=f\n",
+    "killed_by": "TestDamageLayoutsAndAdvancedAttribution"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "e.DiedFlag = number(f[p])",
+    "new": "e.DiedFlag = model.Some(0)",
+    "killed_by": "TestDeathsAndKnownOther"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "schema.kind == model.Absorb && len(f) == 22",
+    "new": "schema.kind == model.Absorb && len(f) == 19",
+    "killed_by": "TestMissAndAbsorbWidths"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "e.Amount, e.Overheal, e.Absorbed = number(f[p]), number(f[p+2]), number(f[p+3])",
+    "new": "e.Amount, e.Overheal, e.Absorbed = number(f[p]), model.Some(0), number(f[p+3])",
+    "killed_by": "TestCombatFamilies"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/layouts.go",
+    "old": "damageFormat(38, model.SwingSource, false, false)",
+    "new": "damageFormat(38, model.SwingLanded, false, false)",
+    "killed_by": "TestDamageLayoutsAndAdvancedAttribution"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/fields.go",
+    "old": "if (c == ']' && open != '[') || (c == ')' && open != '(') {",
+    "new": "if false && open != 0 {",
+    "killed_by": "TestCombatantNestedListsAndMalformedCollections"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/decode.go",
+    "old": "offset += n",
+    "new": "offset += n-1",
+    "killed_by": "TestEveryByteCutAndExactOffsets"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/decode.go",
+    "old": "r.HeadersSeen++",
+    "new": "r.Parsed++",
+    "killed_by": "TestReportRepeatedHeadersAndFieldCountEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/decode.go",
+    "old": "if schema.widths[len(fields)] {",
+    "new": "if false {",
+    "killed_by": "TestReportRepeatedHeadersAndFieldCountEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/reader.go",
+    "old": "n += int64(len(part))",
+    "new": "n = int64(len(part))",
+    "killed_by": "TestOversizedLineResumesWithoutLosingOffsets"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/structure.go",
+    "old": "e.Enc.Success, e.Enc.FightMs = number(f[5]), number(f[6])",
+    "new": "e.Enc.InstanceID = number(f[5])",
+    "killed_by": "TestEncounterAndZonePayloadsReportedWipeAndRaid"
+  }
+]

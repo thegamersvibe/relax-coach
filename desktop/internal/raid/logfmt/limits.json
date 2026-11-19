@@ -1,0 +1,4 @@
+{
+  "maxLineBytes": 1048576,
+  "source": "Decoder safety budget, including the line ending; oversized lines are drained, counted and skipped."
+}

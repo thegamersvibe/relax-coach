@@ -1,0 +1,65 @@
+# Decoder contract and test data
+
+`logfmt.Decode(io.Reader, *ParseReport)` yields owned `model.Event` values lazily.
+It never opens a path, closes the reader, uploads data or changes the model.
+Use `fixture.Write`, `Actor`, `Advanced` and `Combatant` to build invented log
+rows. Fixture production code imports no decoder code; decoder production code
+imports no fixture code. The test fixtures use invented names and identifiers.
+
+## Accounting and boundaries
+
+- `LinesRead = Parsed + HeadersSeen + sum(Skipped)`. Unknown names are yielded as
+  `Other` and included in `Parsed`; `UnknownEvents` is a separate breakdown, not
+  an additional term in that equation. Every known name has an explicit width
+  table; an unsupported width is a skip, not an `Other` fallback.
+- A header is a boundary event. The latest accepted header is in `report.Header`
+  **before** its boundary is yielded. It includes the line number so glue can
+  hand the right metadata to a segment consumer. No history of all headers is
+  retained. `Header.Raw` stays empty under this lane's supplied hard rule.
+- Only `Other` and `CombatantInfo` retain `Raw`. Typed strings are copied so an
+  actor identifier cannot accidentally retain the entire source line.
+- Byte offsets are zero-based; line numbers are one-based; length includes LF
+  or CRLF. Skipped input still advances the byte position. A final unterminated
+  line is skipped even when its tokens happen to look complete; parse a fresh
+  snapshot after more bytes arrive. Read failures are in `report.ReadError`.
+- `First` and `Last` are valid timestamp observations in file order. `TimeMs`
+  is the written wall time, not UTC; `OffsetH` is separate. Advanced-on/off
+  evidence comes only from accepted widths that support the advanced block,
+  not header claims. A header-only file therefore has unknown evidence.
+- `limits.json` caps one physical line, including its line ending. Oversized
+  lines are drained without accumulating them, counted and skipped; reading
+  continues. Counts and names are retained, not raw skipped input.
+
+## Typed field conventions and unresolved seams
+
+- Stats are COMBATANT_INFO fields 2–25, in order. Talents, gear and auras are
+  decoded; unknown gear extras and the complete combatant fields remain raw.
+  No enchant meaning, class/spec mapping or item database is invented.
+- Optional invalid/unavailable numbers stay absent, distinct from a present
+  zero. Integral decimal spellings in energize are accepted; a fractional power
+  amount is absent because `model.Opt` cannot represent fractions. Position
+  samples are hundredths of a yard, rounded to the nearest hundredth.
+- Absorb `Src` and `Dst` preserve the logged common actors. `ExtraSpellID` is the
+  shield spell and `Amount` the shield amount, for both widths. The supplied
+  model has no separate shield-caster actor: that shared-model addition needs
+  its owner, not an overload of `InfoOwnerID` or a silent actor replacement.
+- The brief requests Header.Raw for fights, but this lane's hard rule forbids
+  it. R4 needs the typed header metadata handoff above or an approved shared
+  header field; this package does not edit model to settle that conflict.
+
+## Evidence
+
+Format layouts were implemented from the lane's PHASE1-BRIEF R3 and PROBES
+P1-full/P1-second descriptions, not copied parser code. Escape-heavy names,
+repeated live headers, nonadvanced layouts, a wipe and forty-player encounters
+are synthetic format-reported cases, not claims of native observation.
+
+The tests include every-byte cuts, mixed line endings, reader failure and early
+cancellation, oversized-line recovery, retained-event memory, and a generated
+200 MiB file under a fixed heap ceiling. Module registration enables the normal
+raid runner; mutants are run separately by CI. The real-log test is skipped
+unless `RELAX_RAID_REAL_LOGS` names a local folder containing the two reference
+files. It emits only aggregate counts and event-name/field-count diagnostics.
+Never set that variable in CI or commit private input or output with actors.
+
+No native game or Windows acceptance was run (alpha, owner's decision).
