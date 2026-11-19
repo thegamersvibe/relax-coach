@@ -45,8 +45,12 @@ func makeDetail(f model.Fight, p Params) Detail {
 		if tl := d.Timelines[dst]; tl != nil && src != dst {
 			tl.Events = append(tl.Events, e)
 		}
-		if tl := d.Timelines[e.InfoUnit]; tl != nil && (e.HP.Present || e.HPMax.Present || e.X.Present || e.Y.Present || e.Power.Present || e.PowerMax.Present || e.PowerType.Present) {
-			tl.Samples = append(tl.Samples, Sample{TimeMs: e.TimeMs, HP: e.HP, HPMax: e.HPMax, X: e.X, Y: e.Y, Power: e.Power, PowerMax: e.PowerMax, PowerType: e.PowerType})
+		power, powerMax, powerType := e.Power, e.PowerMax, e.PowerType
+		if (powerMax.Present && powerMax.V == 0) || (powerType.Present && powerType.V == healthCostPowerType) {
+			power, powerMax, powerType = model.Opt{}, model.Opt{}, model.Opt{} // no bar, or a health-cost cast
+		}
+		if tl := d.Timelines[e.InfoUnit]; tl != nil && (e.HP.Present || e.HPMax.Present || e.X.Present || e.Y.Present || power.Present || powerMax.Present || powerType.Present) {
+			tl.Samples = append(tl.Samples, Sample{TimeMs: e.TimeMs, HP: e.HP, HPMax: e.HPMax, X: e.X, Y: e.Y, Power: power, PowerMax: powerMax, PowerType: powerType})
 		}
 		if e.IsDeath() {
 			if tl := d.Timelines[e.Dst.ID]; tl != nil {
@@ -145,3 +149,7 @@ func makeDetail(f model.Fight, p Params) Detail {
 	}
 	return d
 }
+
+// healthCostPowerType is the type the log writes on a health-cost cast; its current and maximum repeat the
+// health fields, so it is not a power sample.
+const healthCostPowerType = -2

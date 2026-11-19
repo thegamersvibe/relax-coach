@@ -28,6 +28,28 @@ func TestPowerSamplesBelongToInfoUnit(t *testing.T) {
 		t.Fatal("power borrowed from another unit")
 	}
 }
+
+// No power sample without a power bar (PowerMax 0, a creature's 0 of 0) or from a health-cost cast (type -2,
+// whose current/max repeat health). Health and position on the same line are still sampled.
+func TestNoPowerSampleWithoutABarOrFromHealthCost(t *testing.T) {
+	es := boss(7, 1000)
+	nobar := modeltest.At(1004).Src(alia).Dst(bram).Power(0, 0, 1).Build()
+	nobar.InfoUnit, nobar.HP = bram.ID, model.Some(70)
+	health := modeltest.At(1005).Src(alia).Dst(bram).Power(3848, 4014, -2).Build()
+	health.InfoUnit = alia.ID
+	energy := modeltest.At(1006).Src(alia).Dst(bram).Power(62, 115, 3).Build()
+	energy.InfoUnit = alia.ID
+	es = append(es[:4], append([]model.Event{nobar, health, energy}, es[4:]...)...)
+	d := only(t, build(t, es, params())).Details[0]
+	bs, as := d.Timelines[bram.ID].Samples, d.Timelines[alia.ID].Samples
+	if len(bs) != 1 || bs[0].HP != model.Some(70) || bs[0].Power.Present || bs[0].PowerMax.Present || bs[0].PowerType.Present {
+		t.Fatalf("no bar: health kept, no power: %+v", bs)
+	}
+	if len(as) != 1 || as[0].Power != model.Some(62) || as[0].PowerMax != model.Some(115) || as[0].PowerType != model.Some(3) {
+		t.Fatalf("health cost gives no sample, energy does: %+v", as)
+	}
+}
+
 func TestModelFightRangeAndSpecs(t *testing.T) {
 	es := boss(7, 1000)
 	for i := range es {
