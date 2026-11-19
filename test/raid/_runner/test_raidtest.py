@@ -310,6 +310,43 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(rc, 0, out)
 
 
+    def test_go_result_line_and_exit_code_must_agree(self):
+        # a TestMain that runs the tests but always exits 0: the FAIL line is there, the exit says pass -> refused;
+        # a TestMain that never calls m.Run: no result line -> refused
+        exit0 = GO_TEST.replace('import (\n\t"testing"\n\t"time"\n)', 'import (\n\t"os"\n\t"testing"\n\t"time"\n)') + \
+            "\nfunc TestMain(m *testing.M) { m.Run(); os.Exit(0) }\n"
+        go_module(self.t, [{"file": "desktop/internal/raid/probe/probe.go", "old": "return 1", "new": "return 2", "killed_by": "TestValue"}],
+                  test_src=exit0)
+        rc, out = self.t.run("--mutants", "g")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("REFUSED", out)
+        self.assertIn("exited 0", out)
+        self.assertNotIn("KILLED", out)
+        norun = GO_TEST + "\nfunc TestMain(m *testing.M) {}\n"
+        go_module(self.t, [{"file": "desktop/internal/raid/probe/probe.go", "old": "return 1", "new": "return 2", "killed_by": "TestValue"}],
+                  test_src=norun)
+        rc, out = self.t.run("--mutants", "g")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("did not run", out)
+        self.assertNotIn("KILLED", out)
+
+    def test_py_result_line_and_exit_code_must_agree(self):
+        # the test fails but the script exits 0 anyway
+        swallow = PASSING.replace("unittest.main()", "unittest.main(exit=False)")
+        self.one_py_module([{"file": "lib/a/x.py", "old": "VALUE = 1", "new": "VALUE = 2", "killed_by": "test_value"}], test=swallow)
+        rc, out = self.t.run("--mutants", "a")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("exited 0", out)
+        self.assertNotIn("KILLED", out)
+
+    def test_py_mutant_that_does_not_compile_refused(self):
+        self.one_py_module([{"file": "lib/a/x.py", "old": "VALUE = 1", "new": "VALUE = (", "killed_by": "test_value"}])
+        rc, out = self.t.run("--mutants", "a")
+        self.assertEqual(rc, 1, out)
+        self.assertIn("does not compile", out)
+        self.assertNotIn("KILLED", out)
+
+
 RULES = os.path.join(os.path.dirname(RUNNER), "..", "desktop", "internal", "raid")
 
 
@@ -348,7 +385,8 @@ class RulesTests(unittest.TestCase):
 
     def test_number_literals_above_999(self):
         red = (("1000", "1000"), ("1e3", "1000"), ("1000.0", "1000"), ("999 + 1", "1000"), ("-(2 * 600)", "-1200"),
-               ("0x3E8", "1000"), ("1_000", "1000"), ("1 << 10", "1024"), ("1000 * n", "1000"))
+               ("0x3E8", "1000"), ("1_000", "1000"), ("1 << 10", "1024"), ("1000 * n", "1000"),
+               ("12345 / 100", "12345"), ("25000 - 24999", "25000"))
         for k, (src, _) in enumerate(red):  # one file per case, so each finding names its own case
             self.t.write("desktop/internal/raid/logfmt/r%d.go" % k, "package logfmt\n\nvar x%d = %s\n" % (k, src))
         self.t.write("desktop/internal/raid/logfmt/n.go", "package logfmt\n\nvar n = 1\n")

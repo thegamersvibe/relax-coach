@@ -3,8 +3,9 @@ package raid_test
 // Structure rules for desktop/internal/raid (PLAN.md 3.1, DEC-36):
 //   - TestImports: a package imports only the raid packages its imports.json entry lists, never package main or
 //     anything else under desktop/, and every package has an entry.
-//   - TestNoLargeLiterals: no number above 999 in non-test code, written as a literal or a literal-only expression
-//     (1000, 1e3, 1000.0, 999+1), so spell, item and encounter ids live in data files.
+//   - TestNoLargeLiterals: no number above 999 in non-test code, neither as a literal nor as the value of a
+//     literal-only expression (1000, 1e3, 1000.0, 999+1, 12345/100, 25000-24999), so spell, item and encounter ids
+//     live in data files.
 
 import (
 	"encoding/json"
@@ -180,7 +181,7 @@ func TestNoLargeLiterals(t *testing.T) {
 			if constant.Compare(abs, token.GTR, limit) && literalExemptions[where] == "" {
 				bad = append(bad, where+" "+v.ExactString())
 			}
-			return false // a literal-only expression is judged as a whole, once
+			return true // and each literal inside it too: 12345/100 is red for 12345, 999+1 for the sum
 		})
 		return nil
 	})

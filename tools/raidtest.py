@@ -17,7 +17,9 @@ A mutant is checked like this, and anything that is not a clear kill or survival
   - the killed_by test must exist and pass on clean code (the baseline), in the same setting the mutant runs in;
   - with the mutation, the killed_by test must actually run: a build error, a selector that matches nothing or
     a timeout is a refusal, not a kill;
-  - KILLED only when that named test ran and failed; SURVIVED when it ran and passed.
+  - KILLED only when that named test's FAIL line is there AND the command exited non-zero; SURVIVED when its PASS
+    line is there AND the exit is zero; the baseline needs PASS and exit zero; anything else is refused;
+  - a Python mutant must compile, or it is refused (a syntax error is not a kill).
 Product files are never written: a Go mutant is swapped in with go test -overlay; a Lua or Python mutant runs in a
 temporary copy of the module's files, its declared dependencies' files and the shared support code, with -v -k.
 Exit 1 when a module fails, a mutant survives or is refused, or a module runs longer than the limit.
@@ -149,7 +151,10 @@ def py_named(output, name):
 
 
 def run_named(cmd, cwd, kind, name, limit):
-    """Run one named test; returns 'pass' / 'fail' and the output, or raises Refused."""
+    """Run one named test; returns 'pass' / 'fail' and the output, or raises Refused.
+    'pass' needs the test's own PASS/ok line AND exit 0; 'fail' its FAIL/ERROR line AND a non-zero exit. A result line
+    that the exit code contradicts (a TestMain that exits 0 anyway, say), or no result line at all (a TestMain that
+    never calls m.Run), is a refusal."""
     try:
         proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=limit + 5)
     except subprocess.TimeoutExpired:
@@ -163,6 +168,8 @@ def run_named(cmd, cwd, kind, name, limit):
         state = py_named(out, name)
     if state is None:
         raise Refused("test %s did not run (rc %d):\n%s" % (name, proc.returncode, out[-300:]))
+    if (state == "pass") != (proc.returncode == 0):
+        raise Refused("test %s reported %s but the command exited %d" % (name, state, proc.returncode))
     return state, out
 
 
@@ -226,6 +233,11 @@ def run_mutant(root, spec, mods, m, limit):
             state, _ = run_named(cmd, tmp, spec["kind"], name, limit)
             if state != "pass":
                 raise Refused("baseline: %s fails on clean code (in the mutant copy)" % name)
+            if m["file"].endswith(".py"):
+                try:
+                    compile(mutated, m["file"], "exec")
+                except SyntaxError as e:
+                    raise Refused("the mutant does not compile: %s" % e)
             with open(os.path.join(tmp, m["file"]), "w", encoding="utf-8") as f:
                 f.write(mutated)
             state, out = run_named(cmd, tmp, spec["kind"], name, limit)
