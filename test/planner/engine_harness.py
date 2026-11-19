@@ -110,7 +110,9 @@ class Harness:
           local auto; auto=function() return setmetatable({}, {
             __index=function(t,k) local v=auto(); rawset(t,k,v); return v end,
             __call=function() return auto() end, __concat=function() return '' end}) end
-          FDJ=setmetatable({Constants=auto(),DB={}}, {
+          -- Location constants are strings in the real journal, not UI mocks.
+          local constants=setmetatable({}, {__index=function() return 'Copper keeper, Copper City' end})
+          FDJ=setmetatable({Constants=constants,DB={}}, {
             __index=function(t,k) local v=auto(); rawset(t,k,v); return v end})
           ForeverDungeonJournal_NS=FDJ
           TEST_CREATE_FRAME=CreateFrame
@@ -118,9 +120,13 @@ class Harness:
           hooksecurefunc=function() end; C_Timer=auto(); UIParent=auto(); L=auto()
         """)
         self.fdj_errors = []
+        # RQP_PRIVATE_FDJ: another ForeverDungeonJournal folder (e.g. a newer release) to run the
+        # private suites on; the references are derived from whichever journal is loaded.
+        fdj_dir = Path(os.environ["RQP_PRIVATE_FDJ"]) if os.environ.get("RQP_PRIVATE_FDJ") \
+            else PRIVATE / "installed-2026-11-09/AddOns/ForeverDungeonJournal"
         for f in ("Dungeons.lua", "QuestChains.lua", "QuestUpdates.lua", "QuestMaps.lua"):
             try:
-                self.addon(PRIVATE / "installed-2026-11-09/AddOns/ForeverDungeonJournal/Data" / f, self.g.FDJ)
+                self.addon(fdj_dir / "Data" / f, self.g.FDJ)
             except Exception as exc:
                 self.fdj_errors.append((f, str(exc)))
         self.lua.execute("CreateFrame=TEST_CREATE_FRAME")
@@ -129,7 +135,7 @@ class Harness:
             self.addon(PRIVATE / "installed-2026-11-09/AddOns/DungeonGuideForever/Data.lua", self.g.DungeonGuideForever_NS)
         if not qdb:
             self.lua.execute("LibQuestieDB=nil")
-        for name in ("Data", "Player", "Learn", "Engine"):
+        for name in ("Data", "PlaceData", "Player", "Learn", "Engine"):
             p = ROOT / f"addon/RelaxQuestPlanner/Core/{name}.lua"
             if p.exists():
                 self.lua.execute(p.read_text(), name=str(p))
@@ -171,7 +177,7 @@ class MiniHarness(Harness):
             Enum={raceMaskById={[3]=4,[6]=32,[95]=4294967296},classKeys={WARRIOR=1,HUNTER=4,DRUID=1024}}}
           LibQuestieDB.Support={Get=function() return {private={dungeons={[1]={'Test Dungeon'}}}} end}
         """)
-        for name in ("Data", "Player", "Learn", "Engine"):
+        for name in ("Data", "PlaceData", "Player", "Learn", "Engine"):
             p = ROOT / f"addon/RelaxQuestPlanner/Core/{name}.lua"
             self.lua.execute(p.read_text(), name=str(p))
         self.rqp = self.g.RelaxQuestPlanner

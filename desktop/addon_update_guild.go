@@ -233,13 +233,13 @@ func (u *addonUpdater) extractGuild(ctx context.Context, payload []byte, stage, 
 		}
 	}
 	var m struct {
-		Project        string `json:"project"`
-		Kind           string `json:"kind"`
-		Version        string `json:"version"`
-		JourneyVersion string `json:"journeyVersion"`
-		ContentVersion string `json:"contentVersion"`
-		PlannerVersion string `json:"plannerVersion,omitempty"`
-		RaidVersion    string `json:"raidVersion,omitempty"`
+		Project        string          `json:"project"`
+		Kind           string          `json:"kind"`
+		Version        string          `json:"version"`
+		JourneyVersion string          `json:"journeyVersion"`
+		ContentVersion string          `json:"contentVersion"`
+		PlannerVersion string          `json:"plannerVersion,omitempty"`
+		RaidVersion    json.RawMessage `json:"raidVersion,omitempty"` // presence matters: absent below the gate
 		Files          []struct {
 			Path   string `json:"path"`
 			SHA256 string `json:"sha256"`
@@ -254,8 +254,12 @@ func (u *addonUpdater) extractGuild(ctx context.Context, payload []byte, stage, 
 	if err := dec.Decode(new(any)); err != io.EOF {
 		return nil, errors.New("trailing guild manifest data")
 	}
-	if m.Project != "Relax Coach" || m.Kind != "guild-combined" || m.Version != version || m.JourneyVersion == "" || m.ContentVersion == "" || planner != (m.PlannerVersion != "") || raid != (m.RaidVersion != "") {
+	if m.Project != "Relax Coach" || m.Kind != "guild-combined" || m.Version != version || m.JourneyVersion == "" || m.ContentVersion == "" || planner != (m.PlannerVersion != "") || raid != (len(m.RaidVersion) != 0) {
 		return nil, errors.New("incompatible guild manifest identity/version")
+	}
+	raidVersion := ""
+	if raid && (json.Unmarshal(m.RaidVersion, &raidVersion) != nil || raidVersion == "") {
+		return nil, errors.New("incompatible guild manifest identity/version: raidVersion must be a version string")
 	}
 	if len(m.Files) != len(all) {
 		return nil, errors.New("guild manifest inventory differs from archive")
@@ -312,7 +316,7 @@ func (u *addonUpdater) extractGuild(ctx context.Context, payload []byte, stage, 
 		}
 	}
 	if raid {
-		if err := addonCheckRaidTOC(stage, runtime, m.RaidVersion); err != nil {
+		if err := addonCheckRaidTOC(stage, runtime, raidVersion); err != nil {
 			return nil, err
 		}
 	}

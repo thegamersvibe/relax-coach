@@ -37,6 +37,11 @@ func (u *addonUpdater) addonRecoverStaleLock(game string) (stale bool) {
 		return false
 	}
 	stale = true
+	// The lock is the only sign that an install was cut off. Before it can be cleared, leave a marker that
+	// survives until an install verifies every folder; if the marker cannot be written, the lock stays.
+	if os.WriteFile(filepath.Join(backups, addonRepairMarkerName), []byte("an install was interrupted; Repair until a verified install\n"), 0600) != nil {
+		return stale
+	}
 	b, err := addonReadSmallFile(lockPath)
 	if err != nil {
 		return stale
@@ -93,6 +98,22 @@ func (u *addonUpdater) addonRecoverStaleLock(game string) (stale bool) {
 	return stale
 }
 
+// addonRepairMarkerName is left in RelaxCoachBackups by lock recovery and removed only by an install that
+// verified every managed folder at its manifest version (installTrees).
+const addonRepairMarkerName = ".repair-needed"
+
+func addonRepairMarked(game string) bool {
+	if game == "" || !filepath.IsAbs(game) {
+		return false
+	}
+	backups := filepath.Join(filepath.Clean(game), "RelaxCoachBackups")
+	if addonPlainDirectory(backups) != nil {
+		return false
+	}
+	info, err := os.Lstat(filepath.Join(backups, addonRepairMarkerName))
+	return err == nil && info.Mode().IsRegular()
+}
+
 // addonStaleBundleLock reports a bundle lock left by an interrupted install:
 // an old regular file in a plain RelaxCoachBackups folder, or the very lock
 // this app process left after a refused rollback (addonAbandonLock).
@@ -114,5 +135,5 @@ func addonStaleBundleLock(game string) bool {
 // earlier install was interrupted (stale lock).
 func addonRepairNeeded(game string) bool {
 	s := InstalledBundleState(game)
-	return (!s.Install && (s.State == "partial" || s.State == "replaced")) || addonStaleBundleLock(game)
+	return (!s.Install && (s.State == "partial" || s.State == "replaced")) || addonStaleBundleLock(game) || addonRepairMarked(game)
 }

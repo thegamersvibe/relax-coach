@@ -4,6 +4,7 @@
 """
 import os
 import re
+import runpy
 import sys
 import unittest
 
@@ -89,9 +90,15 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(len(c.frames), 1)
 
     def test_not_bundled_before_the_app_knows_it(self):
-        # INCLUDE-PROPOSAL / PLAN finding 2: today's app refuses a bundle with an unknown root. R9a first, R9b bundles.
-        with open(os.path.join(ROOT, "scripts", "build_guild_bundle.py"), encoding="utf-8") as f:
-            self.assertNotIn("RelaxRaid", f.read())
+        # R9b replaces the R1 no-bundling placeholder with the app-owned gate.
+        # The CLI/archive test in test_guild_bundle.py checks the actual folders.
+        builder = runpy.run_path(os.path.join(ROOT, "scripts", "build_guild_bundle.py"))
+        with open(os.path.join(ROOT, "desktop", "addon_update.go"), encoding="utf-8") as f:
+            match = re.search(r'^const addonRaidMinimumVersion = "([0-9.]+)"$', f.read(), re.M)
+        assert match is not None, 'app raid floor missing'
+        floor = match.group(1)
+        self.assertFalse(builder["raid_release"]("1.7.10"))
+        self.assertTrue(builder["raid_release"](floor))
 
     def test_no_off_call_and_no_send_in_source(self):
         # REQ-LOG-01: nothing turns logging off; R1 sends nothing (sending is R2's Wire.lua)
