@@ -152,14 +152,35 @@ Build and streaming Read, including index-only reads. They are not copied into
 | `fights` | object: fight id → player fight | yes | Only fights the player took part in. |
 | `deaths` | array of death | yes | This player's deaths, in time order. |
 
-`rank` starts at 1 within the night, over all players with a night score. Equal scores share a rank
+`rank` starts at 1 within the night, over non-provisional players with a night score. Equal scores share a rank
 and the next rank is skipped (1, 1, 3). Rank compares the stored, rounded score, so the file and the
 page cannot disagree.
 
-**Not enough data.** Coverage is always the measured number, never `null`; a player with nothing
-measurable has `0.00`. Under the coverage threshold in the config, `score` and `rank` are `null` and
-coverage still shows why. This holds at night level and at fight level (a fight has no rank). A reader
-recognises "not enough data" by `score` being `null`.
+**Raid-one provisional rule (scoring 1.3.0, schema 2).** Coverage is always the
+measured number, never `null`; nothing measurable is `0.00`.
+
+- Coverage at or above `confidence.min_coverage` (0.60): normal score and, in a
+  raid, a rank. A provisional *part* does not by itself exclude a normal night.
+- At or above `confidence.provisional_min_coverage` (0.15), but below 0.60:
+  `score` is set and `rank` is null. Show "provisional, NN% measured" separately
+  from ranked players. These players do not consume a rank position.
+- Below 0.15, or with no scored fight: `score` and `rank` are null. A reader
+  recognises "not enough data" by `score` being null.
+
+The same coverage thresholds apply to each fight, which has no rank. Scores
+are rounded half away from zero to the configured step inside `score`, not by
+the writer. Stored hundredth coverage is compared to the exact configured
+threshold at both levels. Dungeon scores never have ranks, including normal
+scores. Index-only fights (empty `Events`), unknown runs, and players missing
+from the fight's roles are unscored. Partial fights retain a `partialFight`
+row but no score. Boss confidence/time basis uses the server `DurationMs`;
+trash uses end minus start. Missing duration is not guessed from boss clocks.
+
+Night means use kill/wipe weights, the short-fight multiplier, and fight
+coverage. Night coverage averages coverage with kill/wipe/short weights
+without applying coverage a second time. Boss and trash groups are combined
+only within their configured shares. No history, spec comparison, assignment,
+support-credit or readiness scoring is enabled by this phase-one scorer.
 
 ## Player fight (`players[<name>].fights[<fight id>]`)
 
@@ -197,6 +218,63 @@ presence bit; `Tenths` remains the optional score that distinguishes an unmeasur
 part from a measured score of zero. This is an additive in-memory model change,
 not a new file field or a change to `formatVersion`.
 
+**Publication guard.** `score.ValidatePart` refuses a measured part with coverage
+outside 1..100, a baseline outside `""`, `own`, `guild`, `role`, or an output/activity
+part with an empty baseline. `score.Validate` walks the complete result and
+`Score` calls it before returning. The future app/writer boundary must retain
+this check; the `result` package's model-only import boundary is unchanged.
+
+### Phase-one measures
+
+Only same-role-in-this-fight baselines are available, never spec or history.
+Output and activity need at least two eligible role peers and a positive
+baseline. Two peers give a provisional part; one gives no relative measure.
+DPS and tanks compare effective boss damage per millisecond alive to the role
+median (all hostile, unowned creatures for trash). Only landed swing amounts
+count; overkill is clamped at zero before subtraction. Pets use `Fight.Owners`.
+Healer output combines the team and individual halves: unhealed deaths charge
+only healers alive at the death, including the post-end tail; individual credit
+is effective healing plus consumed absorbs (the shield's `Caster`) on players
+at or below the cutoff in their preceding valid `InfoUnit` HP/HPMax sample.
+Unknown health is not low health. The individual share is compared with an
+equal share of the healing team's total. A lone healer retains the team half,
+not an invented individual baseline. The configured unhealed output cap applies.
+
+**Active time** is the union of completed cast intervals and the cooldown after
+each completed cast (`gcd_energy_ms` for cast `PowerType` 3, else `gcd_ms`), plus
+a `gcd_ms` interval after each melee swing (landed stream or melee miss) by the
+player. Overlaps count once; intervals are clipped to time alive, with real
+deaths and resurrections but no feign deaths. Failed/incomplete casts, pet
+uptime, auras and RANGE damage/miss events provide no activity. Shots already
+have `SPELL_CAST_SUCCESS` lines. A zero role median is unmeasured, not a free 70.
+
+Mechanics measures owned deaths (50) and non-tank boss swings (20); avoidable
+mechanics (30) remain unavailable. Only `OwnerKind=player` with the full logged
+name in `Owners` permits a death charge. Unresolved, unhealed and after-wipe
+causes are not charged here. The configured death penalty scales linearly from
+full at the pull to half at the end. Non-tanks lose the configured penalty per
+landed boss swing; scores floor at zero. Utility counts interrupts and dispels
+but has no measured score. Idle trash is visible through active/alive evidence;
+no new flag is added to the closed format-version-1 flag list.
+
+Preparation uses `MatchPrep(reports, names)`: full logged name first, then ASCII
+lowercase only. Ambiguous folded names and unmatched reports score nobody and
+are returned to the page. For gear, choose the latest report stamped at or
+before fight **end**, or the earliest report of the night if none is eligible.
+Both chosen clocks are retained. Stock (30) gives 50 points each for any readable
+report of potion/food stock in the night, not necessarily the chosen gear report.
+Flasks and elixirs are evidence only. Bag gear (30) starts at 100 and loses the
+configured 25 per distinct better-item slot, skipping `NotScored` slots. Unchecked
+or unreadable gear is unmeasured; unreadable stock is unmeasured. Empty readable
+bags are a measured zero stock, not missing data. Used consumables (40) are
+unmeasurable. No report leaves preparation wholly unmeasured.
+
+The fixture-night coverage table (with / without readable stock and checked gear):
+DPS 0.80 / 0.74; two or more healers 0.70 / 0.64; lone healer 0.33 / 0.27;
+two or more tanks 0.54 / 0.48; lone tank 0.24 / 0.18. Measurable peer output and
+activity are prerequisites for the non-lone rows. Lone rows round half-hundredths
+away from zero, and retain a provisional night score without a rank.
+
 ## Evidence
 
 | Field | Type | Required | Meaning |
@@ -204,6 +282,55 @@ not a new file field or a change to `formatVersion`.
 | `text` | string | yes | One plain English sentence, at most 200 characters, e.g. "No cast for 38 seconds from 2:10 in the add phase." |
 | `counts` | object: string → integer | yes | Short name to count, e.g. `{"interrupts": 3}`. May be empty. |
 | `atMs` | array of integers | yes | At most 20 times, milliseconds from the fight start. May be empty. |
+
+### Score evidence count keys
+
+Every role measure has `measured.<measure>` equal to 0 or 1. Only measured
+measures have `points_tenths.<measure>`, an integer score times ten. The complete
+measure names (and therefore the complete suffixes for both key families) are:
+
+| Part / role | Availability key | Points key (only if measured) |
+|---|---|---|
+| Output DPS/tank | `measured.boss_damage` | `points_tenths.boss_damage` |
+| Output healer | `measured.healer_team` | `points_tenths.healer_team` |
+| Output healer | `measured.healer_individual` | `points_tenths.healer_individual` |
+| Activity | `measured.active_time` | `points_tenths.active_time` |
+| Mechanics | `measured.deaths` | `points_tenths.deaths` |
+| Mechanics | `measured.avoidable` | `points_tenths.avoidable` |
+| Mechanics non-tank only | `measured.boss_swings` | `points_tenths.boss_swings` |
+| Preparation | `measured.stock` | `points_tenths.stock` |
+| Preparation | `measured.bag_gear` | `points_tenths.bag_gear` |
+| Preparation | `measured.used` | `points_tenths.used` |
+
+Utility has no scored measure; its raw counts remain available. `avoidable` and
+`used` are always unavailable in phase one, so their points keys are absent.
+
+All additional raw count keys are listed here. Missing keys mean unavailable,
+not zero. Reserved part metadata is **not** hidden in these maps.
+
+| Keys | Meaning |
+|---|---|
+| `boss_damage`, `alive_ms` | Effective boss damage (hostile creature damage in trash), and time alive in milliseconds. Divide for the exact output rate. |
+| `active_ms` | Union duration, clipped to alive intervals; divide by `alive_ms` for active share. |
+| `baseline_players` | Eligible same-role peer count; also the healer equal-share divisor. |
+| `baseline_damage_num`, `baseline_damage_den` | Exact reduced fraction for role-median damage per millisecond alive. May be recorded even when insufficient peers prevent measurement. |
+| `baseline_active_num`, `baseline_active_den` | Exact reduced fraction for the role-median active share. |
+| `low_health_effective`, `team_low_health_effective` | Player's low-health effective healing plus consumed absorbs, and the healers' total. |
+| `unhealed_deaths` | Unhealed deaths at which this healer was alive; controls the team half and output cap. |
+| `owned_deaths`, `unresolved_deaths` | Death charges owned by this player, and their unresolved deaths (evidence only). |
+| `death_severity_num`, `death_severity_den` | Exact reduced sum of death severity, each `1 - elapsed / (2 * duration)` with elapsed clipped to the fight. Multiply by configured `owned_death` penalty. |
+| `boss_swings_taken` | Landed swings from the fight's boss units on this player; no tank measure. |
+| `interrupts`, `dispels` | Counts including actions credited through the fight's owner map; not scored. |
+| `prep_stamped_s`, `prep_sender_clock_s` | Server receipt stamp and sender clock of the chosen gear report, in seconds. |
+| `potion_count`, `food_count`, `flask_count`, `elixir_count` | Maximum summed bag count per category across readable reports, not a sum of repeated reports. Only potion and food presence score. |
+| `better_gear_slots`, `not_scored_slots` | Distinct penalized slots and distinct explicitly skipped slots in the chosen report. |
+
+Per-measure points are quantized first; inner weights recompute the part,
+part coverage and role weights recompute the fight, and fight rows with config
+and outcomes recompute the night. The healer cap is applied after combining
+its measured halves. `atMs` contains up to 20 sorted relative owned-death times;
+raw event records are never embedded. The pure scorer returns all part evidence,
+including unavailable-measure markers, for the officer page before file formatting.
 
 ## Death
 
