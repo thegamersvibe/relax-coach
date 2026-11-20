@@ -115,6 +115,55 @@ func TestWipePriorityAndSummary(t *testing.T) {
 		t.Fatal("trash has wipe summary")
 	}
 }
+func TestWipeSummaryClockStep(t *testing.T) {
+	_, end := modeltest.Encounter(model.Encounter{Success: model.Some(0)}, 0, 30000)
+	for _, tc := range []struct {
+		name   string
+		events []model.Event
+	}{
+		{"reversed_death_timestamps", []model.Event{died(20000, victim), died(10000, other)}},
+		{"unrelated_post_death_step", []model.Event{died(10000, other), died(20000, victim), {TimeMs: 20002}, {TimeMs: 20001}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// Keep raw log order: chronological would erase the clock step.
+			f := fight(append(tc.events, end)...)
+			f.Success, f.EndMs = model.Some(0), 30000
+			ds, ws, excluded := review(t, f, 30000, config())
+			if len(ds) != 2 || excluded != 0 {
+				t.Fatalf("deaths=%d excluded=%d, want 2 and 0", len(ds), excluded)
+			}
+			if ds[0].TimeMs != 10000 || ds[0].Player != other || ds[1].TimeMs != 20000 || ds[1].Player != victim {
+				t.Fatal("presentation order or death identity changed")
+			}
+			for _, d := range ds {
+				wantDeath(t, d, model.CauseUnresolved, "low", model.OwnerUndecided, "")
+			}
+			if !reflect.DeepEqual(ws, []model.Wipe{modeltest.Wipe(f.ID, -1)}) {
+				t.Fatalf("clock-step wipe=%+v, want FirstDeath=-1 and no Following", ws)
+			}
+		})
+	}
+}
+
+func TestWipeSummaryCleanClock(t *testing.T) {
+	_, end := modeltest.Encounter(model.Encounter{Success: model.Some(0)}, 0, 30000)
+	for _, at := range []int64{20000, 10000} {
+		// Increasing and equal timestamps both retain the existing summary.
+		f := fight(died(10000, other), died(at, victim), end)
+		f.Success, f.EndMs = model.Some(0), 30000
+		ds, ws, excluded := review(t, f, 30000, config())
+		if len(ds) != 2 || excluded != 0 {
+			t.Fatalf("deaths=%d excluded=%d, want 2 and 0", len(ds), excluded)
+		}
+		if ds[0].Player != other || ds[1].Player != victim {
+			t.Fatal("clean-clock death order changed")
+		}
+		if !reflect.DeepEqual(ws, []model.Wipe{modeltest.Wipe(f.ID, 0, 1)}) {
+			t.Fatalf("clean-clock wipe=%+v at=%d, want FirstDeath=0 and Following=[1]", ws, at)
+		}
+	}
+}
+
 func TestWipeSummaryNoDeathBeforeEnd(t *testing.T) {
 	_, end := modeltest.Encounter(model.Encounter{Success: model.Some(0)}, 0, 5000)
 	f := fight(end)
