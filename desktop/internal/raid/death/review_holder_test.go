@@ -16,9 +16,9 @@ func TestLostBossObservedHolder(t *testing.T) {
 				f.Events = append(f.Events, swing(8000, boss, tank, 1), swing(9000, boss, lastTarget, 1))
 			}
 			if lastTarget.ID == tankB.ID {
-				wantDeath(t, forVictim(t, f, config()), death.TankLostBoss, "high", "player", "", tankB.Name)
+				wantDeath(t, forVictim(t, f, config()), death.TankLostBoss, "high", model.OwnerPlayer, "", tankB.Name)
 			} else {
-				wantDeath(t, forVictim(t, f, config()), death.Unresolved, "low", "undecided", "")
+				wantDeath(t, forVictim(t, f, config()), death.Unresolved, "low", model.OwnerUndecided, "")
 			}
 		})
 	}
@@ -29,18 +29,18 @@ func TestLostBossHolderWindow(t *testing.T) {
 		t.Run(fmt.Sprint(age), func(t *testing.T) {
 			f := reviewFight(hit(1000, tank, boss, 91, 1), swing(20000-age, boss, tank, 1), swing(20000, boss, victim, 1), died(20001, victim))
 			if age <= 10000 {
-				wantDeath(t, forVictim(t, f, config()), death.TankLostBoss, "high", "player", "", tank.Name)
+				wantDeath(t, forVictim(t, f, config()), death.TankLostBoss, "high", model.OwnerPlayer, "", tank.Name)
 			} else {
-				wantDeath(t, forVictim(t, f, config()), death.Unresolved, "low", "undecided", "")
+				wantDeath(t, forVictim(t, f, config()), death.Unresolved, "low", model.OwnerUndecided, "")
 			}
 		})
 	}
 	f := reviewFight(hit(1000, tank, boss, 91, 1), swing(15000, boss, tank, 1), swing(20000, boss, victim, 1), died(20001, victim))
 	c := config()
 	c.Scoring.Death.WindowMs = 4999
-	wantDeath(t, forVictim(t, f, c), death.Unresolved, "low", "undecided", "")
+	wantDeath(t, forVictim(t, f, c), death.Unresolved, "low", model.OwnerUndecided, "")
 	c.Scoring.Death.WindowMs = 5000
-	wantDeath(t, forVictim(t, f, c), death.TankLostBoss, "high", "player", "", tank.Name)
+	wantDeath(t, forVictim(t, f, c), death.TankLostBoss, "high", model.OwnerPlayer, "", tank.Name)
 }
 
 func TestLostBossHolderAliveAtTurn(t *testing.T) {
@@ -60,9 +60,9 @@ func TestLostBossHolderAliveAtTurn(t *testing.T) {
 			f.Events = append(f.Events, tc.es...)
 			f.Events = append(f.Events, swing(9000, boss, victim, 1), swing(9900, boss, victim, 1), died(10000, victim))
 			if tc.lost {
-				wantDeath(t, forVictim(t, f, config()), death.TankLostBoss, "high", "player", "", tank.Name)
+				wantDeath(t, forVictim(t, f, config()), death.TankLostBoss, "high", model.OwnerPlayer, "", tank.Name)
 			} else {
-				wantDeath(t, forVictim(t, f, config()), death.Unresolved, "low", "undecided", "")
+				wantDeath(t, forVictim(t, f, config()), death.Unresolved, "low", model.OwnerUndecided, "")
 			}
 		})
 	}
@@ -79,9 +79,9 @@ func TestLostBossSameTimestampOrder(t *testing.T) {
 		}
 		f.Events = append(f.Events, died(10000, victim))
 		if holderFirst {
-			wantDeath(t, forVictim(t, f, config()), death.TankLostBoss, "high", "player", "", tank.Name)
+			wantDeath(t, forVictim(t, f, config()), death.TankLostBoss, "high", model.OwnerPlayer, "", tank.Name)
 		} else {
-			wantDeath(t, forVictim(t, f, config()), death.Unresolved, "low", "undecided", "")
+			wantDeath(t, forVictim(t, f, config()), death.Unresolved, "low", model.OwnerUndecided, "")
 		}
 	}
 	// A holder's own damage at the turn millisecond counts even if the line
@@ -95,7 +95,7 @@ func TestLostBossSameTimestampOrder(t *testing.T) {
 			f.Events = append(f.Events, turn, h)
 		}
 		f.Events = append(f.Events, died(10000, victim))
-		wantDeath(t, forVictim(t, f, config()), death.Unresolved, "low", "undecided", "")
+		wantDeath(t, forVictim(t, f, config()), death.Unresolved, "low", model.OwnerUndecided, "")
 	}
 }
 
@@ -103,19 +103,19 @@ func TestLostBossMissedSwingsAndNoHit(t *testing.T) {
 	for _, how := range []string{"MISS", "PARRY", "DODGE", "ABSORB"} {
 		t.Run(how, func(t *testing.T) {
 			f := reviewFight(missedSwing(7000, boss, tank, how), missedSwing(8000, boss, victim, how), swing(9900, boss, victim, 1), died(10000, victim))
-			wantDeath(t, forVictim(t, f, config()), death.TankLostBoss, "high", "player", "", tank.Name)
+			wantDeath(t, forVictim(t, f, config()), death.TankLostBoss, "high", model.OwnerPlayer, "", tank.Name)
 			// A damage gap is measured from the first missed victim swing, not
 			// the killing hit; 8000-4000 is exactly the non-blaming edge.
 			f.Events = append(f.Events, hit(4000, tank, boss, 91, 1))
-			wantDeath(t, forVictim(t, f, config()), death.Unresolved, "low", "undecided", "")
+			wantDeath(t, forVictim(t, f, config()), death.Unresolved, "low", model.OwnerUndecided, "")
 		})
 	}
 }
 
 func TestLostBossTiedAttacksDoNotChooseHolder(t *testing.T) {
 	f := reviewFight(hit(1000, tank, boss, 91, 1), hit(1000, tankB, boss, 92, 1), swing(9900, boss, victim, 1), died(10000, victim))
-	wantDeath(t, forVictim(t, f, config()), death.Unresolved, "low", "undecided", "")
+	wantDeath(t, forVictim(t, f, config()), death.Unresolved, "low", model.OwnerUndecided, "")
 	// Equal tank damage does not make the boss's observed target ambiguous.
 	f.Events = append(f.Events, swing(8000, boss, tankB, 1))
-	wantDeath(t, forVictim(t, f, config()), death.TankLostBoss, "high", "player", "", tankB.Name)
+	wantDeath(t, forVictim(t, f, config()), death.TankLostBoss, "high", model.OwnerPlayer, "", tankB.Name)
 }

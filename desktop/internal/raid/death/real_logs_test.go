@@ -129,7 +129,7 @@ func TestRealLogsR6(t *testing.T) {
 					causes[d.Cause]++
 					suggestions[d.SuggestedCause]++
 					confidence[d.Confidence]++
-					if d.OwnerKind == "healers" {
+					if d.OwnerKind == model.OwnerHealers {
 						living := map[string]bool{}
 						for _, p := range f.Players {
 							if f.Roles[p.ID] == "healer" && diagnosticAlive(f, p.ID, d.TimeMs) {

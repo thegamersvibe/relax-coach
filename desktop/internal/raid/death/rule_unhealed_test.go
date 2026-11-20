@@ -16,14 +16,14 @@ func TestUnhealedThresholds(t *testing.T) {
 		first int64
 		cause string
 	}{
-		{"at", 6000, "unhealed over time"}, {"below", 6001, "unresolved"}, {"above", 5999, "unhealed over time"},
+		{"at", 6000, model.CauseUnhealed}, {"below", 6001, model.CauseUnresolved}, {"above", 5999, model.CauseUnhealed},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			d := forVictim(t, slowDeath(tc.first), config())
-			if tc.cause == "unresolved" {
-				wantDeath(t, d, tc.cause, "low", "undecided", "")
+			if tc.cause == model.CauseUnresolved {
+				wantDeath(t, d, tc.cause, "low", model.OwnerUndecided, "")
 			} else {
-				wantDeath(t, d, tc.cause, "high", "healers", "", healer.Name, healer2.Name)
+				wantDeath(t, d, tc.cause, "high", model.OwnerHealers, "", healer.Name, healer2.Name)
 			}
 		})
 	}
@@ -32,38 +32,38 @@ func TestSparseSamplesAndWindow(t *testing.T) {
 	wrongUnit := slowDeath(6000)
 	wrongUnit.Events[0].InfoUnit = healer.ID
 	wrongUnit.Events[0].Dst = victim
-	wantDeath(t, forVictim(t, wrongUnit, config()), "unresolved", "low", "undecided", "unhealed over time")
+	wantDeath(t, forVictim(t, wrongUnit, config()), model.CauseUnresolved, "low", model.OwnerUndecided, model.CauseUnhealed)
 	for _, tc := range []struct {
 		name       string
 		change     func(*model.Fight)
 		suggestion string
 	}{
-		{"one", func(f *model.Fight) { f.Events[0].HPMax = model.Some(0) }, "unhealed over time"},
-		{"wrong unit", func(f *model.Fight) { f.Events[0].InfoUnit = healer.ID }, "unhealed over time"},
-		{"outside window", func(f *model.Fight) { f.Events[0].TimeMs = -1 }, "unhealed over time"},
+		{"one", func(f *model.Fight) { f.Events[0].HPMax = model.Some(0) }, model.CauseUnhealed},
+		{"wrong unit", func(f *model.Fight) { f.Events[0].InfoUnit = healer.ID }, model.CauseUnhealed},
+		{"outside window", func(f *model.Fight) { f.Events[0].TimeMs = -1 }, model.CauseUnhealed},
 		{"short span", func(f *model.Fight) { f.Events[0].HPMax = model.Some(0); f.Events[1].TimeMs = 6001 }, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := slowDeath(6000)
 			tc.change(&f)
-			wantDeath(t, forVictim(t, f, config()), "unresolved", "low", "undecided", tc.suggestion)
+			wantDeath(t, forVictim(t, f, config()), model.CauseUnresolved, "low", model.OwnerUndecided, tc.suggestion)
 		})
 	}
 	f := slowDeath(6000)
 	f.Events[0] = sample(0, 899, 1000)
-	wantDeath(t, forVictim(t, f, config()), "unhealed over time", "high", "healers", "", healer.Name, healer2.Name)
+	wantDeath(t, forVictim(t, f, config()), model.CauseUnhealed, "high", model.OwnerHealers, "", healer.Name, healer2.Name)
 	c := config()
 	c.Scoring.Death.MinHealthSamples = 3
-	wantDeath(t, forVictim(t, f, c), "unresolved", "low", "undecided", "unhealed over time")
+	wantDeath(t, forVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, model.CauseUnhealed)
 	c = config()
 	c.Scoring.Death.WindowMs = 3999
-	wantDeath(t, forVictim(t, f, c), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 }
 func TestFullHealthResetsSpan(t *testing.T) {
 	for _, tc := range []struct {
 		hp    int64
 		cause string
-	}{{899, "unhealed over time"}, {900, "unresolved"}, {901, "unresolved"}} {
+	}{{899, model.CauseUnhealed}, {900, model.CauseUnresolved}, {901, model.CauseUnresolved}} {
 		f := slowDeath(6000)
 		f.Events[2] = sample(8000, tc.hp, 1000)
 		d := forVictim(t, f, config())
@@ -73,11 +73,11 @@ func TestFullHealthResetsSpan(t *testing.T) {
 	}
 	f := slowDeath(6000)
 	f.Events[0] = sample(5000, 0, 1000) // no full sample: first damage in the window
-	wantDeath(t, forVictim(t, f, config()), "unhealed over time", "high", "healers", "", healer.Name, healer2.Name)
+	wantDeath(t, forVictim(t, f, config()), model.CauseUnhealed, "high", model.OwnerHealers, "", healer.Name, healer2.Name)
 	f = slowDeath(6000)
 	c := config()
 	c.Scoring.Death.FullHealthFraction = .3
-	wantDeath(t, forVictim(t, f, c), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 }
 func TestEffectiveHealingAndAbsorbs(t *testing.T) {
 	for _, tc := range []struct {
@@ -103,15 +103,15 @@ func TestEffectiveHealingAndAbsorbs(t *testing.T) {
 			f.Events = append(f.Events[:len(f.Events)-1], tc.e, f.Events[len(f.Events)-1])
 			d := forVictim(t, f, config())
 			if tc.blocks {
-				wantDeath(t, d, "unresolved", "low", "undecided", "")
+				wantDeath(t, d, model.CauseUnresolved, "low", model.OwnerUndecided, "")
 			} else {
-				wantDeath(t, d, "unhealed over time", "high", "healers", "", healer.Name, healer2.Name)
+				wantDeath(t, d, model.CauseUnhealed, "high", model.OwnerHealers, "", healer.Name, healer2.Name)
 			}
 		})
 	}
 	f := slowDeath(6000)
 	f.Events[1].Absorbed = model.Some(1)
-	wantDeath(t, forVictim(t, f, config()), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, f, config()), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 }
 func TestHealerAliveWholeSpan(t *testing.T) {
 	for _, at := range []int64{5999, 6000, 8000, 10000} {
@@ -119,21 +119,21 @@ func TestHealerAliveWholeSpan(t *testing.T) {
 		delete(f.Roles, healer2.ID)
 		// At-death transitions count only when logged before the victim's death.
 		f.Events = append(f.Events[:len(f.Events)-1], died(at, healer), f.Events[len(f.Events)-1])
-		wantDeath(t, forVictim(t, f, config()), "unresolved", "low", "undecided", "")
+		wantDeath(t, forVictim(t, f, config()), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	}
 	f := slowDeath(6000)
 	delete(f.Roles, healer2.ID)
 	f.Events = append(f.Events, died(5000, healer), model.Event{TimeMs: 6000, Kind: model.Resurrect, Dst: healer})
-	wantDeath(t, forVictim(t, f, config()), "unhealed over time", "high", "healers", "", healer.Name)
+	wantDeath(t, forVictim(t, f, config()), model.CauseUnhealed, "high", model.OwnerHealers, "", healer.Name)
 	f.Events[len(f.Events)-1].TimeMs = 6001
-	wantDeath(t, forVictim(t, f, config()), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, f, config()), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	f = slowDeath(6000)
 	f.Events = append(f.Events, died(8000, healer))
-	wantDeath(t, forVictim(t, f, config()), "unhealed over time", "high", "healers", "", healer2.Name)
+	wantDeath(t, forVictim(t, f, config()), model.CauseUnhealed, "high", model.OwnerHealers, "", healer2.Name)
 	f = slowDeath(6000)
 	delete(f.Roles, healer.ID)
 	delete(f.Roles, healer2.ID)
-	wantDeath(t, forVictim(t, f, config()), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, f, config()), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 }
 func TestRecapLastTenAndNegativeOverkill(t *testing.T) {
 	f := slowDeath(5001)
@@ -143,7 +143,7 @@ func TestRecapLastTenAndNegativeOverkill(t *testing.T) {
 	}
 	f.Events = append(f.Events, died(10000, victim))
 	d := forVictim(t, f, config())
-	wantDeath(t, d, "unhealed over time", "high", "healers", "", healer.Name, healer2.Name)
+	wantDeath(t, d, model.CauseUnhealed, "high", model.OwnerHealers, "", healer.Name, healer2.Name)
 	if len(d.Evidence) != 10 || d.Evidence[0] != 2400 || d.Evidence[9] != 8700 {
 		t.Fatalf("recap=%v", d.Evidence)
 	}

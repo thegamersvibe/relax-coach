@@ -29,14 +29,14 @@ func TestRaidwideShareAndMinimum(t *testing.T) {
 	}{{100, 59, false}, {100, 60, true}, {2, 2, false}, {5, 2, false}, {5, 3, true}, {5, 4, true}} {
 		d := forVictim(t, raidwide(tc.players, tc.hits), config())
 		if tc.match {
-			wantDeath(t, d, "unavoidable or one-shot", "high", "nobody", "")
+			wantDeath(t, d, model.CauseUnavoidable, "high", model.OwnerNobody, "")
 		} else {
-			wantDeath(t, d, "unresolved", "low", "undecided", "")
+			wantDeath(t, d, model.CauseUnresolved, "low", model.OwnerUndecided, "")
 		}
 	}
 	c := config()
 	c.Scoring.Death.RaidwideShare = .61
-	wantDeath(t, forVictim(t, raidwide(5, 3), c), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, raidwide(5, 3), c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 }
 func TestRaidwideWindowEdgesAndSources(t *testing.T) {
 	for _, at := range []int64{7899, 7900, 11900, 11901} {
@@ -44,34 +44,34 @@ func TestRaidwideWindowEdgesAndSources(t *testing.T) {
 		f.Events[len(f.Events)-1].TimeMs = at
 		d := forVictim(t, f, config())
 		if at == 7900 || at == 11900 {
-			wantDeath(t, d, "unavoidable or one-shot", "high", "nobody", "")
+			wantDeath(t, d, model.CauseUnavoidable, "high", model.OwnerNobody, "")
 		} else {
-			wantDeath(t, d, "unresolved", "low", "undecided", "")
+			wantDeath(t, d, model.CauseUnresolved, "low", model.OwnerUndecided, "")
 		}
 	}
 	f := raidwide(5, 3)
 	f.Events[len(f.Events)-1].Src = hostile("Synthetic add", 72)
-	wantDeath(t, forVictim(t, f, config()), "unavoidable or one-shot", "high", "nobody", "")
+	wantDeath(t, forVictim(t, f, config()), model.CauseUnavoidable, "high", model.OwnerNobody, "")
 	f.Events[len(f.Events)-1].Src = victim
-	wantDeath(t, forVictim(t, f, config()), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, f, config()), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	f = raidwide(5, 3)
 	f.Events = append(f.Events, f.Events[4], f.Events[4])
 	f.Events[5].Dst = f.Events[4].Dst
-	wantDeath(t, forVictim(t, f, config()), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, f, config()), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	c := config()
 	c.Scoring.Death.RaidwideWindowMs = 1999
 	f = raidwide(5, 3)
 	f.Events[5].TimeMs = 7900
-	wantDeath(t, forVictim(t, f, c), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 }
 func TestRaidwideExclusions(t *testing.T) {
 	candidateSwing := raidwide(5, 4)
 	candidateSwing.Roles[victim.ID] = "tank"
 	candidateSwing.Events[2].Stream = model.SwingLanded
-	wantDeath(t, forVictim(t, candidateSwing, config()), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, candidateSwing, config()), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	countedSwing := raidwide(5, 3)
 	countedSwing.Events[5].Stream = model.SwingLanded
-	wantDeath(t, forVictim(t, countedSwing, config()), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, countedSwing, config()), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	for _, tc := range []struct {
 		name string
 		edit func(*model.Fight, *cfg.Config)
@@ -103,39 +103,39 @@ func TestRaidwideExclusions(t *testing.T) {
 			f := raidwide(5, 3)
 			c := config()
 			tc.edit(&f, &c)
-			wantDeath(t, forVictim(t, f, c), "unresolved", "low", "undecided", "")
+			wantDeath(t, forVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 		})
 	}
 	f := raidwide(5, 3)
 	pet := modeltest.Pet("Synthetic", victim)
 	f.Players = append(f.Players, pet)
 	f.Owners = map[string]string{pet.ID: victim.ID}
-	wantDeath(t, forVictim(t, f, config()), "unavoidable or one-shot", "high", "nobody", "")
+	wantDeath(t, forVictim(t, f, config()), model.CauseUnavoidable, "high", model.OwnerNobody, "")
 }
 func TestRaidwideAliveDenominatorAndVictim(t *testing.T) {
 	f := raidwide(6, 3)
 	f.Events = append(f.Events, died(7899, f.Players[5]))
-	wantDeath(t, forVictim(t, f, config()), "unavoidable or one-shot", "high", "nobody", "")
+	wantDeath(t, forVictim(t, f, config()), model.CauseUnavoidable, "high", model.OwnerNobody, "")
 	f.Events[len(f.Events)-1].TimeMs = 7901
-	wantDeath(t, forVictim(t, f, config()), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, f, config()), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	f = raidwide(6, 3) // dividing by the five survivors at death would incorrectly pass
-	wantDeath(t, forVictim(t, f, config()), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, f, config()), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	f = raidwide(6, 3)
 	f.Events = append(f.Events, modeltest.At(7000).Dst(f.Players[5]).Died(1).Build())
-	wantDeath(t, forVictim(t, f, config()), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, f, config()), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 }
 func TestRaidwideMajorityAndMediumConfidence(t *testing.T) {
 	f := raidwide(5, 3)
 	f.Events[2].Amount = model.Some(101)
 	f.Events = append(f.Events, hit(9950, boss, victim, 82, 100))
-	wantDeath(t, forVictim(t, f, config()), "unavoidable or one-shot", "high", "nobody", "")
+	wantDeath(t, forVictim(t, f, config()), model.CauseUnavoidable, "high", model.OwnerNobody, "")
 	f = slowDeath(6000)
 	f.Events[1].SpellID = 82
 	f.Events = append(f.Events, hit(9999, boss, tank, 82, 1), hit(9999, boss, other, 82, 1))
-	wantDeath(t, forVictim(t, f, config()), "unavoidable or one-shot", "medium", "nobody", "")
+	wantDeath(t, forVictim(t, f, config()), model.CauseUnavoidable, "medium", model.OwnerNobody, "")
 	c := config()
 	mechanic(&c, 82)
-	wantDeath(t, forVictim(t, f, c), "avoidable ability", "medium", "player", "", victim.Name)
+	wantDeath(t, forVictim(t, f, c), model.CauseAvoidable, "medium", model.OwnerPlayer, "", victim.Name)
 }
 func TestOneShotThresholdsAndWindow(t *testing.T) {
 	for _, tc := range []struct {
@@ -147,21 +147,21 @@ func TestOneShotThresholdsAndWindow(t *testing.T) {
 		f.Events[2].Overkill = model.Some(tc.over)
 		d := forVictim(t, f, config())
 		if tc.match {
-			wantDeath(t, d, "unavoidable or one-shot", "high", "nobody", "")
+			wantDeath(t, d, model.CauseUnavoidable, "high", model.OwnerNobody, "")
 		} else {
-			wantDeath(t, d, "unresolved", "low", "undecided", "")
+			wantDeath(t, d, model.CauseUnresolved, "low", model.OwnerUndecided, "")
 		}
 	}
 	f := quickDeath()
 	f.Events[2].Amount = model.Some(500)
 	f.Events = append(f.Events, hit(8500, boss, victim, 82, 500))
-	wantDeath(t, forVictim(t, f, config()), "unavoidable or one-shot", "high", "nobody", "")
+	wantDeath(t, forVictim(t, f, config()), model.CauseUnavoidable, "high", model.OwnerNobody, "")
 	c := config()
 	c.Scoring.Death.OneShotWindowMs = 1499
-	wantDeath(t, forVictim(t, f, c), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	f.Events[0].InfoUnit = boss.ID
 	f.Events[1].InfoUnit = boss.ID
-	wantDeath(t, forVictim(t, f, config()), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, f, config()), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 }
 func TestEnvironmentalNeverChargesHealers(t *testing.T) {
 	f := slowDeath(6000)
@@ -170,8 +170,8 @@ func TestEnvironmentalNeverChargesHealers(t *testing.T) {
 	f.Events[3].Src = model.Actor{}
 	f.Events[3].SpellID = 0
 	f.Events[3].SpellName = "FALLING"
-	wantDeath(t, forVictim(t, f, config()), "unavoidable or one-shot", "high", "nobody", "")
+	wantDeath(t, forVictim(t, f, config()), model.CauseUnavoidable, "high", model.OwnerNobody, "")
 	c := config()
 	mechanic(&c, 0)
-	wantDeath(t, forVictim(t, f, c), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 }

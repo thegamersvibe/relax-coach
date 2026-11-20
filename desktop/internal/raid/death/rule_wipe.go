@@ -9,7 +9,7 @@ func init() { Register(1, afterWipe) }
 func afterWipe(c *context) verdict {
 	if c.wipeCall.Present && c.at > c.wipeCall.V {
 		// Keep priority, but still count other actual matches for confidence.
-		return verdict{cause: AfterWipeCall, owner: "nobody"}
+		return verdict{cause: AfterWipeCall, owner: model.OwnerNobody}
 	}
 	return verdict{}
 }

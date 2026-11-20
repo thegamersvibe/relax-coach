@@ -49,7 +49,7 @@ func avoidable(c *context) verdict {
 		}
 		for _, m := range c.mechanics {
 			if m.Spell.ID == e.SpellID && m.Avoidable && (len(m.Roles) == 0 || slices.Contains(m.Roles, c.view.f.Roles[c.victim.ID])) {
-				return verdict{cause: Avoidable, owner: "player", owners: []string{c.victim.Name}}
+				return verdict{cause: Avoidable, owner: model.OwnerPlayer, owners: []string{c.victim.Name}}
 			}
 		}
 	}

@@ -19,8 +19,8 @@
   },
   {
     "file": "desktop/internal/raid/death/death.go",
-    "old": "Cause: Unresolved, Confidence: \"low\", OwnerKind: \"undecided\"",
-    "new": "Cause: Unavoidable, Confidence: \"high\", OwnerKind: \"nobody\"",
+    "old": "Cause: Unresolved, Confidence: \"low\", OwnerKind: model.OwnerUndecided",
+    "new": "Cause: Unavoidable, Confidence: \"high\", OwnerKind: model.OwnerNobody",
     "killed_by": "TestDeathsOnlyFromSelectedPlayerEvents"
   },
   {
@@ -115,8 +115,8 @@
   },
   {
     "file": "desktop/internal/raid/death/rule_wipe.go",
-    "old": "owner: \"nobody\"}",
-    "new": "owner: \"player\", owners: []string{c.victim.Name}}",
+    "old": "owner: model.OwnerNobody}",
+    "new": "owner: model.OwnerPlayer, owners: []string{c.victim.Name}}",
     "killed_by": "TestWipePriorityAndSummary"
   },
   {
@@ -211,8 +211,8 @@
   },
   {
     "file": "desktop/internal/raid/death/rule_lost_boss.go",
-    "old": "cause: Unresolved, owner: \"undecided\", evidence: evidence, terminal: true",
-    "new": "cause: TankLostBoss, owner: \"player\", evidence: evidence, terminal: true",
+    "old": "cause: Unresolved, owner: model.OwnerUndecided, evidence: evidence, terminal: true",
+    "new": "cause: TankLostBoss, owner: model.OwnerPlayer, evidence: evidence, terminal: true",
     "killed_by": "TestAmbiguousAggroHasNoSuggestionAndBossSwingEvidence"
   },
   {
@@ -367,8 +367,8 @@
   },
   {
     "file": "desktop/internal/raid/death/rule_wipe.go",
-    "old": "return verdict{cause: AfterWipeCall, owner: \"nobody\"}",
-    "new": "return verdict{cause: AfterWipeCall, owner: \"nobody\", terminal: true}",
+    "old": "return verdict{cause: AfterWipeCall, owner: model.OwnerNobody}",
+    "new": "return verdict{cause: AfterWipeCall, owner: model.OwnerNobody, terminal: true}",
     "killed_by": "TestZZConfidenceRuling"
   },
   {

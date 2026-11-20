@@ -93,7 +93,7 @@ func TestDeathsOnlyFromSelectedPlayerEvents(t *testing.T) {
 	if len(ds) != 1 || len(wipes) != 0 {
 		t.Fatalf("deaths=%d wipes=%d", len(ds), len(wipes))
 	}
-	wantDeath(t, ds[0], "unresolved", "low", "undecided", "")
+	wantDeath(t, ds[0], model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	if ds[0].Player != victim || ds[0].TimeMs != 10000 || ds[0].FightID != f.ID {
 		t.Fatal("death identity lost")
 	}

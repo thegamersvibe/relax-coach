@@ -13,20 +13,20 @@ func TestWipeShareFirstMomentAndStrictAfter(t *testing.T) {
 	exactConfig := config()
 	exactConfig.Scoring.Death.WipeDeadShare = .4
 	exact := fight(died(1000, other), died(2000, tank), died(2001, victim))
-	wantDeath(t, forVictim(t, exact, exactConfig), "after the wipe call", "high", "nobody", "")
+	wantDeath(t, forVictim(t, exact, exactConfig), model.CauseAfterWipe, "high", model.OwnerNobody, "")
 	c := config()
 	c.Scoring.Death.WipeDeadShare = .4
 	f := fight(died(1000, other), died(2000, tank), died(2000, healer), died(2001, victim))
 	ds, _ := death.Review(f, c)
 	for i := 0; i < 3; i++ {
-		wantDeath(t, ds[i], "unresolved", "low", "undecided", "")
+		wantDeath(t, ds[i], model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	}
-	wantDeath(t, ds[3], "after the wipe call", "high", "nobody", "")
+	wantDeath(t, ds[3], model.CauseAfterWipe, "high", model.OwnerNobody, "")
 	c.Scoring.Death.WipeDeadShare = .61
-	wantDeath(t, forVictim(t, f, c), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	f.Events = append(f.Events, model.Event{TimeMs: 2000, Kind: model.Resurrect, Dst: other}, model.Event{TimeMs: 2000, Kind: model.Resurrect, Dst: tank})
 	c.Scoring.Death.WipeDeadShare = .4
-	wantDeath(t, forVictim(t, f, c), "after the wipe call", "high", "nobody", "") // first moment stays latched
+	wantDeath(t, forVictim(t, f, c), model.CauseAfterWipe, "high", model.OwnerNobody, "") // first moment stays latched
 }
 func TestWipeRoleTogglesAndNoVacuousRoles(t *testing.T) {
 	emptyRoles := fight(died(5000, other), died(10000, victim))
@@ -34,46 +34,46 @@ func TestWipeRoleTogglesAndNoVacuousRoles(t *testing.T) {
 	emptyConfig := config()
 	emptyConfig.Scoring.Death.WipeAllTanksDead = true
 	emptyConfig.Scoring.Death.WipeAllHealersDead = true
-	wantDeath(t, forVictim(t, emptyRoles, emptyConfig), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, emptyRoles, emptyConfig), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	for _, role := range []string{"tank", "healer"} {
 		f := fight(died(5000, tank), died(5000, healer), died(5000, healer2), died(10000, victim))
 		c := config()
 		c.Scoring.Death.WipeAllTanksDead = role == "tank"
 		c.Scoring.Death.WipeAllHealersDead = role == "healer"
-		wantDeath(t, forVictim(t, f, c), "after the wipe call", "high", "nobody", "")
+		wantDeath(t, forVictim(t, f, c), model.CauseAfterWipe, "high", model.OwnerNobody, "")
 		c.Scoring.Death.WipeAllTanksDead = false
 		c.Scoring.Death.WipeAllHealersDead = false
-		wantDeath(t, forVictim(t, f, c), "unresolved", "low", "undecided", "")
+		wantDeath(t, forVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	}
 	c := config()
 	c.Scoring.Death.WipeAllTanksDead = true
 	c.Scoring.Death.WipeAllHealersDead = true
 	f := quickDeath()
 	f.Roles = map[string]string{victim.ID: "dps"}
-	wantDeath(t, forVictim(t, f, c), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	f = quickDeath()
 	f.Events = append(f.Events, died(5000, healer))
 	c.Scoring.Death.WipeAllTanksDead = false
-	wantDeath(t, forVictim(t, f, c), "unresolved", "low", "undecided", "") // one healer still alive
+	wantDeath(t, forVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, "") // one healer still alive
 }
 func TestWipePetsFeignsDuplicatesAndResurrection(t *testing.T) {
 	feigns := fight(modeltest.At(5000).Dst(tank).Died(1).Build(), modeltest.At(5001).Dst(other).Died(1).Build(), died(10000, victim))
 	feignConfig := config()
 	feignConfig.Scoring.Death.WipeDeadShare = .4
-	wantDeath(t, forVictim(t, feigns, feignConfig), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, feigns, feignConfig), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	c := config()
 	c.Scoring.Death.WipeDeadShare = .4
 	f := quickDeath()
 	pet := modeltest.Pet("Synthetic pet", victim)
 	f.Owners = map[string]string{pet.ID: victim.ID}
 	f.Events = append(f.Events, died(5000, pet), modeltest.At(5000).Dst(tank).Died(1).Build())
-	wantDeath(t, forVictim(t, f, c), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	f = quickDeath()
 	f.Events = append(f.Events, died(5000, tank), died(5001, tank))
-	wantDeath(t, forVictim(t, f, c), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	f = quickDeath()
 	f.Events = append(f.Events, died(5000, tank), model.Event{TimeMs: 6000, Kind: model.Resurrect, Dst: tank}, died(7000, other))
-	wantDeath(t, forVictim(t, f, c), "unresolved", "low", "undecided", "")
+	wantDeath(t, forVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 }
 func TestWipePriorityAndSummary(t *testing.T) {
 	c := config()
@@ -84,7 +84,7 @@ func TestWipePriorityAndSummary(t *testing.T) {
 	mechanic(&c, 81)
 	ds, ws := death.Review(f, c)
 	// Wipe priority still wins; the explicit two-rule confidence is medium.
-	wantDeath(t, forVictim(t, f, c), "after the wipe call", "medium", "nobody", "")
+	wantDeath(t, forVictim(t, f, c), model.CauseAfterWipe, "medium", model.OwnerNobody, "")
 	if !reflect.DeepEqual(ws, []model.Wipe{modeltest.Wipe(f.ID, 0, 1, 2)}) {
 		t.Fatalf("wipes=%v deaths=%d", ws, len(ds))
 	}

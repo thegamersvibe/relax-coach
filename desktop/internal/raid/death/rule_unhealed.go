@@ -53,5 +53,5 @@ func unhealed(c *context) verdict {
 	if !whole {
 		return verdict{}
 	}
-	return verdict{cause: Unhealed, owner: "healers", owners: owners, low: samples < c.params.MinHealthSamples}
+	return verdict{cause: Unhealed, owner: model.OwnerHealers, owners: owners, low: samples < c.params.MinHealthSamples}
 }

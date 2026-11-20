@@ -11,13 +11,13 @@ import (
 
 // Causes are the model's descriptive values; NIGHT-FILE.md maps them to wire keys.
 const (
-	Avoidable     = "avoidable ability"
-	Unhealed      = "unhealed over time"
-	PulledAggro   = "pulled aggro"
-	TankLostBoss  = "tank lost the boss"
-	Unavoidable   = "unavoidable or one-shot"
-	AfterWipeCall = "after the wipe call"
-	Unresolved    = "unresolved"
+	Avoidable     = model.CauseAvoidable
+	Unhealed      = model.CauseUnhealed
+	PulledAggro   = model.CausePulledAggro
+	TankLostBoss  = model.CauseLostBoss
+	Unavoidable   = model.CauseUnavoidable
+	AfterWipeCall = model.CauseAfterWipe
+	Unresolved    = model.CauseUnresolved
 )
 
 type verdict struct {
@@ -83,7 +83,7 @@ func Review(f model.Fight, config cfg.Config) ([]model.Death, []model.Wipe) {
 
 func classify(c *context) model.Death {
 	d := model.Death{Player: c.victim, FightID: c.view.f.ID, TimeMs: c.at,
-		Cause: Unresolved, Confidence: "low", OwnerKind: "undecided", Evidence: recap(c.window, c.victim.ID)}
+		Cause: Unresolved, Confidence: "low", OwnerKind: model.OwnerUndecided, Evidence: recap(c.window, c.victim.ID)}
 	var best verdict
 	matches := 0
 	for _, r := range rules {

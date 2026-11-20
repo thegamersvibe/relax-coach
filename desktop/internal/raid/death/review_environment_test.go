@@ -32,7 +32,7 @@ func TestNilSourceIsNotEnvironmental(t *testing.T) {
 			case "one_shot":
 				e.Amount = model.Some(1000)
 			}
-			wantDeath(t, forVictim(t, f, config()), death.Unresolved, "low", "undecided", "")
+			wantDeath(t, forVictim(t, f, config()), death.Unresolved, "low", model.OwnerUndecided, "")
 		})
 	}
 }
@@ -56,10 +56,10 @@ func TestEnvironmentalParserProvenance(t *testing.T) {
 			e.TimeMs = 9900
 			f := slowDeath(6000)
 			f.Events[3] = e
-			wantDeath(t, forVictim(t, f, config()), death.Unavoidable, "high", "nobody", "")
+			wantDeath(t, forVictim(t, f, config()), death.Unavoidable, "high", model.OwnerNobody, "")
 			c := config()
 			mechanic(&c, 0)
-			wantDeath(t, forVictim(t, f, c), death.Unresolved, "low", "undecided", "")
+			wantDeath(t, forVictim(t, f, c), death.Unresolved, "low", model.OwnerUndecided, "")
 		})
 	}
 }
@@ -74,6 +74,6 @@ func TestUnownedGuardianExclusion(t *testing.T) {
 			i = 2
 		}
 		f.Events[i].Src = guardian
-		wantDeath(t, forVictim(t, f, config()), death.Unresolved, "low", "undecided", "")
+		wantDeath(t, forVictim(t, f, config()), death.Unresolved, "low", model.OwnerUndecided, "")
 	}
 }

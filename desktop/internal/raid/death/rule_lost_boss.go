@@ -20,7 +20,7 @@ func lostBoss(c *context) verdict {
 		}
 	}
 	// An unresolved aggro recap is a terminal fallback, not proof of a cause.
-	unknown := verdict{cause: Unresolved, owner: "undecided", evidence: evidence, terminal: true}
+	unknown := verdict{cause: Unresolved, owner: model.OwnerUndecided, evidence: evidence, terminal: true}
 	turn := killingRun(c, killing.Src.ID)
 	at := c.view.events[turn].TimeMs
 	holder := ""
@@ -49,7 +49,7 @@ func lostBoss(c *context) verdict {
 		}
 	}
 	if !last.Present || at-last.V > *c.params.LostBossGapMs {
-		return verdict{cause: TankLostBoss, owner: "player", owners: []string{c.view.players[holder].Name}, evidence: evidence}
+		return verdict{cause: TankLostBoss, owner: model.OwnerPlayer, owners: []string{c.view.players[holder].Name}, evidence: evidence}
 	}
 	return unknown
 }

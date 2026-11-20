@@ -22,8 +22,8 @@ func TestZZSameTimestampPostDeath(t *testing.T) {
 		if len(ds) != 2 {
 			t.Fatalf("deaths=%d", len(ds))
 		}
-		wantDeath(t, ds[0], death.Unresolved, "low", "undecided", "")
-		wantDeath(t, ds[1], death.Avoidable, "high", "player", "", victim.Name)
+		wantDeath(t, ds[0], death.Unresolved, "low", model.OwnerUndecided, "")
+		wantDeath(t, ds[1], death.Avoidable, "high", model.OwnerPlayer, "", victim.Name)
 		if !reflect.DeepEqual(ds[0].Evidence, []int64{9900}) || !reflect.DeepEqual(ds[1].Evidence, []int64{10000}) {
 			t.Fatalf("evidence crossed a death line: %v / %v", ds[0].Evidence, ds[1].Evidence)
 		}
@@ -38,8 +38,8 @@ func TestZZLifetimeEvidence(t *testing.T) {
 	if len(ds) != 2 {
 		t.Fatalf("deaths=%d", len(ds))
 	}
-	wantDeath(t, ds[0], death.Avoidable, "high", "player", "", victim.Name)
-	wantDeath(t, ds[1], death.Unresolved, "low", "undecided", "")
+	wantDeath(t, ds[0], death.Avoidable, "high", model.OwnerPlayer, "", victim.Name)
+	wantDeath(t, ds[1], death.Unresolved, "low", model.OwnerUndecided, "")
 	if !reflect.DeepEqual(ds[1].Evidence, []int64{9999}) {
 		t.Fatalf("prior-life evidence: %v", ds[1].Evidence)
 	}
@@ -57,11 +57,11 @@ func TestDeathWindowUsesPreviousDeathNotResurrection(t *testing.T) {
 		if len(ds) != 2 {
 			t.Fatalf("deaths=%d", len(ds))
 		}
-		wantDeath(t, ds[1], death.Unhealed, "high", "healers", "", healer.Name, healer2.Name)
+		wantDeath(t, ds[1], death.Unhealed, "high", model.OwnerHealers, "", healer.Name, healer2.Name)
 	}
 	f := slowDeath(6000)
 	f.Events = append(f.Events, modeltest.At(7000).Dst(victim).Died(1).Build())
-	wantDeath(t, forVictim(t, f, config()), death.Unhealed, "high", "healers", "", healer.Name, healer2.Name)
+	wantDeath(t, forVictim(t, f, config()), death.Unhealed, "high", model.OwnerHealers, "", healer.Name, healer2.Name)
 }
 
 func TestDeathLineCutsHealthAndHealerState(t *testing.T) {
@@ -69,7 +69,7 @@ func TestDeathLineCutsHealthAndHealerState(t *testing.T) {
 		t.Run(what, func(t *testing.T) {
 			f := slowDeath(6000)
 			delete(f.Roles, healer2.ID)
-			cause, confidence, owner, suggestion := death.Unhealed, "high", "healers", ""
+			cause, confidence, owner, suggestion := death.Unhealed, "high", model.OwnerHealers, ""
 			owners := []string{healer.Name}
 			switch what {
 			case "heal":
@@ -80,7 +80,7 @@ func TestDeathLineCutsHealthAndHealerState(t *testing.T) {
 				f.Events = append(f.Events, died(10000, healer))
 			case "healer_resurrection":
 				f.Events = append(f.Events, died(5000, healer), model.Event{TimeMs: 10000, Kind: model.Resurrect, Dst: healer})
-				cause, confidence, owner, suggestion, owners = death.Unresolved, "low", "undecided", "", nil
+				cause, confidence, owner, suggestion, owners = death.Unresolved, "low", model.OwnerUndecided, "", nil
 			}
 			wantDeath(t, forVictim(t, f, config()), cause, confidence, owner, suggestion, owners...)
 		})

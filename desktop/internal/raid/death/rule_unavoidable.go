@@ -16,23 +16,23 @@ func unavoidable(c *context) verdict {
 	}
 	if killing.Src.ID == "" {
 		if !environmental(*killing) {
-			return verdict{cause: Unresolved, owner: "undecided", terminal: true}
+			return verdict{cause: Unresolved, owner: model.OwnerUndecided, terminal: true}
 		}
 		// Environmental deaths with a registry entry need officer review; even
 		// a slow fall/fire death must never be charged to the healing team.
 		for _, m := range c.mechanics {
 			if m.Spell.ID == killing.SpellID {
-				return verdict{cause: Unresolved, owner: "undecided", terminal: true}
+				return verdict{cause: Unresolved, owner: model.OwnerUndecided, terminal: true}
 			}
 		}
-		return verdict{cause: Unavoidable, owner: "nobody", terminal: true}
+		return verdict{cause: Unavoidable, owner: model.OwnerNobody, terminal: true}
 	}
 	if oneShot(c) {
-		return verdict{cause: Unavoidable, owner: "nobody"}
+		return verdict{cause: Unavoidable, owner: model.OwnerNobody}
 	}
 	for _, spell := range spells {
 		if raidwide(c, *killing, spell) {
-			return verdict{cause: Unavoidable, owner: "nobody"}
+			return verdict{cause: Unavoidable, owner: model.OwnerNobody}
 		}
 	}
 	return verdict{}

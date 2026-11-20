@@ -65,7 +65,7 @@ func pulledAggro(c *context) verdict {
 		}
 	}
 	if firstVictim.Present && (!firstTank.Present || firstVictim.V < firstTank.V) && pulledAggroInRange(c, firstVictim.V, c.view.events[turn].TimeMs) {
-		return verdict{cause: PulledAggro, owner: "player", owners: []string{c.victim.Name}}
+		return verdict{cause: PulledAggro, owner: model.OwnerPlayer, owners: []string{c.victim.Name}}
 	}
 	return verdict{}
 }
