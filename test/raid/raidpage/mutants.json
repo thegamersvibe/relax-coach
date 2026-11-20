@@ -49,8 +49,8 @@
   },
   {
     "file": "desktop/raid_deaths.go",
-    "old": "f.Roles[d.Player.ID] != \"tank\"",
-    "new": "true",
+    "old": "(role == \"dps\" || role == \"healer\")",
+    "new": "(role == role)",
     "killed_by": "TestRaidPageDeathLabels"
   },
   {
@@ -100,5 +100,17 @@
     "old": "v.Duration = (time.Duration(f.DurationMs.V) * time.Millisecond).String()",
     "new": "v.Duration = \"unknown duration\"",
     "killed_by": "TestRaidPageWipesAndProblems"
+  },
+  {
+    "file": "desktop/raid_deaths.go",
+    "old": "(role == \"dps\" || role == \"healer\")",
+    "new": "role != \"tank\"",
+    "killed_by": "TestRaidPageDeathLabels"
+  },
+  {
+    "file": "desktop/raid_deaths.go",
+    "old": "if f.Boss && d.Cause",
+    "new": "if true && d.Cause",
+    "killed_by": "TestRaidPageDeathLabels"
   }
 ]

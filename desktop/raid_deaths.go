@@ -71,7 +71,10 @@ func raidDeathRows(f model.Fight, deaths []model.Death, c cfg.Config) []raidDeat
 			if v.KilledBy == "" {
 				v.KilledBy = "unknown"
 			}
-			if d.Cause == model.CauseUnresolved && d.SuggestedCause == "" && f.Roles[d.Player.ID] != "tank" && e.Stream == model.SwingLanded && slices.Contains(f.BossUnits, e.Src.ID) {
+			// A missing inferred role is not evidence that the player is a
+			// non-tank. Keep unknown/trash deaths unknown, even with a unit hint.
+			role := f.Roles[d.Player.ID]
+			if f.Boss && d.Cause == model.CauseUnresolved && d.SuggestedCause == "" && (role == "dps" || role == "healer") && e.Stream == model.SwingLanded && slices.Contains(f.BossUnits, e.Src.ID) {
 				v.Cause = "aggro: puller or tank"
 			}
 			break

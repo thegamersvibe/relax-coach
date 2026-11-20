@@ -24,13 +24,19 @@ func TestRaidPageDeathLabels(t *testing.T) {
 		want                          string
 	}{
 		{"ambiguous", "dps", model.CauseUnresolved, "", false, "aggro: puller or tank"},
+		{"healer", "healer", model.CauseUnresolved, "", false, "aggro: puller or tank"},
 		{"tank", "tank", model.CauseUnresolved, "", false, "unknown"},
+		{"unknown-role", "", model.CauseUnresolved, "", false, "unknown"},
+		{"trash", "dps", model.CauseUnresolved, "", false, "unknown"},
 		{"suggested", "dps", model.CauseUnresolved, model.CauseUnhealed, false, "unknown"},
 		{"spell", "dps", model.CauseUnresolved, "", true, "unknown"},
 		{"known", "dps", model.CauseAvoidable, "", false, model.CauseAvoidable},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			x := f
+			if tc.name == "trash" {
+				x.Boss = false
+			}
 			x.Roles = map[string]string{p.ID: tc.role}
 			x.Events = append([]model.Event{}, f.Events...)
 			if tc.spell {
