@@ -236,3 +236,161 @@ Open implementation questions: none. Runtime support scope/attribution,
 uncalibrated profile viability and currently unset phase-2 weights remain
 explicitly unverified/unconfigured data; this patch does not resolve those with
 assumptions. Native Windows/game testing is outside this lane.
+
+# R5 review round 2 — follow-up evidence
+
+Base: `981f08e62eda2238562adae12bae404adb3252fb`, branch
+`fix/raid-cfg-round2`. At clone time main had moved beyond the requested
+`c2d078e` (PR #50) to PR #52's merge; `c2d078e` is an ancestor of this base.
+This is one local follow-up commit, with no push, PR or tag. Read the round-2
+findings, `mut4.py`, `mut5.py`, `p2-mut-{a,b,c,d,e}.log`, `zz6_test.go`, and
+both supplied second opinions/probe descriptions read-only. No model, runner,
+CI, module timeout, release-version section or JSON seed data was changed.
+Consequently no data content-version bump is needed.
+
+## Test-first refusals and diagnostics
+
+Commands below used `go -C desktop test -count=1 -v -run '<names>'
+./internal/raid/cfg`. All listed red runs exited 1 because assertions failed;
+all green runs exited 0. Local raw logs are retained in `.git/r5b-evidence/`.
+The committed tests and mutant manifest reproduce the behavioral evidence.
+
+| Item | Red observed before implementation | Green after implementation |
+|---|---|---|
+| Credited stacking | `TestRound2CreditRequiresStacks/null`: `accepted invalid support.json; partial=true err=<nil>` | Same group passed, 0.058s. `credit=true` requires non-null `stacks`; explicit false and true both work. Missing stacks already failed the shape check and remains tested; uncredited null stays valid. |
+| Escaped surrogate text | `TestRound2SurrogateStrings`: lone high, lone low, reversed pair, high/high, separated pair and uppercase boundary escapes loaded or lacked surrogate diagnosis, in values and object keys | Group plus `TestRound2ValidStringEscapes` passed, 0.179s. Raw-token checks reject unpaired UTF-16 before replacement can hide it, naming the file/path. Later cases cover low/low and high/non-surrogate too. Valid minimum/maximum/mixed-case pairs, escaped backslashes/quotes, explicit U+FFFD and legal escaped NUL round-trip unchanged in both keys and values. |
+| NUL key path | `TestRound2NULKeyPath`: all four cases named only the enclosing object, e.g. `scoring.json: $: invalid character '\x00' in string` | Same group passed, 0.016s. Diagnostic-only key recovery names `$["sou\x00rce"]`, nested fields, array-object fields and a key containing an authored escaped quote. It still refuses the original bytes; it does not repair input. |
+| Smaller validation sample | `TestRound2ValidationSample`: `validation fixture still repeats the full catalogues: profiles=33 classes=9 effects=65 candidates=22` | Same test passed, 0.024s, then all cfg tests and the complete existing mutant pack passed. |
+
+The sample retains three Warrior profiles with their class ids and four support
+entries, plus two candidate encounters needed for duplicate tests. It compares
+retained records and every unrelated catalogue against a complete independent
+Load. Only immutable fixture bytes are shared via `sync.OnceValues`; each case
+writes a fresh directory and calls the real loader. No decoded Config or load
+result is cached. Full-seed, reload, lookup and ownership tests keep full data.
+All validation assertions remain, including malformed JSON and field paths.
+
+## Review survivors and missing guard coverage
+
+These behaviors already had production guards. Their red evidence is mutation:
+add each targeted test, remove only its guard, observe the test fail, then run
+against the unchanged guard and observe green. The selected mutation-red replay
+killed every new entry; the final full pack independently killed all 116 entries.
+The full cfg green run following these additions passed in 2.665s.
+
+| Reviewer survivor | Manifest # | Failing test with that guard removed |
+|---|---|---|
+| `mut4.py #1`, output part range | 101 | `TestRound2PartRanges` |
+| `mut4.py #2`, preparation part range | 102 | `TestRound2PartRanges` |
+| `mut4.py #19`, rounding step ceiling | 103 | `TestRound2RoundingStep` |
+| `mut4.py #38`, personal scope credit | 104 | `TestRound2SupportScope` |
+| Requested unknown scope credit coverage | 105 | `TestRound2SupportScope` |
+| `mut4.py #42`, duplicate profile support | 106 | `TestRound2DuplicateProfileSupport` |
+| `mut4.py #56`, target-rule unit selectors | 107 | `TestRound2TargetSelectors` |
+| `mut5.py #5`, candidate ability spell identity; second opinion M10 | 108 | `TestRound2EncounterSpellIdentities` |
+| `mut5.py #6`, enabled mechanic spell identity; second opinion M11 | 109 | `TestRound2EncounterSpellIdentities` |
+
+The findings call #38 "unknown scope", but the actual mutation removes
+**personal** from the guard. Both branches now have independent mutants and
+fixtures with verified=true and known stacks so other credit guards cannot mask
+them. Output/preparation cases cover all three roles at -1, 0, 100 and 101; the
+negative case keeps the total exactly 100 and every other part in range.
+`rounding_step` already had the `(0,100]` guard: its unit is score points and
+100 is the entire score scale, so a larger quantum exceeds that scale rather
+than expressing score precision. Tests cover -1, 0, .01, 100 and 100.01; null
+remains unconfigured. The rules README now states this existing bound.
+
+Selector tests cover absent/zero/negative ids, duplicate ids, missing source
+and a valid id-only selector. Identity tests assign a sourced id to a profile
+spell, then use it in each encounter catalogue under a different name; refusal
+must name both paths. Normalized same-name/same-id references remain accepted.
+Duplicate support fixtures use two identical resolving references, so a dangling
+reference check cannot mask the uniqueness guard.
+
+New-guard mutants are #110 (credited null stacks), #111/#112 (surrogate value/key
+checks), #113-#115 (surrogate ordering/adjacency/second-half checks), and #116
+(NUL key diagnostic path). All 100 original manifest entries are unchanged:
+**16 new, 0 re-anchored, none dropped**. The first local replay exposed masking
+of old #8 and #48 by the new stacks guard. Setting otherwise-valid stacks (and
+verification where testing scope) in those fixtures restored independent kills;
+no assertion or mutant was weakened. Final #8 and #48 both report KILLED.
+
+### Equivalent survivor: mut4.py #64
+
+The reviewer already marked this one equivalent: replacing `b = value // Shape`
+with `_ = value // Shape` leaves original bytes, rather than the first
+`json.RawMessage`, for shape/typed decoding. Before that assignment, `uniqueKeys`
+and its EOF check have required exactly one valid JSON value. Thus the only
+remaining difference is legal surrounding JSON whitespace, accepted by both
+subsequent decoders. Invalid suffixes still fail before this assignment.
+
+Evidence: ran the full cfg suite normally and with exactly that source change
+through a Go `-overlay` file. Both exited 0, each with 416 passing test/subtest
+records and identical complete pass/fail/skip inventories (control 3.459s,
+mutant 1.491s). This includes existing `TestTrailingJSON` invalid suffix cases
+and new `TestRound2TrailingWhitespace` acceptance cases. The overlay, JSON event
+logs and inventory check are retained locally. No fictitious killing test or
+unkillable entry was added to the pack for this equivalent assignment.
+
+## Race budget: three runs before and after
+
+All six sequential runs used exactly:
+
+```sh
+python3 -I -B tools/raidtest.py --all --kind go
+```
+
+Every run exited 0 with `RESULT: 5/5 modules passed`; cfg is run with `-race`
+by its unchanged module manifest. Times below are the runner's cfg wall time
+(to its displayed 0.1s precision) and separately measured whole-command wall
+seconds. No timeout was raised and no assertion or race detector was removed.
+
+| Run | Before cfg | After cfg | Before all-Go wall | After all-Go wall |
+|---|---:|---:|---:|---:|
+| 1 | 27.0s | 10.5s | 50.405s | 31.015s |
+| 2 | 25.5s | 9.4s | 50.024s | 32.177s |
+| 3 | 27.6s | 10.8s | 48.383s | 32.613s |
+
+Against the unchanged 30s budget, the slowest measured cfg run went from
+**1.09x margin / 2.4s spare** to **2.78x margin / 19.2s spare** (budget divided
+by slowest time, not a claim about arbitrary host contention). Profiling showed
+repeated full-catalogue validation in the slow table tests; the smaller fixture
+removes that work rather than relaxing their checks. These are local measured
+runs, not a claim of cold-cache or Windows timing coverage.
+
+## Final sequential acceptance and iteration issues
+
+After the last production/test edit:
+
+```text
+(cd desktop && gofmt -l internal/raid && go vet ./internal/raid/... && go test -count=1 ./internal/raid/...)
+  gofmt: no filenames; go vet: no diagnostics
+  raid             0.020s
+  raid/cfg         1.908s
+  raid/fixture     0.011s
+  raid/logfmt      5.294s
+  raid/model       0.218s
+  raid/model/modeltest [no test files]
+python3 -I -B tools/raidtest.py --all --kind go
+  5/5 modules passed on each of three runs (times above)
+$PY -I -B tools/raidtest.py --mutants cfg
+  RESULT: 116/116 mutants killed
+$PY -I -B tools/raidtest.py --mutants rules
+  RESULT: no mutants
+$PY -I -B tools/raidtest.py --all --kind lua,py
+  _client 0.1s; _runner 22.4s; core 0.2s; log 0.4s;
+  prep 0.2s; store 16.3s; wire 0.7s
+  RESULT: 7/7 modules passed
+```
+
+`$PY` is the resolved uv executable running `--no-project --python 3.14
+--with-requirements .github/requirements-ci.txt python`. All acceptance commands
+above exited 0; heavy commands ran sequentially. No full desktop `go test ./...`
+was run. A first Go acceptance attempt correctly rejected `1<<10` as a folded
+1024 constant under the no-large-literals gate. Reading the needed bit as
+`code>>10&1` / `low>>10&1` preserves the surrogate test without a large literal;
+the final rules gate and all mutants passed. No exemption was added.
+
+Open implementation questions: none. Native Windows/game execution, arbitrary
+host-load bounds and concurrent multi-file editing are not established here;
+the existing non-transactional load contract and phase-2 unknowns are unchanged.

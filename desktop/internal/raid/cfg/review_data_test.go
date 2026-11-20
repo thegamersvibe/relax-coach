@@ -14,6 +14,7 @@ func TestUnverifiedCreditRefused(t *testing.T) {
 		e := d["effects"].([]any)[0].(map[string]any)
 		e["credit"] = true
 		e["verified"] = false
+		e["stacks"] = false // Isolate verification from the independent stacking gate.
 	})
 	refusedField(t, dir, "support.json", "credit")
 }

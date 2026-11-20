@@ -211,6 +211,9 @@ func (c *Config) validate() error {
 		if e.Credit && !e.Verified {
 			return fmt.Errorf("%scredit requires verified=true", path)
 		}
+		if e.Credit && e.Stacks == nil {
+			return fmt.Errorf("%sstacks: credit requires an explicit stacking rule", path)
+		}
 		if err := checkFields(path,
 			fieldCheck{"id", !nonblank(e.ID) || effectIDs[normalized(e.ID)]},
 			fieldCheck{"source", !nonblank(e.Source)}, fieldCheck{"note", !nonblank(e.Note)},

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -9,7 +10,7 @@ import (
 )
 
 // Hot items on the Farming page (AH hot items plan, H1): items whose price is
-// up since the previous recorded day AND against their usual price, from AH
+// up or down since the previous recorded day AND against their usual price, from AH
 // Profit's daily history of your own scans (AHProfitDB.hist, saved-data
 // version 2 and later). Read-only; nothing is written anywhere.
 
@@ -19,9 +20,13 @@ const (
 	hotMaxRows           = 10  // rows shown per auction house; never padded
 	hotMinDays           = 5   // recorded days before Now for a baseline
 	hotMinBaseline       = 500 // copper: 5 silver
-	hotMinListed         = 5   // listed on Now's day, and median listed on the earlier days
+	hotMinListed         = 10  // units listed on Now's day
+	hotMinUsualListed    = 5   // median units listed on the earlier days
+	hotMinPrice          = 1   // copper: fallers must still have a positive asking price
+	hotDumpMultiple      = 2   // dump: at least twice the usual listed units
+	hotMinSupplyPct      = 50  // risers: Now must retain at least this % of usual supply
 	hotMaxAgainst        = 10  // Now at most this many times the baseline (and the previous day)
-	hotMinChangePct      = 20  // up at least this % since the previous recorded day
+	hotMinChangePct      = 20  // move at least this % since the previous recorded day
 	hotMinAgainstPct     = 20  // and at least this % against the usual price (baseline mode)
 	hotFullDayPct        = 50  // without a full-scan time: a day with at least this % of the busiest day's rows
 	hotSpikePct          = 50  // spike: Now at least this % above the baseline and above every earlier high
@@ -160,27 +165,33 @@ type FarmHot struct {
 }
 
 type FarmHotHouse struct {
-	House      string
-	Source     string    // "From your own scans"
-	LastScan   time.Time // newest own scan of this house
-	Message    string    // instead of rows: no scan today, guild only, nothing up
-	Checked    int       // items with a Now and a Previous
-	Dropped    int       // of those, left out by the filters
-	Damaged    int       // history strings that did not decode (items dropped)
-	ChangeOnly bool      // first weeks: no item has hotMinDays earlier days yet
-	NowDay     time.Time // the recorded day the list is for (UTC)
-	DaysAgo    int       // 0: today; 1: yesterday's scan; more: an older scan
-	Rows       []FarmHotRow
+	House       string
+	Source      string    // "From your own scans"
+	LastScan    time.Time // newest own scan of this house
+	Message     string    // instead of rows: no scan today, guild only, nothing up
+	Checked     int       // items with a Now and a Previous
+	Dropped     int       // of those, left out by the usual riser filters
+	ThinSupply  int       // otherwise qualifying risers left out for thin supply
+	FallDropped int       // left out by the faller filters (no thin-supply filter)
+	Damaged     int       // history strings that did not decode (items dropped)
+	ChangeOnly  bool      // first weeks: no item has hotMinDays earlier days yet
+	NowDay      time.Time // the recorded day the list is for (UTC)
+	DaysAgo     int       // 0: today; 1: yesterday's scan; more: an older scan
+	Rows        []FarmHotRow
+	Fallers     []FarmHotRow
 }
 
 type FarmHotRow struct {
+	QualityClass            string
 	ID, Now, Prev, Baseline int
+	Listed, UsualListed     int // units; usual is rounded for display only
 	Name                    string
 	Gatherable              bool
 	ChangePct, AgainstPct   int
 	PrevDays                int // 1 "since yesterday", 2 "since 2 days ago"
 	BaseDays                int // earlier days in the median
 	Spike                   bool
+	Dump                    bool
 	SpikeDays               int // "highest in N days"
 	Chart                   FarmHotChart
 	rank                    float64
@@ -329,33 +340,50 @@ func buildHotHouse(key string, H, L, S map[string]any, items map[int]farmItemRef
 	hh.ChangeOnly = !anyBaseline
 	for _, it := range cands {
 		hh.Checked++
-		row, keep := hotRank(it, hh.ChangeOnly)
-		if !keep {
-			hh.Dropped++
-			continue
+		for _, falling := range []bool{false, true} {
+			row, excluded := hotRank(it, hh.ChangeOnly, falling)
+			if excluded != hotKept {
+				switch {
+				case falling:
+					hh.FallDropped++
+				case excluded == hotThinSupply:
+					hh.ThinSupply++
+				default:
+					hh.Dropped++
+				}
+				continue
+			}
+			row.ID = it.id
+			row.Name, row.QualityClass = items[it.id].Name, items[it.id].QualityClass
+			if row.Name == "" {
+				row.Name = fmt.Sprintf("item %d", it.id)
+			}
+			row.Gatherable = gather[it.id]
+			row.Chart = hotChart(it.rows, it.nowDay, it.now)
+			if falling {
+				hh.Fallers = append(hh.Fallers, row)
+			} else {
+				hh.Rows = append(hh.Rows, row)
+			}
 		}
-		row.ID = it.id
-		row.Name = items[it.id].Name
-		if row.Name == "" {
-			row.Name = fmt.Sprintf("item %d", it.id)
-		}
-		row.Gatherable = gather[it.id]
-		row.Chart = hotChart(it.rows, it.nowDay, it.now)
-		hh.Rows = append(hh.Rows, row)
 	}
-	sort.Slice(hh.Rows, func(i, j int) bool {
-		if hh.Rows[i].rank != hh.Rows[j].rank {
-			return hh.Rows[i].rank > hh.Rows[j].rank
-		}
-		return hh.Rows[i].ID < hh.Rows[j].ID
-	})
-	if len(hh.Rows) > hotMaxRows {
-		hh.Rows = hh.Rows[:hotMaxRows]
-	}
+	hh.Rows, hh.Fallers = hotTopRows(hh.Rows), hotTopRows(hh.Fallers)
 	return hh
 }
 
-// hotRank applies the filters and the rank value (plan 2) to one item.
+func hotTopRows(rows []FarmHotRow) []FarmHotRow {
+	sort.Slice(rows, func(i, j int) bool {
+		if rows[i].rank != rows[j].rank {
+			return rows[i].rank > rows[j].rank
+		}
+		return rows[i].ID < rows[j].ID
+	})
+	if len(rows) > hotMaxRows {
+		rows = rows[:hotMaxRows]
+	}
+	return rows
+}
+
 // hotHouseDay picks the house's day: the day of the last own full scan when the history holds rows on it,
 // else the newest day holding at least hotFullDayPct of the busiest day's rows. A partial (search) day is
 // never the day while a fuller one exists.
@@ -377,7 +405,17 @@ func hotHouseDay(perDay map[int]int, full any, today int) int {
 	return day
 }
 
-func hotRank(it hotItem, changeOnly bool) (FarmHotRow, bool) {
+type hotExclusion int
+
+const (
+	hotKept hotExclusion = iota
+	hotFiltered
+	hotThinSupply
+)
+
+// hotRank applies the common filters and ranks the size of a rise or fall.
+// Direction changes the signs, the scarcity guard, and the spike/dump marker.
+func hotRank(it hotItem, changeOnly, falling bool) (FarmHotRow, hotExclusion) {
 	var prices, listed []int
 	high := 0
 	for _, r := range it.earlier {
@@ -385,36 +423,49 @@ func hotRank(it hotItem, changeOnly bool) (FarmHotRow, bool) {
 		listed = append(listed, r.Listed)
 		high = max(high, r.High)
 	}
-	base := median(prices)
+	base, usualListed := median(prices), median(listed)
 	now, prev := float64(it.now), float64(it.prev.price())
 	change := pct(now, prev)
 	against := pct(now, base)
-	row := FarmHotRow{Now: it.now, Prev: it.prev.price(), Baseline: int(base + 0.5), PrevDays: it.nowDay - it.prev.Day, BaseDays: len(prices)}
-	row.ChangePct, row.AgainstPct = int(change+0.5), int(against+0.5)
+	row := FarmHotRow{Listed: it.listed, UsualListed: int(usualListed + 0.5), Now: it.now, Prev: it.prev.price(), Baseline: int(base + 0.5), PrevDays: it.nowDay - it.prev.Day, BaseDays: len(prices)}
+	row.ChangePct, row.AgainstPct = int(math.Round(change)), int(math.Round(against))
+	move, usualMove := change, against
+	if falling {
+		move, usualMove = -change, -against
+	}
 	switch {
+	case falling && now < hotMinPrice:
+		return row, hotFiltered
 	case !changeOnly && len(prices) < hotMinDays:
-		return row, false
+		return row, hotFiltered
 	case base < hotMinBaseline:
-		return row, false
-	case it.listed < hotMinListed || median(listed) < hotMinListed:
-		return row, false
-	case now > hotMaxAgainst*base || now > hotMaxAgainst*prev:
-		return row, false
-	case change < hotMinChangePct:
-		return row, false
+		return row, hotFiltered
+	case it.listed < hotMinListed || usualListed < hotMinUsualListed:
+		return row, hotFiltered
+	case !falling && (now > hotMaxAgainst*base || now > hotMaxAgainst*prev):
+		return row, hotFiltered
+	case move < hotMinChangePct:
+		return row, hotFiltered
 	}
-	if changeOnly {
-		row.rank = change
-		return row, true
+	if !changeOnly && usualMove < hotMinAgainstPct { // require both moves, not a return to normal
+		return row, hotFiltered
 	}
-	if against < hotMinAgainstPct { // up against both: a rebound to normal and a slow climb drop out
-		return row, false
+	// Use the same earlier days as the price baseline, even in first-weeks
+	// mode. No earlier days means no Previous and is skipped by the caller.
+	if !falling && len(listed) > 0 && float64(it.listed)*100 < usualListed*hotMinSupplyPct {
+		return row, hotThinSupply
 	}
-	row.rank = min(change, against)
-	if now >= base*(1+hotSpikePct/100.0) && it.now > high {
+	row.rank = move
+	if !changeOnly {
+		row.rank = min(move, usualMove)
+	}
+	if falling {
+		// Supply has a usable median even before the price baseline matures.
+		row.Dump = len(listed) > 0 && float64(it.listed) >= hotDumpMultiple*usualListed
+	} else if !changeOnly && now >= base*(1+hotSpikePct/100.0) && it.now > high {
 		row.Spike, row.SpikeDays = true, it.nowDay-it.earlier[0].Day+1
 	}
-	return row, true
+	return row, hotKept
 }
 
 // hotChart: one point per recorded day of the last 21, Now's day last and

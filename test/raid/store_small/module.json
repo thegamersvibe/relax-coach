@@ -1,0 +1,15 @@
+{
+  "kind": "lua",
+  "source": "addon/RelaxRaid/Store.lua",
+  "test": [
+    "python3",
+    "-I",
+    "-B",
+    "test/raid/store/test_lifetime_fill.py",
+    "-k",
+    "test_small_report_fill_one_window_three_nights"
+  ],
+  "depends": [
+    "store"
+  ]
+}

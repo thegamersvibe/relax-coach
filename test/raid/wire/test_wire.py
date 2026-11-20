@@ -5,6 +5,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "test/raid/_client"))
 from client import Client
+from prep_store import report_at
 ADDON = ROOT / "addon/RelaxRaid"
 
 
@@ -16,6 +17,53 @@ def boot(saved=None):
 
 
 class WireTests(unittest.TestCase):
+    def test_non_guild_sender_and_both_paths_store_canonical_bodies(self):
+        sender = boot()
+        sender.guild = None
+        sender.player_name = "Bram"
+        sender.realm = "OwnRealm"
+        sender.in_raid = True
+        sender.fire("PLAYER_GUILD_UPDATE", "player")
+        self.assertFalse(sender.run("return RelaxRaid.modules.Log.logger('raid')"))
+        sender.fire("READY_CHECK")
+        sender.advance(5)
+        self.assertGreater(len(sender.sent), 0)
+        self.assertEqual(sender.run("return #RelaxRaidDB.prep.nights"), 0)
+        receiver = boot()
+        receiver.in_raid = True
+        for prefix, body, channel, _ in sender.sent:
+            receiver.fire("CHAT_MSG_ADDON", prefix, body, channel, "Bram-OwnRealm")
+        self.assertEqual(receiver.run("return RelaxRaid.modules.Wire.stats.received"), 1)
+        r = report_at(receiver, "bram-ownrealm")
+        body = receiver.lua.globals().RelaxRaid.modules.Wire.encode(r)
+        self.assertEqual(receiver.run("return RelaxRaidDB.prep.nights[1].reports['bram-ownrealm'][1]"), body)
+        own = boot()
+        own.in_raid = True
+        own.fire("READY_CHECK")
+        own.advance(5)
+        self.assertGreater(len(own.sent), 0)
+        self.assertEqual(own.run("return RelaxRaidDB.prep.nights[1].reports['alia-stone-pvp-eu'][1]"),
+                         own.sent[0][1].split("|", 4)[4])
+
+    def test_protocol_marker_documentation_matches_codec(self):
+        text = (ROOT / "docs/raid/PREP-PROTOCOL.md").read_text()
+        self.assertNotIn("Unknown scalar is", text)
+        c = boot()
+        body = c.run("""
+            local r=RelaxRaid.modules.Prep.build('ready')
+            r.addonVersion,r.class='unreadable','unreadable'
+            r.level,r.playedLevel='unreadable','unreadable'
+            r.consumables,r.gear='unreadable','unreadable'
+            return RelaxRaid.modules.Wire.encode(r)
+        """)
+        fields = body.split("\t")
+        for field, index, marker in (("addonVersion", 1, "unreadable"), ("class", 3, "unreadable"),
+                                     ("level", 4, "u"), ("playedLevel", 5, "u"),
+                                     ("consumables", 8, "u"), ("gear", 9, "u"), ("notScored", 10, "u")):
+            self.assertEqual(fields[index], marker)
+            self.assertIn(f"| `{field}` | `{marker}` |", text)
+        self.assertIn("| `protocol`, `name`, `reason`, `sentAt` | no marker; invalid/unreadable rejects the report |", text)
+
     def test_report_round_trip_and_bounds(self):
         c = boot()
         self.assertTrue(c.run("return RelaxRaid.modules.Wire ~= nil"), "wire module missing")
@@ -131,7 +179,7 @@ class WireTests(unittest.TestCase):
         self.assertEqual(c.run("return #RelaxRaidDB.prep.nights"), 0)
         c.fire("CHAT_MSG_ADDON", "RLXR1", "P1|2|1|1|" + body, "RAID", "Alia-Stone-PvP-EU")
         self.assertEqual(c.run("return #RelaxRaidDB.prep.nights"), 1)
-        self.assertEqual(c.run("return RelaxRaidDB.prep.nights[1].windows[1].reports['alia-stone-pvp-eu'].report.name"),
+        self.assertEqual(report_at(c)["name"],
                          "Alia-Stone-PvP-EU")
 
     def test_multipart_reassembly_replay_expiry_and_version(self):
@@ -273,7 +321,8 @@ class WireTests(unittest.TestCase):
         rows = receiver.run("return RelaxRaidDB.prep.nights[1].windows[1].reports")
         # Lua folds ASCII only: preserve every UTF-8 byte in the identity key.
         key = full_name.translate(str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"))
-        self.assertEqual(rows[key]["report"]["name"], full_name)
+        self.assertIsInstance(rows[key]["report"], int)
+        self.assertEqual(report_at(receiver, key)["name"], full_name)
 
     def test_accented_sender_report_is_stored(self):
         c = boot()
@@ -284,8 +333,7 @@ class WireTests(unittest.TestCase):
         fields[2] = name
         c.fire("CHAT_MSG_ADDON", "RLXR1", "P1|1|1|1|" + "\t".join(fields), "RAID", name)
         self.assertEqual(c.run("return RelaxRaid.modules.Wire.stats.received"), 1)
-        row = c.run("return RelaxRaidDB.prep.nights[1].windows[1].reports")[name.lower()]
-        self.assertEqual(row["report"]["name"], name)
+        self.assertEqual(report_at(c, name.lower())["name"], name)
 
     def test_unusable_receive_names_are_counted(self):
         for bad in (None, "", "unreadable", " Bram-EU", "Bram|EU", "Bram,EU", "Bram;EU",
@@ -331,7 +379,7 @@ class WireTests(unittest.TestCase):
                     self.assertEqual(c.run("return #RelaxRaidDB.prep.nights"), 0)
                 else:
                     self.assertEqual(c.run("return RelaxRaid.modules.Wire.stats.received"), 1)
-                    self.assertEqual(c.run("return RelaxRaidDB.prep.nights[1].windows[1].reports['bram-ownrealm'].report.name"), "Bram-OwnRealm")
+                    self.assertEqual(report_at(c, "bram-ownrealm")["name"], "Bram-OwnRealm")
 
     def test_own_nil_realm_uses_normalized_realm(self):
         c = boot()
@@ -342,7 +390,7 @@ class WireTests(unittest.TestCase):
         c.advance(5)
         self.assertGreater(len(c.sent), 0)
         self.assertIn("Alia-Stone-OwnRealm", c.sent[0][1])
-        self.assertEqual(c.run("return RelaxRaidDB.prep.nights[1].windows[1].reports['alia-stone-ownrealm'].report.name"), "Alia-Stone-OwnRealm")
+        self.assertEqual(report_at(c, "alia-stone-ownrealm")["name"], "Alia-Stone-OwnRealm")
 
     def test_unreadable_normalized_realm_fails_closed_and_counts(self):
         for expr in ("nil", "function() return nil end", "function() return '' end",
@@ -383,7 +431,7 @@ class WireTests(unittest.TestCase):
         self.assertEqual(body.split("\t")[-1], "1,19")
         c.fire("CHAT_MSG_ADDON", "RLXR1", "P1|1|1|1|" + body, "RAID", r["name"])
         self.assertEqual(c.run("return RelaxRaid.modules.Wire.stats.received"), 1)
-        saved = c.run("return RelaxRaidDB.prep.nights[1].windows[1].reports['alia-stone-pvp-eu'].report")
+        saved = report_at(c)
         self.assertEqual(list(saved["notScored"].values()), [1, 19])
         r["notScored"][1] = 7
         self.assertEqual(saved["notScored"][1], 1)

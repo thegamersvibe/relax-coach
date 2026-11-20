@@ -1,5 +1,5 @@
 // Relax Coach native Windows application.
-// Reads ForeverCoach and AH Profit SavedVariables, and AH Profit's bundled data files (read-only). No memory reading or game automation.
+// Reads ForeverCoach and AH Profit saves, plus optional AH Profit/GearQuest data (read-only). No memory reading or game automation.
 // Diagnostic HTTP is opt-in; the normal UI uses direct in-process Go bindings.
 package main
 
@@ -100,7 +100,9 @@ type View struct {
 	NoGame                      bool
 	UpdateNote, AppVersion      string
 	Loaded                      time.Time
-	Farm                        FarmView // AH Profit, same account; zero when it has no save
+	Farm                        FarmView            // AH Profit, same account; zero when it has no save
+	itemNames                   map[int]farmItemRef // same selected Coach save; never serialized
+	hasItemNames                bool                // cache table exists, even when empty or capped
 }
 
 type App struct {
@@ -112,6 +114,7 @@ type App struct {
 	accounts               []AccountChoice
 	configWarning          string
 	canAutoSelect          bool
+	gearNames              gearNameCache
 	farmRef                farmRefCache   // AH Profit's bundled names, reparsed only when the files change
 	farmParse              farmParseCache // the parsed AHProfit.lua, reparsed only when the file changes
 }
@@ -205,6 +208,7 @@ func (a *App) setGame(game string) {
 	// Nothing parsed from another game folder is reused (AH Profit's save and
 	// its bundled files are cached by file version).
 	a.farmRef, a.farmParse = farmRefCache{}, farmParseCache{}
+	a.gearNames = gearNameCache{}
 	// Do not carry another game's last-good report across a folder change.
 	a.view = View{AppVersion: Version, Game: game, NoGame: game == ""}
 }
@@ -253,6 +257,8 @@ func (a *App) reloadLocked() {
 		} else {
 			a.modTime = st.ModTime()
 			v.Chars = buildChars(db)
+			v.itemNames = coachItemNames(db)
+			v.hasItemNames = M(db["itemNames"]) != nil
 		}
 	}
 	// AH Profit is optional and read for the same account only; its result
@@ -260,8 +266,10 @@ func (a *App) reloadLocked() {
 	chars := v.Chars
 	if v.Error != "" && prev.Game == v.Game && prev.Account == v.Account {
 		chars = prev.Chars
+		v.itemNames = prev.itemNames
+		v.hasItemNames = prev.hasItemNames
 	}
-	farmFor := View{Game: v.Game, Account: v.Account, Chars: chars}
+	farmFor := View{Game: v.Game, Account: v.Account, Chars: chars, itemNames: v.itemNames, hasItemNames: v.hasItemNames}
 	a.loadFarmLocked(&farmFor, prev)
 	v.Farm = farmFor.Farm
 	if v.Error != "" && prev.SVPath != "" && prev.Error == "" && prev.Game == v.Game && prev.Account == v.Account {
