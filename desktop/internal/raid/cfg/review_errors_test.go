@@ -30,7 +30,7 @@ func TestCatalogueFieldErrors(t *testing.T) {
 				m := r["mechanics"].([]any)[0].(map[string]any)
 				switch key {
 				case "roles":
-					m[key] = []any{}
+					m[key] = []any{"wizard"} // Empty mechanics roles now mean every role.
 				case "evidence_source":
 					m[key] = map[string]any{"kind": "forever_source", "note": "test"}
 				default:

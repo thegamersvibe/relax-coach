@@ -55,6 +55,7 @@ func (s Scoring) validate() error {
 		fieldCheck{"night.kill_weight", n.KillWeight <= 0 || n.KillWeight > 1},
 		fieldCheck{"night.wipe_weight", n.WipeWeight < 0 || n.WipeWeight >= n.KillWeight},
 		fieldCheck{"confidence.min_coverage", !fraction(c.MinCoverage)},
+		fieldCheck{"confidence.provisional_min_coverage", c.ProvisionalMinCoverage <= 0 || c.ProvisionalMinCoverage >= c.MinCoverage},
 		fieldCheck{"confidence.low_confidence_fight_ms", c.LowConfidenceFightMs <= 0},
 		fieldCheck{"confidence.short_fight_weight", c.ShortFightWeight <= 0 || c.ShortFightWeight > 1},
 		fieldCheck{"confidence.min_measurable_players", c.MinMeasurablePlayers < 2},
@@ -72,6 +73,10 @@ func (s Scoring) validate() error {
 		fieldCheck{"healer.unhealed_team_score", !scoreValue(h.UnhealedTeamScore)},
 		fieldCheck{"healer.unhealed_output_cap", !scoreValue(h.UnhealedOutputCap)},
 		fieldCheck{"healer.low_health_fraction", h.LowHealthFraction != nil && (*h.LowHealthFraction <= 0 || !fraction(*h.LowHealthFraction))},
+		fieldCheck{"death.full_health_fraction", d.FullHealthFraction <= 0 || !fraction(d.FullHealthFraction)},
+		fieldCheck{"death.min_health_samples", d.MinHealthSamples < 1},
+		fieldCheck{"death.raidwide_share", d.RaidwideShare <= 0 || !fraction(d.RaidwideShare)},
+		fieldCheck{"death.raidwide_window_ms", d.RaidwideWindowMs <= 0},
 		fieldCheck{"death.window_ms", d.WindowMs <= 0},
 		fieldCheck{"death.one_shot_window_ms", d.OneShotWindowMs <= 0 || d.OneShotWindowMs > d.WindowMs},
 		fieldCheck{"death.unhealed_min_ms", d.UnhealedMinMs <= 0 || d.UnhealedMinMs > d.WindowMs},
@@ -80,6 +85,7 @@ func (s Scoring) validate() error {
 		fieldCheck{"death.summary_window_ms", !positiveOptional(d.SummaryWindowMs)},
 		fieldCheck{"new_at_60_seconds", !positiveOptional(s.NewAt60Seconds)},
 		fieldCheck{"gcd_ms", !positiveOptional(s.GCDMs)},
+		fieldCheck{"gcd_energy_ms", !positiveOptional(s.GCDEnergyMs)},
 		fieldCheck{"rounding_step", s.RoundingStep != nil && (*s.RoundingStep <= 0 || !scoreValue(*s.RoundingStep))},
 	); err != nil {
 		return err
@@ -115,8 +121,8 @@ func (s Scoring) validate() error {
 			}
 			total += v
 		}
-		if total <= 0 {
-			return fmt.Errorf("measure_weights.%s: weights are all zero", part)
+		if !same(total, 100) {
+			return fmt.Errorf("measure_weights.%s: weights must sum to 100", part)
 		}
 	}
 	for id, v := range s.CountPenalties {
@@ -341,7 +347,7 @@ func (c *Config) validateEncounters() error {
 		for j, m := range e.Mechanics {
 			mp := fmt.Sprintf("%smechanics[%d].", path, j)
 			if err := checkFields(mp,
-				fieldCheck{"id", !nonblank(m.ID) || mechanics[normalized(m.ID)]}, fieldCheck{"roles", !rolesValid(m.Roles)},
+				fieldCheck{"id", !nonblank(m.ID) || mechanics[normalized(m.ID)]}, fieldCheck{"roles", len(m.Roles) != 0 && !rolesValid(m.Roles)},
 				fieldCheck{"affected_players", !nonblank(m.AffectedPlayers)}, fieldCheck{"valid_response", !nonblank(m.ValidResponse)},
 				fieldCheck{"evidence_source.kind", m.EvidenceSource.Kind != "real_log"}, fieldCheck{"evidence_source.note", !nonblank(m.EvidenceSource.Note)}); err != nil {
 				return err

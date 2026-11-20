@@ -8,7 +8,7 @@
   },
   {
     "file": "desktop/internal/raid/cfg/decode.go",
-    "old": "if m.Schema != 1 {",
+    "old": "if m.Schema != schema {",
     "new": "if false {",
     "killed_by": "TestRejectVersions"
   },
@@ -205,7 +205,7 @@
   },
   {
     "file": "desktop/internal/raid/cfg/validate.go",
-    "old": "if total <= 0 {",
+    "old": "if !same(total, 100) {",
     "new": "if false {",
     "killed_by": "TestReviewSurvivorCases",
     "reviewer_hand_index": 25
@@ -731,5 +731,293 @@
     "old": "rawKeyPath(b[start:], path)",
     "new": "path",
     "killed_by": "TestRound2NULKeyPath"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "!positiveOptional(s.GCDEnergyMs)",
+    "new": "false",
+    "killed_by": "TestEnergyGCDRange"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "!positiveOptional(s.GCDEnergyMs)",
+    "new": "s.GCDEnergyMs != nil && *s.GCDEnergyMs < 0",
+    "killed_by": "TestEnergyGCDRange"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/types.go",
+    "old": "`json:\"gcd_energy_ms\"`",
+    "new": "`json:\"gcd_energy_ms,omitempty\"`",
+    "killed_by": "TestEnergyGCDDecode"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "s.GCDEnergyMs = copyPointer(s.GCDEnergyMs)",
+    "new": "/* detached energy GCD copy bypassed */",
+    "killed_by": "TestEnergyGCDSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "c.ProvisionalMinCoverage <= 0",
+    "new": "false",
+    "killed_by": "TestProvisionalCoverageRange"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "c.ProvisionalMinCoverage <= 0",
+    "new": "c.ProvisionalMinCoverage < 0",
+    "killed_by": "TestProvisionalCoverageRange"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "c.ProvisionalMinCoverage >= c.MinCoverage",
+    "new": "false",
+    "killed_by": "TestProvisionalCoverageRange"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "c.ProvisionalMinCoverage >= c.MinCoverage",
+    "new": "c.ProvisionalMinCoverage > c.MinCoverage",
+    "killed_by": "TestProvisionalCoverageRange"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "c.ProvisionalMinCoverage >= c.MinCoverage",
+    "new": "c.ProvisionalMinCoverage >= .6",
+    "killed_by": "TestProvisionalCoverageRange"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/types.go",
+    "old": "`json:\"provisional_min_coverage\"`",
+    "new": "`json:\"provisional_min_coverage,omitempty\"`",
+    "killed_by": "TestProvisionalCoverageDecode"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "if bytes.Equal(bytes.TrimSpace(b), []byte(\"null\")) {\n\t\treturn fmt.Errorf(\"%s cannot be null\", path)",
+    "new": "if false && bytes.Equal(bytes.TrimSpace(b), []byte(\"null\")) {\n\t\treturn fmt.Errorf(\"%s cannot be null\", path)",
+    "killed_by": "TestProvisionalCoverageDecode"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "!positiveOptional(s.GCDMs)",
+    "new": "false",
+    "killed_by": "TestRaidOneScalarRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "!positiveOptional(d.LostBossGapMs)",
+    "new": "false",
+    "killed_by": "TestRaidOneScalarRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "!positiveOptional(d.SummaryWindowMs)",
+    "new": "false",
+    "killed_by": "TestRaidOneScalarRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "s.RoundingStep != nil && (*s.RoundingStep <= 0 || !scoreValue(*s.RoundingStep))",
+    "new": "false",
+    "killed_by": "TestRaidOneScalarRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "h.LowHealthFraction != nil && (*h.LowHealthFraction <= 0 || !fraction(*h.LowHealthFraction))",
+    "new": "false",
+    "killed_by": "TestRaidOneScalarRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if !nonblank(id) || !scoreValue(v) {\n\t\t\t\treturn fmt.Errorf(\"measure_weights.",
+    "new": "if !nonblank(id) || v > 100 {\n\t\t\t\treturn fmt.Errorf(\"measure_weights.",
+    "killed_by": "TestRaidOneMeasureWeightRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if !nonblank(id) || !scoreValue(v) {\n\t\t\t\treturn fmt.Errorf(\"measure_weights.",
+    "new": "if !nonblank(id) || v < 0 {\n\t\t\t\treturn fmt.Errorf(\"measure_weights.",
+    "killed_by": "TestRaidOneMeasureWeightRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if !nonblank(id) || !scoreValue(v) {\n\t\t\treturn fmt.Errorf(\"count_penalties.",
+    "new": "if !nonblank(id) || v > 100 {\n\t\t\treturn fmt.Errorf(\"count_penalties.",
+    "killed_by": "TestRaidOneCountPenaltyRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if !nonblank(id) || !scoreValue(v) {\n\t\t\treturn fmt.Errorf(\"count_penalties.",
+    "new": "if !nonblank(id) || v < 0 {\n\t\t\treturn fmt.Errorf(\"count_penalties.",
+    "killed_by": "TestRaidOneCountPenaltyRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.FullHealthFraction <= 0 || !fraction(d.FullHealthFraction)",
+    "new": "d.FullHealthFraction < 0 || !fraction(d.FullHealthFraction)",
+    "killed_by": "TestDeathPredicateRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.FullHealthFraction <= 0 || !fraction(d.FullHealthFraction)",
+    "new": "d.FullHealthFraction <= 0",
+    "killed_by": "TestDeathPredicateRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.FullHealthFraction <= 0 || !fraction(d.FullHealthFraction)",
+    "new": "d.FullHealthFraction <= 0 || d.FullHealthFraction >= 1",
+    "killed_by": "TestDeathPredicateRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.RaidwideShare <= 0 || !fraction(d.RaidwideShare)",
+    "new": "d.RaidwideShare < 0 || !fraction(d.RaidwideShare)",
+    "killed_by": "TestDeathPredicateRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.RaidwideShare <= 0 || !fraction(d.RaidwideShare)",
+    "new": "d.RaidwideShare <= 0",
+    "killed_by": "TestDeathPredicateRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.RaidwideShare <= 0 || !fraction(d.RaidwideShare)",
+    "new": "d.RaidwideShare <= 0 || d.RaidwideShare >= 1",
+    "killed_by": "TestDeathPredicateRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.MinHealthSamples < 1",
+    "new": "d.MinHealthSamples < 0",
+    "killed_by": "TestDeathPredicateRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.MinHealthSamples < 1",
+    "new": "d.MinHealthSamples <= 1",
+    "killed_by": "TestDeathPredicateRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.RaidwideWindowMs <= 0",
+    "new": "d.RaidwideWindowMs < 0",
+    "killed_by": "TestDeathPredicateRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.RaidwideWindowMs <= 0",
+    "new": "d.RaidwideWindowMs <= 1",
+    "killed_by": "TestDeathPredicateRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/types.go",
+    "old": "`json:\"full_health_fraction\"`",
+    "new": "`json:\"full_health_fraction,omitempty\"`",
+    "killed_by": "TestDeathPredicatesDecode"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/types.go",
+    "old": "`json:\"min_health_samples\"`",
+    "new": "`json:\"min_health_samples,omitempty\"`",
+    "killed_by": "TestDeathPredicatesDecode"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/types.go",
+    "old": "`json:\"raidwide_share\"`",
+    "new": "`json:\"raidwide_share,omitempty\"`",
+    "killed_by": "TestDeathPredicatesDecode"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/types.go",
+    "old": "`json:\"raidwide_window_ms\"`",
+    "new": "`json:\"raidwide_window_ms,omitempty\"`",
+    "killed_by": "TestDeathPredicatesDecode"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "return c.snapshot",
+    "new": "return c",
+    "killed_by": "TestDeathPredicateCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if !same(total, 100) {",
+    "new": "if total <= 0 {",
+    "killed_by": "TestDataRound2MeasureTotals"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "if _, scoring := dst.(*Scoring); scoring {",
+    "new": "if _, scoring := dst.(*Scoring); false && scoring {",
+    "killed_by": "TestDataRound2ScoringSchema"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "if m.Schema != schema {",
+    "new": "if m.Schema != schema && m.Schema != 1 {",
+    "killed_by": "TestDataRound2ScoringSchema"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/text.go",
+    "old": "if len(key) > 64 {",
+    "new": "if false && len(key) > 64 {",
+    "killed_by": "TestDataRound2NULKeyLimit"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/text.go",
+    "old": "if len(key) > 64 {",
+    "new": "if len(key) >= 64 {",
+    "killed_by": "TestDataRound2NULKeyLimit"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/text.go",
+    "old": "key = key[:64] + \"...\"",
+    "new": "key = key[:63] + \"...\"",
+    "killed_by": "TestDataRound2NULKeyLimit"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/text.go",
+    "old": "key = key[:64] + \"...\"",
+    "new": "key = key[:64]",
+    "killed_by": "TestDataRound2NULKeyLimit"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/text.go",
+    "old": "!utf16.IsSurrogate(rune(low)) || ",
+    "new": "",
+    "killed_by": "TestDataRound2SurrogateLeftovers"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/text.go",
+    "old": "raw[i+1] != '\\\\' || ",
+    "new": "",
+    "killed_by": "TestDataRound2SurrogateLeftovers"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "len(m.Roles) != 0 && !rolesValid(m.Roles)",
+    "new": "!rolesValid(m.Roles)",
+    "killed_by": "TestDataRound2MechanicRoles"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "len(m.Roles) != 0 && !rolesValid(m.Roles)",
+    "new": "false",
+    "killed_by": "TestDataRound2MechanicRoles"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if len(values) == 0 || !stringsUnique(values) {",
+    "new": "if len(values) == 0 {",
+    "killed_by": "TestDataRound2MechanicRoles"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if !oneOf(v, \"dps\", \"healer\", \"tank\") {",
+    "new": "if false && !oneOf(v, \"dps\", \"healer\", \"tank\") {",
+    "killed_by": "TestDataRound2MechanicRoles"
   }
 ]

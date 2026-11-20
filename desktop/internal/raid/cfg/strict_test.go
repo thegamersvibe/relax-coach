@@ -68,7 +68,11 @@ func TestRejectUnknownKeys(t *testing.T) {
 
 func TestRejectVersions(t *testing.T) {
 	for _, file := range dataFiles {
-		for _, v := range []any{0, 2, -1, nil, "1"} {
+		unsupported := 2
+		if file == "scoring.json" {
+			unsupported = 1
+		}
+		for _, v := range []any{0, unsupported, 3, -1, nil, "1"} {
 			t.Run(file, func(t *testing.T) {
 				dir := copyValidationData(t)
 				change(t, dir, file, func(d map[string]any) { d["schema"] = v })
@@ -118,7 +122,7 @@ func TestRejectJSONShape(t *testing.T) {
 		func(b []byte) []byte { return []byte(`[]`) },
 		func(b []byte) []byte { return []byte(``) },
 		func(b []byte) []byte {
-			return bytes.Replace(b, []byte(`"schema": 1`), []byte(`"schema": 1, "schema": 1`), 1)
+			return bytes.Replace(b, []byte(`"schema": 2`), []byte(`"schema": 2, "schema": 2`), 1)
 		},
 		func(b []byte) []byte {
 			return bytes.Replace(b, []byte(`"tail_ms": 2500`), []byte(`"tail_ms": 2500, "tail_ms": 1`), 1)
@@ -130,7 +134,11 @@ func TestRejectJSONShape(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(path, edit(b), 0600); err != nil {
+		bad := edit(b)
+		if bytes.Equal(b, bad) {
+			t.Fatal("JSON shape fixture edit did not change the input")
+		}
+		if err := os.WriteFile(path, bad, 0600); err != nil {
 			t.Fatal(err)
 		}
 		refused(t, dir, "scoring.json")
@@ -142,7 +150,7 @@ func TestRejectCaseFoldedAliases(t *testing.T) {
 		file string
 		edit func(map[string]any)
 	}{
-		{"scoring.json", func(d map[string]any) { d["Schema"] = 1 }},
+		{"scoring.json", func(d map[string]any) { d["Schema"] = d["schema"] }},
 		{"scoring.json", func(d map[string]any) { d["fights"].(map[string]any)["TAIL_MS"] = 1 }},
 		{"specs.json", func(d map[string]any) { d["profiles"].([]any)[0].(map[string]any)["Uncalibrated"] = true }},
 	} {

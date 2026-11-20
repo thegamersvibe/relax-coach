@@ -40,6 +40,7 @@ type Scoring struct {
 	// affected measure unmeasured until a sourced/tuned value is supplied.
 	NewAt60Seconds *int64   `json:"new_at_60_seconds"`
 	GCDMs          *int64   `json:"gcd_ms"`
+	GCDEnergyMs    *int64   `json:"gcd_energy_ms"` // cast PowerType 3; other casts use GCDMs
 	RoundingStep   *float64 `json:"rounding_step"`
 	// Inner measure ids belong to the score registry, not to cfg. Empty maps
 	// do not authorize guessed equal weights or guessed death charges.
@@ -67,11 +68,12 @@ type NightWeights struct {
 	WipeWeight    float64 `json:"wipe_weight"`
 }
 type Confidence struct {
-	MinCoverage          float64 `json:"min_coverage"`
-	LowConfidenceFightMs int64   `json:"low_confidence_fight_ms"`
-	ShortFightWeight     float64 `json:"short_fight_weight"`
-	MinBaselinePlayers   int     `json:"min_baseline_players"`
-	MinMeasurablePlayers int     `json:"min_measurable_players"`
+	MinCoverage            float64 `json:"min_coverage"`
+	ProvisionalMinCoverage float64 `json:"provisional_min_coverage"`
+	LowConfidenceFightMs   int64   `json:"low_confidence_fight_ms"`
+	ShortFightWeight       float64 `json:"short_fight_weight"`
+	MinBaselinePlayers     int     `json:"min_baseline_players"`
+	MinMeasurablePlayers   int     `json:"min_measurable_players"`
 }
 type RatioPoint struct {
 	Ratio float64 `json:"ratio"`
@@ -100,6 +102,10 @@ type Fights struct {
 	BossUnitSelection           string  `json:"boss_unit_selection"`
 }
 type Death struct {
+	FullHealthFraction float64 `json:"full_health_fraction"`
+	MinHealthSamples   int     `json:"min_health_samples"`
+	RaidwideShare      float64 `json:"raidwide_share"`
+	RaidwideWindowMs   int64   `json:"raidwide_window_ms"`
 	WindowMs           int64   `json:"window_ms"`
 	WipeDeadShare      float64 `json:"wipe_dead_share"`
 	WipeAllTanksDead   bool    `json:"wipe_all_tanks_dead"`
@@ -229,7 +235,7 @@ type Mechanic struct {
 	ID              string      `json:"id"`
 	Spell           Spell       `json:"spell"`
 	Avoidable       bool        `json:"avoidable"`
-	Roles           []string    `json:"roles"`
+	Roles           []string    `json:"roles"` // empty means every role; key remains required
 	AffectedPlayers string      `json:"affected_players"`
 	ValidResponse   string      `json:"valid_response"`
 	EvidenceSource  SpellSource `json:"evidence_source"` // real Forever log evidence, not a datamine

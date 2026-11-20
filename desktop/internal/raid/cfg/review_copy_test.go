@@ -16,7 +16,7 @@ func ownershipConfig(t *testing.T) *cfg.Config {
 		d["healer"].(map[string]any)["low_health_fraction"] = .2
 		d["death"].(map[string]any)["lost_boss_gap_ms"] = 20
 		d["death"].(map[string]any)["summary_window_ms"] = 30
-		d["measure_weights"] = map[string]any{"output": map[string]any{"damage": 1}}
+		d["measure_weights"] = map[string]any{"output": map[string]any{"damage": 100}}
 		d["count_penalties"] = map[string]any{"owned_death": 5}
 	})
 	change(t, dir, "specs.json", func(d map[string]any) {

@@ -682,5 +682,113 @@
     "old": "if f.Boss && top == 0 {",
     "new": "if f.Boss && total == 0 {",
     "killed_by": "TestBossRolesRequirePlayerSwingEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "isPlayerDeath := e.IsDeath() && player(e.Dst.ID)",
+    "new": "isPlayerDeath := e.Kind == model.UnitDied && player(e.Dst.ID)",
+    "killed_by": "TestPlayerDeathScopeUsesModelDeathAndPlayerGUID"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "isPlayerDeath := e.IsDeath() && player(e.Dst.ID)",
+    "new": "isPlayerDeath := e.IsDeath()",
+    "killed_by": "TestPlayerDeathScopeUsesModelDeathAndPlayerGUID"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "isPlayerDeath := e.IsDeath() && player(e.Dst.ID)",
+    "new": "isPlayerDeath := e.IsDeath() && player(e.Src.ID)",
+    "killed_by": "TestPlayerDeathScopeUsesModelDeathAndPlayerGUID"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "if isPlayerDeath {\n\t\t\tplayerDeaths = append",
+    "new": "if isPlayerDeath && enabled {\n\t\t\tplayerDeaths = append",
+    "killed_by": "TestPlayerDeathsOutsideRuns"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "playerDeathPosition{at: e.TimeMs}",
+    "new": "playerDeathPosition{at: 0}",
+    "killed_by": "TestPlayerDeathsOutsideRuns"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "playerDeaths[len(playerDeaths)-1].inFight = true",
+    "new": "playerDeaths[len(playerDeaths)-1].inFight = false",
+    "killed_by": "TestPlayerDeathsInRunsWithoutFight"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "playerDeaths[len(playerDeaths)-1].inFight = true",
+    "new": "playerDeaths[len(playerDeaths)-1].inFight = p.DetailsFor != nil",
+    "killed_by": "TestPlayerDeathsInRunsWithoutFight"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "playerDeaths[len(playerDeaths)-1].inFight = true",
+    "new": "playerDeaths[len(playerDeaths)-1].inFight = e.TimeMs <= f.EndMs",
+    "killed_by": "TestPlayerDeathsInRunsWithoutFight"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "result.countPlayerDeaths(playerDeaths)",
+    "new": "// omit death-scope accounting",
+    "killed_by": "TestPlayerDeathsOutsideRuns"
+  },
+  {
+    "file": "desktop/internal/raid/fights/death_scope.go",
+    "old": "death.at >= run.StartMs",
+    "new": "death.at > run.StartMs",
+    "killed_by": "TestPlayerDeathsOutsideRuns"
+  },
+  {
+    "file": "desktop/internal/raid/fights/death_scope.go",
+    "old": "death.at <= run.EndMs",
+    "new": "death.at < run.EndMs",
+    "killed_by": "TestPlayerDeathsOutsideRuns"
+  },
+  {
+    "file": "desktop/internal/raid/fights/death_scope.go",
+    "old": "death.at >= run.StartMs",
+    "new": "true",
+    "killed_by": "TestPlayerDeathsOutsideRuns"
+  },
+  {
+    "file": "desktop/internal/raid/fights/death_scope.go",
+    "old": "death.at <= run.EndMs",
+    "new": "true",
+    "killed_by": "TestPlayerDeathsOutsideRuns"
+  },
+  {
+    "file": "desktop/internal/raid/fights/death_scope.go",
+    "old": "inRun = true",
+    "new": "inRun = false",
+    "killed_by": "TestPlayerDeathsOutsideRuns"
+  },
+  {
+    "file": "desktop/internal/raid/fights/death_scope.go",
+    "old": "r.PlayerDeathsOutsideRuns++",
+    "new": "r.PlayerDeathsOutsideRuns += 0",
+    "killed_by": "TestPlayerDeathsOutsideRuns"
+  },
+  {
+    "file": "desktop/internal/raid/fights/death_scope.go",
+    "old": "} else if !death.inFight {",
+    "new": "} else if true {",
+    "killed_by": "TestPlayerDeathsInRunsWithoutFight"
+  },
+  {
+    "file": "desktop/internal/raid/fights/death_scope.go",
+    "old": "r.PlayerDeathsInRunsWithoutFight++",
+    "new": "r.PlayerDeathsInRunsWithoutFight += 0",
+    "killed_by": "TestPlayerDeathsInRunsWithoutFight"
+  },
+  {
+    "file": "desktop/internal/raid/fights/death_scope.go",
+    "old": "\t\t}\n\t\tif !inRun {",
+    "new": "\t\t\tbreak // incorrectly consult only the first run\n\t\t}\n\t\tif !inRun {",
+    "killed_by": "TestPlayerDeathsOutsideRuns"
   }
 ]

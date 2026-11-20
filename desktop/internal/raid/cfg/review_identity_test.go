@@ -12,12 +12,14 @@ import (
 func TestNormalizedDuplicates(t *testing.T) {
 	// json.Marshal sorts uppercase keys first; exercise authored reverse order too.
 	dir := copyValidationData(t)
+	// Construct the empty map explicitly: the shipped seed now has penalties.
+	change(t, dir, "scoring.json", func(d map[string]any) { d["count_penalties"] = map[string]any{} })
 	path := filepath.Join(dir, "scoring.json")
 	b, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	bad := bytes.Replace(b, []byte(`"count_penalties": {}`), []byte(`"count_penalties": {"owned_death": 1, "OWNED_DEATH": 2}`), 1)
+	bad := bytes.Replace(b, []byte(`"count_penalties":{}`), []byte(`"count_penalties":{"owned_death": 1, "OWNED_DEATH": 2}`), 1)
 	if bytes.Equal(b, bad) {
 		t.Fatal("missing duplicate-key fixture anchor")
 	}
@@ -102,7 +104,7 @@ func TestNormalizedDuplicates(t *testing.T) {
 				d["count_penalties"] = map[string]any{"owned_death": 1, f("owned_death"): 2}
 			}},
 			{"nested_map_keys", "scoring.json", func(d map[string]any, f func(string) string) {
-				d["measure_weights"] = map[string]any{"output": map[string]any{"damage": 1, f("damage"): 2}}
+				d["measure_weights"] = map[string]any{"output": map[string]any{"damage": 50, f("damage"): 50}}
 			}},
 		} {
 			t.Run(transform.name+"/"+tc.name, func(t *testing.T) {

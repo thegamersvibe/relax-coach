@@ -61,6 +61,7 @@ func (c *Config) clone() Config {
 	s.Assignments = slices.Clone(s.Assignments)
 	s.NewAt60Seconds = copyPointer(s.NewAt60Seconds)
 	s.GCDMs = copyPointer(s.GCDMs)
+	s.GCDEnergyMs = copyPointer(s.GCDEnergyMs)
 	s.RoundingStep = copyPointer(s.RoundingStep)
 	s.Healer.LowHealthFraction = copyPointer(s.Healer.LowHealthFraction)
 	s.Death.LostBossGapMs = copyPointer(s.Death.LostBossGapMs)

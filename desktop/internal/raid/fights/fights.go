@@ -36,9 +36,11 @@ type Params struct {
 
 // Result retains per-file metadata beside runs; it never names a local path.
 type Result struct {
-	Runs                   []Run
-	Source                 Source
-	DuplicateEncounterEnds int64
+	Runs                           []Run
+	Source                         Source
+	DuplicateEncounterEnds         int64
+	PlayerDeathsOutsideRuns        int64 // Real Player- deaths outside every returned run's inclusive span.
+	PlayerDeathsInRunsWithoutFight int64 // Segmentation diagnostic; expected zero, independent of detail selection.
 }
 
 // Run is a segmentation result, not a night-score input. Conversion to the two
@@ -73,6 +75,7 @@ func collect(events iter.Seq[model.Event], p Params) (Result, error) {
 		return Result{}, err
 	}
 	var result Result
+	var playerDeaths []playerDeathPosition
 	repeats := map[string]int{}
 	var header []string
 	instance, difficulty := int64(0), int64(0)
@@ -157,6 +160,10 @@ func collect(events iter.Seq[model.Event], p Params) (Result, error) {
 		anchor, position = "start", 0
 	}
 	for e := range events {
+		isPlayerDeath := e.IsDeath() && player(e.Dst.ID)
+		if isPlayerDeath {
+			playerDeaths = append(playerDeaths, playerDeathPosition{at: e.TimeMs})
+		}
 		if e.Kind == model.Header {
 			flush(e.TimeMs, true)
 			header = e.Raw
@@ -241,6 +248,9 @@ func collect(events iter.Seq[model.Event], p Params) (Result, error) {
 			continue
 		}
 		f.Events = append(f.Events, e)
+		if isPlayerDeath {
+			playerDeaths[len(playerDeaths)-1].inFight = true
+		}
 		if !ended {
 			f.EndMs = max(f.StartMs, f.EndMs, e.TimeMs)
 		}
@@ -260,6 +270,7 @@ func collect(events iter.Seq[model.Event], p Params) (Result, error) {
 		}
 	}
 	flush(lastMs, true)
+	result.countPlayerDeaths(playerDeaths)
 	return result, nil
 }
 
