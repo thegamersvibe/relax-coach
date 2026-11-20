@@ -57,6 +57,7 @@ func TestLoadFSDecodeAndValidation(t *testing.T) {
 	for _, tc := range []struct{ name, old, replacement string }{
 		{"unknown key", `"weights":`, `"unexpected":0,"weights":`},
 		{"invalid range", `"tail_ms": 2500`, `"tail_ms": -1`},
+		{"decoded metadata", `"version": "`, `"version": "bad-`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			files := mapConfig(t)
