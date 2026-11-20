@@ -105,6 +105,20 @@ class RunnerTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.t = Tree(self.tmp.name)
 
+    def test_go_root_package_mutant(self):
+        self.t.write("desktop/go.mod", GO_MOD)
+        self.t.write("desktop/probe.go", GO_SRC)
+        self.t.write("desktop/probe_test.go", GO_TEST)
+        self.t.write("test/raid/g/module.json", json.dumps({
+            "kind": "go", "source": "desktop/",
+            "test": ["go", "-C", "desktop", "test", "-run", "^TestValue$", "."]}))
+        self.t.write("test/raid/g/mutants.json", json.dumps([{
+            "file": "desktop/probe.go", "old": "return 1", "new": "return 2",
+            "killed_by": "TestValue"}]))
+        rc, out = self.t.run("--mutants", "g")
+        self.assertEqual(rc, 0, out)
+        self.assertIn("RESULT: 1/1 mutants killed", out)
+
     def test_finds_modules(self):
         three_modules(self.t)
         self.t.write("test/raid/notamodule/readme.txt", "no module.json here\n")
@@ -125,6 +139,32 @@ class RunnerTests(unittest.TestCase):
         rc, out = self.t.run("--changed", "HEAD", "--list")
         self.assertEqual(rc, 0, out)
         self.assertEqual(out.split(), ["a", "b"])
+
+    def test_data_inputs_select_owner_and_dependents(self):
+        three_modules(self.t)
+        path = os.path.join(self.t.root, "test/raid/a/module.json")
+        with open(path, encoding="utf-8") as f:
+            spec = json.load(f)
+        spec["inputs"] = ["rules/raid/"]
+        self.t.write("test/raid/a/module.json", json.dumps(spec))
+        self.t.write("rules/raid/scoring.json", '{"value":1}')
+        self.t.git("init", "-q")
+        self.t.git("add", "-A")
+        self.t.git("commit", "-qm", "base")
+        self.t.write("rules/raid/scoring.json", '{"value":2}')
+        rc, out = self.t.run("--changed", "HEAD", "--list")
+        self.assertEqual(rc, 0, out)
+        self.assertEqual(out.split(), ["a", "b"])
+
+    def test_unclaimed_raid_data_selects_all(self):
+        three_modules(self.t)
+        self.t.git("init", "-q")
+        self.t.git("add", "-A")
+        self.t.git("commit", "-qm", "base")
+        self.t.write("rules/raid/new-file.json", "{}")
+        rc, out = self.t.run("--changed", "HEAD", "--list")
+        self.assertEqual(rc, 0, out)
+        self.assertEqual(out.split(), ["a", "b", "c"])
 
     def test_unplaced_file_selects_all(self):
         three_modules(self.t)

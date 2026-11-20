@@ -8,6 +8,8 @@
 
 Modules are the directories test/raid/<name>/ holding a module.json:
   {"kind": "go"|"lua"|"py", "source": "<path>", "test": ["<argv>", ...], "depends": ["<module>", ...]}
+Optional "inputs": ["<path>", ...] declares data dependencies for --changed selection only;
+mutant targets remain restricted to source.
 Test commands run from the repository root (Go modules use "go -C desktop ..."). A module whose command runs no
 test at all fails. mutants.json holds a list of {"file", "old", "new", "killed_by"}; an empty list is "no mutants".
 
@@ -35,7 +37,7 @@ import tempfile
 import time
 
 KINDS = ("go", "lua", "py")
-RAID_PATHS = ("desktop/internal/raid/", "addon/RelaxRaid/", "test/raid/", "tools/raidtest.py")
+RAID_PATHS = ("desktop/internal/raid/", "addon/RelaxRaid/", "test/raid/", "rules/raid/", "tools/raidtest.py")
 
 
 def repo_root(start):
@@ -77,7 +79,8 @@ def select_changed(mods, changed):
     A changed file in the raid tree that no module claims selects everything."""
     picked = set()
     for path in changed:
-        owners = [n for n, s in mods.items() if under(path, s["source"]) or under(path, s["dir"])]
+        owners = [n for n, s in mods.items() if under(path, s["source"]) or under(path, s["dir"])
+                  or any(under(path, p) for p in s.get("inputs", []))]
         if owners:
             picked.update(owners)
         elif any(under(path, p.rstrip("/")) for p in RAID_PATHS):
@@ -175,6 +178,8 @@ def run_named(cmd, cwd, kind, name, limit):
 
 def go_package(spec):
     src = spec["source"].rstrip("/")
+    if src == "desktop":
+        return "."  # Package-main glue: still run only the named mutant test.
     if not src.startswith("desktop/"):
         raise SystemExit("Go module %s: source must be under desktop/" % spec["name"])
     return "./" + src[len("desktop/"):]

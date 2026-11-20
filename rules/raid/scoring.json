@@ -1,0 +1,138 @@
+{
+  "schema": 1,
+  "version": "1.1.0",
+  "source": "Relax Raid DESIGN sections 7 and 9, DEC-03; PHASE1-BRIEF R4/R7. Starting parameters, not calibrated. Null parameters have no supplied starting value: consumers must leave that measure unmeasured, never substitute zero.",
+  "weights": {
+    "dps": {
+      "output": 35,
+      "activity": 25,
+      "mechanics": 20,
+      "utility": 10,
+      "preparation": 10
+    },
+    "healer": {
+      "output": 25,
+      "activity": 25,
+      "mechanics": 20,
+      "utility": 20,
+      "preparation": 10
+    },
+    "tank": {
+      "output": 10,
+      "activity": 20,
+      "mechanics": 35,
+      "utility": 25,
+      "preparation": 10
+    }
+  },
+  "night": {
+    "trash_share": 0.05,
+    "max_trash_share": 0.05,
+    "min_boss_share": 0.95,
+    "kill_weight": 1,
+    "wipe_weight": 0.5
+  },
+  "confidence": {
+    "min_coverage": 0.6,
+    "low_confidence_fight_ms": 45000,
+    "short_fight_weight": 0.5,
+    "min_baseline_players": 3,
+    "min_measurable_players": 2
+  },
+  "ratio_points": [
+    {
+      "ratio": 0.5,
+      "score": 0
+    },
+    {
+      "ratio": 1,
+      "score": 70
+    },
+    {
+      "ratio": 1.3,
+      "score": 100
+    }
+  ],
+  "count_start_score": 100,
+  "healer": {
+    "team_share": 0.5,
+    "individual_share": 0.5,
+    "unhealed_team_score": 0,
+    "unhealed_output_cap": 50,
+    "low_health_fraction": null
+  },
+  "fights": {
+    "pull_gap_ms": 10000,
+    "tail_ms": 2500,
+    "tank_min_boss_swing_share": 0.15,
+      "tank_min_top_ratio": 0.5,
+      "reentry_gap_ms": 1800000,
+    "healer_requires_not_tank": true,
+    "healer_min_healing_damage_ratio": 1,
+    "healer_strictly_greater": true,
+    "boss_unit_selection": "highest_max_health_damaged_creature"
+  },
+  "death": {
+    "window_ms": 10000,
+    "wipe_dead_share": 0.4,
+    "wipe_all_tanks_dead": true,
+    "wipe_all_healers_dead": true,
+    "one_shot_window_ms": 1500,
+    "unhealed_min_ms": 4000,
+    "lost_boss_gap_ms": null,
+    "summary_window_ms": null
+  },
+  "toggles": {
+    "required_consumables": false,
+    "readiness": false,
+    "support_credit": false,
+    "history": false
+  },
+  "assignments": [
+    {
+      "job": "off_tank",
+      "role": "tank",
+      "output_na": false,
+      "mechanics_survival_only": false,
+      "utility_from_officer": false,
+      "output_to_utility": 0
+    },
+    {
+      "job": "kiter",
+      "role": "",
+      "output_na": true,
+      "mechanics_survival_only": true,
+      "utility_from_officer": true,
+      "output_to_utility": 0
+    },
+    {
+      "job": "interrupter",
+      "role": "",
+      "output_na": false,
+      "mechanics_survival_only": false,
+      "utility_from_officer": false,
+      "output_to_utility": 15
+    },
+    {
+      "job": "decurser",
+      "role": "",
+      "output_na": false,
+      "mechanics_survival_only": false,
+      "utility_from_officer": false,
+      "output_to_utility": 15
+    },
+    {
+      "job": "dispeller",
+      "role": "",
+      "output_na": false,
+      "mechanics_survival_only": false,
+      "utility_from_officer": false,
+      "output_to_utility": 15
+    }
+  ],
+  "new_at_60_seconds": null,
+  "gcd_ms": null,
+  "rounding_step": null,
+  "measure_weights": {},
+  "count_penalties": {}
+}

@@ -1,0 +1,686 @@
+[
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "e.TimeMs-encounterEndMs > p.TailMs",
+    "new": "e.TimeMs-encounterEndMs >= p.TailMs",
+    "killed_by": "TestTailAndPullBoundaries"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "e.TimeMs-lastCombat > p.PullGapMs",
+    "new": "e.TimeMs-lastCombat >= p.PullGapMs",
+    "killed_by": "TestTailAndPullBoundaries"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "if start {\n\t\t\tfinish()",
+    "new": "if false {\n\t\t\tfinish()",
+    "killed_by": "TestNextStartClosesPreviousBeforeTail"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "enabled = next != 0",
+    "new": "enabled = true",
+    "killed_by": "TestRunEndsAtZoneOut"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "flush(e.TimeMs, true)\n\t\t\theader = e.Raw",
+    "new": "header = e.Raw",
+    "killed_by": "TestOwnersBufferAndHeaderReset"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "f.Success, f.DurationMs = e.Enc.Success, e.Enc.FightMs",
+    "new": "f.Success, f.DurationMs = e.Enc.Success, model.Some(e.TimeMs-f.StartMs)",
+    "killed_by": "TestBossIdentityServerFields"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "if f.Boss && !f.Partial {\n\t\t\tids",
+    "new": "if true {\n\t\t\tids",
+    "killed_by": "TestThirteenBossesCrossLoggerIdentity"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "!knownZone && !inferred &&",
+    "new": "!knownZone && (inferred || !inferred) &&",
+    "killed_by": "TestRunKeepsFirstInferredInstance"
+  },
+  {
+    "file": "desktop/internal/raid/fights/actors.go",
+    "old": "rank > s.priority[id]",
+    "new": "rank < s.priority[id]",
+    "killed_by": "TestOwnersBufferAndHeaderReset"
+  },
+  {
+    "file": "desktop/internal/raid/fights/actors.go",
+    "old": "if len(rules) > 0 {",
+    "new": "if false {",
+    "killed_by": "TestBossUnitsRolesAndEffectiveTotals"
+  },
+  {
+    "file": "desktop/internal/raid/fights/actors.go",
+    "old": "hp[id] > hp[best]",
+    "new": "hp[id] < hp[best]",
+    "killed_by": "TestBossUnitsRolesAndEffectiveTotals"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "e.Stream != model.SwingSource",
+    "new": "true",
+    "killed_by": "TestBossUnitsRolesAndEffectiveTotals"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "/float64(total) >= p.TankMinBossSwingShare",
+    "new": "/float64(total) > p.TankMinBossSwingShare",
+    "killed_by": "TestTankLandedShareAndTopRatio"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "e.Amount.V-over",
+    "new": "e.Amount.V",
+    "killed_by": "TestBossUnitsRolesAndEffectiveTotals"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "if e.IsDeath() {",
+    "new": "if e.Kind == model.UnitDied {",
+    "killed_by": "TestTimelinesSamplesSpecHookAndMetadata"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "duration.Present && duration.V < p.LowConfidenceFightMs",
+    "new": "duration.V < p.LowConfidenceFightMs",
+    "killed_by": "TestRoleStrictnessAndMissingDuration"
+  },
+  {
+    "file": "desktop/internal/raid/fights/reader.go",
+    "old": "r.Kind != model.RunRaid",
+    "new": "false",
+    "killed_by": "TestTypedRunsAndSelectedDetails"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "Power: power, PowerMax: powerMax, PowerType: powerType",
+    "new": "Power: model.Opt{}, PowerMax: powerMax, PowerType: powerType",
+    "killed_by": "TestPowerSamplesBelongToInfoUnit"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "PowerType: powerType})",
+    "new": "PowerType: model.Opt{}})",
+    "killed_by": "TestPowerSamplesBelongToInfoUnit"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "f.Offset, f.Len, f.Specs = d.Offset, d.Len, d.Specs",
+    "new": "f.Offset, f.Len, f.Specs = d.Offset, 0, d.Specs",
+    "killed_by": "TestModelFightRangeAndSpecs"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "f.Offset, f.Len, f.Specs = d.Offset, d.Len, d.Specs",
+    "new": "f.Offset, f.Len, f.Specs = d.Offset, d.Len, nil",
+    "killed_by": "TestModelFightRangeAndSpecs"
+  },
+  {
+    "file": "desktop/internal/raid/fights/reader.go",
+    "old": "result.Runs[i].Source = result.Source",
+    "new": "result.Runs[i].Source = model.Source{}",
+    "killed_by": "TestModelRunsCarrySourceAndHeader"
+  },
+  {
+    "file": "desktop/internal/raid/fights/reader.go",
+    "old": "if counted.err != nil {",
+    "new": "if false {",
+    "killed_by": "TestReadRejectsSwallowedSourceError"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "allowed[pr.ID] = len(pr.CastSignatures) > 0",
+    "new": "allowed[pr.ID] = true",
+    "killed_by": "TestNoSignatureMeansUnknownSpec"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "if partial {\n\t\t\t\tr.Partial = true",
+    "new": "if false {\n\t\t\t\tr.Partial = true",
+    "killed_by": "TestInitialPullGapEquality"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "if e.HP.Present && !dead[e.InfoUnit] {",
+    "new": "if e.HP.Present {",
+    "killed_by": "TestDeadBossRemainsZeroForWipeProgress"
+  },
+  {
+    "file": "desktop/internal/raid/fights/actors.go",
+    "old": "s.advanced = true",
+    "new": "s.advanced = false",
+    "killed_by": "TestAdvancedEvidenceWithoutHeaderFlag"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "(powerMax.Present && powerMax.V == 0) || ",
+    "new": "false || ",
+    "killed_by": "TestNoPowerSampleWithoutABarOrFromHealthCost"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "|| (powerType.Present && powerType.V == healthCostPowerType)",
+    "new": "|| false",
+    "killed_by": "TestNoPowerSampleWithoutABarOrFromHealthCost"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "e.TimeMs-exitMs < p.ReentryGapMs",
+    "new": "e.TimeMs-exitMs <= p.ReentryGapMs",
+    "killed_by": "TestReentryGapBoundary"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "pendingExit && next == instance &&",
+    "new": "pendingExit && next != 0 &&",
+    "killed_by": "TestReentryDifferentInstance"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "flush(e.TimeMs, false)\n\t\t\t\tinstance, difficulty = next, e.Zone.Difficulty",
+    "new": "if !pendingExit {\n\t\t\t\t\tflush(e.TimeMs, false)\n\t\t\t\t}\n\t\t\t\tinstance, difficulty = next, e.Zone.Difficulty",
+    "killed_by": "TestReentryDifferentInstance"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "float64(swings[a.ID]) >= float64(top)*p.TankMinTopRatio",
+    "new": "float64(swings[a.ID]) > float64(top)*p.TankMinTopRatio",
+    "killed_by": "TestTankLandedShareAndTopRatio"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "float64(swings[a.ID]) >= float64(top)*p.TankMinTopRatio",
+    "new": "float64(swings[a.ID]) >= float64(top)*0",
+    "killed_by": "TestTankLandedShareAndTopRatio"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "e.TimeMs-exitMs < p.ReentryGapMs",
+    "new": "e.TimeMs-exitMs >= 0",
+    "killed_by": "TestReentryGapBoundary"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "continue // repeated outside zones do not restart the re-entry clock",
+    "new": "exitMs = e.TimeMs\n\t\t\t\tcontinue",
+    "killed_by": "TestReentryGapBoundary"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "end, cut = exitMs, false",
+    "new": "end, cut = exitMs+p.ReentryGapMs, false",
+    "killed_by": "TestRunEndsAtZoneOut"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "finish() // re-entry joins runs, never fights across an exit",
+    "new": "// Do not close the fight at an exit.",
+    "killed_by": "TestReentryClosesFightAtExit"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "p.ReentryGapMs <= 0",
+    "new": "p.ReentryGapMs < 0",
+    "killed_by": "TestReentryGapMustBePositive"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "ratio <= 0 || ratio > 1",
+    "new": "ratio < 0 || ratio > 1",
+    "killed_by": "TestTankTopRatioConfigAndValidation"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "math.IsNaN(ratio)",
+    "new": "false",
+    "killed_by": "TestTankTopRatioConfigAndValidation"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "top = max(top, swings[a.ID])",
+    "new": "top = min(top, swings[a.ID])",
+    "killed_by": "TestTankLandedShareAndTopRatio"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "p.InstanceKind(instance, size)",
+    "new": "p.InstanceKind(instance, 0)",
+    "killed_by": "TestUnlistedInstanceGroupSize"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "r.Kind, r.Listed = p.InstanceKind(instance, size)",
+    "new": "r.Kind, r.Listed = p.InstanceKind(instance, size)\n\t\tr.Listed = true",
+    "killed_by": "TestUnlistedInstanceGroupSize"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "for _, a := range f.Players {\n\t\ttop = max(top, swings[a.ID])\n\t}",
+    "new": "for _, count := range swings {\n\t\ttop = max(top, count)\n\t}",
+    "killed_by": "TestTankTopTakerIsPlayerNotPet"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "partial := len(r.Fights) == 0 && e.TimeMs-r.StartMs <= p.PullGapMs",
+    "new": "partial := len(r.Fights) == 0 && e.TimeMs-r.StartMs < p.PullGapMs",
+    "killed_by": "TestInitialPullGapEquality"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "partial := len(r.Fights) == 0 && e.TimeMs-r.StartMs <= p.PullGapMs",
+    "new": "partial := e.TimeMs-r.StartMs <= p.PullGapMs",
+    "killed_by": "TestOnlyFirstPullCanMissRunStart"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "if f != nil && !f.Boss && cut && end-lastCombat <= p.PullGapMs {",
+    "new": "if f != nil && !f.Boss && cut && end-lastCombat < p.PullGapMs {",
+    "killed_by": "TestCutPullGapEquality"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "if f != nil && !f.Boss && cut && end-lastCombat <= p.PullGapMs {",
+    "new": "if f != nil && !f.Boss && end-lastCombat <= p.PullGapMs {",
+    "killed_by": "TestZoneClosureIsNotEOFCut"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "if stop && (f == nil || !f.Boss || f.EncounterID != e.Enc.ID) {",
+    "new": "if stop && (f == nil || !f.Boss) {",
+    "killed_by": "TestMismatchedEndDoesNotCompleteBoss"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "if enabled && knownZone && next == instance {",
+    "new": "if false {",
+    "killed_by": "TestRepeatedSameZoneDoesNotSplit"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "flush(lastMs, true)",
+    "new": "flush(lastMs, false)",
+    "killed_by": "TestCutPullGapEquality"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "return e.Kind == model.Damage || e.Kind == model.Missed || e.Kind == model.Interrupt || e.Kind == model.Dispel",
+    "new": "return e.Kind == model.Damage || e.Kind == model.Missed",
+    "killed_by": "TestInterruptDispelStartCombat"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "if int64(f.GroupSize) > size {",
+    "new": "if int64(f.GroupSize) < size {",
+    "killed_by": "TestClassifierGetsMaximumGroup"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "if f.Boss && !f.Partial {\n\t\t\tids = append(ids, f.ID)",
+    "new": "if f.Boss {\n\t\t\tids = append(ids, f.ID)",
+    "killed_by": "TestPartialBossExcludedFromNight"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "\t\tif len(r.Fights) > 0 {\n\t\t\tresult.Runs = append(result.Runs, r)\n\t\t}",
+    "new": "\t\tresult.Runs = append(result.Runs, r)",
+    "killed_by": "TestQuietOnlyRunNotEmitted"
+  },
+  {
+    "file": "desktop/internal/raid/fights/actors.go",
+    "old": "rank > s.priority[id]",
+    "new": "rank >= s.priority[id]",
+    "killed_by": "TestEqualRankOwnerFirstWins"
+  },
+  {
+    "file": "desktop/internal/raid/fights/actors.go",
+    "old": "if e.Kind == model.Damage && creature(e.Dst.ID) && (player(e.Src.ID) || f.Owners[e.Src.ID] != \"\") {",
+    "new": "if e.Kind == model.Damage && creature(e.Dst.ID) {",
+    "killed_by": "TestBossCandidateNeedsPlayerDamage"
+  },
+  {
+    "file": "desktop/internal/raid/fights/actors.go",
+    "old": "if len(parts) < 7 {",
+    "new": "if len(parts) < 6 {",
+    "killed_by": "TestSelectorRejectsTruncatedGUID"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "duration.V < p.LowConfidenceFightMs",
+    "new": "duration.V <= p.LowConfidenceFightMs",
+    "killed_by": "TestConfidenceThresholdEquality"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "if tl := d.Timelines[dst]; tl != nil && src != dst {",
+    "new": "if tl := d.Timelines[dst]; tl != nil {",
+    "killed_by": "TestSelfEventAppearsOnce"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "amount = max(int64(0), amount-e.Overkill.V)",
+    "new": "amount = amount",
+    "killed_by": "TestOverkillExcludedFromDamage"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "if tl.HealingDone > 0 && healer && (!p.HealerRequiresNotTank || !tank) {",
+    "new": "if tl.HealingDone > 0 && healer {",
+    "killed_by": "TestTankPrecedesHealerWhenRequired"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "\t\t\tif !hp[id].Present || !maxHP[id].Present {\n\t\t\t\tknown = false\n\t\t\t}",
+    "new": "",
+    "killed_by": "TestUnknownBossHealthStaysAbsent"
+  },
+  {
+    "file": "desktop/internal/raid/fights/header.go",
+    "old": "r.Advanced = raw[i+1] == \"1\"",
+    "new": "r.Advanced = raw[i+1] != \"\"",
+    "killed_by": "TestHeaderAdvancedZeroMeansOff"
+  },
+  {
+    "file": "desktop/internal/raid/fights/actors.go",
+    "old": "!player(a.ID) && (strings.HasPrefix",
+    "new": "(strings.HasPrefix",
+    "killed_by": "TestPlayerGUIDNeverOwnedOrUnowned"
+  },
+  {
+    "file": "desktop/internal/raid/fights/actors.go",
+    "old": "!player(id) && id != \"\"",
+    "new": "id != \"\"",
+    "killed_by": "TestPlayerGUIDNeverOwnedOrUnowned"
+  },
+  {
+    "file": "desktop/internal/raid/fights/actors.go",
+    "old": "e.Kind == model.Summon && !player(e.Dst.ID)",
+    "new": "e.Kind == model.Summon",
+    "killed_by": "TestPlayerGUIDNeverOwnedOrUnowned"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "tl != nil && !charmedFriendly(e)",
+    "new": "tl != nil",
+    "killed_by": "TestCharmedFriendlyDamageExcluded"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "if tl.DamageDone > 0 {",
+    "new": "if true {",
+    "killed_by": "TestRolesRequireActivity"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "if tl.HealingDone > 0 && healer &&",
+    "new": "if healer &&",
+    "killed_by": "TestRolesRequireActivity"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "if role != \"\" {",
+    "new": "if true {",
+    "killed_by": "TestRolesRequireActivity"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "!f.Boss && creature(e.Src.ID) && !pet(e.Src)",
+    "new": "false && creature(e.Src.ID) && !pet(e.Src)",
+    "killed_by": "TestTrashTankEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "caster := owner(e.Caster.ID)",
+    "new": "caster := owner(e.Src.ID)",
+    "killed_by": "TestAbsorbCreditsCaster"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "caster := owner(e.Caster.ID)",
+    "new": "caster := owner(e.Dst.ID)",
+    "killed_by": "TestAbsorbCreditsCaster"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "tl.HealingDone += max(int64(0), e.Amount.V)",
+    "new": "tl.HealingDone += 0",
+    "killed_by": "TestAbsorbCreditsCaster"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "caster != src && caster != dst",
+    "new": "caster != src",
+    "killed_by": "TestAbsorbCreditsCaster"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "f.Events = nil\n\t\t\td.UnscoredReason",
+    "new": "// retain discarded events\n\t\t\td.UnscoredReason",
+    "killed_by": "TestReadRetainedHeapBoundedPerFight"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "e.TimeMs-encounterEndMs > p.TailMs",
+    "new": "false",
+    "killed_by": "TestReadClosesFightsWhileDecoding"
+  },
+  {
+    "file": "desktop/internal/raid/fights/actors.go",
+    "old": "if !maps.Equal(old, f.Owners) {",
+    "new": "if !maps.Equal(old, f.Owners) && false {",
+    "killed_by": "TestLateOwnershipAcrossClosedFights"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "r.InstanceID, r.EndMs = instance, max(r.StartMs, end)",
+    "new": "r.InstanceID, r.EndMs = instance, end",
+    "killed_by": "TestBackwardTimeBounds"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "f.EndMs = max(f.StartMs, f.EndMs, e.TimeMs)",
+    "new": "f.EndMs = e.TimeMs",
+    "killed_by": "TestBackwardTimeBounds"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "if seenEnds[e.Enc.ID] {",
+    "new": "if false {",
+    "killed_by": "TestFirstEncounterEndWins"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "r.DuplicateEncounterEnds++",
+    "new": "r.DuplicateEncounterEnds += 0",
+    "killed_by": "TestFirstEncounterEndWins"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "delete(seenEnds, e.Enc.ID)",
+    "new": "// keep stale end marker",
+    "killed_by": "TestFirstEncounterEndWins"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "result.DuplicateEncounterEnds += r.DuplicateEncounterEnds",
+    "new": "result.DuplicateEncounterEnds += 0",
+    "killed_by": "TestFirstEncounterEndWins"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "repeats[text] > 1",
+    "new": "repeats[text] > 999",
+    "killed_by": "TestRepeatBossIdentity"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "repeats[text]++",
+    "new": "repeats[text] += 0",
+    "killed_by": "TestRepeatBossIdentity"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "header = e.Raw",
+    "new": "header = e.Raw\n repeats = map[string]int{}",
+    "killed_by": "TestRepeatBossIdentity"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "r.InstanceID, r.EndMs = instance, max(r.StartMs, end)",
+    "new": "r.InstanceID, r.EndMs = instance, max(r.StartMs, end)\n r.Partial = r.Partial || cut",
+    "killed_by": "TestRunPartialMeansMissingStartOnly"
+  },
+  {
+    "file": "desktop/internal/raid/fights/actors.go",
+    "old": "f.Events = fact.bossEvidence",
+    "new": "f.Events = nil",
+    "killed_by": "TestLateOwnershipAcrossClosedFights"
+  },
+  {
+    "file": "desktop/internal/raid/fights/actors.go",
+    "old": "hp[e.InfoUnit] = max(hp[e.InfoUnit], e.HPMax.V)",
+    "new": "hp[e.InfoUnit] = 0",
+    "killed_by": "TestLateOwnershipAcrossClosedFights"
+  },
+  {
+    "file": "desktop/internal/raid/fights/actors.go",
+    "old": "if e.Kind == model.Damage && creature(e.Dst.ID) {",
+    "new": "if false {",
+    "killed_by": "TestLateOwnershipAcrossClosedFights"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "r.DuplicateEncounterEnds++",
+    "new": "r.DuplicateEncounterEnds++\n lastMs = e.TimeMs",
+    "killed_by": "TestFirstEncounterEndWins"
+  },
+  {
+    "file": "desktop/internal/raid/fights/actors.go",
+    "old": "for _, a := range []model.Actor{e.Src, e.Dst, e.Caster} {",
+    "new": "for _, a := range []model.Actor{e.Src, e.Dst} {",
+    "killed_by": "TestCasterOnlyActorObservation"
+  },
+  {
+    "file": "desktop/internal/raid/fights/actors.go",
+    "old": "\t\t\t\tf.Roles = map[string]string{}\n\t\t\t\t*d = makeDetail",
+    "new": "\t\t\t\t*d = makeDetail",
+    "killed_by": "TestLateBossSelectionClearsStaleRoles"
+  },
+  {
+    "file": "desktop/internal/raid/fights/actors.go",
+    "old": "pairs[[2]string{e.Src.ID, e.Dst.ID}]",
+    "new": "pairs[[2]string{\"\", e.Dst.ID}]",
+    "killed_by": "TestIndexBossEvidenceKeepsSourceCreaturePairs"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "\t\tinitialized, ended = false, false\n\t\tseenEnds = map[int64]bool{}\n",
+    "new": "\t\tinitialized, ended = false, false\n",
+    "killed_by": "TestHeaderResetsSeenEncounterEnds"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "tl.HealingDone += max(int64(0), e.Amount.V)\n\t\t\t\t}\n\t\t\t}\n\t\t}",
+    "new": "tl.HealingDone += e.Amount.V\n\t\t\t\t}\n\t\t\t}\n\t\t}",
+    "killed_by": "TestNegativeAbsorbDoesNotSubtractHealing"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "caster := owner(e.Caster.ID)",
+    "new": "caster := e.Caster.ID",
+    "killed_by": "TestPetAbsorbCasterCreditsOwner"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "return player(e.Src.ID) && e.Src.Flags&0x200 != 0 && e.Dst.Flags&0x10 != 0",
+    "new": "return player(e.Src.ID) && e.Dst.Flags&0x10 != 0",
+    "killed_by": "TestFriendlyDamageRequiresNPCControlToExclude"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "return player(e.Src.ID) && e.Src.Flags&0x200 != 0",
+    "new": "return e.Src.Flags&0x200 != 0",
+    "killed_by": "TestOwnedNPCFriendlyDamageIsNotCharmedPlayerDamage"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "!f.Boss && creature(e.Src.ID) && !pet(e.Src))",
+    "new": "!f.Boss && creature(e.Src.ID))",
+    "killed_by": "TestEnemyPetSwingsDoNotSupplyTrashTankEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "if f.Boss && top == 0 {",
+    "new": "if false {",
+    "killed_by": "TestBossRolesRequireTankEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "if f.Boss && top == 0 {",
+    "new": "if f.Boss && len(f.BossUnits) == 0 {",
+    "killed_by": "TestBossRolesRequireTankEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "f.EndMs = max(f.StartMs, encounterEndMs)",
+    "new": "f.EndMs = max(f.StartMs, f.EndMs, encounterEndMs)",
+    "killed_by": "TestBossEndOwnsTailAfterClockSpike"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "e.TimeMs-encounterEndMs > p.TailMs",
+    "new": "e.TimeMs-f.EndMs > p.TailMs",
+    "killed_by": "TestBossTailUsesRawEndWhenStartIsLater"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "f.EndMs = max(f.StartMs, encounterEndMs)",
+    "new": "f.EndMs = encounterEndMs",
+    "killed_by": "TestBossTailUsesRawEndWhenStartIsLater"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "p.DetailsFor != nil && p.DetailsFor(*f)",
+    "new": "p.DetailsFor == nil || p.DetailsFor(*f)",
+    "killed_by": "TestNilDetailsForIsIndexOnly"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "d.RolesComputed = true",
+    "new": "d.RolesComputed = false",
+    "killed_by": "TestRolesComputedDistinguishesIndexFromNoEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "d := Detail{Timelines: map[string]*Timeline{}, Specs: map[string]string{}}",
+    "new": "d := Detail{RolesComputed: true, Timelines: map[string]*Timeline{}, Specs: map[string]string{}}",
+    "killed_by": "TestRolesComputedDistinguishesIndexFromNoEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "p.DetailsFor != nil && p.DetailsFor(*f)",
+    "new": "p.DetailsFor != nil",
+    "killed_by": "TestNilDetailsForIsIndexOnly"
+  },
+  {
+    "file": "desktop/internal/raid/fights/fights.go",
+    "old": "encounterEndMs = e.TimeMs",
+    "new": "encounterEndMs = f.EndMs",
+    "killed_by": "TestBossEndOwnsTailAfterClockSpike"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "if f.Boss && top == 0 {",
+    "new": "if f.Boss && total == 0 {",
+    "killed_by": "TestBossRolesRequirePlayerSwingEvidence"
+  }
+]
