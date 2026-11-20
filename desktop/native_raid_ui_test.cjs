@@ -50,7 +50,7 @@ test('every name is escaped, control-free and bidi-isolated at insertion',async 
  $('nav-raids').click();await settle();
  const view=$('raids-view');
  assert.equal(view.querySelector('img,script,[onerror]'),null);
- assert.doesNotMatch(view.textContent,/[\u200b-\u200f\u202a-\u202e\u2066-\u2069]/u);
+ assert.doesNotMatch(view.textContent,/[\u061c\ufeff\u2060-\u2064\u00ad\u180e\u200b-\u200f\u202a-\u202e\u2066-\u2069]/u);
  for(const name of expected) assert.ok([...view.querySelectorAll('bdi')].some(n=>n.textContent===name),'missing isolated name');
  // Check every occurrence, including names repeated in closed player details.
  const walker=dom.window.document.createTreeWalker(view,dom.window.NodeFilter.SHOW_TEXT);
@@ -103,4 +103,24 @@ test('refresh and a refused direct route both revoke existing page',async t=>{
  allowed=true;$('refresh').click();await settle();refused=true;$('nav-raids').click();await settle();
  assert.equal($('nav-raids'),null);assert.equal($('raids-view'),null);
  assert.match($('global-status').textContent,/locked/);
+});
+for (const refreshFirst of [false,true]) test('route lock wins over refresh reply order '+refreshFirst,async t=>{
+ let releaseRefresh,rejectPage,hold=false;
+ const {$,calls}=await setup(t,{reportRefresh:()=>hold?new Promise(r=>releaseRefresh=r):report(true),raidPage:()=>new Promise((_,reject)=>rejectPage=reject)});
+ hold=true;$('refresh').click();await settle();$('nav-raids').click();await settle();
+ if(refreshFirst){releaseRefresh(report(true));await settle();}
+ rejectPage(Error('Raids locked: current reading invalid'));await settle();
+ if(!refreshFirst){releaseRefresh(report(true));await settle();}
+ assert.equal($('nav-raids'),null);assert.equal($('raids-view'),null);
+ assert.match($('global-status').textContent,/Raids locked: current reading invalid/);
+ assert.equal(calls.filter(r=>r.method==='raidPage').length,1);
+});
+test('a later refresh cannot unlock without a new guarded route verdict',async t=>{
+ let locked=true;
+ const {$,calls}=await setup(t,{reportRefresh:()=>report(true),raidPage:()=>{if(locked)throw Error('Raids locked: stale');return raid}});
+ $('nav-raids').click();await settle();$('refresh').click();await settle();
+ assert.equal($('nav-raids'),null);assert.match($('global-status').textContent,/locked/);
+ locked=false;$('refresh').click();await settle();
+ assert.ok($('nav-raids'));
+ assert.ok(calls.filter(r=>r.method==='raidPage').length>=3,'refresh alone fabricated admission');
 });

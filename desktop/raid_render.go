@@ -2,20 +2,44 @@ package main
 
 import (
 	"html/template"
+	"math/big"
+	"strconv"
 	"strings"
 )
 
 // Display-only: never change names used by parsing, scoring or matching.
 func raidDisplayName(s string) string {
 	return strings.Map(func(r rune) rune {
-		if r >= '\u200b' && r <= '\u200f' || r >= '\u202a' && r <= '\u202e' || r >= '\u2066' && r <= '\u2069' {
+		if r >= '\u200b' && r <= '\u200f' || r >= '\u202a' && r <= '\u202e' || r >= '\u2066' && r <= '\u2069' || r == '\u061c' || r == '\ufeff' || r >= '\u2060' && r <= '\u2064' || r == '\u00ad' || r == '\u180e' {
 			return -1
 		}
 		return r
 	}, s)
 }
 
-var raidTemplate = template.Must(template.New("raid.html").Funcs(template.FuncMap{"raidName": raidDisplayName}).ParseFS(assets, "raid.html"))
+func raidDecimal(v *big.Rat) string {
+	if v == nil {
+		return "not measured"
+	}
+	text := v.FloatString(1)
+	if text == "-0.0" {
+		return "0.0"
+	}
+	return text
+}
+func raidPercent(v *big.Rat) string {
+	if v == nil {
+		return "not measured"
+	}
+	percent := new(big.Rat).Mul(v, big.NewRat(100, 1))
+	value, _ := percent.Float64()
+	return strconv.FormatFloat(value, 'f', -1, 64) + "%"
+}
+func raidTemplateFuncs() map[string]any {
+	return map[string]any{"raidName": raidDisplayName, "raidDecimal": raidDecimal, "raidPercent": raidPercent}
+}
+
+var raidTemplate = template.Must(template.New("raid.html").Funcs(raidTemplateFuncs()).ParseFS(assets, "raid.html"))
 
 func renderRaidBody(p raidPageModel) (string, error) {
 	var out strings.Builder

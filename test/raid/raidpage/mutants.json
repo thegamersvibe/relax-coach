@@ -91,7 +91,7 @@
   },
   {
     "file": "desktop/raid.html",
-    "old": "{{.Impact.FloatString 1}}",
+    "old": "{{raidDecimal .Impact}}",
     "new": "0.0",
     "killed_by": "TestRaidPageComparisonPresentation"
   },
@@ -130,5 +130,65 @@
     "old": "officer, err := compare.ParseOfficer(data)",
     "new": "officer, err := compare.OfficerFile{Version: 1, Officer: \"forged\"}, error(nil)",
     "killed_by": "TestRaidPageComparisonRereads"
+  },
+  {
+    "file": "desktop/raid_night_table.go",
+    "old": "if summary.Role == \"\" {",
+    "new": "if false {",
+    "killed_by": "TestRaidPageNightExactDisplay"
+  },
+  {
+    "file": "desktop/raid_night_table.go",
+    "old": "if summary.Split {",
+    "new": "if false {",
+    "killed_by": "TestRaidPageNightExactDisplay"
+  },
+  {
+    "file": "desktop/raid_night_table.go",
+    "old": "value = raidDecimal(points)",
+    "new": "value = points.FloatString(2)",
+    "killed_by": "TestRaidPageNightExactDisplay"
+  },
+  {
+    "file": "desktop/raid_night_table.go",
+    "old": "w = c.Scoring.Weights.Tank",
+    "new": "w = c.Scoring.Weights.DPS",
+    "killed_by": "TestRaidPageNightTable"
+  },
+  {
+    "file": "desktop/raid_night_table.go",
+    "old": "w = c.Scoring.Weights.Healer",
+    "new": "w = c.Scoring.Weights.DPS",
+    "killed_by": "TestRaidPageNightTable"
+  },
+  {
+    "file": "desktop/raid_page.go",
+    "old": "row.NightParts, row.NightReason = raidNightParts(summary, c)",
+    "new": "row.NightParts, row.NightReason = nil, \"\"",
+    "killed_by": "TestRaidPageNightTable"
+  },
+  {
+    "file": "desktop/raid_page.go",
+    "old": "p.Kills++",
+    "new": "p.Kills += 0",
+    "killed_by": "TestRaidPagePullOutcomeHeader"
+  },
+  {
+    "file": "desktop/raid_page.go",
+    "old": "p.WipePulls++",
+    "new": "p.WipePulls += 0",
+    "killed_by": "TestRaidPagePullOutcomeHeader"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "if text == \"-0.0\" {",
+    "new": "if false {",
+    "killed_by": "TestRaidPageComparisonNumberDisplay"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "percent := new(big.Rat).Mul(v, big.NewRat(100, 1))",
+    "new": "percent := new(big.Rat).Mul(v, big.NewRat(1, 1))",
+    "killed_by": "TestRaidPageComparisonNumberDisplay"
   }
 ]

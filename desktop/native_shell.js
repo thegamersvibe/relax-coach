@@ -289,7 +289,15 @@ function displayFarm(result) {
 $('farm-body').addEventListener('change',event=>{ if (event.target && event.target.id === 'farm-house') filterFarmHouse(); });
 // Raids are removed, not CSS-hidden, when admission changes. No retained
 // template/fragment contains a locked account's raid data.
-let raidGeneration = 0;
+let raidGeneration = 0, raidVerdictGeneration = 0;
+const raidLocks = new Map();
+const raidContext = result => JSON.stringify([result && result.Game,result && result.Account]);
+const raidLocked = result => raidLocks.get(raidContext(result));
+function lockRaids(error) {
+  ++raidVerdictGeneration;
+  raidLocks.set(raidContext(lastReport || renderedReport),error.message);
+  clearRaids();message(error.message);
+}
 function clearRaids() {
   ++raidGeneration;
   if ($('raids-view') && !$('raids-view').hidden) show('report');
@@ -297,6 +305,7 @@ function clearRaids() {
   if ($('nav-raids')) $('nav-raids').remove();
 }
 function displayRaids(result) {
+  if (raidLocked(result)) { clearRaids();message(raidLocked(result));return; }
   if (result.HasRaids !== true) { clearRaids(); return; }
   if (!$('raids-view')) {
     // Only escaped, Go-template-owned HTML may enter this sink.
@@ -338,7 +347,7 @@ document.addEventListener('click',async event=>{
     userNavigated=true;show('raids');
   } catch(err) {
     if (generation!==raidGeneration || context!==reportGeneration) return;
-    clearRaids();message(err.message);
+    lockRaids(err);
   }
 });
 function displayReport(result,folderChanged = false) {
@@ -403,16 +412,28 @@ async function refresh(manual = false) {
   if (refreshing || switchingFolder || switchingAccount) return;
   refreshing = true;
   updateButtons();
-  const generation = reportGeneration;
+  const generation = reportGeneration, verdict = raidVerdictGeneration;
   try {
     const result = await rc.refresh();
     if (generation !== reportGeneration) return;
+    // A stale allowed refresh cannot overturn a newer guarded route refusal.
+    // Only a later manual refresh, rechecked by that route, may clear the latch.
+    if (manual && result.HasRaids === true && raidLocked(result) && verdict === raidVerdictGeneration) {
+      try {
+        const html = await rc.raidPage();
+        if (generation !== reportGeneration || verdict !== raidVerdictGeneration) return;
+        raidLocks.delete(raidContext(result));++raidVerdictGeneration;result.RaidHTML=html;
+      } catch(err) {
+        if (generation !== reportGeneration || verdict !== raidVerdictGeneration) return;
+        lockRaids(err);
+      }
+    }
     displayReport(result);
     chooseInitialView(result);
     acknowledgeRenderedShell();
-    if (manual) message('Report refreshed. The game must save before new data appears.', true);
+    if (manual && !raidLocked(result)) message('Report refreshed. The game must save before new data appears.', true);
   }
-  catch (err) { if (generation === reportGeneration) message('Could not refresh the report: '+err.message); }
+  catch (err) { if (generation === reportGeneration) message(raidLocked(lastReport) || 'Could not refresh the report: '+err.message); }
   finally { refreshing = false; updateButtons(); }
 }
 $('nav-setup').addEventListener('click',()=>{ userNavigated = true; show('setup'); maybeAutoCheck(); });
@@ -441,7 +462,7 @@ async function changeFolder(select) {
       folder = result.Game;
       clearUpdateAllLines();
       displayReport(result,true);
-      message('Game folder saved.', true);
+      message(raidLocked(result) || 'Game folder saved.', !raidLocked(result));
     }
   }
   catch(err) { message(err.message); }
@@ -483,7 +504,7 @@ $('account-select').addEventListener('change',async()=>{
     const result = await rc.selectAccount(id);
     if (generation !== reportGeneration) return;
     displayReport(result);
-    message(result.ConfigWarning || 'Account selection remembered for this game folder.');
+    message(raidLocked(result) || result.ConfigWarning || 'Account selection remembered for this game folder.');
   } catch(err) {
     if (generation !== reportGeneration) return;
     if (lastReport) displayAccount(lastReport);

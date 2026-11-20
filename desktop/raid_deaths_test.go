@@ -91,7 +91,7 @@ func TestRaidPageWipesAndProblems(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"1 bosses · 1 wipes", "fight duration: 1m0s", "Wipe 1", "First death", "Then (10s)", "Deaths (3)", "unknown", "Nobody-OtherRealm", "Unmatched prep reports (1)", "Deaths beyond the run end (1): not scored", "incomplete: skipped log lines", `data-death-filter="unknown"`} {
+	for _, want := range []string{"1 boss pulls · 1 wipes · 0 kills", "fight duration: 1m0s", "Wipe 1", "First death", "Then (10s)", "Deaths (3)", "unknown", "Nobody-OtherRealm", "Unmatched prep reports (1)", "Deaths beyond the run end (1): not scored", "incomplete: skipped log lines", `data-death-filter="unknown"`} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("missing %q", want)
 		}

@@ -6,8 +6,8 @@
     "killed_by": "TestRaidLockBudgetAndOptionalGuild"
   },
   {
-    "file": "desktop/raid_lock.go",
-    "old": "len(ranks) > raidRankMaxCharacters",
+    "file": "desktop/raid_lock_parse.go",
+    "old": "entries > raidRankMaxCharacters",
     "new": "false",
     "killed_by": "TestRaidLockInvalidAndRevocation"
   },
@@ -94,5 +94,41 @@
     "old": "!raidRankText(s, 96)",
     "new": "!raidRankText(s, 97)",
     "killed_by": "TestRaidLockGuildBounds"
+  },
+  {
+    "file": "desktop/luasv.go",
+    "old": "p.entry(p.path, rawKey, entries)",
+    "new": "p.entry(p.path, fmt.Sprint(rawKey), entries)",
+    "killed_by": "TestRaidLockRawKeyAndDuplicateRefusals"
+  },
+  {
+    "file": "desktop/luasv.go",
+    "old": "p.uniqueKeys && exists {\n\t\t\treturn nil, p.err(\"duplicate variable\")",
+    "new": "false && p.uniqueKeys && exists {\n\t\t\treturn nil, p.err(\"duplicate variable\")",
+    "killed_by": "TestRaidLockRawKeyAndDuplicateRefusals"
+  },
+  {
+    "file": "desktop/luasv.go",
+    "old": "p.uniqueKeys && exists {\n\t\t\treturn nil, p.err(\"duplicate table key\")",
+    "new": "false && p.uniqueKeys && exists {\n\t\t\treturn nil, p.err(\"duplicate table key\")",
+    "killed_by": "TestRaidLockRawKeyAndDuplicateRefusals"
+  },
+  {
+    "file": "desktop/luasv.go",
+    "old": "entries++",
+    "new": "entries = len(out) + 1",
+    "killed_by": "TestRaidLockRawEntryBudget"
+  },
+  {
+    "file": "desktop/raid_lock_parse.go",
+    "old": "if len(parts) < 2 {",
+    "new": "if false {",
+    "killed_by": "TestRaidLockRawKeyAndDuplicateRefusals"
+  },
+  {
+    "file": "desktop/raid_lock_parse.go",
+    "old": "part == \"\" || strings.TrimSpace(part) != part",
+    "new": "false && (part == \"\" || strings.TrimSpace(part) != part)",
+    "killed_by": "TestRaidLockRawKeyAndDuplicateRefusals"
   }
 ]

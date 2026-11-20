@@ -1,7 +1,7 @@
 {{define "raid-name"}}<bdi>{{raidName .}}</bdi>{{end}}
 {{define "raid-body"}}
 <div class="card raid-head"><h3>Raids &gt; {{template "raid-name" .Title}}, {{.Date}}</h3>
-<p>Logged by {{if .Logger}}{{template "raid-name" .Logger}}{{else}}unknown{{end}} · {{.Bosses}} bosses · {{len .Wipes}} wipes · {{.Trash}} trash pulls · {{.Duration}}</p>
+<p>Logged by {{if .Logger}}{{template "raid-name" .Logger}}{{else}}unknown{{end}} · {{.Bosses}} boss pulls · {{.WipePulls}} wipes · {{.Kills}} kills · {{.Trash}} trash pulls · {{.Duration}}</p>
 <p>Scoring {{.ConfigVersion}} · Baseline: same role, same fight (first raid, no history)</p>
 <p>Log: {{.LogStatus}} · Prep reports: {{.PrepPlayers}} of {{.Players}} players</p>
 {{if .Dungeon}}<p>Dungeon run: no ranks</p>{{end}}</div>
@@ -23,8 +23,8 @@
 {{if .NoReportReason}}<p>{{.NoReportReason}}</p>{{else}}
 <h4>Top picks</h4>{{template "raid-comparison-rows" .Top}}
 <h4>Bottom picks</h4>{{template "raid-comparison-rows" .Bottom}}
-<p>Score's top 5 you did not name: {{range .ScoreTop}}{{template "raid-name" .LoggedName}} (rank {{.Rank.V}}); {{else}}none{{end}}</p>
-<p>Score's bottom 5 you did not name: {{range .ScoreBottom}}{{template "raid-name" .LoggedName}} (rank {{.Rank.V}}); {{else}}none{{end}}</p>
+<p>Score's top 5 you did not name: {{range .ScoreTop}}{{template "raid-name" .LoggedName}}{{if and .Rank.Present (gt .Rank.V 0)}} (rank {{.Rank.V}}){{end}}; {{else}}none{{end}}</p>
+<p>Score's bottom 5 you did not name: {{range .ScoreBottom}}{{template "raid-name" .LoggedName}}{{if and .Rank.Present (gt .Rank.V 0)}} (rank {{.Rank.V}}){{end}}; {{else}}none{{end}}</p>
 {{end}}{{else}}<p>No comparison file selected. File selection awaits night-opening wiring.</p>{{end}}</section>
 <section class="card" id="raid-problems"><h3>Problems</h3>
 <p>Unmatched prep reports ({{len .Unmatched}}):</p><ul>{{range .Unmatched}}<li>{{template "raid-name" .Name}} · server stamp {{.Stamped}}</li>{{end}}</ul>
@@ -33,15 +33,19 @@
 <details><summary>Parse report</summary><p>Lines read: {{.Parsed.LinesRead}} · Parsed events: {{.Parsed.Parsed}} · Headers: {{.Parsed.HeadersSeen}}</p><ul>{{range $why,$count:=.Parsed.Skipped}}<li>{{$why}}: {{$count}}</li>{{end}}</ul></details>
 <details><summary>Prep diagnostics</summary>{{range .Warnings}}<p>{{.}}</p>{{end}}<ul>{{range $why,$count:=.PrepSkipped}}<li>{{$why}}: {{$count}}</li>{{end}}</ul></details></section>
 {{end}}
-{{define "raid-comparison-rows"}}<ul>{{range .}}<li>{{template "raid-name" .Name}}: {{if .Status}}{{.Status}}{{else}}{{.Verdict}} (rank {{.Rank.V}}){{end}}
+{{define "raid-comparison-rows"}}<ul>{{range .}}<li>{{template "raid-name" .Name}}: {{if .Status}}{{.Status}}{{else}}{{.Verdict}}{{if and .Rank.Present (gt .Rank.V 0)}} (rank {{.Rank.V}}){{end}}{{end}}
 {{if .PartReason}}<p>{{.PartReason}}</p>{{end}}
-{{with .Part}}<details><summary>{{template "raid-name" .Name}} · {{.Impact.FloatString 1}} weighted impact vs {{.Role}} median</summary>
-<p>Part score: {{.Score.FloatString 1}} · role median: {{.Median.FloatString 1}} · configured weight: {{.Weight}}</p></details>{{end}}</li>{{end}}</ul>{{end}}
+{{with .Part}}<details><summary>{{template "raid-name" .Name}} · {{raidDecimal .Impact}} weighted impact vs {{.Role}} median</summary>
+<p>Part score: {{raidDecimal .Score}} · role median: {{raidDecimal .Median}} · configured weight: {{raidPercent .Weight}}</p></details>{{end}}</li>{{end}}</ul>{{end}}
 {{define "raid-player-detail"}}
 {{range .}}<section class="card raid-player-detail" id="raid-player-{{.Key}}" hidden tabindex="-1">
 <h3>{{template "raid-name" .Name}} · {{.Role}} · {{.Score}}{{if .Rank}} · rank {{.Rank}}{{end}} · {{.Coverage}}% measured</h3>
 <button class="secondary" type="button" data-raid-close>Close player</button>
-<p class="subtle">Per-fight parts below. The night-level part layout awaits a ruling; deaths are currently a measure inside mechanics, not a separate part.</p>
+{{if .NightReason}}<p class="raid-night-reason">{{.NightReason}}</p>{{else}}
+<h4>THE NIGHT, by part (weighted over his fights as {{.Role}})</h4>
+<table class="farm-table raid-night-parts"><thead><tr><th>Part</th><th>Weight</th><th>Night value</th></tr></thead><tbody>
+{{range .NightParts}}<tr><td>{{template "raid-name" .Name}}</td><td>{{.Weight}}</td><td>{{.Score}}</td></tr>{{end}}</tbody></table>{{end}}
+<h4>Each fight</h4>
 {{range .Fights}}<h4>{{template "raid-name" .Name}} ({{.Outcome}}, {{.Duration}}) · {{.Role}} · {{.Score}} · {{.Coverage}}% measured</h4>
 <p>{{range .Flags}}{{.}} {{end}}</p><table class="farm-table"><thead><tr><th>Part</th><th>Weight</th><th>Score</th><th>Against</th><th>Evidence</th></tr></thead><tbody>
 {{range .Parts}}<tr><td>{{template "raid-name" .Name}}</td><td>{{.Weight}}</td><td>{{.Score}}<br>{{.Coverage}}% measured{{if .Provisional}} · provisional{{end}}</td><td>{{.Against}}</td>

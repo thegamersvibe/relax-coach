@@ -27,13 +27,13 @@ func raidRankText(s string, limit int) bool {
 	return s != "" && len(s) <= limit && utf8.ValidString(s) && strings.TrimSpace(s) == s && strings.IndexFunc(s, func(r rune) bool { return r < 32 || r == 127 }) < 0
 }
 
-// Bad rows never admit, but do not poison another current, valid officer.
-// The root/table and the 50-row cap are whole-save admission boundaries.
+// Bad row values never admit, but do not poison another valid officer. Raw
+// key type/name, duplicates and the 50-entry cap are whole-save boundaries.
 func raidAdmission(data []byte, now time.Time) error {
 	if len(data) > raidSaveMaxBytes {
 		return errRaidRankLocked
 	}
-	vars, err := ParseSavedVariablesLimited(string(data), raidSaveMaxValues)
+	vars, err := raidSaveVariables(data)
 	if err != nil {
 		return errRaidRankLocked
 	}
@@ -42,15 +42,12 @@ func raidAdmission(data []byte, now time.Time) error {
 		return errRaidRankLocked
 	}
 	ranks, ok := db["ranks"].(map[string]any)
-	if !ok || len(ranks) > raidRankMaxCharacters {
+	if !ok {
 		return errRaidRankLocked
 	}
 	officer, badTime := false, false
 	nowS := now.UTC().Unix()
-	for name, raw := range ranks {
-		if !raidRankText(name, 64) || !strings.Contains(name, "-") {
-			continue
-		}
+	for _, raw := range ranks {
 		row, ok := raw.(map[string]any)
 		if !ok {
 			continue

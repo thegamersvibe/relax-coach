@@ -15,6 +15,10 @@ type luaParser struct {
 	// maxValues > 0 bounds the number of table entries parsed (the Farming
 	// page uses it; the Coach save keeps the unbounded behaviour).
 	maxValues, values int
+	// Optional raw-entry checks. Ordinary Coach/Farming parsing stays unchanged.
+	uniqueKeys bool
+	path       []string
+	entry      func([]string, any, int) error
 }
 
 func ParseSavedVariables(src string) (out map[string]any, err error) {
@@ -38,7 +42,10 @@ func ParseSavedVariablesLimited(src string, maxValues int) (out map[string]any, 
 }
 
 func parseSV(src string, maxValues int) (map[string]any, error) {
-	p := &luaParser{s: src, maxValues: maxValues}
+	return (&luaParser{s: src, maxValues: maxValues}).parse()
+}
+
+func (p *luaParser) parse() (map[string]any, error) {
 	out := map[string]any{}
 	for {
 		p.skip()
@@ -53,6 +60,10 @@ func parseSV(src string, maxValues int) (map[string]any, error) {
 		if !p.eat('=') {
 			return nil, p.err("expected =")
 		}
+		if _, exists := out[name]; p.uniqueKeys && exists {
+			return nil, p.err("duplicate variable")
+		}
+		p.path = []string{name}
 		v, err := p.value()
 		if err != nil {
 			return nil, err
@@ -205,7 +216,7 @@ func (p *luaParser) str() (any, error) {
 func (p *luaParser) table() (any, error) {
 	p.pos++ // {
 	out := map[string]any{}
-	n := 0
+	n, entries := 0, 0
 	p.depth++
 	defer func() { p.depth-- }()
 	if p.depth > 64 {
@@ -220,6 +231,7 @@ func (p *luaParser) table() (any, error) {
 			return out, nil
 		}
 		var key string
+		var rawKey any
 		if p.s[p.pos] == '[' {
 			p.pos++
 			k, err := p.value()
@@ -229,6 +241,7 @@ func (p *luaParser) table() (any, error) {
 			if !p.eat(']') || !p.eat('=') {
 				return nil, p.err("expected ] =")
 			}
+			rawKey = k
 			switch kv := k.(type) {
 			case string:
 				key = kv
@@ -243,17 +256,28 @@ func (p *luaParser) table() (any, error) {
 			p.skip()
 			if id != "" && id != "true" && id != "false" && id != "nil" && p.pos < len(p.s) && p.s[p.pos] == '=' {
 				p.pos++
-				key = id
+				key, rawKey = id, id
 			} else {
 				p.pos = save
 				n++
-				key = strconv.Itoa(n)
+				key, rawKey = strconv.Itoa(n), float64(n)
 			}
 		}
 		if p.values++; p.maxValues > 0 && p.values > p.maxValues {
 			return nil, fmt.Errorf("more than %d values; not read", p.maxValues)
 		}
+		entries++
+		if p.entry != nil {
+			if err := p.entry(p.path, rawKey, entries); err != nil {
+				return nil, err
+			}
+		}
+		if _, exists := out[key]; p.uniqueKeys && exists {
+			return nil, p.err("duplicate table key")
+		}
+		p.path = append(p.path, key)
 		v, err := p.value()
+		p.path = p.path[:len(p.path)-1]
 		if err != nil {
 			return nil, err
 		}

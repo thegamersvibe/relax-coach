@@ -22,7 +22,7 @@ func TestRaidPageComparisonPresentation(t *testing.T) {
 		if strings.Contains(text, overlap) != (n < 10) {
 			t.Fatalf("overlap note wrong for %d ranked", n)
 		}
-		for _, want := range []string{"output", "dps", "41.7", "50.0", "-2.9", "7/20"} {
+		for _, want := range []string{"output", "dps", "41.7", "50.0", "-2.9", "35%"} {
 			if !strings.Contains(text, want) {
 				t.Fatalf("comparison field not rendered: %q", want)
 			}

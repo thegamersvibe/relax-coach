@@ -27,7 +27,7 @@ type raidPageModel struct {
 	Warnings                                                []string
 	Title, Date, Logger, Duration, ConfigVersion, LogStatus string
 	Dungeon                                                 bool
-	Bosses, Trash, PrepPlayers, Players                     int
+	Bosses, WipePulls, Kills, Trash, PrepPlayers, Players   int
 	Ranked, Provisional, Unscored                           []raidPlayerView
 }
 type raidPlayerView struct {
@@ -35,6 +35,8 @@ type raidPlayerView struct {
 	Name, Role, Score, Rank string
 	Coverage                int
 	Fights                  []raidFightView
+	NightParts              []raidNightPartView
+	NightReason             string
 	Flags                   []string
 }
 
@@ -63,6 +65,12 @@ func buildRaidPage(run fights.Run, parsed logfmt.ParseReport, save []byte, c cfg
 	for _, f := range run.Fights {
 		if f.Boss {
 			p.Bosses++
+			if f.Success.Present && f.Success.V == 1 {
+				p.Kills++
+			}
+			if f.Success.Present && f.Success.V == 0 {
+				p.WipePulls++
+			}
 		} else {
 			p.Trash++
 		}
@@ -120,6 +128,7 @@ func buildRaidPage(run fights.Run, parsed logfmt.ParseReport, save []byte, c cfg
 			role = "split evenly"
 		}
 		row := raidPlayerView{Key: i, Name: a.Name, Role: role, Score: raidTenths(s.Tenths, "not enough data"), Coverage: s.Coverage}
+		row.NightParts, row.NightReason = raidNightParts(summary, c)
 		row.Fights, row.Flags = raidPlayerEvidence(s, run.Fights, c)
 		if !s.Tenths.Present {
 			p.Unscored = append(p.Unscored, row)
