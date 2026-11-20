@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/cfg"
-	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/death"
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/fights"
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/model"
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/model/modeltest"
@@ -47,8 +46,8 @@ func TestRunEndClockSpike(t *testing.T) {
 	if !reflect.DeepEqual(short.Fights[0], long.Fights[0]) {
 		t.Fatal("same fight must distinguish the two run boundaries")
 	}
-	ds, _, excluded := death.Review(short.Fights[0], short.EndMs, config())
-	again, _, longExcluded := death.Review(long.Fights[0], long.EndMs, config())
+	ds, _, excluded := review(t, short.Fights[0], short.EndMs, config())
+	again, _, longExcluded := review(t, long.Fights[0], long.EndMs, config())
 	if excluded != 1 || longExcluded != 0 || len(ds) != 1 || ds[0].TimeMs != 2050 || len(again) != 2 || again[1].TimeMs != 50000 {
 		t.Fatalf("short deaths=%d long deaths=%d; want valid tail only for short run", len(ds), len(again))
 	}
@@ -57,7 +56,7 @@ func TestRunEndClockSpike(t *testing.T) {
 func TestFightEndDoesNotExcludeValidTailDeath(t *testing.T) {
 	f := fight(hit(1999, boss, victim, 81, 1), died(2050, victim))
 	f.EndMs = 2000
-	ds, _, _ := death.Review(f, 2050, config())
+	ds, _, _ := review(t, f, 2050, config())
 	if len(ds) != 1 || ds[0].TimeMs != 2050 {
 		t.Fatal("valid post-encounter tail death was dropped")
 	}

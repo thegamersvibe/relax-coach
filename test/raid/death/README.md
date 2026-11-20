@@ -25,7 +25,8 @@ exclusions, alive-at-start denominator, pet attribution, lost-boss gap,
 wipe call time and summary boundaries. Round-1 regressions add bounded
 fight-wide openers, proven roles, observed holders, missed swings, log-order
 survival, exact death-line/life cutoffs, environmental provenance, confidence
-counting and unowned guardians. `mutants.json` has 104 behavioral mutants;
+counting and unowned guardians. Round 2 adds raw clock-order, nonpositive-run-end
+and survivor regressions. `mutants.json` now has 118 behavioral mutants;
 all must be killed by their named test, not by compiler errors.
 The observed final race-enabled module run was 2.6 seconds against the unchanged
 30-second runner deadline. The all-Go runner passed 8/8 modules and the
@@ -42,7 +43,9 @@ Round-1 is recorded separately in [R6-REVIEW-EVIDENCE.md](../../../docs/raid/R6-
 including actual RED→GREEN output, authorized fixture/expectation migrations,
 all surviving reviewer-hand-mutant guards, the pending evidence-cap ruling
 and the reproduced run-end input gap (`TestRunEndClockSpikePendingContract`).
-The latter is not fixed: `Fight.EndMs` cannot substitute for `fights.Run.EndMs`.
+The run-end gap is now fixed by an explicit final run-end argument plus an
+error for a nonpositive end; `Fight.EndMs` cannot substitute for it. The later
+round-2 section records current counts and chronology behavior.
 The first death mutation run killed 90/91; adding a prior alternate holder
 made the remaining last-target mutant observable. The final pack killed
 104/104, including 44 additions to the 60 inherited entries. Obsolete anchors

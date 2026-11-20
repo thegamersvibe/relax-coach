@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/cfg"
-	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/death"
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/fights"
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/logfmt"
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/model"
@@ -110,8 +109,8 @@ func TestRealLogsR6(t *testing.T) {
 						feignsInFights++
 					}
 				}
-				ds, ws, excluded := death.Review(f, run.EndMs, c)
-				again, againW, excludedAgain := death.Review(f, run.EndMs, c)
+				ds, ws, excluded := review(t, f, run.EndMs, c)
+				again, againW, excludedAgain := review(t, f, run.EndMs, c)
 				if excluded != wantExcluded || excludedAgain != excluded {
 					t.Fatalf("outside run deaths=%d want=%d repeat=%d", excluded, wantExcluded, excludedAgain)
 				}

@@ -19,14 +19,14 @@ func TestZZConfidenceRuling(t *testing.T) {
 		mechanic(&c, 81)
 		// PHASE1-BRIEF R6 item 2: the first cause wins, but a second actual
 		// rule match makes confidence medium; no wipe exception is stated.
-		wantDeath(t, forVictim(t, f, c), death.AfterWipeCall, "medium", model.OwnerNobody, "")
+		wantDeath(t, forChronologicalVictim(t, f, c), death.AfterWipeCall, "medium", model.OwnerNobody, "")
 	})
 	t.Run("avoidable_ambiguous_aggro_is_not_second_match", func(t *testing.T) {
 		f := reviewMelee(9000, 9001)
 		f.Events = append(f.Events, hit(9500, boss, victim, 81, 100))
 		c := config()
 		mechanic(&c, 81)
-		wantDeath(t, forVictim(t, f, c), death.Avoidable, "high", model.OwnerPlayer, "", victim.Name)
+		wantDeath(t, forChronologicalVictim(t, f, c), death.Avoidable, "high", model.OwnerPlayer, "", victim.Name)
 	})
 }
 
@@ -40,7 +40,7 @@ func TestRecapBossKeepsRecentTen(t *testing.T) {
 		f.Events = append(f.Events, swing(at, boss, victim, 1))
 	}
 	f.Events = append(f.Events, died(10000, victim))
-	d := forVictim(t, f, config())
+	d := forChronologicalVictim(t, f, config())
 	wantDeath(t, d, death.Unresolved, "low", model.OwnerUndecided, "")
 	want = want[2:]
 	if !reflect.DeepEqual(d.Evidence, want) {

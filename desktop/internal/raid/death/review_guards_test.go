@@ -11,7 +11,7 @@ func TestPreviousDeathLineExcluded(t *testing.T) {
 	previous := died(2000, victim)
 	previous.InfoUnit, previous.HP, previous.HPMax = victim.ID, model.Some(200), model.Some(1000)
 	f := fight(previous, hit(3000, boss, victim, 81, 1), sample(6000, 200, 1000), hit(9900, boss, victim, 82, 1), died(10000, victim))
-	ds, _, _ := death.Review(f, 100000, config())
+	ds, _, _ := review(t, f, 100000, config())
 	if len(ds) != 2 {
 		t.Fatalf("deaths=%d", len(ds))
 	}
@@ -20,7 +20,7 @@ func TestPreviousDeathLineExcluded(t *testing.T) {
 
 func TestKillingRunLifeWindow(t *testing.T) {
 	f := reviewFight(hit(1000, victim, boss, 91, 1), swing(2000, boss, victim, 1), died(2001, victim), hit(3000, tank, boss, 91, 1), res(6000, victim), swing(11999, boss, victim, 1), died(12000, victim))
-	ds, _, _ := death.Review(f, 100000, config())
+	ds, _, _ := review(t, f, 100000, config())
 	if len(ds) != 2 {
 		t.Fatalf("deaths=%d", len(ds))
 	}
@@ -34,7 +34,7 @@ func TestKillingRunLifeWindow(t *testing.T) {
 
 func TestOneShotDoesNotSumEarlierLife(t *testing.T) {
 	f := fight(sample(8900, 1000, 1000), hit(9000, boss, victim, 81, 1000), died(9001, victim), res(9500, victim), sample(9600, 1000, 1000), hit(9999, boss, victim, 82, 1), died(10000, victim))
-	ds, _, _ := death.Review(f, 100000, config())
+	ds, _, _ := review(t, f, 100000, config())
 	if len(ds) != 2 {
 		t.Fatalf("deaths=%d", len(ds))
 	}

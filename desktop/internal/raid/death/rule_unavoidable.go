@@ -87,7 +87,7 @@ func raidwide(c *context, killing, spell model.Event) bool {
 			continue
 		}
 		if e.TimeMs > to {
-			break
+			continue
 		}
 		if !damage(e) || e.Stream != model.StreamNone || e.SpellID != spell.SpellID || !c.view.creature(e.Src) {
 			continue

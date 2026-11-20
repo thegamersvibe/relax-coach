@@ -18,7 +18,7 @@ func TestZZSameTimestampPostDeath(t *testing.T) {
 		f.Events = append(f.Events, model.Event{TimeMs: 10000, Kind: model.Resurrect, Dst: victim}, hit(10000, boss, victim, 81, 100), died(secondDeath, victim))
 		c := config()
 		mechanic(&c, 81)
-		ds, _, _ := death.Review(f, 100000, c)
+		ds, _, _ := review(t, chronological(f), 100000, c)
 		if len(ds) != 2 {
 			t.Fatalf("deaths=%d", len(ds))
 		}
@@ -34,7 +34,7 @@ func TestZZLifetimeEvidence(t *testing.T) {
 	f := fight(sample(1000, 300, 1000), hit(2000, boss, victim, 81, 600), died(2001, victim), model.Event{TimeMs: 6000, Kind: model.Resurrect, Dst: victim}, sample(6001, 200, 1000), hit(9999, boss, victim, 82, 20), died(10000, victim))
 	c := config()
 	mechanic(&c, 81)
-	ds, _, _ := death.Review(f, 100000, c)
+	ds, _, _ := review(t, chronological(f), 100000, c)
 	if len(ds) != 2 {
 		t.Fatalf("deaths=%d", len(ds))
 	}
@@ -53,7 +53,7 @@ func TestDeathWindowUsesPreviousDeathNotResurrection(t *testing.T) {
 		if res {
 			f.Events = append(f.Events, model.Event{TimeMs: 7000, Kind: model.Resurrect, Dst: victim})
 		}
-		ds, _, _ := death.Review(f, 100000, config())
+		ds, _, _ := review(t, chronological(f), 100000, config())
 		if len(ds) != 2 {
 			t.Fatalf("deaths=%d", len(ds))
 		}
@@ -61,7 +61,7 @@ func TestDeathWindowUsesPreviousDeathNotResurrection(t *testing.T) {
 	}
 	f := slowDeath(6000)
 	f.Events = append(f.Events, modeltest.At(7000).Dst(victim).Died(1).Build())
-	wantDeath(t, forVictim(t, f, config()), death.Unhealed, "high", model.OwnerHealers, "", healer.Name, healer2.Name)
+	wantDeath(t, forChronologicalVictim(t, f, config()), death.Unhealed, "high", model.OwnerHealers, "", healer.Name, healer2.Name)
 }
 
 func TestDeathLineCutsHealthAndHealerState(t *testing.T) {
@@ -82,7 +82,7 @@ func TestDeathLineCutsHealthAndHealerState(t *testing.T) {
 				f.Events = append(f.Events, died(5000, healer), model.Event{TimeMs: 10000, Kind: model.Resurrect, Dst: healer})
 				cause, confidence, owner, suggestion, owners = death.Unresolved, "low", model.OwnerUndecided, "", nil
 			}
-			wantDeath(t, forVictim(t, f, config()), cause, confidence, owner, suggestion, owners...)
+			wantDeath(t, forChronologicalVictim(t, f, config()), cause, confidence, owner, suggestion, owners...)
 		})
 	}
 }

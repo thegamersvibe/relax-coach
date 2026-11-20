@@ -182,3 +182,59 @@ these logs. The constants commit separately killed 42/42 model mutants.
 The older pending-contract and pending-cap assertions are replaced, not reported
 as fixes merely because their old observational tests passed. The removed
 no-living-tank puller alternative remains removed per the earlier ruling.
+
+## Round-2 delta (supersedes the earlier API/order notes)
+
+The small prerequisite is scoring 1.5.0: required positive int64
+`activity_cast_cap_ms=10000`, strict type/null/required checks, detached scalar
+Snapshot copies and rule README. `TestActivityCastCapConfig` was RED for unknown
+positive values and accepted omission; the seed/copy test was RED for the absent
+seed. The cfg suite is GREEN, the race module took 16.3s (final all-Go run 16.2s),
+under the unchanged 30-second limit. Both new guard mutants were killed;
+**172/172 cfg mutants killed**, no refusal/survivor.
+
+- The three adapted reviewer probes `TestSecondPostDeathClockRollback`,
+  `TestSecondHolderLogOrderClockRollback`, `TestSecondHolderRollbackThroughFights`
+  were RED: false pulled-aggro/lost-boss, high confidence. All are GREEN with
+  unresolved/low/undecided, empty owners/suggestion; the real fights.Build
+  monotonic control remains GREEN. Events are never sorted in production death
+  views. Returned deaths alone retain stable time-order presentation.
+- `TestClockRollbackDeclinesEveryRule` was RED for avoidable, unhealed,
+  suggestion, wipe and below-lower-time-bound clock steps. It is GREEN with
+  attribution suppressed before rule dispatch. Scope controls preserve valid
+  attribution for equal times, earlier-life/before-window and after-death steps.
+- `TestReviewRequiresPositiveRunEnd` was RED against the old three-result API.
+  Review now returns `(deaths, wipes, excluded, error)` and rejects zero/negative
+  ends before the index-only fast path. Every caller checks errors.
+- Two reported survivor guards have independent tests and mutations:
+  `TestLostBossOnlyHolderDamageRepairsGap` kills removal of holder ownership;
+  `TestPulledAggroDoesNotAlsoMatchLostBoss` kills removal of the pulled-aggro
+  exclusion (otherwise confidence incorrectly becomes medium).
+- `TestLastHolderLineOutsideWindowIsNotSkipped` was RED with an older tank
+  incorrectly substituted for the actual last, too-old non-tank target. GREEN:
+  choose the last target by position first, then validate its age.
+- Legacy time-predicate fixtures explicitly construct monotonic logs via the
+  copying `chronological` helper. No expected cause, confidence, ownership or
+  boundary assertion was relaxed; tied-line order is stable. Raw positional and
+  rollback tests never use that helper. Three inherited mutant anchors were
+  migrated to the linear scans; all inherited mutants remain.
+
+Executed sequentially, with Go on PATH and CI Python 3.14 requirements:
+
+```text
+(cd desktop && gofmt -l internal/raid && go vet ./internal/raid/... && go test -count=1 ./internal/raid/...)
+PASS; formatting and vet silent
+python3 -I -B tools/raidtest.py --all --kind go
+RESULT: 9/9 modules passed (cfg 16.2s; death 4.3s)
+python -I -B tools/raidtest.py --mutants death
+RESULT: 118/118 mutants killed
+python -I -B tools/raidtest.py --all --kind lua,py
+RESULT: 18/18 modules passed
+```
+
+Gated real-log test before: PASS (1.59s); after: PASS (1.65s).
+For **each** of anonymous logs 1 and 2, before and after: deaths 1,
+unresolved 1, low 1, empty suggestion 1, feigns excluded 15, wipes 0,
+past-run exclusions 0, health samples 0. **Neither death result changes.**
+These logs still supply no positive-cause/wipe calibration. No model/fights/logfmt
+edit, native/game test, full-desktop suite, push, PR or release was performed.

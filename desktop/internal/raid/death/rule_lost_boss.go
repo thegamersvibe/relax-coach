@@ -29,10 +29,10 @@ func lostBoss(c *context) verdict {
 	holder := ""
 	for i := turn - 1; i >= 0; i-- {
 		e := c.view.events[i]
-		if at-e.TimeMs > c.params.WindowMs {
-			break
-		}
 		if melee(e) && e.Src.ID == killing.Src.ID {
+			if e.TimeMs > at || at-e.TimeMs > c.params.WindowMs {
+				return unknown
+			}
 			holder = e.Dst.ID
 			break
 		}
@@ -45,7 +45,7 @@ func lostBoss(c *context) verdict {
 		// The holder's damage at the turn millisecond counts as engagement;
 		// no later timestamp (or line after this death) repairs the gap.
 		if e.TimeMs > at {
-			break
+			continue
 		}
 		if damage(e) && e.Dst.ID == killing.Src.ID && c.view.owner(e.Src.ID) == holder {
 			last = model.Some(e.TimeMs)

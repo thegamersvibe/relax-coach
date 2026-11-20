@@ -3,6 +3,7 @@
 package death
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/cfg"
@@ -57,14 +58,18 @@ type context struct {
 }
 
 // Review returns deaths in stable time order, summaries of wiped boss fights,
-// and the count of real player deaths stamped after the final runEndMs.
+// the count of real player deaths stamped after the final runEndMs, and an error.
+// A nonpositive runEndMs is invalid, including for an index-only fight.
 // Callers pass the final run end, never the encounter end (valid tails can exceed it).
 // An index-only fight (no Events) is not judged. Config should be a validated
 // cfg snapshot; no tuning values are supplied by this package. Inputs are not
 // modified. Evidence holds absolute event times, as modeltest.DeathOf expects.
-func Review(f model.Fight, runEndMs int64, config cfg.Config) ([]model.Death, []model.Wipe, int) {
+func Review(f model.Fight, runEndMs int64, config cfg.Config) ([]model.Death, []model.Wipe, int, error) {
+	if runEndMs <= 0 {
+		return nil, nil, 0, fmt.Errorf("death: runEndMs must be positive")
+	}
 	if len(f.Events) == 0 {
-		return nil, nil, 0
+		return nil, nil, 0, nil
 	}
 	snapshot := config.Snapshot()
 	v := newView(f)
@@ -85,12 +90,21 @@ func Review(f model.Fight, runEndMs int64, config cfg.Config) ([]model.Death, []
 		c.start, c.window = v.deathWindow(p.ID, c.at-c.params.WindowMs, i)
 		deaths = append(deaths, classify(&c))
 	}
-	return deaths, summaries(v, deaths, snapshot.Scoring.Death), excluded
+	// Presentation order is separate from every causal event position.
+	sort.SliceStable(deaths, func(i, j int) bool { return deaths[i].TimeMs < deaths[j].TimeMs })
+	return deaths, summaries(v, deaths, snapshot.Scoring.Death), excluded, nil
 }
 
 func classify(c *context) model.Death {
 	d := model.Death{Player: c.victim, FightID: c.view.f.ID, TimeMs: c.at,
 		Cause: Unresolved, Confidence: "low", OwnerKind: model.OwnerUndecided, Evidence: recap(c.window, c.victim.ID)}
+	// A backward clock inside this life/window invalidates every attribution,
+	// including low-confidence suggestions. Unrelated lines count too.
+	for i := c.start + 1; i <= c.end; i++ {
+		if c.view.events[i].TimeMs < c.view.events[i-1].TimeMs {
+			return d
+		}
+	}
 	var best verdict
 	matches := 0
 	for _, r := range rules {

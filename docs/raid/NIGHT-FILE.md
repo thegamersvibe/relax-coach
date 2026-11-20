@@ -221,8 +221,10 @@ not a new file field or a change to `formatVersion`.
 ## R6 engine contract (phase 1)
 
 `death.Review(fight, runEndMs, config)` returns `[]model.Death`, `[]model.Wipe`
-and an integer count of excluded real player deaths stamped **after** the final
-run end; it writes nothing. Callers pass `fights.Run.EndMs`, not `Fight.EndMs`.
+an integer count of excluded real player deaths stamped **after** the final
+run end, and an error. `runEndMs <= 0` is an error with no partial results,
+including for index-only fights. It writes nothing. Callers pass
+`fights.Run.EndMs`, not `Fight.EndMs`.
 The latter is an encounter boundary: valid post-end tail deaths can exceed it.
 A death at the run end is included. Excluded deaths are never silently dropped;
 callers expose the count alongside their diagnostics. No model struct changes.
@@ -261,6 +263,13 @@ The environmental model shape from `logfmt` is no source, no spell id, no swing
 stream and an environmental type in `SpellName` (falling, drowning, fatigue,
 fire, lava or slime). Unknown types remain unresolved.
 
+- Positional rules use the original `Fight.Events` order, never a timestamp
+  sort: this death line, the previous real death, the last preceding boss
+  swing and window membership all retain their original event indices. A
+  backward clock step anywhere in the positional death-window span (including
+  unrelated events) makes the death `unresolved` / `low` / `undecided`, with
+  empty owners and suggestion. Steps before the window or after this death
+  cannot contaminate it. Only returned death rows are sorted for presentation.
 - The review window begins at death minus `death.window_ms` (inclusive), or
   just after the victim's previous real `UNIT_DIED` line, whichever is later.
   It ends at **this particular death line**, not the end of its millisecond.

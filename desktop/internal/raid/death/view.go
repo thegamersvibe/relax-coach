@@ -1,7 +1,6 @@
 package death
 
 import (
-	"sort"
 	"strings"
 
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/model"
@@ -17,7 +16,7 @@ type fightView struct {
 
 func newView(f model.Fight) *fightView {
 	v := &fightView{f: f, events: append([]model.Event(nil), f.Events...), players: map[string]model.Actor{}, timelines: map[string][]model.Event{}}
-	sort.SliceStable(v.events, func(i, j int) bool { return v.events[i].TimeMs < v.events[j].TimeMs })
+	// Fight.Events is log order. Positions must never be timestamp-sorted.
 	for _, p := range f.Players {
 		if !strings.HasPrefix(p.ID, "Player-") {
 			continue
@@ -42,12 +41,17 @@ func newView(f model.Fight) *fightView {
 // deathWindow is bounded by event identity, not just its millisecond. A
 // preceding real death cuts the life even when no resurrection was logged.
 func (v *fightView) deathWindow(id string, from int64, end int) (int, []model.Event) {
-	start := sort.Search(end+1, func(i int) bool { return v.events[i].TimeMs >= from })
-	for i := end - 1; i >= start; i-- {
+	start := 0
+	for i := end - 1; i >= 0; i-- {
 		if v.events[i].Dst.ID == id && v.events[i].IsDeath() {
 			start = i + 1
 			break
 		}
+	}
+	// Locate the first in-range line only after the previous death line.
+	// Retain the positional span through this death, even across clock steps.
+	for start < end && v.events[start].TimeMs < from {
+		start++
 	}
 	var window []model.Event
 	for _, e := range v.events[start : end+1] {
@@ -61,7 +65,7 @@ func (v *fightView) alive(id string, at int64) bool {
 	alive := true
 	for _, e := range v.timelines[id] {
 		if e.TimeMs > at {
-			break
+			continue
 		}
 		if e.Dst.ID != id {
 			continue
@@ -93,8 +97,19 @@ func (v *fightView) aliveBefore(id string, before int) bool {
 	return alive
 }
 func (c *context) alive(id string, at int64) bool {
-	end := sort.Search(c.end+1, func(i int) bool { return c.view.events[i].TimeMs > at })
-	return c.view.aliveBefore(id, end)
+	alive := true
+	for _, e := range c.view.events[:c.end+1] {
+		if e.TimeMs > at || e.Dst.ID != id {
+			continue
+		}
+		if e.IsDeath() {
+			alive = false
+		}
+		if e.Kind == model.Resurrect {
+			alive = true
+		}
+	}
+	return alive
 }
 func (c *context) aliveThroughout(id string, from, to int64) bool {
 	if !c.alive(id, from) {

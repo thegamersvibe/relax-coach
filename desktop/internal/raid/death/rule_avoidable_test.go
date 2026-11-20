@@ -25,7 +25,7 @@ func TestAvoidableMechanicRoles(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			c := config()
 			mechanic(&c, 81, tc.roles...)
-			d := forVictim(t, quickDeath(), c)
+			d := forChronologicalVictim(t, quickDeath(), c)
 			if tc.matches {
 				wantDeath(t, d, model.CauseAvoidable, "high", model.OwnerPlayer, "", victim.Name)
 			} else {
@@ -37,25 +37,25 @@ func TestAvoidableMechanicRoles(t *testing.T) {
 	mechanic(&c, 81)
 	f := quickDeath()
 	delete(f.Roles, victim.ID)
-	wantDeath(t, forVictim(t, f, c), model.CauseAvoidable, "high", model.OwnerPlayer, "", victim.Name)
+	wantDeath(t, forChronologicalVictim(t, f, c), model.CauseAvoidable, "high", model.OwnerPlayer, "", victim.Name)
 	c.Encounters.Encounters[0].Mechanics[0].Roles = []string{"dps"}
-	wantDeath(t, forVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
+	wantDeath(t, forChronologicalVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 }
 func TestAvoidableEnabledOnlyAndTextIsNotPredicate(t *testing.T) {
 	c := config()
 	mechanic(&c, 81, "dps")
 	c.Encounters.Encounters[0].Mechanics[0].AffectedPlayers = model.OwnerNobody
 	c.Encounters.Encounters[0].Mechanics[0].ValidResponse = "already done"
-	wantDeath(t, forVictim(t, quickDeath(), c), model.CauseAvoidable, "high", model.OwnerPlayer, "", victim.Name)
+	wantDeath(t, forChronologicalVictim(t, quickDeath(), c), model.CauseAvoidable, "high", model.OwnerPlayer, "", victim.Name)
 	c.Encounters.Encounters[0].ID++
-	wantDeath(t, forVictim(t, quickDeath(), c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
+	wantDeath(t, forChronologicalVictim(t, quickDeath(), c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	c = config()
 	mechanic(&c, 81)
 	c.Encounters.Encounters[0].Mechanics[0].Avoidable = false
-	wantDeath(t, forVictim(t, quickDeath(), c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
+	wantDeath(t, forChronologicalVictim(t, quickDeath(), c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	c = config()
 	c.Candidates.Encounters = []cfg.Candidate{{Name: "Synthetic", Abilities: []cfg.Spell{{ID: 81}}}}
-	wantDeath(t, forVictim(t, quickDeath(), c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
+	wantDeath(t, forChronologicalVictim(t, quickDeath(), c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 }
 func TestAvoidableKillingHitOrMajority(t *testing.T) {
 	for _, tc := range []struct {
@@ -74,7 +74,7 @@ func TestAvoidableKillingHitOrMajority(t *testing.T) {
 			e.Overkill = model.Some(tc.over)
 			f.Events[2] = hit(9900, boss, victim, 82, tc.last)
 			f.Events = append(f.Events, e)
-			d := forVictim(t, f, c)
+			d := forChronologicalVictim(t, f, c)
 			if tc.matches {
 				wantDeath(t, d, model.CauseAvoidable, "high", model.OwnerPlayer, "", victim.Name)
 			} else {
@@ -87,14 +87,14 @@ func TestAvoidableKillingHitOrMajority(t *testing.T) {
 	f := quickDeath()
 	f.Events[2].Src = victim
 	f.Events = append(f.Events, modeltest.At(9900).Dst(victim).Spell(81, "Synthetic ability").Aura(model.AuraRemoved, "DEBUFF").Build())
-	wantDeath(t, forVictim(t, f, c), model.CauseAvoidable, "high", model.OwnerPlayer, "", victim.Name)
+	wantDeath(t, forChronologicalVictim(t, f, c), model.CauseAvoidable, "high", model.OwnerPlayer, "", victim.Name)
 	f = quickDeath()
 	f.Events[2].TimeMs = -1
-	wantDeath(t, forVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
+	wantDeath(t, forChronologicalVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	f = quickDeath()
 	f.Events = append(f.Events, hit(9950, boss, victim, 82, 200))
-	wantDeath(t, forVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
+	wantDeath(t, forChronologicalVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	f = quickDeath()
 	f.Events[2].Stream = model.SwingSource
-	wantDeath(t, forVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
+	wantDeath(t, forChronologicalVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 }

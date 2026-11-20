@@ -49,9 +49,10 @@
   },
   {
     "file": "desktop/internal/raid/death/view.go",
-    "old": "v.events[i].TimeMs >= from",
-    "new": "v.events[i].TimeMs > from",
-    "killed_by": "TestSparseSamplesAndWindow"
+    "old": "v.events[start].TimeMs < from",
+    "new": "v.events[start].TimeMs <= from",
+    "killed_by": "TestSparseSamplesAndWindow",
+    "reanchored": "round-2 original-order lower bound"
   },
   {
     "file": "desktop/internal/raid/death/view.go",
@@ -397,15 +398,17 @@
   },
   {
     "file": "desktop/internal/raid/death/view.go",
-    "old": "end := sort.Search(c.end+1,",
-    "new": "end := sort.Search(len(c.view.events),",
-    "killed_by": "TestDeathLineCutsHealthAndHealerState"
+    "old": "alive := true\n\tfor _, e := range c.view.events[:c.end+1] {",
+    "new": "alive := true\n\tfor _, e := range c.view.events {",
+    "killed_by": "TestDeathLineCutsHealthAndHealerState",
+    "reanchored": "round-2 original-order survival"
   },
   {
     "file": "desktop/internal/raid/death/view.go",
-    "old": "for _, e := range c.view.events[:c.end+1] {",
-    "new": "for _, e := range c.view.events {",
-    "killed_by": "TestDeathLineCutsHealthAndHealerState"
+    "old": "for _, e := range c.view.events[:c.end+1] {\n\t\tif e.TimeMs >= from",
+    "new": "for _, e := range c.view.events {\n\t\tif e.TimeMs >= from",
+    "killed_by": "TestDeathLineCutsHealthAndHealerState",
+    "reanchored": "round-2 whole-span survival"
   },
   {
     "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
@@ -652,5 +655,59 @@
     "old": "evidence = evidence[1:]",
     "new": "evidence = evidence[:10]",
     "killed_by": "TestRecapBossKeepsRecentTen"
-  }
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": " && c.view.owner(e.Src.ID) == holder",
+    "new": "",
+    "killed_by": "TestLostBossOnlyHolderDamageRepairsGap"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": " || pulledAggro(c).cause != \"\"",
+    "new": "",
+    "killed_by": "TestPulledAggroDoesNotAlsoMatchLostBoss"
+  },
+  {
+    "file": "desktop/internal/raid/death/death.go",
+    "old": "c.view.events[i].TimeMs < c.view.events[i-1].TimeMs",
+    "new": "false",
+    "killed_by": "TestClockRollbackDeclinesEveryRule"
+  },
+  {
+    "file": "desktop/internal/raid/death/death.go",
+    "old": "c.view.events[i].TimeMs < c.view.events[i-1].TimeMs",
+    "new": "c.view.events[i].TimeMs <= c.view.events[i-1].TimeMs",
+    "killed_by": "TestClockRollbackScope"
+  },
+  {
+    "file": "desktop/internal/raid/death/death.go",
+    "old": "runEndMs <= 0",
+    "new": "runEndMs < 0",
+    "killed_by": "TestReviewRequiresPositiveRunEnd"
+  },
+  {
+    "file": "desktop/internal/raid/death/death.go",
+    "old": "runEndMs <= 0",
+    "new": "runEndMs == 0",
+    "killed_by": "TestReviewRequiresPositiveRunEnd"
+  },
+  {
+    "file": "desktop/internal/raid/death/death.go",
+    "old": "runEndMs <= 0",
+    "new": "runEndMs <= 0 && len(f.Events) > 0",
+    "killed_by": "TestReviewRequiresPositiveRunEnd"
+  },
+  {
+    "file": "desktop/internal/raid/death/view.go",
+    "old": "// Fight.Events is log order. Positions must never be timestamp-sorted.",
+    "new": "for i := 1; i < len(v.events); i++ { for j := i; j > 0 && v.events[j].TimeMs < v.events[j-1].TimeMs; j-- { v.events[j],v.events[j-1] = v.events[j-1],v.events[j] } }",
+    "killed_by": "TestSecondPostDeathClockRollback"
+  },
+{
+  "file": "desktop/internal/raid/death/rule_lost_boss.go",
+  "old": "if e.TimeMs > at || at-e.TimeMs > c.params.WindowMs {\n\t\t\t\treturn unknown",
+  "new": "if e.TimeMs > at || at-e.TimeMs > c.params.WindowMs {\n\t\t\t\tcontinue",
+  "killed_by": "TestLastHolderLineOutsideWindowIsNotSkipped"
+}
 ]
