@@ -6,6 +6,7 @@ const {readFileSync}=require('node:fs');
 const {JSDOM}=require('jsdom');
 const html=readFileSync(process.env.NATIVE_HTML_OUT,'utf8');
 const farm=readFileSync(process.env.FARM_HTML_OUT,'utf8');
+const nameCoverage=JSON.parse(readFileSync(process.env.FARM_HTML_OUT+'.names.json','utf8'));
 const settle=()=>new Promise(r=>setTimeout(r,30));
 const fire=el=>{const E=el.ownerDocument.defaultView.Event;el.dispatchEvent(new E('change',{bubbles:true}));};
 const installed={state:'installed',install:false,present:['ForeverCoach','Journey','Journey-Content','RelaxQuestPlanner'],missing:[]};
@@ -55,6 +56,40 @@ test('AH Profit save: Farming entry, page, and the current house first',async t=
   assert.ok(!$('farm-body').innerHTML.includes('<b>Linen</b>'),'save text stays escaped');
 });
 
+for (const [fixture,want] of [
+  ['absent','2 of 4 item names known (update Relax Coach and visit the auction house to name more)'],
+  ['empty','2 of 4 item names known'],
+  ['partial','3 of 4 item names known'],
+  ['quality only','2 of 4 item names known'],
+  ['capped','2 of 4 item names known'],
+  ['all sources',null],
+  ['complete Coach',null],
+  ['absent but covered',null],
+  ['no history',null]
+]) test('item-name coverage: '+fixture,async t=>{
+  assert.equal(typeof nameCoverage[fixture],'string','Go-rendered fixture exists');
+  const {$}=await setup(t,{reportRefresh:()=>report('B#2',true,nameCoverage[fixture])});
+  $('nav-farm').click();
+  assert.equal($('farm-view').hidden,false);
+  const notes=$('farm-body').querySelectorAll('#farm-names-filling');
+  assert.equal(notes.length,want===null?0:1,'one note only while coverage is incomplete');
+  if (want!==null) assert.equal(notes[0].textContent,want);
+});
+
+test('coverage is replaced on account switch, not borrowed from the old account',async t=>{
+  let release;
+  const {$}=await setup(t,{
+    reportRefresh:()=>report('B#2',true,nameCoverage.capped),
+    selectAccount:()=>new Promise(r=>{release=()=>r(report('A#1',true,nameCoverage.absent))})
+  });
+  $('nav-farm').click();
+  assert.equal($('farm-names-filling').textContent,'2 of 4 item names known');
+  $('account-select').value='A#1';fire($('account-select'));await settle();
+  assert.equal($('farm-names-filling'),null,'old coverage is cleared while switching');
+  release();await settle();await settle();
+  assert.equal($('farm-names-filling').textContent,'2 of 4 item names known (update Relax Coach and visit the auction house to name more)');
+});
+
 test('hot items follow the chosen house; the bank-empty line counts only its own card',async t=>{
   const {$}=await setup(t,{reportRefresh:()=>report('B#2',true,farm)});
   $('nav-farm').click();
@@ -67,6 +102,61 @@ test('hot items follow the chosen house; the bank-empty line counts only its own
   assert.equal($('farm-body').querySelector('.farm-empty-house').hidden,false,'no bank rows here, although hot rows show');
   $('farm-house').value='';fire($('farm-house'));
   assert.match(hot().map(r=>r.textContent).join(' '),/Pick an auction house/);
+});
+
+test('save-named bank rows use known ID quality and unknown rows stay default',async t=>{
+  const {$,dom}=await setup(t,{reportRefresh:()=>report('B#2',true,farm)});
+  $('nav-farm').click();
+  const spans=[...$('farm-sell').querySelectorAll('td:first-child span')];
+  const known=spans.filter(s=>s.textContent==='Sample Up');
+  assert.equal(known.length,2,'the save name wins on both characters');
+  for (const span of known) {
+    assert.equal(span.className,'q2','Coach quality wins over GearQuest for the same ID');
+    assert.equal(dom.window.getComputedStyle(span).color,'rgb(30, 255, 0)');
+  }
+  const unknown=spans.find(s=>s.textContent==='item 999999');
+  assert.ok(unknown);
+  assert.equal(unknown.className,'','unknown quality has no quality class');
+});
+
+for (const [card,direction,colour,change,supply,quality] of [
+  ['farm-hot','hot-up','rgb(63, 185, 80)','+250%','20 / 20','q2'],
+  ['farm-fallers','hot-down','rgb(248, 81, 73)','-50%','40 / 20','q3']
+]) test(direction+' uses shared direction colour, signed changes and unit supply',async t=>{
+  const {$,dom}=await setup(t,{reportRefresh:()=>report('B#2',true,farm)});
+  $('nav-farm').click();
+  const row=$(card).querySelector('svg').closest('tr');
+  const cells=row.querySelectorAll('td');
+  assert.equal(cells[2].textContent.trim(),change,'daily change keeps its sign');
+  assert.equal(cells[4].textContent.trim(),change,'against usual keeps its sign');
+  const headers=[...$(card).querySelectorAll('tr')].find(r=>r.querySelectorAll('th').length===8).querySelectorAll('th');
+  assert.equal(headers[5].textContent,'listed (scan day) / usual','history peak, not a live count');
+  assert.equal(cells[5].textContent.trim(),supply,'scan-day / usual units');
+  assert.ok(cells[0].querySelector('.'+quality),'item-ID quality is independent of direction');
+  for (const el of [cells[2],cells[4],row.querySelector('svg')]) {
+    assert.ok(el.classList.contains(direction),'one direction class shared by changes and chart');
+    assert.equal(dom.window.getComputedStyle(el).color,colour,'colour comes from page CSS');
+    assert.equal(el.hasAttribute('style'),false,'no inline style');
+  }
+  const svg=row.querySelector('svg');
+  assert.equal(svg.querySelector('path').getAttribute('stroke'),'currentColor');
+  assert.equal(svg.querySelector('circle').getAttribute('fill'),'currentColor');
+  if (card==='farm-fallers') {
+    assert.equal(row.querySelector('.hot-dump').textContent,'dump');
+    assert.equal(row.querySelector('.hot-spike'),null);
+  }
+});
+
+test('fallers follow the chosen house and show their empty and unknown-house messages',async t=>{
+  const {$}=await setup(t,{reportRefresh:()=>report('B#2',true,farm)});
+  $('nav-farm').click();
+  const visible=()=>[...$('farm-fallers').querySelectorAll('tr[data-house]')].filter(r=>!r.hidden);
+  assert.ok(visible().length>1 && visible().every(r=>r.dataset.house==='Stormrage|Alliance'));
+  assert.match(visible().map(r=>r.textContent).join(' '),/Down since yesterday/);
+  $('farm-house').value='Other Realm|Alliance';fire($('farm-house'));
+  assert.match(visible().map(r=>r.textContent).join(' '),/No scan today/);
+  $('farm-house').value='';fire($('farm-house'));
+  assert.match(visible().map(r=>r.textContent).join(' '),/Pick an auction house/);
 });
 
 test('every house that has bank rows can be chosen, scanned or not',async t=>{

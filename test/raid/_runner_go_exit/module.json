@@ -1,0 +1,14 @@
+{
+  "kind": "py",
+  "source": "tools/raidtest.py",
+  "test": [
+    "python3",
+    "-I",
+    "-B",
+    "test/raid/_runner/test_raidtest.py",
+    "--partition=go_exit"
+  ],
+  "depends": [
+    "_runner"
+  ]
+}
