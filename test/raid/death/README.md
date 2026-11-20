@@ -73,6 +73,16 @@ preferred to a false charge: a fight with clock jitter gives unresolved deaths.
 `TestClockPerturbationCauseShapes` perturbs one line of clean wipe, avoidable,
 raid-wide and unhealed fights (8000 cases) and requires the declined result.
 
+A clock-stepped wiped boss still returns its summary row (when the summary
+window is configured), but `FirstDeath = -1` and `Following` is empty. This keeps
+the observed wipe without naming a first death from timestamps that cannot
+establish order. The officer page uses the existing `firstDeath: null` and empty
+`following` shape; it must not infer a first death from the presentation-sorted
+death rows. `TestWipeSummaryClockStep` keeps raw deaths stamped 20000 then 10000
+in log order and also covers an unrelated step after both deaths.
+`TestWipeSummaryCleanClock` preserves the original summary for increasing and
+equal timestamps. The summary clock-guard removal has its own named mutant.
+
 The holder's `e.TimeMs > at` defensive guard is independently unit-tested below
 dispatch, so the prefix guard cannot mask its deletion. Both reported survivor
 mutants now have named behavioral killing tests; compiler errors are refusals.

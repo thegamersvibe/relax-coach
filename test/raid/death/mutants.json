@@ -139,6 +139,12 @@
     "killed_by": "TestWipeSummaryNoDeathBeforeEnd"
   },
   {
+    "file": "desktop/internal/raid/death/rule_wipe.go",
+    "old": "if v.clock && len(deaths) > 0 && deaths[0].TimeMs <= end {",
+    "new": "if len(deaths) > 0 && deaths[0].TimeMs <= end {",
+    "killed_by": "TestWipeSummaryClockStep"
+  },
+  {
     "file": "desktop/internal/raid/death/rule_avoidable.go",
     "old": "amounts[e.SpellID] > total-amounts[e.SpellID]",
     "new": "amounts[e.SpellID] >= total-amounts[e.SpellID]",

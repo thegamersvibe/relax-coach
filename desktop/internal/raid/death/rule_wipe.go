@@ -60,7 +60,8 @@ func summaries(v *fightView, deaths []model.Death, p cfg.Death) []model.Wipe {
 		}
 	}
 	w := model.Wipe{FightID: v.f.ID, FirstDeath: -1}
-	if len(deaths) > 0 && deaths[0].TimeMs <= end {
+	// Keep the observed wipe, but never name an order from a stepped clock.
+	if v.clock && len(deaths) > 0 && deaths[0].TimeMs <= end {
 		w.FirstDeath = 0
 		for i := 1; i < len(deaths); i++ {
 			if deaths[i].TimeMs-deaths[0].TimeMs > *p.SummaryWindowMs {

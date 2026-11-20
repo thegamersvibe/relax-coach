@@ -499,7 +499,7 @@ R8/result rendering and officer override/tagging remain separate lanes.
 | Field | Type | Required | Meaning |
 |---|---|---|---|
 | `fightId` | string | yes | The wiped boss fight. |
-| `firstDeath` | object or null | yes | `{"player": name as logged, "atMs": integer, "cause": cause}`; `null` if nobody died before the end line. |
+| `firstDeath` | object or null | yes | `{"player": name as logged, "atMs": integer, "cause": cause}`; `null` if nobody died before/on the end line or the fight's clock stepped backward. |
 | `following` | array of objects | yes | Deaths inside the configured window after the first, same shape, in time order (REQ-DTH-06). |
 
 The default wipe call is the first observed moment the configured dead share
@@ -509,10 +509,18 @@ deaths at the call time are still reviewed normally. Resurrections before
 that first moment affect the count; they do not retract an established call.
 A summary is returned only for a boss with explicit failure (`Success = 0`),
 not a kill, unknown outcome or trash. `model.Wipe.FirstDeath` is a zero-based
-index into that fight's returned deaths; `-1` means no death before/on the
-encounter end. `Following` excludes the first death and includes deaths at
-the inclusive `summary_window_ms` edge. A null configured summary window is
-not replaced by a guessed default.
+index into that fight's returned deaths; `-1` means no reliable first death:
+none before/on the encounter end, or a backward clock step anywhere in the
+fight's original log order. With a configured summary window, a clock-stepped
+wipe retains its summary row with `FirstDeath = -1` and no `Following`; returned
+deaths remain unresolved and presentation-sorted, not a trustworthy death order.
+The result writer maps this to `firstDeath: null` and `following: []`. The officer
+page must not name a first death or reconstruct following deaths from those
+sorted rows. This reuses the existing empty-summary shape without a new field
+or format version. On a clean clock (equal timestamps allowed), `Following`
+excludes the first death and includes deaths at the inclusive
+`summary_window_ms` edge. A null configured summary window is not replaced by a
+guessed default.
 
 ## Assignment (`assignments[]`)
 
