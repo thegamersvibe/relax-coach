@@ -437,3 +437,20 @@ and Lua/Python gates used uv Python 3.14 with the CI requirements file.
 No full desktop suite, native Windows/game test, push, PR, tag, amend, rebase,
 installation or release. No unresolved ruling questions. A single open fight
 still buffers until a boundary; nil/index default is not a hard memory cap.
+
+## Round 3: boss role gate counts player swings only
+
+Reopened must (reviewer plus second opinion): the boss role gate tested the
+total of landed boss swings, so swings landing only on a pet, another NPC or an
+empty target still let players receive dps/healer roles. The gate now requires
+at least one landed boss swing on a player (`top == 0` skips roles).
+
+- RED before the fix: `TestBossRolesRequirePlayerSwingEvidence` failed 8/8 for
+  pet-only, pet with a late owner, NPC-only and empty target, each in Build and
+  Read (roles `dps` and `healer` assigned); the real-tank control passed.
+- GREEN after: all 10 subtests pass; a player taking boss swings stays tank.
+- Mutants: the two existing gate mutants were re-anchored to `top == 0`; a new
+  mutant restoring `total == 0` is killed by the new test.
+- Real logs: both gated tests pass; all 13 complete boss ids and the full
+  night identity unchanged; roles 345 assigned / 25 absent and 336 / 28,
+  identical to round 2.

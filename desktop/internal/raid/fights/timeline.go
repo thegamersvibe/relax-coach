@@ -122,9 +122,10 @@ func makeDetail(f model.Fight, p Params) Detail {
 	}
 	// f shares the map with its caller but never modifies any caller-owned event.
 	for _, a := range f.Players {
-		// A boss without landed boss swings cannot distinguish tanks from DPS
-		// or healers. Positive output alone must not turn an unknown tank into DPS.
-		if f.Boss && total == 0 {
+		// A boss without landed boss swings on a player cannot distinguish tanks
+		// from DPS or healers: swings on pets, other NPCs or no target are not
+		// tank evidence. Positive output alone must not turn an unknown tank into DPS.
+		if f.Boss && top == 0 {
 			continue
 		}
 		tl := d.Timelines[a.ID]

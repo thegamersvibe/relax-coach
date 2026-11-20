@@ -619,13 +619,13 @@
   },
   {
     "file": "desktop/internal/raid/fights/timeline.go",
-    "old": "if f.Boss && total == 0 {",
+    "old": "if f.Boss && top == 0 {",
     "new": "if false {",
     "killed_by": "TestBossRolesRequireTankEvidence"
   },
   {
     "file": "desktop/internal/raid/fights/timeline.go",
-    "old": "if f.Boss && total == 0 {",
+    "old": "if f.Boss && top == 0 {",
     "new": "if f.Boss && len(f.BossUnits) == 0 {",
     "killed_by": "TestBossRolesRequireTankEvidence"
   },
@@ -676,5 +676,11 @@
     "old": "encounterEndMs = e.TimeMs",
     "new": "encounterEndMs = f.EndMs",
     "killed_by": "TestBossEndOwnsTailAfterClockSpike"
+  },
+  {
+    "file": "desktop/internal/raid/fights/timeline.go",
+    "old": "if f.Boss && top == 0 {",
+    "new": "if f.Boss && total == 0 {",
+    "killed_by": "TestBossRolesRequirePlayerSwingEvidence"
   }
 ]
