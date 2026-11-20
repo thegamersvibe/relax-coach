@@ -221,6 +221,8 @@ func (a *App) selectAccount(id string) error {
 		a.configWarning = ""
 		a.accounts = accounts
 		if a.account != id {
+			a.raidSelection = nil
+			a.raidRevision++
 			a.account, a.svPath = id, account.SVPath
 			a.modTime = time.Time{}
 			// Never retain another account's report, even if this save is malformed.

@@ -23,6 +23,11 @@ window.chrome.webview.addEventListener('message', event => {
 const rc = Object.freeze({
   refresh: () => call('reportRefresh'),
   raidPage: () => call('raidPage'),
+  raidOpen: path => call('raidOpen', path),
+  raidNight: index => call('raidNight', index),
+  raidOfficerFile: path => call('raidOfficerFile', path),
+  raidChooseLog: () => call('raidChooseLog'),
+  raidChooseOfficer: () => call('raidChooseOfficer'),
   setGame: path => call('setGame',path),
   selectAccount: id => call('selectAccount',id),
   chooseGame: () => call('chooseGame'),
@@ -337,17 +342,36 @@ document.addEventListener('click',event=>{
     for (const death of page.querySelectorAll('[data-death-kind]')) death.hidden=filter.dataset.deathFilter!=='all'&&death.dataset.deathKind!==filter.dataset.deathFilter;
   }
 });
-document.addEventListener('click',async event=>{
-  if (!event.target.closest('#nav-raids') || switchingAccount || switchingFolder) return;
+async function requestRaid(action) {
+  if (switchingAccount || switchingFolder || !$('nav-raids')) return;
   const generation=++raidGeneration, context=reportGeneration;
   try {
-    const html=await rc.raidPage();
+    const html=await action();
     if (generation!==raidGeneration || context!==reportGeneration || !$('nav-raids')) return;
+    if (typeof html!=='string') return; // Native picker cancellation leaves the current night intact.
     $('raids-view').outerHTML=html;
     userNavigated=true;show('raids');
   } catch(err) {
     if (generation!==raidGeneration || context!==reportGeneration) return;
     lockRaids(err);
+  }
+}
+document.addEventListener('click',event=>{
+  if (event.target.closest('#nav-raids')) { requestRaid(rc.raidPage); return; }
+  const page=$('raids-view');
+  if (!page || !page.contains(event.target)) return;
+  if (event.target.closest('#raid-open')) {
+    const path=$('raid-log-path').value;requestRaid(()=>rc.raidOpen(path));
+  } else if (event.target.closest('[data-raid-newest]')) requestRaid(()=>rc.raidOpen(''));
+  else if (event.target.closest('[data-raid-log]')) requestRaid(rc.raidChooseLog);
+  else if (event.target.closest('[data-raid-officer]')) requestRaid(rc.raidChooseOfficer);
+  else if (event.target.closest('[data-raid-officer-open]')) {
+    const path=$('raid-officer-path').value;requestRaid(()=>rc.raidOfficerFile(path));
+  }
+});
+document.addEventListener('change',event=>{
+  if (event.target.id==='raid-night-select') {
+    const index=event.target.value;requestRaid(()=>rc.raidNight(index));
   }
 });
 function displayReport(result,folderChanged = false) {

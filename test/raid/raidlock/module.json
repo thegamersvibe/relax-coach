@@ -14,7 +14,8 @@
   ],
   "depends": [
     "raidprep",
-    "compare"
+    "compare",
+    "cfgembed"
   ],
   "inputs": [
     "rules/raid/"

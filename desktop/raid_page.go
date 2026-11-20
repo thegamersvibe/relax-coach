@@ -19,6 +19,7 @@ type raidPageModel struct {
 	Parsed                                                  logfmt.ParseReport
 	PrepSkipped                                             map[string]int
 	Comparison                                              *compare.Report
+	ComparisonError                                         string
 	OutsideRuns, MissingPulls                               int64
 	Deaths                                                  []raidDeathView
 	Wipes                                                   []raidWipeView
@@ -47,6 +48,10 @@ func raidTenths(v model.Opt, absent string) string {
 	return fmt.Sprintf("%d.%d", v.V/10, v.V%10)
 }
 func buildRaidPage(run fights.Run, parsed logfmt.ParseReport, save []byte, c cfg.Config) (raidPageModel, error) {
+	return buildRaidPageWithOfficer(run, parsed, save, c, "")
+}
+
+func buildRaidPageWithOfficer(run fights.Run, parsed logfmt.ParseReport, save []byte, c cfg.Config, officerPath string) (raidPageModel, error) {
 	p := raidPageModel{Parsed: parsed, Title: fmt.Sprintf("Unlisted instance %d", run.InstanceID), Date: time.UnixMilli(run.StartMs).UTC().Format("2 Jan 2006"), Logger: run.Logger.Name, Duration: (time.Duration(run.EndMs-run.StartMs) * time.Millisecond).String(), ConfigVersion: c.Scoring.Version, LogStatus: "complete", Dungeon: run.Kind == model.RunDungeon, Players: len(run.Roster)}
 	for _, i := range c.Instances.Instances {
 		if i.ID == run.InstanceID {
@@ -103,6 +108,14 @@ func buildRaidPage(run fights.Run, parsed logfmt.ParseReport, save []byte, c cfg
 	prep, err := raidPrepScores(save, run.Fights, deaths, c)
 	if err != nil {
 		return raidPageModel{}, err
+	}
+	if officerPath != "" {
+		report, err := raidComparisonFile(officerPath, prep.Scores, run, c)
+		if err != nil {
+			p.ComparisonError = err.Error()
+		} else {
+			p.Comparison = &report
+		}
 	}
 	p.PrepPlayers = len(prep.Matched)
 	p.PrepSkipped = prep.Diagnostics.Skipped

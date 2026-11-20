@@ -14,6 +14,10 @@ import (
 // The caller owns config deployment and file selection. All engine inputs here
 // come from one read. No stored night, history, upload, or inferred defaults.
 func readRaidPages(raw io.Reader, save []byte, c cfg.Config) ([]raidPageModel, error) {
+	return readRaidPagesSelected(raw, save, c, "", -1)
+}
+
+func readRaidPagesSelected(raw io.Reader, save []byte, c cfg.Config, officerPath string, selected int) ([]raidPageModel, error) {
 	p := c.Scoring.Fights
 	params := fights.Params{PullGapMs: p.PullGapMs, TailMs: p.TailMs, LowConfidenceFightMs: c.Scoring.Confidence.LowConfidenceFightMs, ReentryGapMs: p.ReentryGapMs, TankMinBossSwingShare: p.TankMinBossSwingShare, TankMinTopRatio: p.TankMinTopRatio, HealerRequiresNotTank: p.HealerRequiresNotTank, HealerMinHealingDamageRatio: p.HealerMinHealingDamageRatio, HealerStrictlyGreater: p.HealerStrictlyGreater, BossUnitSelection: p.BossUnitSelection, InstanceKind: c.InstanceKind, DetailsFor: func(model.Fight) bool { return true }, BossUnits: func(id int64) []fights.CreatureSelector {
 		rule, _ := c.Encounter(id)
@@ -34,8 +38,12 @@ func readRaidPages(raw io.Reader, save []byte, c cfg.Config) ([]raidPageModel, e
 		return nil, err
 	}
 	pages := []raidPageModel{}
-	for _, run := range result.Runs {
-		page, err := buildRaidPage(run, parsed, save, c)
+	for index, run := range result.Runs {
+		prediction := ""
+		if index == selected {
+			prediction = officerPath
+		}
+		page, err := buildRaidPageWithOfficer(run, parsed, save, c, prediction)
 		if err != nil {
 			return nil, err
 		}

@@ -128,11 +128,5 @@ func (a *App) raidAllowedLocked() bool { _, err := a.raidSaveLocked(); return er
 // Admission is checked on each call, not from the rendered report. Holding the
 // selection lock through rendering prevents an account change crossing the read.
 func (b *nativeBridge) raidPage() (any, error) {
-	b.app.mu.Lock()
-	defer b.app.mu.Unlock()
-	b.app.rescanAccountsLocked()
-	if _, err := b.app.raidSaveLocked(); err != nil {
-		return nil, err
-	}
-	return renderRaidShell()
+	return b.raidAction("raidPage", "")
 }

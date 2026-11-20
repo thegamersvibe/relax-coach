@@ -190,5 +190,65 @@
     "old": "percent := new(big.Rat).Mul(v, big.NewRat(100, 1))",
     "new": "percent := new(big.Rat).Mul(v, big.NewRat(1, 1))",
     "killed_by": "TestRaidPageComparisonNumberDisplay"
+  },
+  {
+    "file": "desktop/raid_evidence.go",
+    "old": "if part.Name == \"preparation\" {",
+    "new": "if false {",
+    "killed_by": "TestRaidPageReportedPreparation"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "if b.raidRulesErr != nil {\n\t\treturn renderRaidScreen",
+    "new": "if false && b.raidRulesErr != nil {\n\t\treturn renderRaidScreen",
+    "killed_by": "TestRaidPageConfigFailure"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "if b.raidRulesErr != nil {\n\t\ta.mu.Unlock()",
+    "new": "if false && b.raidRulesErr != nil {\n\t\ta.mu.Unlock()",
+    "killed_by": "TestRaidPageConfigFailure"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "if err != nil {\n\t\ta.mu.Unlock()\n\t\treturn nil, err",
+    "new": "if false && err != nil {\n\t\ta.mu.Unlock()\n\t\treturn nil, err",
+    "killed_by": "TestRaidPageOpeningAdmission"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "save, err := a.raidSaveLocked()\n\tif err != nil {",
+    "new": "save, err := a.raidSaveLocked()\n\tif false && err != nil {",
+    "killed_by": "TestRaidPagePickerRechecksAdmission"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "if revision != a.raidRevision {",
+    "new": "if false && revision != a.raidRevision {",
+    "killed_by": "TestRaidPagePickerContextChange"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "officerPath = arg",
+    "new": "officerPath = \"\"",
+    "killed_by": "TestRaidPageOfficerPicker"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "a.raidSelection = &selection",
+    "new": "a.raidSelection = nil",
+    "killed_by": "TestRaidPageOpenEmbedded"
+  },
+  {
+    "file": "desktop/raid_pipeline.go",
+    "old": "if index == selected {",
+    "new": "if false && index == selected {",
+    "killed_by": "TestRaidPageOfficerPicker"
+  },
+  {
+    "file": "desktop/native_picker.go",
+    "old": "0x0040 | 0x0010 | 0x0200 | 0x4000",
+    "new": "0x0040 | 0x0010 | 0x0200 | 0x0000",
+    "killed_by": "TestRaidPageNativePickerSpec"
   }
 ]

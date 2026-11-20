@@ -15,17 +15,23 @@ Relax Raid keeps each character's latest settled guild-rank reading, readable gu
 The local Raids menu and page exist only when the **selected account's**
 Relax Raid save contains a validated, current `officer` reading. Its server
 stamp must be no more than 14 days old or one day ahead of the PC's UTC clock;
-missing/invalid times never admit. More than 50 rank rows locks the whole page.
-Invalid rows are ignored, never used to unlock it. Without an eligible officer,
-both menu and page stay absent, and the native page route also refuses access. This is a **convenience lock, not security**: local saves
+missing/invalid times never admit. More than 50 raw rank entries, malformed
+`Name-Realm` string keys or repeated save keys lock the whole page. Invalid row
+values cannot unlock it. Without an eligible officer, both menu and page stay
+absent, and every native route also refuses access. A stale refresh cannot undo
+a newer lock verdict. This is a **convenience lock, not security**: local saves
 can be edited or stale. The stage-2 `/api/companion/me` check is a later lane.
 
-The offline page renderer covers score groups, per-fight evidence, wipes,
-deaths and comparison results. Opening nights in the app is not enabled yet:
-the scoring-data installation contract and the remaining mock-up/API differences
-are listed in [R8 open questions](docs/raid/R8-OPEN-QUESTIONS.md). No files are
-uploaded or modified by this view, and officer predictions are never stored in
-night files.
+Admitted officers can open the newest combat log, choose a log file or paste a
+path, select a night, and inspect score groups, the five-part night table,
+per-fight evidence, wipes and deaths. Raid-1 rules are **embedded in the exe**:
+one app version means one config, with no disk override or rule-update channel.
+A startup config error is shown on the page instead of a night. Officer ranking
+files are chosen by path, read afresh and validated before comparison; they are
+never stored in a night file. Preparation shows reported stock and better items
+in bags, not unsupported claims about consumable use or being new at 60.
+No files are uploaded or modified by this view. See the
+[resolved R8 rulings and test boundaries](docs/raid/R8-OPEN-QUESTIONS.md).
 
 ## Download
 

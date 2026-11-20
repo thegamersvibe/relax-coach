@@ -124,3 +124,36 @@ test('a later refresh cannot unlock without a new guarded route verdict',async t
  assert.ok($('nav-raids'));
  assert.ok(calls.filter(r=>r.method==='raidPage').length>=3,'refresh alone fabricated admission');
 });
+const opened=readFileSync(process.env.NATIVE_HTML_OUT+'.raid-opened','utf8');
+test('night and officer controls send paths through the native routes',async t=>{
+ const {$,dom,calls}=await setup(t,{reportRefresh:()=>report(true),raidPage:()=>raid,raidOpen:()=>opened,raidChooseLog:()=>opened,raidChooseOfficer:()=>opened,raidOfficerFile:()=>opened,raidNight:()=>opened});
+ $('nav-raids').click();await settle();
+ $('raid-log-path').value='C:\\Chosen\\combat.txt';$('raid-open').click();await settle();
+ assert.ok($('raid-ranked'),'opened log rendered');
+ assert.deepEqual(calls.find(r=>r.method==='raidOpen').params,['C:\\Chosen\\combat.txt']);
+ dom.window.document.querySelector('[data-raid-log]').click();await settle();
+ dom.window.document.querySelector('[data-raid-officer]').click();await settle();
+ $('raid-officer-path').value='C:\\Chosen\\officer.json';dom.window.document.querySelector('[data-raid-officer-open]').click();await settle();
+ assert.deepEqual(calls.find(r=>r.method==='raidOfficerFile').params,['C:\\Chosen\\officer.json']);
+ $('raid-night-select').value='1';$('raid-night-select').dispatchEvent(new dom.window.Event('change',{bubbles:true}));await settle();
+ assert.deepEqual(calls.find(r=>r.method==='raidNight').params,['1']);
+ for(const method of ['raidChooseLog','raidChooseOfficer']) assert.deepEqual(calls.find(r=>r.method===method).params,[]);
+ assert.doesNotMatch($('raids-view').textContent,/not available yet|awaits.*wiring/);
+});
+test('cancelled picker preserves the rendered night and comparison',async t=>{
+ const {$,dom,calls}=await setup(t,{reportRefresh:()=>report(true),raidPage:()=>opened,raidChooseOfficer:()=>null});
+ $('nav-raids').click();await settle();
+ const before=$('raids-body').innerHTML;
+ dom.window.document.querySelector('[data-raid-officer]').click();await settle();
+ assert.equal($('raids-body').innerHTML,before);
+ assert.equal(calls.filter(r=>r.method==='raidChooseOfficer').length,1);
+});
+test('account switch drops a held officer picker reply',async t=>{
+ let release;
+ const {$,dom,calls}=await setup(t,{reportRefresh:()=>report(true),raidPage:()=>opened,raidChooseOfficer:()=>new Promise(r=>release=r),selectAccount:()=>report(false,'B#2')});
+ $('nav-raids').click();await settle();dom.window.document.querySelector('[data-raid-officer]').click();await settle();
+ assert.equal(calls.filter(r=>r.method==='raidChooseOfficer').length,1);
+ $('account-select').value='B#2';$('account-select').dispatchEvent(new dom.window.Event('change',{bubbles:true}));await settle();
+ assert.equal($('raids-view'),null);
+ release(opened);await settle();assert.equal($('raids-view'),null);
+});

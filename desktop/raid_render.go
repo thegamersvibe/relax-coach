@@ -46,8 +46,9 @@ func renderRaidBody(p raidPageModel) (string, error) {
 	err := raidTemplate.ExecuteTemplate(&out, "raid-body", p)
 	return out.String(), err
 }
-func renderRaidShell() (string, error) {
+func renderRaidShell() (string, error) { return renderRaidScreen(raidScreen{}) }
+func renderRaidScreen(p raidScreen) (string, error) {
 	var out strings.Builder
-	err := raidTemplate.ExecuteTemplate(&out, "raid-shell", nil)
+	err := raidTemplate.ExecuteTemplate(&out, "raid-screen", p)
 	return out.String(), err
 }

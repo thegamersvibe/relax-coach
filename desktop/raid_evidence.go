@@ -22,6 +22,7 @@ type raidPartView struct {
 	Provisional                  bool
 	Evidence                     model.Evidence
 	Measures                     []raidMeasureView
+	Preparation                  []string
 }
 type raidMeasureView struct{ Name, Score string }
 
@@ -58,6 +59,16 @@ func raidPlayerEvidence(n model.NightScore, fights []model.Fight, c cfg.Config) 
 		weights := map[string]float64{"output": w.Output, "activity": w.Activity, "mechanics": w.Mechanics, "utility": w.Utility, "preparation": w.Preparation}
 		for _, part := range s.Parts {
 			pv := raidPartView{Name: part.Name, Weight: strconv.FormatFloat(weights[part.Name], 'f', -1, 64) + "%", Score: raidTenths(part.Tenths, "not measured"), Coverage: part.Coverage, Provisional: part.Provisional, Evidence: part.Evidence}
+			if part.Name == "preparation" {
+				for _, category := range []string{"potion", "food", "flask", "elixir"} {
+					if count, ok := part.Evidence.Counts[category+"_count"]; ok {
+						pv.Preparation = append(pv.Preparation, "Reported stock by category: "+category+" "+strconv.FormatInt(count, 10)+" (maximum reported before this fight)")
+					}
+				}
+				if slots, ok := part.Evidence.Counts["better_gear_slots"]; ok {
+					pv.Preparation = append(pv.Preparation, "Better item in bags: "+strconv.FormatInt(slots, 10)+" reported scored slots")
+				}
+			}
 			switch part.Baseline {
 			case "role":
 				pv.Against = "role median, this fight"

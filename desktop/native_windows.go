@@ -305,7 +305,7 @@ func runNative(app *App, disabled bool) error {
 		w.destroy()
 		return err
 	}
-	w.bridge = newNativeBridge(app, disabled, nativeServices{choose: w.chooseFolder, open: w.openExternal, place: w.placementEnv})
+	w.bridge = newNativeBridge(app, disabled, nativeServices{choose: w.chooseFolder, chooseFile: w.chooseFile, open: w.openExternal, place: w.placementEnv})
 	defer w.bridge.Close()
 	// The native shell is a local string; no listener, browser process launcher or URL.
 	w.chromium.NavigateToString(html)
@@ -424,6 +424,12 @@ func (w *nativeWindow) openExternal(url string) error {
 }
 
 func (w *nativeWindow) chooseFolder(ctx context.Context) (string, error) {
+	return w.choosePath(ctx, "folder")
+}
+func (w *nativeWindow) chooseFile(ctx context.Context, kind string) (string, error) {
+	return w.choosePath(ctx, kind)
+}
+func (w *nativeWindow) choosePath(ctx context.Context, kind string) (string, error) {
 	type result struct {
 		path string
 		err  error
@@ -435,7 +441,8 @@ func (w *nativeWindow) chooseFolder(ctx context.Context) (string, error) {
 			return
 		}
 		// SHBrowseForFolderW runs a native modal picker on the existing STA UI thread.
-		title, _ := windows.UTF16PtrFromString("Choose the WoW Forever game folder")
+		caption, flags := nativePickerSpec(kind)
+		title, _ := windows.UTF16PtrFromString(caption)
 		var display [260]uint16
 		type browseInfo struct {
 			Owner, Root     uintptr
@@ -444,7 +451,7 @@ func (w *nativeWindow) chooseFolder(ctx context.Context) (string, error) {
 			Callback, Param uintptr
 			Image           int32
 		}
-		info := browseInfo{Owner: w.hwnd, Display: &display[0], Title: title, Flags: 0x0041} // BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE
+		info := browseInfo{Owner: w.hwnd, Display: &display[0], Title: title, Flags: flags}
 		pidl, _, _ := nativeShell32.NewProc("SHBrowseForFolderW").Call(uintptr(unsafe.Pointer(&info)))
 		if pidl == 0 {
 			done <- result{}
@@ -454,7 +461,7 @@ func (w *nativeWindow) chooseFolder(ctx context.Context) (string, error) {
 		var path [32768]uint16
 		ok, _, _ := nativeShell32.NewProc("SHGetPathFromIDListEx").Call(pidl, uintptr(unsafe.Pointer(&path[0])), uintptr(len(path)), 0)
 		if ok == 0 {
-			done <- result{err: errors.New("folder picker could not read this path; paste it instead")}
+			done <- result{err: errors.New("path picker could not read this path; paste it instead")}
 			return
 		}
 		done <- result{path: windows.UTF16ToString(path[:])}

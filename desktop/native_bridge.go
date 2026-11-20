@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/cfg"
 )
 
 type nativeServices struct {
@@ -19,6 +21,8 @@ type nativeServices struct {
 	check      func(context.Context, string) (AddonReleaseInfo, error)
 	apply      func(context.Context, string, AddonReleaseInfo) (AddonUpdateResult, error)
 	choose     func(context.Context) (string, error)
+	chooseFile func(context.Context, string) (string, error)
+	raidConfig func() (cfg.Config, error)
 	checkExtra func(context.Context, string, string) (ExtraAddonInfo, error)
 	applyExtra func(context.Context, string, ExtraAddonInfo) (AddonUpdateResult, error)
 	open       func(string) error
@@ -49,6 +53,8 @@ type nativeBridge struct {
 	extra                                                             map[string]nativeExtraState
 	afterAppAnswered, appApplyFailed                                  bool
 	appNotOfferedFor                                                  string
+	raidRules                                                         cfg.Config
+	raidRulesErr                                                      error
 }
 
 type nativeReport struct {
@@ -145,8 +151,12 @@ func newNativeBridge(a *App, disabled bool, s nativeServices) *nativeBridge {
 	if s.selfUpdate == nil {
 		s.selfUpdate = appSelfUpdateAvailable
 	}
+	if s.raidConfig == nil {
+		s.raidConfig = raidConfig
+	}
+	rules, rulesErr := s.raidConfig()
 	ctx, cancel := context.WithCancel(context.Background())
-	return &nativeBridge{app: a, services: s, ctx: ctx, cancel: cancel, disabled: disabled}
+	return &nativeBridge{app: a, services: s, ctx: ctx, cancel: cancel, disabled: disabled, raidRules: rules, raidRulesErr: rulesErr}
 }
 
 // Admission and Close share one lock, so Wait cannot race a late Add. Close
@@ -175,12 +185,12 @@ func (b *nativeBridge) Call(method string, args []json.RawMessage) (any, error) 
 	}
 	var arg string
 	switch method {
-	case "setGame", "selectAccount", "applyAddon", "applyApp", "openExternal", "checkExtra", "applyExtra", "repairAppLinks":
+	case "raidOpen", "raidNight", "raidOfficerFile", "setGame", "selectAccount", "applyAddon", "applyApp", "openExternal", "checkExtra", "applyExtra", "repairAppLinks":
 		// A JSON string only: null would decode as "" (for repairAppLinks, "all").
 		if len(args) != 1 || !strings.HasPrefix(strings.TrimSpace(string(args[0])), `"`) || json.Unmarshal(args[0], &arg) != nil || len(arg) > 4096 || strings.IndexByte(arg, 0) >= 0 {
 			return nil, errors.New("expected one text argument")
 		}
-	case "raidPage", "reportRefresh", "chooseGame", "checkAddon", "checkApp", "checkAppStartup", "appReady", "extraList", "appPlacement", "installAppCopy", "openInstalledApp", "afterAppUpdate", "gameState":
+	case "raidChooseLog", "raidChooseOfficer", "raidPage", "reportRefresh", "chooseGame", "checkAddon", "checkApp", "checkAppStartup", "appReady", "extraList", "appPlacement", "installAppCopy", "openInstalledApp", "afterAppUpdate", "gameState":
 		if len(args) != 0 {
 			return nil, errors.New("this method takes no arguments")
 		}
@@ -190,6 +200,12 @@ func (b *nativeBridge) Call(method string, args []json.RawMessage) (any, error) 
 	switch method {
 	case "raidPage":
 		return b.raidPage()
+	case "raidOpen", "raidNight", "raidOfficerFile":
+		return b.raidAction(method, arg)
+	case "raidChooseLog":
+		return b.chooseRaidFile("log")
+	case "raidChooseOfficer":
+		return b.chooseRaidFile("officer")
 	case "reportRefresh":
 		return b.report()
 	case "setGame":

@@ -116,6 +116,8 @@ type App struct {
 	configWarning          string
 	canAutoSelect          bool
 	raidNow                func() time.Time // nil uses the PC UTC clock; tests inject it
+	raidSelection          *raidSelection   // log path/index only, never an officer prediction
+	raidRevision           uint64
 	gearNames              gearNameCache
 	farmRef                farmRefCache   // AH Profit's bundled names, reparsed only when the files change
 	farmParse              farmParseCache // the parsed AHProfit.lua, reparsed only when the file changes
@@ -162,6 +164,7 @@ func main() {
 	if game == "" {
 		game = findGame()
 	}
+	_, _ = raidConfig() // Retain the startup error for the Raids page, not a process exit.
 	app := &App{}
 	app.setGame(game)
 	app.reload()
@@ -193,6 +196,8 @@ func (a *App) setGame(game string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.game = game
+	a.raidSelection = nil
+	a.raidRevision++
 	a.addonDir = ""
 	a.account, a.configWarning = "", ""
 	remembered, err := savedAccount(game)

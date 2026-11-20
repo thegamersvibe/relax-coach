@@ -30,9 +30,9 @@
     "killed_by": "TestRaidLockInvalidAndRevocation"
   },
   {
-    "file": "desktop/raid_lock.go",
-    "old": "if _, err := b.app.raidSaveLocked(); err != nil {",
-    "new": "if _, err := b.app.raidSaveLocked(); false && err != nil {",
+    "file": "desktop/raid_opening.go",
+    "old": "save, err := b.app.raidSaveLocked()\n\tif err != nil {",
+    "new": "save, err := b.app.raidSaveLocked()\n\tif false && err != nil {",
     "killed_by": "TestRaidLockSelectedAccount"
   },
   {

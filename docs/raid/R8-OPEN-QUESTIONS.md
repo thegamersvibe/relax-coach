@@ -1,83 +1,93 @@
-# R8 officer page: stopped portions
+# R8 officer page: rulings resolved
 
-The approved mock-up is the target. These gaps are not permission to invent
-new data, engine rules, deployment paths or night-level scoring arithmetic.
+The page follows the corrected officer mock-up and the raid-1 rulings. It does
+not add scoring arithmetic, historical baselines or inferred preparation facts.
 
-1. **Night opening / config deployment.** `cfg.Load(dir)` reads external JSON.
-   There is no runtime raid-config location or installation wiring in this base;
-   the bundle builder does not ship `rules/raid`. Where are those replaceable
-   files installed/read? The native route currently opens an explicit unavailable
-   notice for admitted officers, not a fabricated night. No file picker or
-   automatic log read is claimed. The stream-to-page pipeline is exercised by
-   synthetic and opt-in private-log tests and is ready to take a caller's config.
-2. **Player detail layout.** The mock-up has a standalone Deaths part and a
-   night-level part table. The engine has output/activity/mechanics/utility/
-   preparation; deaths are inside mechanics. Rounded, covered evidence is per
-   fight. `NightRoleParts` supplies exact comparison values, not covered/rounded
-   night Parts, and its contract says comparison-only. The renderer therefore
-   shows the real per-fight parts, weights, baselines, measures and raw evidence;
-   it does not synthesize the mock-up's night table. Confirm this layout or
-   supply an engine-owned night-part presentation contract.
-3. **Comparison engine follow-up.** At the pinned base, `ParseOfficer` does not
-   skip a UTF-8 BOM or trim names before matching/duplicate checks. `Compare`
-   returns a best part even with zero/wrong-sign impact, and a no-scored-fights
-   role has the generic no-role-comparison reason. These differ from the later
-   brief rulings. No compare package edit is included. Basic file errors,
-   agreements, disagreements, no-rank/no-match rows and omitted top/bottom names
-   render. The lead assigned the engine fix to a separate worktree and will
-   rebase this work onto it. This page passes through the engine's part fields
-   and reasons without reimplementing the rules; exact rational values are
-   rounded once to tenths for display. Fewer than ten ranked players get an
-   explicit top-five/bottom-five overlap note. A selected prediction file is
-   read anew, bounded and read-only; opening it from the live UI awaits item 1.
-   The app always passes `ParseOfficer(data)` directly to `Compare`; a source
-   gate forbids app-owned `OfficerFile` construction or editing that result.
-   A runtime mutant also challenges bypassing the parser.
-4. **Labels with no supplied data.** `new_at_60_seconds` is unset. There is no
-   verified aura-to-consumable map for a claim such as "no flask used". Neither
-   label is invented. Prep clocks remain raw server seconds with their meaning;
-   a received stamp is not necessarily first receipt. The mock-up's 20-second
-   wipe follow-up window is illustrative: the renderer uses the configured
-   summary window. Unknown causes stay unknown; only the approved boss-melee
-   unresolved case gets "aggro: puller or tank".
+## Resolved decisions
 
-## Implemented stage-1 lock
+1. **Embedded configuration.** The nine `rules/raid/*.json` files are copied by
+   `go generate` in `desktop/` (or `python3 scripts/gen_raid_rules.py`) and compiled
+   into the executable. `cfg.LoadFS(fs.FS)` is additive; `Load(dir)` delegates to
+   it and remains uncached. The app loads once at startup, retains either the
+   result or the error, and gives callers detached snapshots. An error is shown
+   on the admitted Raids page with no night or opening controls. There is no
+   override beside the executable, in app data or in an update channel: one app
+   version means one config. CI compares the complete embedded inventory and
+   bytes to the canonical rules before regeneration. A tuning change requires
+   an app release until a separately designed rule-update channel exists.
+2. **Night and fight detail.** The night table precedes the fights and displays
+   Output, Activity, Mechanics, Utility and Preparation. Its role weights come
+   from config; its values come directly from `score.NightRoleParts`, rounded
+   once to tenths. An absent value is `not measured`; there is no night coverage
+   or baseline column. No night role means the engine's no-scored-fights or
+   evenly-split-role reason replaces the table. Deaths remain a measure under
+   Mechanics, not a sixth part. The score package changed only its API comment.
+   The header counts boss pulls, wipes and kills separately. Weights use percent;
+   absent ranks do not become rank zero, and negative zero displays as zero.
+3. **Live opening and comparison.** An admitted officer can open the newest log
+   from the selected game's Logs folder, choose a file through the existing
+   native picker, or paste a path. Multiple nights have a selector. Every action
+   rereads the selected account and retains its lock through reading/rendering.
+   A picker releases that lock while open, then rechecks admission and selection
+   generation before accepting a path. Switching game/account clears selection.
+   Officer files are read anew from the chosen path, bounded and read-only,
+   passed through `compare.ParseOfficer` directly to `Compare`, and never kept
+   in app settings or a night file. A parser refusal removes the comparison and
+   leaves the night visible. Cancellation leaves the displayed page unchanged.
+   The comparison follow-up is already in the preserved R8 ancestry; the page
+   passes its reasons and exact values through without recreating its rules.
+4. **Labels with no data.** Raid 1 omits `new at 60` and `no flask`-style usage
+   claims. Preparation displays reported stock by category and better items in
+   bags, not inferred use. The wipe follow-up window comes from config. Prep
+   timestamps remain raw server seconds with their meaning; an earliest stored
+   receipt is not necessarily the first receipt. Flags are the engine's list.
 
-The rank writer is a separate additive addon lane; this branch only reads.
-One selected-account `RelaxRaid.lua` is opened through the existing contained,
+## Stage-1 lock
+
+The separate addon lane writes rank evidence; this page only reads. One selected
+account's `RelaxRaid.lua` is opened through the existing contained,
 identity-checked account reader. There is no other-account fallback or stale
-unlock. Limits: 16 MiB file, 1,000,000 literal entries, 50 character rank rows,
-64-byte full names, optional guild string at most 96 bytes without control bytes,
-and positive integral server seconds at most 4,294,967,295. A larger rank table
-locks the whole page. Invalid rows are ignored and cannot admit; they do not
-poison a separate valid officer. Non-officer rows may omit `readAt`.
+unlock. Limits are 16 MiB, 1,000,000 literal entries, 50 **raw rank entries**,
+64-byte full names, optional guild text at most 96 bytes without control bytes,
+and positive integral server seconds at most 4,294,967,295.
 
-An officer must have a valid `readAt`: at most 14 days old, or at most one day
-in the future, compared with the PC's UTC clock. The named `raidOfficerMaxAge`
-constant is the tunable starting limit. Missing/bad/stale/far-future times do not
-admit. The direct-route error explains that the reading is too old or its time
-is invalid. Tests inject the clock, including exact boundaries, timezone and
-expiry without a preceding refresh. Unknown root fields remain additive.
-Neither save nor prediction is written.
+Every rank key must be a literal Lua string in `Name-Realm` form. A malformed key,
+repeated key anywhere in the save, or excessive raw entry count locks the whole
+page before maps can erase that evidence. Invalid row values cannot admit but
+need not poison another valid officer. Non-officer rows may omit `readAt`.
+Unknown root fields remain additive; other save readers keep their behavior.
 
-No Raids DOM is rendered for a locked account. Account/folder transitions remove
-it before a reply; late page replies cannot restore it. The native route checks
-the selected save afresh, regardless of what the UI last displayed.
+An officer's reading must be at most 14 days old or one day ahead of the PC's
+UTC clock. `raidOfficerMaxAge` remains the tunable starting limit. Missing, bad,
+stale and far-future times do not admit. Tests cover exact boundaries, timezone
+and expiry without refresh. This is a convenience lock, not authorization.
+
+Locked accounts have no Raids navigation or page DOM. Account/folder changes
+invalidate held page and picker replies. A guarded route refusal also latches
+its message and verdict for that account: a late allowed refresh cannot restore
+the page or replace the message. A later manual refresh may unlock only after
+another successful guarded route check, with both context and verdict-generation
+checks. Neither save nor prediction is written.
 
 ## Display safety
 
-Every displayed name, including the officer label, logger, all player lists,
-opened details, owners, wipes, enemies/spells and comparisons, is HTML-escaped
-inside a `bdi` isolate. The display removes U+200B–U+200F, U+202A–U+202E and
-U+2066–U+2069. Engine names and matching inputs are untouched. Go and jsdom tests
-exercise every name location with markup, quotes, Arabic and all those controls.
-The native shell and standalone page register the same rendering helper.
+Every name, including officer, logger, player, owner, enemy, spell and comparison
+names, is HTML-escaped inside `bdi`. Display-only stripping covers U+200B–U+200F,
+U+202A–U+202E, U+2066–U+2069, U+061C, U+FEFF, U+2060–U+2064, U+00AD and U+180E.
+Engine names and matching inputs are untouched. Go and jsdom tests exercise all
+name locations with markup, quotes, Arabic and these controls. Both template
+parsers register the same helpers.
 
-## Offline checks
+## Verification and remaining boundaries
 
-`go test -race -count=1 ./...` in `desktop`; the existing jsdom UI suite after
-Go fixture generation; `tools/raidtest.py --mutants raidlock` and `raidpage`.
-`RELAX_RAID_REAL_LOGS` enables page rendering of private logs and prints counts
-only, never names, identifiers, paths or raw lines. UI fixtures are synthetic.
+Run desktop race tests, the existing jsdom suite after Go fixture generation,
+raid module gates, and the cfg, cfgembed, raidlock, raidpage and compare mutants.
+`RELAX_RAID_REAL_LOGS` opts into opening private logs through the wired native
+route with the embedded config. Output is counts only, never source paths,
+player names, identifiers or raw lines. Public fixtures are synthetic.
+
+No unresolved raid-1 page rulings remain. Stage-2 server authorization and a
+rule-update channel remain separate future lanes. Cross-builds and offline DOM
+tests do not establish Windows picker or live-client acceptance.
 
 Not tested on a live client: not run (alpha, owner's decision)
