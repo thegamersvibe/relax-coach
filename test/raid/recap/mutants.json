@@ -325,26 +325,26 @@
   },
   {
     "file": "addon/RelaxRaid/DeathRecap.lua",
-    "old": "if not referenceTs or savedTs > referenceTs + MAX_SAVED_TS_AHEAD_SECONDS then savedTs = nil end",
-    "new": "if not referenceTs then savedTs = nil end",
-    "killed_by": "test_implausible_saved_timestamp_falls_back_to_history"
+    "old": "if nowTs and savedTs > nowTs + MAX_SAVED_TS_AHEAD_SECONDS then savedTs = nil end",
+    "new": "if not nowTs then savedTs = nil end",
+    "killed_by": "test_unreadable_server_clock_keeps_valid_saved_cutoff"
   },
   {
     "file": "addon/RelaxRaid/DeathRecap.lua",
-    "old": "local referenceTs = newestTs or R.clean(R.call(GetServerTime), \"number\")",
-    "new": "local referenceTs = R.clean(R.call(GetServerTime), \"number\")",
-    "killed_by": "test_implausible_saved_timestamp_falls_back_to_history"
+    "old": "local nowTs = R.clean(R.call(GetServerTime), \"number\")",
+    "new": "local nowTs = newestTs or R.clean(R.call(GetServerTime), \"number\")",
+    "killed_by": "test_saved_cutoff_above_history_within_server_day_is_kept"
   },
   {
     "file": "addon/RelaxRaid/DeathRecap.lua",
-    "old": "savedTs > referenceTs + MAX_SAVED_TS_AHEAD_SECONDS",
-    "new": "savedTs >= referenceTs + MAX_SAVED_TS_AHEAD_SECONDS",
-    "killed_by": "test_valid_saved_timestamp_above_history_is_preserved"
+    "old": "savedTs > nowTs + MAX_SAVED_TS_AHEAD_SECONDS",
+    "new": "savedTs >= nowTs + MAX_SAVED_TS_AHEAD_SECONDS",
+    "killed_by": "test_valid_saved_timestamp_bounds_and_fraction_are_used"
   },
   {
     "file": "addon/RelaxRaid/DeathRecap.lua",
-    "old": "local referenceTs = newestTs or R.clean(R.call(GetServerTime), \"number\")",
-    "new": "local referenceTs = newestTs or savedTs",
+    "old": "local nowTs = R.clean(R.call(GetServerTime), \"number\")",
+    "new": "local nowTs = savedTs",
     "killed_by": "test_implausible_saved_timestamp_without_history_is_dropped"
   },
   {
@@ -355,8 +355,8 @@
   },
   {
     "file": "addon/RelaxRaid/DeathRecap.lua",
-    "old": "if not referenceTs or savedTs > referenceTs + MAX_SAVED_TS_AHEAD_SECONDS then savedTs = nil end",
-    "new": "if referenceTs and savedTs > referenceTs + MAX_SAVED_TS_AHEAD_SECONDS then savedTs = nil end",
-    "killed_by": "test_unreadable_server_clock_cannot_validate_saved_timestamp"
+    "old": "if nowTs and savedTs > nowTs + MAX_SAVED_TS_AHEAD_SECONDS then savedTs = nil end",
+    "new": "if not nowTs or savedTs > nowTs + MAX_SAVED_TS_AHEAD_SECONDS then savedTs = nil end",
+    "killed_by": "test_unreadable_server_clock_keeps_valid_saved_cutoff"
   }
 ]

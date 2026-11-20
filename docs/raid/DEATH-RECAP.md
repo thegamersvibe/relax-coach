@@ -58,13 +58,13 @@ newest-empty saved recaps cannot lose the cutoff. Old timers cannot write anothe
 death or notify twice. Live freshness comparisons use only native row timestamps.
 On load, seed the cutoff from the greater of the valid saved scalar and the newest
 row timestamp across restored history, even when the latest recap is empty. Never
-lower an existing session cutoff. Drop a loaded scalar more than one day beyond
-that newest history timestamp; if no history timestamp exists, use readable
-`GetServerTime()` plus one day as its validation ceiling instead. An unavailable
-server clock cannot validate a history-free scalar, so drop it. This load-only
-sanity check never supplies a new cutoff: missing, corrupt or implausible scalars
-fall back to history, and an implausibly high scalar is discarded, not saturated
-at the ceiling.
+lower an existing session cutoff. Drop a loaded scalar only when a readable
+`GetServerTime()` shows it more than one day ahead of now; history never
+invalidates it and only raises the cutoff. With an unreadable server clock the
+valid scalar is kept (in memory and in the save): a drop is never made, or
+persisted, without a readable clock. This load-only sanity check never supplies a
+new cutoff: missing, corrupt or implausible scalars fall back to history, and an
+implausibly high scalar is discarded, not saturated at the ceiling.
 
 This is a timestamp freshness rule, not proof of a native death ID or ownership
 of a previously unreadable delayed row with a newer timestamp. Unknown timestamp

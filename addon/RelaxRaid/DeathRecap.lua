@@ -230,9 +230,10 @@ function R.configure(settings)
     end
     local savedTs = R.field(settings, "lastRecapTs", "number")
     if savedTs then
-        -- Only load validation uses server time, and only without a history clock.
-        local referenceTs = newestTs or R.clean(R.call(GetServerTime), "number")
-        if not referenceTs or savedTs > referenceTs + MAX_SAVED_TS_AHEAD_SECONDS then savedTs = nil end
+        -- Only a readable server clock may reject a saved cutoff (more than a day
+        -- ahead of now). An unreadable clock keeps it; history only raises it below.
+        local nowTs = R.clean(R.call(GetServerTime), "number")
+        if nowTs and savedTs > nowTs + MAX_SAVED_TS_AHEAD_SECONDS then savedTs = nil end
     end
     if newestTs and (not savedTs or newestTs > savedTs) then savedTs = newestTs end
     if savedTs and (not R.lastRecapTs or savedTs > R.lastRecapTs) then R.lastRecapTs = savedTs end

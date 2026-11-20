@@ -501,9 +501,15 @@ class IntegrationTests(unittest.TestCase):
         self.assert_loaded_timestamp_cutoff(self.load_history_with_timestamp('0/0'), 10)
 
     def test_implausible_saved_timestamp_falls_back_to_history(self):
-        # The history clock wins over the much later server clock in this fixture.
-        for bad in ('1e12','10+24*60*60+1'):
+        # Only a readable server clock rejects a saved cutoff (more than a day ahead).
+        for bad in ('1e12','GetServerTime()+24*60*60+1'):
             self.assert_loaded_timestamp_cutoff(self.load_history_with_timestamp(bad), 10)
+
+    def test_saved_cutoff_above_history_within_server_day_is_kept(self):
+        # Damaged-save shape: the newest history row is far older than the intact
+        # scalar. History only raises the cutoff; it never invalidates the scalar.
+        for stamp in (10+24*60*60+1, 10+30*24*60*60, 1800000000):
+            self.assert_loaded_timestamp_cutoff(self.load_history_with_timestamp(repr(stamp)), stamp)
 
     def test_history_cutoff_advances_older_saved_timestamp(self):
         self.assert_loaded_timestamp_cutoff(self.load_history_with_timestamp('5'), 10)
@@ -521,15 +527,24 @@ class IntegrationTests(unittest.TestCase):
                 c.hit(); c.fire('PLAYER_DEAD'); c.advance(2)
                 self.assertEqual(c.run('return RelaxDeathRecap.history[1].rows[1].timestamp'), 10)
 
-    def test_unreadable_server_clock_cannot_validate_saved_timestamp(self):
-        for clock in ('nil', 'function() error("unavailable") end', 'function() return secret() end', 'function() return 0/0 end'):
+    def test_unreadable_server_clock_keeps_valid_saved_cutoff(self):
+        # Without a readable clock nothing can prove the saved cutoff implausible:
+        # keep it in memory and in the save (a drop is never persisted unproven).
+        clocks = ('nil', 'function() error("unavailable") end', 'function() return secret() end',
+                  'function() return 0/0 end', 'function() return math.huge end')
+        for clock in clocks:
+            for stamp in (50, 10.5, 0, -1e12, 1e12):
+                c = UIClient(); c.run(f'GetServerTime={clock}')
+                c.load_addon(str(ADDON), saved={'RelaxRaidCharDB':f'{{version=1,deathRecap={{version=1,lastRecapTs={stamp!r}}}}}'})
+                self.assertEqual(c.run('return #RelaxRaid.errors'), 0, (clock,stamp))
+                self.assertEqual(c.run('return RelaxDeathRecap.lastRecapTs'), stamp, (clock,stamp))
+                self.assertEqual(c.run('return RelaxRaidCharDB.deathRecap.lastRecapTs'), stamp, (clock,stamp))
             c = UIClient(); c.run(f'GetServerTime={clock}')
-            c.load_addon(str(ADDON), saved={'RelaxRaidCharDB':'{version=1,deathRecap={version=1,lastRecapTs=1e12}}'})
-            self.assertEqual(c.run('return #RelaxRaid.errors'), 0)
-            self.assertIsNone(c.run('return RelaxDeathRecap.lastRecapTs'))
-            self.assertIsNone(c.run('return RelaxRaidCharDB.deathRecap.lastRecapTs'))
-            c.hit(); c.fire('PLAYER_DEAD'); c.advance(2)
-            self.assertEqual(c.run('return RelaxDeathRecap.history[1].rows[1].timestamp'), 10)
+            c.load_addon(str(ADDON), saved={'RelaxRaidCharDB':'{version=1,deathRecap={version=1,lastRecapTs=50}}'})
+            c.hit(',timestamp=50'); c.fire('PLAYER_DEAD'); c.advance(2)
+            self.assertEqual(c.run('return #RelaxDeathRecap.history[1].rows'), 0, clock)
+            c.fire('PLAYER_ALIVE'); c.hit(',timestamp=51'); c.fire('PLAYER_DEAD'); c.advance(2)
+            self.assertEqual(c.run('return RelaxDeathRecap.history[1].rows[1].timestamp'), 51, clock)
 
     def test_invalid_saved_timestamp_is_ignored_on_load(self):
         for bad in ('"10"','true','{}','secret()','0/0','math.huge','-math.huge','1e12+1','-1e12-1'):
