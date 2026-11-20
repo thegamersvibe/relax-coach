@@ -250,5 +250,149 @@
     "old": "0x0040 | 0x0010 | 0x0200 | 0x4000",
     "new": "0x0040 | 0x0010 | 0x0200 | 0x0000",
     "killed_by": "TestRaidPageNativePickerSpec"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "path, err := b.services.chooseFile(b.ctx, kind)",
+    "new": "path, err := b.services.chooseFile(b.ctx, kind)\n\tif err == nil && path == \"\" { return nil, nil }",
+    "killed_by": "TestRaidPageCancelledPickerRechecksAdmission"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "save, err := a.raidSaveLocked()\n\tif err != nil {\n\t\ta.raidSelection = nil",
+    "new": "save, err := a.raidSaveLocked()\n\tif err != nil {\n\t\t// retained stale night",
+    "killed_by": "TestRaidPageCancelledPickerRechecksAdmission"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "/^Raids locked(?::|$)/.test(error.message)",
+    "new": "true",
+    "killed_by": "TestRaidPageRouteErrors"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "if (isRaidRefusal(err)) lockRaids(err,raidContext(result));",
+    "new": "lockRaids(err,raidContext(result));\n        if (true) {}",
+    "killed_by": "TestRaidPageRouteErrors"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "else if (generation===raidGeneration && context===reportGeneration) message(raidDisplayText(err.message));",
+    "new": "else if (generation===raidGeneration && context===reportGeneration) clearRaids();",
+    "killed_by": "TestRaidPageRouteErrors"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "if text == \"0.0\" && v.Sign() > 0 {",
+    "new": "if false {",
+    "killed_by": "TestRaidPageTinyDecimal"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "return \">-0.1\"",
+    "new": "return \"0.0\"",
+    "killed_by": "TestRaidPageTinyDecimal"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "if text == \"0.0\" && v.Sign() > 0 {",
+    "new": "if text == \"0.0\" {",
+    "killed_by": "TestRaidPageTinyDecimal"
+  },
+  {
+    "file": "desktop/raid.html",
+    "old": "{{raidName .LogPath}}",
+    "new": "{{.LogPath}}",
+    "killed_by": "TestRaidPageScreenDisplay"
+  },
+  {
+    "file": "desktop/raid.html",
+    "old": "{{template \"raid-name\" .Error}}",
+    "new": "{{.Error}}",
+    "killed_by": "TestRaidPageScreenDisplay"
+  },
+  {
+    "file": "desktop/raid.html",
+    "old": "{{template \"raid-name\" .ComparisonError}}",
+    "new": "{{.ComparisonError}}",
+    "killed_by": "TestRaidPageScreenDisplay"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "input.value===input.defaultValue ? input.dataset.raidOriginalPath : input.value",
+    "new": "input.value",
+    "killed_by": "TestRaidPageDisplayInsertion"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "input.value===input.defaultValue ? input.dataset.raidOriginalPath : input.value",
+    "new": "input.dataset.raidOriginalPath",
+    "killed_by": "TestRaidPageDisplayInsertion"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "const raidDisplayText = text => text.replace(",
+    "new": "const raidDisplayText = text => text; const unusedRaidStrip = text => text.replace(",
+    "killed_by": "TestRaidPageDisplayInsertion"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "r == '\\u115f'",
+    "new": "false",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "r == '\\u1160'",
+    "new": "false",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "r == '\\u3164'",
+    "new": "false",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "r == '\\uffa0'",
+    "new": "false",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "r == '\\u034f'",
+    "new": "false",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "r == '\\u17b4'",
+    "new": "false",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "r == '\\u17b5'",
+    "new": "false",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "r >= '\\U000e0000' && r <= '\\U000e007f'",
+    "new": "false",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "r >= '\\U000e0000'",
+    "new": "r > '\\U000e0000'",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "r <= '\\U000e007f'",
+    "new": "r < '\\U000e007f'",
+    "killed_by": "TestRaidPageNamesIsolated"
   }
 ]

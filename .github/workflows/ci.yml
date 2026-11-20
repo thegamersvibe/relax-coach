@@ -84,6 +84,8 @@ jobs:
         with:
           node-version: '26'
           package-manager-cache: false
+      - name: Install locked UI test dependencies without lifecycle scripts
+        run: npm ci --prefix .github --ignore-scripts
       # Includes TestRaidEmbeddedBytes: do not regenerate the copy before testing.
       - name: Existing Go tests with race detection
         env:
@@ -112,8 +114,6 @@ jobs:
           go -C desktop test -count=1 -run '^TestRaidLog' .
           python3 -I -B tools/raidtest.py --mutants raidlogs
           python3 -I -B tools/raidtest.py --mutants _runner
-      - name: Install locked UI test dependencies without lifecycle scripts
-        run: npm ci --prefix .github --ignore-scripts
       - name: Existing offline UI tests
         env:
           NODE_PATH: ${{ github.workspace }}/.github/node_modules

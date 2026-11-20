@@ -298,10 +298,14 @@ let raidGeneration = 0, raidVerdictGeneration = 0;
 const raidLocks = new Map();
 const raidContext = result => JSON.stringify([result && result.Game,result && result.Account]);
 const raidLocked = result => raidLocks.get(raidContext(result));
-function lockRaids(error) {
+const isRaidRefusal = error => /^Raids locked(?::|$)/.test(error.message);
+// Display-only counterpart of raidDisplayName; never sanitize a submitted path.
+const raidDisplayText = text => text.replace(/[\u061c\ufeff\u2060-\u2064\u00ad\u180e\u200b-\u200f\u202a-\u202e\u2066-\u2069\u115f\u1160\u3164\uffa0\u034f\u17b4\u17b5\u{e0000}-\u{e007f}]/gu,'');
+function lockRaids(error, key = raidContext(lastReport || renderedReport)) {
   ++raidVerdictGeneration;
-  raidLocks.set(raidContext(lastReport || renderedReport),error.message);
-  clearRaids();message(error.message);
+  const text=raidDisplayText(error.message);
+  raidLocks.set(key,text);
+  if (key === raidContext(lastReport || renderedReport)) { clearRaids();message(text); }
 }
 function clearRaids() {
   ++raidGeneration;
@@ -345,6 +349,7 @@ document.addEventListener('click',event=>{
 async function requestRaid(action) {
   if (switchingAccount || switchingFolder || !$('nav-raids')) return;
   const generation=++raidGeneration, context=reportGeneration;
+  const key=raidContext(lastReport || renderedReport);
   try {
     const html=await action();
     if (generation!==raidGeneration || context!==reportGeneration || !$('nav-raids')) return;
@@ -352,8 +357,9 @@ async function requestRaid(action) {
     $('raids-view').outerHTML=html;
     userNavigated=true;show('raids');
   } catch(err) {
-    if (generation!==raidGeneration || context!==reportGeneration) return;
-    lockRaids(err);
+    // A refusal owns its account's lock even when newer work superseded its HTML.
+    if (isRaidRefusal(err)) lockRaids(err,key);
+    else if (generation===raidGeneration && context===reportGeneration) message(raidDisplayText(err.message));
   }
 }
 document.addEventListener('click',event=>{
@@ -361,7 +367,10 @@ document.addEventListener('click',event=>{
   const page=$('raids-view');
   if (!page || !page.contains(event.target)) return;
   if (event.target.closest('#raid-open')) {
-    const path=$('raid-log-path').value;requestRaid(()=>rc.raidOpen(path));
+    const input=$('raid-log-path');
+    // Reopening an unchanged display must retain the actual filename's bytes.
+    const path=input.value===input.defaultValue ? input.dataset.raidOriginalPath : input.value;
+    requestRaid(()=>rc.raidOpen(path));
   } else if (event.target.closest('[data-raid-newest]')) requestRaid(()=>rc.raidOpen(''));
   else if (event.target.closest('[data-raid-log]')) requestRaid(rc.raidChooseLog);
   else if (event.target.closest('[data-raid-officer]')) requestRaid(rc.raidChooseOfficer);
@@ -448,8 +457,11 @@ async function refresh(manual = false) {
         if (generation !== reportGeneration || verdict !== raidVerdictGeneration) return;
         raidLocks.delete(raidContext(result));++raidVerdictGeneration;result.RaidHTML=html;
       } catch(err) {
-        if (generation !== reportGeneration || verdict !== raidVerdictGeneration) return;
-        lockRaids(err);
+        if (isRaidRefusal(err)) lockRaids(err,raidContext(result));
+        else if (generation === reportGeneration && verdict === raidVerdictGeneration) {
+          displayReport(result);message(raidDisplayText(err.message));return;
+        }
+        if (generation !== reportGeneration) return;
       }
     }
     displayReport(result);

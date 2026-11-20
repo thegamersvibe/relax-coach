@@ -12,8 +12,18 @@ import (
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/model"
 )
 
+const raidForbiddenDisplay = "\u061c\ufeff\u2060\u2061\u2062\u2063\u2064\u00ad\u180e\u200b\u200c\u200d\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069\u115f\u1160\u3164\uffa0\u034f\u17b4\u17b5"
+
+func raidForbiddenDisplayAll() string {
+	out := raidForbiddenDisplay
+	for r := rune('\U000e0000'); r <= '\U000e007f'; r++ {
+		out += string(r)
+	}
+	return out
+}
+
 func TestRaidPageNamesIsolated(t *testing.T) {
-	const forbidden = "\u061c\ufeff\u2060\u2061\u2062\u2063\u2064\u00ad\u180e\u200b\u200c\u200d\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069"
+	forbidden := raidForbiddenDisplayAll()
 	const visible = `العربية <img src="x" onerror="alert(1)">&'`
 	var expected []string
 	name := func(prefix string) string {

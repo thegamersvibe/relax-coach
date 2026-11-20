@@ -126,21 +126,23 @@ func (b *nativeBridge) chooseRaidFile(kind string) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if path == "" {
-		return nil, nil
-	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if err := b.ctx.Err(); err != nil {
 		return nil, err
 	}
-	if revision != a.raidRevision {
-		return nil, errors.New("raid selection changed while choosing a file")
-	}
 	a.rescanAccountsLocked()
 	save, err := a.raidSaveLocked()
 	if err != nil {
+		a.raidSelection = nil
+		a.raidRevision++
 		return nil, err
+	}
+	if revision != a.raidRevision {
+		return nil, errors.New("raid selection changed while choosing a file")
+	}
+	if path == "" {
+		return nil, nil
 	}
 	method := "raidOpen"
 	if kind == "officer" {

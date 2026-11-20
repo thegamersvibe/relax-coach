@@ -50,7 +50,7 @@ test('every name is escaped, control-free and bidi-isolated at insertion',async 
  $('nav-raids').click();await settle();
  const view=$('raids-view');
  assert.equal(view.querySelector('img,script,[onerror]'),null);
- assert.doesNotMatch(view.textContent,/[\u061c\ufeff\u2060-\u2064\u00ad\u180e\u200b-\u200f\u202a-\u202e\u2066-\u2069]/u);
+ assert.doesNotMatch(view.textContent,/[\u061c\ufeff\u2060-\u2064\u00ad\u180e\u200b-\u200f\u202a-\u202e\u2066-\u2069\u115f\u1160\u3164\uffa0\u034f\u17b4\u17b5\u{e0000}-\u{e007f}]/u);
  for(const name of expected) assert.ok([...view.querySelectorAll('bdi')].some(n=>n.textContent===name),'missing isolated name');
  // Check every occurrence, including names repeated in closed player details.
  const walker=dom.window.document.createTreeWalker(view,dom.window.NodeFilter.SHOW_TEXT);
@@ -167,4 +167,42 @@ test('account switch drops a held officer picker reply',async t=>{
  $('account-select').value='B#2';$('account-select').dispatchEvent(new dom.window.Event('change',{bubbles:true}));await settle();
  assert.equal($('raids-view'),null);
  release(opened);await settle();assert.equal($('raids-view'),null);
+});
+test('path and error display is stripped without changing submitted paths',async t=>{
+ const content=readFileSync(process.env.NATIVE_HTML_OUT+'.raid-screen-display','utf8');
+ const values=JSON.parse(readFileSync(process.env.NATIVE_HTML_OUT+'.raid-display-values.json','utf8'));
+ const {$,dom,calls}=await setup(t,{reportRefresh:()=>report(true),raidPage:()=>content,raidOpen:()=>content});
+ $('nav-raids').click();await settle();
+ assert.equal($('raid-log-path').value,values.visible);
+ assert.equal($('raids-body').querySelector('[role="alert"] bdi').textContent,values.visible);
+ assert.equal($('raids-view').querySelector('img,script,[onerror]'),null);
+ $('raid-open').click();await settle();
+ assert.deepEqual(calls.filter(r=>r.method==='raidOpen')[0].params,[values.raw],'display strip changed the file being opened');
+ const edited='edited'+values.raw;
+ $('raid-log-path').value=edited;$('raid-open').click();await settle();
+ assert.deepEqual(calls.filter(r=>r.method==='raidOpen')[1].params,[edited],'typed path was normalized');
+});
+test('comparison error display is stripped and isolated at insertion',async t=>{
+ const content=readFileSync(process.env.NATIVE_HTML_OUT+'.raid-error-display','utf8');
+ const values=JSON.parse(readFileSync(process.env.NATIVE_HTML_OUT+'.raid-display-values.json','utf8'));
+ const {$}=await setup(t,{reportRefresh:()=>report(true),raidPage:()=>withBody(content)});
+ $('nav-raids').click();await settle();
+ assert.equal($('raid-comparison').querySelector('[role="alert"] bdi').textContent,values.visible);
+ assert.equal($('raids-view').querySelector('img,script,[onerror]'),null);
+});
+for(const prefix of ['', 'Raids locked: ']) test('native route error display strips all controls '+prefix,async t=>{
+ const values=JSON.parse(readFileSync(process.env.NATIVE_HTML_OUT+'.raid-display-values.json','utf8'));
+ const {$,dom}=await setup(t,{reportRefresh:()=>report(true),raidPage:()=>opened,raidChooseOfficer:()=>{throw Error(prefix+values.raw)}});
+ $('nav-raids').click();await settle();dom.window.document.querySelector('[data-raid-officer]').click();await settle();
+ assert.equal($('global-status').textContent,prefix+values.visible);
+ assert.equal($('global-status').querySelector('img,script,[onerror]'),null);
+ assert.equal(!!$('raids-view'),!prefix);
+});
+test('tiny measured values stay nonzero at the real insertion sink',async t=>{
+ const content=readFileSync(process.env.NATIVE_HTML_OUT+'.raid-tiny','utf8');
+ const {$}=await setup(t,{reportRefresh:()=>report(true),raidPage:()=>withBody(content)});
+ $('nav-raids').click();await settle();
+ const detail=$('raid-comparison').querySelector('details');
+ assert.match(detail.querySelector('summary').textContent,/<0\.1 weighted impact/);
+ assert.match(detail.querySelector('p').textContent,/Part score: >-0\.1 · role median: 0\.0 · configured weight: not measured/);
 });

@@ -130,5 +130,35 @@
     "old": "part == \"\" || strings.TrimSpace(part) != part",
     "new": "false && (part == \"\" || strings.TrimSpace(part) != part)",
     "killed_by": "TestRaidLockRawKeyAndDuplicateRefusals"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "if (isRaidRefusal(err)) lockRaids(err,key);",
+    "new": "if (generation!==raidGeneration || context!==reportGeneration) return;\n    if (isRaidRefusal(err)) lockRaids(err,key);",
+    "killed_by": "TestRaidLockReplyOrdering"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "raidLocks.set(key,text);",
+    "new": "raidLocks.set(raidContext(lastReport || renderedReport),text);",
+    "killed_by": "TestRaidLockReplyOrdering"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "if (generation !== reportGeneration || verdict !== raidVerdictGeneration) return;",
+    "new": "if (generation !== reportGeneration) return;",
+    "killed_by": "TestRaidLockReplyOrdering"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "++raidVerdictGeneration;\n  const text=",
+    "new": "/* refusal generation bypassed */\n  const text=",
+    "killed_by": "TestRaidLockReplyOrdering"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "if (generation !== reportGeneration) return;\n      }\n    }\n    displayReport(result);",
+    "new": "/* stale re-admission context bypassed */\n      }\n    }\n    displayReport(result);",
+    "killed_by": "TestRaidLockReplyOrdering"
   }
 ]

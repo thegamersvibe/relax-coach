@@ -72,7 +72,7 @@ func TestRaidPageComparisonNumberDisplay(t *testing.T) {
 			t.Errorf("unhelpful display: %s", bad)
 		}
 	}
-	if !strings.Contains(html, "configured weight: 35%") || !strings.Contains(html, "0.0 weighted impact") {
+	if !strings.Contains(html, "configured weight: 35%") || !strings.Contains(html, "&gt;-0.1 weighted impact") {
 		t.Fatal("weight/impact display inconsistent")
 	}
 }

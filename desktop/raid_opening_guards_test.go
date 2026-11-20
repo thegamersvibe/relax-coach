@@ -23,6 +23,36 @@ func TestRaidPagePickerRechecksAdmission(t *testing.T) {
 	}
 }
 
+func TestRaidPageCancelledPickerRechecksAdmission(t *testing.T) {
+	for _, method := range []string{"raidChooseLog", "raidChooseOfficer"} {
+		t.Run(method, func(t *testing.T) {
+			game, a, b := raidOpeningFixture(t)
+			log := filepath.Join(t.TempDir(), "selected.txt")
+			raidOpeningLog(t, log, 99)
+			raidCallHTML(t, b, "raidOpen", log)
+			if a.raidSelection == nil {
+				t.Fatal("fixture night not open")
+			}
+			before := a.raidRevision
+			b.services.chooseFile = func(context.Context, string) (string, error) {
+				raidRankSave(t, game, "A#1", strings.Replace(officerSave(), `"officer"`, `"member"`, 1))
+				return "", nil
+			}
+			got, err := b.Call(method, nil)
+			if got != nil || err == nil || !strings.HasPrefix(err.Error(), "Raids locked:") {
+				t.Errorf("cancelled picker reused old admission: result=%v err=%v", got, err)
+			}
+			if a.raidSelection != nil || a.raidRevision <= before {
+				t.Error("refused cancellation did not close the night")
+			}
+			raidRankSave(t, game, "A#1", officerSave())
+			if strings.Contains(raidCallHTML(t, b, "raidPage"), `id="raid-ranked"`) {
+				t.Error("readmission resurrected the closed night")
+			}
+		})
+	}
+}
+
 func TestRaidPageEmptyAndErrors(t *testing.T) {
 	_, _, b := raidOpeningFixture(t)
 	if !strings.Contains(raidCallHTML(t, b, "raidPage"), "Open a combat log") {

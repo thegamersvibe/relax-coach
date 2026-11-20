@@ -20,7 +20,7 @@
 <p>Use a file written before seeing any scores. Read from disk each time; never stored in a night file.</p>
 <button class="secondary" type="button" data-raid-officer>Choose file…</button>
 <label>Officer file path <input id="raid-officer-path" type="text" autocomplete="off"></label><button class="secondary" type="button" data-raid-officer-open>Read file</button>
-{{if .ComparisonError}}<p class="note" role="alert">Officer file: {{.ComparisonError}}</p>{{end}}
+{{if .ComparisonError}}<p class="note" role="alert">Officer file: {{template "raid-name" .ComparisonError}}</p>{{end}}
 {{with .Comparison}}<p>Officer: {{template "raid-name" .Officer}}</p>
 {{if lt .Ranked 10}}<p>Fewer than 10 players are ranked: the score's top 5 and bottom 5 overlap.</p>{{end}}
 {{if .NoReportReason}}<p>{{.NoReportReason}}</p>{{else}}
@@ -66,9 +66,9 @@
 {{define "raid-screen"}}
 <section id="raids-view" hidden><header class="pagehead"><div><h2>Raids</h2><p class="subtle">Officer tool · local only · selected account</p></div></header>
 {{if not .ConfigError}}<div class="actions">
-<label>Combat log path <input id="raid-log-path" type="text" autocomplete="off" value="{{.LogPath}}"></label>
+<label>Combat log path <input id="raid-log-path" type="text" autocomplete="off" value="{{if .LogPath}}{{raidName .LogPath}}{{end}}" data-raid-original-path="{{.LogPath}}"></label>
 <button id="raid-open" class="secondary" type="button">Open path</button><button data-raid-log class="secondary" type="button">Choose combat log…</button><button data-raid-newest class="secondary" type="button">Open newest log</button>
 {{if .Nights}}<label>Night <select id="raid-night-select">{{range .Nights}}<option value="{{.Index}}"{{if eq $.Selected .Index}} selected{{end}}>{{raidName .Label}}</option>{{end}}</select></label>{{end}}
 </div>{{end}}
-<div id="raids-body" class="pane">{{if .Error}}<p class="note" role="alert">{{.Error}}</p>{{else if .Page}}{{template "raid-body" .Page}}{{else}}<p>Open a combat log from this installation, or choose a file by path. Nothing is uploaded or written.</p>{{end}}</div></section>
+<div id="raids-body" class="pane">{{if .Error}}<p class="note" role="alert">{{template "raid-name" .Error}}</p>{{else if .Page}}{{template "raid-body" .Page}}{{else}}<p>Open a combat log from this installation, or choose a file by path. Nothing is uploaded or written.</p>{{end}}</div></section>
 {{end}}
