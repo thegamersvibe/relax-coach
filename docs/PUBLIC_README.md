@@ -2,7 +2,16 @@
 
 A leveling coach for **World of Warcraft: Forever**, with a Windows application for reports and addon updates.
 
-This is a **legacy Coach-only archive**, not the current combined guild download. For Coach, Journey and guide content together, use `RelaxCoach-RaidBundle-1.8.1.zip` on [release v1.8.1](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.8.1). A current release need not contain a Coach-only ZIP.
+This is a **legacy Coach-only archive**, not the current combined guild download. For Coach, Journey and guide content together, use `RelaxCoach-RaidBundle-1.8.2.zip` on [release v1.8.2](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.8.2). A current release need not contain a Coach-only ZIP.
+
+## What's new in v1.8.2 (combined bundle)
+
+- **Relax Raid 0.3.0, Death Recap:** after any death, including battlegrounds, arenas and combat, a window shows the hits that killed you (the game keeps only the last few, usually about five, and no heals), who killed you in PvP, and the last three deaths as tabs. `/recap`, the **[You died: details]** chat link or **Detailed recap** under the death pop-up. Local only; nothing is sent or scored.
+- **Guild rank saved** per character for a later officer-only page in the app: a convenience lock, not security.
+- **Farming (app):** missing item names from Wowhead (item IDs only sent, cached on this PC, **Settings → Look up missing item names online** to turn off) and Wowhead links on item names.
+- **Update on app 1.8.0 or 1.8.1:** **Updates → Update everything** (or **Update App** first), then restart WoW once for the new Relax Raid files.
+- Coach and the app are **1.8.2**; Relax Raid **0.3.0**; Relax Journey (`4.00.04`), guide content (`4.00.12`) and Relax Quest Planner (`0.4.0`) are unchanged.
+- **Not tested in game: alpha, owner's decision.**
 
 ## What's new in v1.8.1 (combined bundle)
 
