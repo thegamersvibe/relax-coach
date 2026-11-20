@@ -11,7 +11,7 @@
 |---|---|---|---|---|---|---|---|---|
 | IMP-001 | REQ-LOG-01 | forever | R1 | R0 | builder | `addon/RelaxRaid/{RelaxRaid.toc,Core.lua,Log.lua}` | built, in review | V-001 |
 | IMP-002 | REQ-LOG-02 | forever | R1 | R0 | builder | `addon/RelaxRaid/{RelaxRaid.toc,Core.lua,Log.lua}` | built, in review | V-002 |
-| IMP-003 | REQ-LOG-03 | forever | R4 | R0 | unassigned | `desktop/internal/raid/fights`, glue in `desktop/` | planned | V-003 |
+| IMP-003 | REQ-LOG-03 | forever | R4 | R0 + model addendum 2 | R4 builder | `desktop/raid_logs.go` | implemented | V-003 |
 | IMP-004 | REQ-ADD-01 | forever | R2 | R1 | R2 builder | `addon/RelaxRaid/{Prep.lua,Wire.lua,Store.lua}` | implemented; simulator pass | V-004 |
 | IMP-005 | REQ-ADD-02 | forever | R2 | R1 | R2 builder | `addon/RelaxRaid/{Prep.lua,Wire.lua,Store.lua}` | implemented; simulator pass | V-005 |
 | IMP-006 | REQ-ADD-03 | forever | R2 | R1 | R2 builder | `addon/RelaxRaid/{Prep.lua,Wire.lua,Store.lua}` | implemented; simulator pass | V-006 |
@@ -19,10 +19,10 @@
 | IMP-008 | REQ-ADD-05 | forever | R2 | R1 | R2 builder | `addon/RelaxRaid/{Prep.lua,Wire.lua,Store.lua}` | implemented; app label acceptance pending R7 | V-008 |
 | IMP-009 | REQ-PAR-01 | forever | R3 | R0 | unassigned | `desktop/internal/raid/{logfmt,fixture}` | planned | V-009 |
 | IMP-010 | REQ-PAR-02 | forever | R3 | R0 | unassigned | `desktop/internal/raid/{logfmt,fixture}` | planned | V-010 |
-| IMP-011 | REQ-PAR-03 | forever | R4 | R0 | unassigned | `desktop/internal/raid/fights`, glue in `desktop/` | planned | V-011 |
-| IMP-012 | REQ-PAR-04 | forever | R4 | R0 | unassigned | `desktop/internal/raid/fights`, glue in `desktop/` | planned | V-012 |
-| IMP-013 | REQ-PAR-05 | forever | R4 | R0 | unassigned | `desktop/internal/raid/fights`, glue in `desktop/` | planned | V-013 |
-| IMP-014 | REQ-PAR-06 | forever | R4 | R0 | unassigned | `desktop/internal/raid/fights`, glue in `desktop/` | planned | V-014 |
+| IMP-011 | REQ-PAR-03 | forever | R4 | R0 + model addendum 2 | R4 builder | `desktop/internal/raid/fights` | implemented | V-011 |
+| IMP-012 | REQ-PAR-04 | forever | R4 | R0 + model addendum 2 | R4 builder | `desktop/internal/raid/fights` | implemented; real-log golden open | V-012 |
+| IMP-013 | REQ-PAR-05 | forever | R4 | R0 + model addendum 2 | R4 builder | `desktop/internal/raid/fights` | implemented | V-013 |
+| IMP-014 | REQ-PAR-06 | forever | R4 | R0 + model addendum 2 | R4 builder | `desktop/internal/raid/fights` | in progress; cast hook only, class open | V-014 |
 | IMP-015 | REQ-PAR-07 | forever | R10 | R7 | unassigned | `desktop/internal/raid/result` | planned | V-015 |
 | IMP-016 | REQ-PAR-09 | forever | R15b, R15c; W8, W9 | R4, W8 | unassigned | `desktop/internal/raid/rawstore`, app upload/download glue; site access and retention | planned (phase 2); R3 uploads nothing | V-016 |
 | IMP-017 | REQ-SCO-01 | forever | R7 | R0 | unassigned | `desktop/internal/raid/score` | planned | V-017 |
@@ -86,8 +86,8 @@
 | IMP-075 | REQ-DST-02 | forever | every PR | none | unassigned | n/a | planned | V-075 |
 | IMP-076 | REQ-DST-03 | forever | R0 | none | R0 builder (bunyan) | `desktop/internal/raid/model`, `tools/raidtest.py`, `test/raid/_client/` | implemented | V-076 |
 | IMP-077 | REQ-DST-03 | forever | every PR | none | unassigned | n/a | planned | V-077 |
-| IMP-078 | REQ-DGN-01 | forever | D1 | R0 | unassigned | `desktop/internal/raid/fights` | planned | V-078 |
-| IMP-079 | REQ-DGN-02 | forever | D1 | R0 | unassigned | `desktop/internal/raid/fights`, `desktop/internal/raid/score` | planned | V-079 |
+| IMP-078 | REQ-DGN-01 | forever | D1 | R0 + model addendum 2 | R4 builder | `desktop/internal/raid/fights` | implemented | V-078 |
+| IMP-079 | REQ-DGN-02 | forever | D1 | R0 + model addendum 2 | R4 builder | `desktop/internal/raid/fights` | in progress; scorer/history integration open | V-079 |
 | IMP-080 | REQ-DGN-03 | forever | D2 | R8 | unassigned | `desktop/internal/raid/result` | planned | V-080 |
 | IMP-081 | REQ-DGN-04 | forever | D2 | R8 | unassigned | `desktop/` page handlers | planned | V-081 |
 | IMP-082 | REQ-DGN-05 | forever | D3 | W4 | unassigned | n/a (site repository) | planned | V-082 |
@@ -100,7 +100,7 @@ Statuses: `planned`, `in progress`, `implemented`, `verified`, `blocked`, `defer
 |---|---|---|---|---|---|---|---|
 | V-001 | REQ-LOG-01 / R1 | forever; mock client | simulator | `feat/raid-logger` | `raidtest.py log core`: raid and dungeon entry, start ignored 10 s with the read 5 s and 8 s behind, never off on every path, refused setting write, APIs that throw | pass; native not run (alpha, owner's decision) | simulator pass |
 | V-002 | REQ-LOG-02 / R1 | forever; mock client | simulator | `feat/raid-logger` | `raidtest.py log`: officer and member rank, rank secret or not a number, guild data late or never, no guild, choice saved and winning, panel checkbox, newer save untouched | pass; native not run (alpha, owner's decision) | simulator pass |
-| V-003 | REQ-LOG-03 / R4 | forever; build unknown | simulator | none yet | Acceptance column of REQ-LOG-03 | not run | not run |
+| V-003 | REQ-LOG-03 / R4 | forever; model values | simulator | `feat/raid-fights` | Focused tests and mutations in R4-EVIDENCE.md | Synthetic tests pass; see R4-EVIDENCE.md; private/native checks not run | synthetic pass, integration open |
 | V-004 | REQ-ADD-01 / R2 | forever; pinned build 70790; mock client | simulator | `feat/raid-prep` | Flask/ring collection; unavailable and secret reads; [R2 evidence](evidence/R2.md) | pass for addon scope; native not run (alpha, owner's decision) | simulator pass |
 | V-005 | REQ-ADD-02 / R2 | forever; pinned build 70790; mock client | simulator | `feat/raid-prep` | Trigger, restriction-at-dispatch, cooldown, fragment, expiry and logout tests; [R2 evidence](evidence/R2.md) | pass for addon scope; native not run (alpha, owner's decision) | simulator pass |
 | V-006 | REQ-ADD-03 / R2 | forever; pinned build 70790; mock client | simulator | `feat/raid-prep` | Sender forgery, received time, retained bounds, full-store reload and newer-save identity; [R2 evidence](evidence/R2.md) | pass for addon scope; native not run (alpha, owner's decision) | simulator pass |
@@ -108,10 +108,10 @@ Statuses: `planned`, `in progress`, `implemented`, `verified`, `blocked`, `defer
 | V-008 | REQ-ADD-05 / R2 | forever; pinned build 70790; mock client | simulator | `feat/raid-prep` | Played-at-60 is sent as data and never points; configurable label/scoring acceptance belongs to R7; [R2 evidence](evidence/R2.md) | pass for addon scope; native not run (alpha, owner's decision) | addon data pass; scoring acceptance pending |
 | V-009 | REQ-PAR-01 / R3 | forever; build unknown | unit | none yet | Acceptance column of REQ-PAR-01 | not run | not run |
 | V-010 | REQ-PAR-02 / R3 | forever; build unknown | unit | none yet | Acceptance column of REQ-PAR-02 | not run | not run |
-| V-011 | REQ-PAR-03 / R4 | forever; build unknown | unit | none yet | Acceptance column of REQ-PAR-03 | not run | not run |
-| V-012 | REQ-PAR-04 / R4 | forever; build unknown | unit | none yet | Acceptance column of REQ-PAR-04 | not run | not run |
-| V-013 | REQ-PAR-05 / R4 | forever; build unknown | unit | none yet | Acceptance column of REQ-PAR-05 | not run | not run |
-| V-014 | REQ-PAR-06 / R4 | forever; build unknown | unit | none yet | Acceptance column of REQ-PAR-06 | not run | not run |
+| V-011 | REQ-PAR-03 / R4 | forever; model values | unit | `feat/raid-fights` | Focused tests and mutations in R4-EVIDENCE.md | Synthetic tests pass; see R4-EVIDENCE.md; private/native checks not run | synthetic pass, integration open |
+| V-012 | REQ-PAR-04 / R4 | forever; model values | unit | `feat/raid-fights` | Focused tests and mutations in R4-EVIDENCE.md | Synthetic tests pass; see R4-EVIDENCE.md; private/native checks not run; power, max power and type now sampled with presence preserved | synthetic pass, integration open |
+| V-013 | REQ-PAR-05 / R4 | forever; model values | unit | `feat/raid-fights` | Focused tests and mutations in R4-EVIDENCE.md | Synthetic tests pass; see R4-EVIDENCE.md; private/native checks not run | synthetic pass, integration open |
+| V-014 | REQ-PAR-06 / R4 | forever; model values | unit | `feat/raid-fights` | Focused tests and mutations in R4-EVIDENCE.md | Synthetic tests pass; see R4-EVIDENCE.md; private/native checks not run; class field absent from shared model; empty cast signatures remain unknown | synthetic pass, integration open |
 | V-015 | REQ-PAR-07 / R10 | forever; build unknown | unit | none yet | Acceptance column of REQ-PAR-07 | not run | not run |
 | V-016 | REQ-PAR-09 / R15b, R15c; W8, W9 | forever; build unknown | integration | none yet | Upload, download and decompress to identical SHA-256; refuse member/anonymous reads; expired or deleted logs are absent. Replaces the superseded R3 upload-path prohibition. | not run (phase 2) | not run |
 | V-017 | REQ-SCO-01 / R7 | forever; build unknown | unit | none yet | Acceptance column of REQ-SCO-01 | not run | not run |
@@ -175,8 +175,8 @@ Statuses: `planned`, `in progress`, `implemented`, `verified`, `blocked`, `defer
 | V-075 | REQ-DST-02 / every PR | forever; build unknown | unit | none yet | Acceptance column of REQ-DST-02 | not run | not run |
 | V-076 | REQ-DST-03 / R0 | forever; build unknown | review | `feat/raid-seam` | Acceptance column of REQ-DST-03: every copied block has a provenance header and a `THIRD_PARTY.md` row | R0 adds no block copied from another addon; `THIRD_PARTY.md` unchanged | verified |
 | V-077 | REQ-DST-03 / every PR | forever; build unknown | unit | none yet | Acceptance column of REQ-DST-03 | not run | not run |
-| V-078 | REQ-DGN-01 / D1 | forever; build unknown | unit | none yet | Acceptance column of REQ-DGN-01 | not run | not run |
-| V-079 | REQ-DGN-02 / D1 | forever; build unknown | unit | none yet | Acceptance column of REQ-DGN-02 | not run | not run |
+| V-078 | REQ-DGN-01 / D1 | forever; model values | unit | `feat/raid-fights` | Focused tests and mutations in R4-EVIDENCE.md | Synthetic tests pass; see R4-EVIDENCE.md; private/native checks not run | synthetic pass, integration open |
+| V-079 | REQ-DGN-02 / D1 | forever; model values | unit | `feat/raid-fights` | Focused tests and mutations in R4-EVIDENCE.md | Synthetic tests pass; see R4-EVIDENCE.md; private/native checks not run; real scorer/history writer absent | synthetic pass, integration open |
 | V-080 | REQ-DGN-03 / D2 | forever; build unknown | unit | none yet | Acceptance column of REQ-DGN-03 | not run | not run |
 | V-081 | REQ-DGN-04 / D2 | forever; build unknown | unit | none yet | Acceptance column of REQ-DGN-04 | not run | not run |
 | V-082 | REQ-DGN-05 / D3 | forever; build unknown | unit | none yet | Acceptance column of REQ-DGN-05 | not run | not run |

@@ -178,6 +178,8 @@ def run_named(cmd, cwd, kind, name, limit):
 
 def go_package(spec):
     src = spec["source"].rstrip("/")
+    if src == "desktop":
+        return "."  # Package-main glue: still run only the named mutant test.
     if not src.startswith("desktop/"):
         raise SystemExit("Go module %s: source must be under desktop/" % spec["name"])
     return "./" + src[len("desktop/"):]
