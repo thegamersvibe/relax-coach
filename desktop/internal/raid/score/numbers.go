@@ -75,17 +75,26 @@ type measure struct {
 }
 
 func makePart(name string, measures []measure, weights map[string]float64, counts map[string]int64, c cfg.Config) partResult {
+	exact := make(map[string]*big.Rat, len(weights))
+	for key, value := range weights {
+		exact[key] = decimal(value)
+	}
+	return makePartExact(name, measures, exact, counts, c)
+}
+
+// Decimal shares must cross into integer rationals before scaling by 100.
+func makePartExact(name string, measures []measure, weights map[string]*big.Rat, counts map[string]int64, c cfg.Config) partResult {
 	p := partResult{Part: model.Part{Name: name, Evidence: model.Evidence{Text: "Measured values only; unavailable measures are excluded.", Counts: counts}}, coverage: integer(0)}
 	total, weighted := integer(0), integer(0)
 	for _, m := range measures {
 		p.Evidence.Counts["measured."+m.name] = 0
 		v := points(m.value, c)
-		if !v.Present || weights[m.name] <= 0 {
+		w := weights[m.name]
+		if !v.Present || w == nil || w.Sign() <= 0 {
 			continue
 		}
 		p.Evidence.Counts["measured."+m.name] = 1
 		p.Evidence.Counts["points_tenths."+m.name] = v.V
-		w := decimal(weights[m.name])
 		total = add(total, w)
 		weighted = add(weighted, mul(w, clamp(m.value)))
 	}

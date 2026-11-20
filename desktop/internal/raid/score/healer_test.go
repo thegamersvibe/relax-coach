@@ -42,6 +42,8 @@ func TestHealerHalvesAndAbsorbs(t *testing.T) {
 		t.Fatalf("double death charge %+v", p)
 	}
 	f.Events = append(f.Events, mt.At(126000).Dst(a).Died(0).Build())
+	// Only R6-produced ownership may change the charge, not score survival.
+	ds[0].Owners = []string{b.Name}
 	p = part(t, playerScore(t, score.Score([]model.Fight{f}, ds, nil, c), a), "output")
 	if p.Evidence.Counts["points_tenths.healer_team"] != 1000 {
 		t.Fatal("dead healer charged")

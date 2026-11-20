@@ -2,6 +2,7 @@ package score
 
 import (
 	"math/big"
+	"slices"
 
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/cfg"
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/model"
@@ -33,21 +34,6 @@ func lowHealthHealing(f model.Fight, all map[string]*playerView, c cfg.Config) {
 		}
 	}
 }
-func aliveAt(v *playerView, at int64) bool {
-	live := true
-	for _, e := range v.life {
-		if e.TimeMs > at {
-			break
-		}
-		if e.IsDeath() {
-			live = false
-		}
-		if e.Kind == model.Resurrect {
-			live = true
-		}
-	}
-	return live
-}
 func healerOutput(f model.Fight, v *playerView, all map[string]*playerView, deaths []model.Death, c cfg.Config) partResult {
 	n, total := 0, int64(0)
 	for _, p := range all {
@@ -58,7 +44,7 @@ func healerOutput(f model.Fight, v *playerView, all map[string]*playerView, deat
 	}
 	unhealed := int64(0)
 	for _, d := range deaths {
-		if d.FightID == f.ID && d.Cause == model.CauseUnhealed && aliveAt(v, d.TimeMs) {
+		if d.FightID == f.ID && d.Cause == model.CauseUnhealed && d.OwnerKind == model.OwnerHealers && slices.Contains(d.Owners, v.actor.Name) {
 			unhealed++
 		}
 	}
@@ -75,8 +61,8 @@ func healerOutput(f model.Fight, v *playerView, all map[string]*playerView, deat
 		individual = nil
 	}
 	counts := map[string]int64{"alive_ms": v.aliveMs, "low_health_effective": v.lowHealing, "team_low_health_effective": total, "baseline_players": int64(n), "unhealed_deaths": unhealed}
-	weights := map[string]float64{"healer_team": c.Scoring.Healer.TeamShare * 100, "healer_individual": c.Scoring.Healer.IndividualShare * 100}
-	p := makePart("output", []measure{{"healer_team", team}, {"healer_individual", individual}}, weights, counts, c)
+	weights := map[string]*big.Rat{"healer_team": mul(decimal(c.Scoring.Healer.TeamShare), integer(100)), "healer_individual": mul(decimal(c.Scoring.Healer.IndividualShare), integer(100))}
+	p := makePartExact("output", []measure{{"healer_team", team}, {"healer_individual", individual}}, weights, counts, c)
 	if p.Tenths.Present {
 		p.Baseline = "role"
 		p.Provisional = n < c.Scoring.Confidence.MinBaselinePlayers

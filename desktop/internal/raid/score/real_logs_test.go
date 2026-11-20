@@ -76,7 +76,10 @@ func TestRealLogsR7(t *testing.T) {
 			}
 			var deaths []model.Death
 			for _, f := range run.Fights {
-				ds, _, outside := death.Review(f, run.EndMs, c)
+				ds, _, outside, err := death.Review(f, run.EndMs, c)
+				if err != nil {
+					t.Fatal("private death review failed")
+				}
 				deaths = append(deaths, ds...)
 				excluded += outside
 			}

@@ -242,12 +242,18 @@ measures and output-peer baselines (including healer halves), not merely their
 label. Other parts remain measurable. An unknown spec retains the phase-one
 role fallback and `uncalibratedSpec` flag; it is not an explicitly flagged profile.
 R6/R7 exchange model cause and owner constants, not file-format cause keys.
+A roster entry with only incoming damage/healing/health evidence and no owned
+source or caster action is unmeasured: no Output/Activity, no peer-baseline
+membership and no rank. An observed failed action can still be a genuine zero.
 DPS and tanks compare effective boss damage per millisecond alive to the role
 median (all hostile, unowned creatures for trash). Only landed swing amounts
 count; overkill is clamped at zero before subtraction. Pets use `Fight.Owners`.
-Healer output combines the team and individual halves: unhealed deaths charge
-only healers alive at the death, including the post-end tail; individual credit
-is effective healing plus consumed absorbs (the shield's `Caster`) on players
+Healer output combines the team and individual halves: an unhealed death charges
+only its classifier-produced `OwnerKind=healers` / full logged `Owners` members.
+Scoring must not recompute survival or a healing team for ownership, including
+post-end and same-millisecond death/resurrection lines. Authored shares become
+exact decimal rationals before multiplication by 100; no float-scaled weights
+feed part/fight/night coverage or scores. Individual credit is effective healing plus consumed absorbs (the shield's `Caster`) on players
 at or below the cutoff in their preceding valid `InfoUnit` HP/HPMax sample.
 Unknown health is not low health. The individual share is compared with an
 equal share of the healing team's total. A lone healer retains the team half,
@@ -261,8 +267,8 @@ deaths and resurrections but no feign deaths. Failed/incomplete casts, pet
 uptime, auras and RANGE damage/miss events provide no activity. Shots already
 have `SPELL_CAST_SUCCESS` lines. A zero role median is unmeasured, not a free 70.
 A start older than the known spell cast time must not pair with a success. The
-current model/config exposes no cast-time or timeout field, so the fallback
-cap is ten seconds, inclusive (`10 * time.Second / time.Millisecond`). A stale
+current model exposes no spell cast time, so the inclusive cap comes from
+scoring 1.5.0 `activity_cast_cap_ms` (seed 10000 ms), not a code constant. A stale
 success contributes only its cooldown. A melee miss requires spell ID zero,
 empty spell name and distinct source/target; a spell-zero self miss is not a swing.
 
@@ -336,7 +342,7 @@ not zero. Reserved part metadata is **not** hidden in these maps.
 | `baseline_damage_num`, `baseline_damage_den` | Exact reduced fraction for role-median damage per millisecond alive. May be recorded even when insufficient peers prevent measurement. |
 | `baseline_active_num`, `baseline_active_den` | Exact reduced fraction for the role-median active share. |
 | `low_health_effective`, `team_low_health_effective` | Player's low-health effective healing plus consumed absorbs, and the healers' total. |
-| `unhealed_deaths` | Unhealed deaths at which this healer was alive; controls the team half and output cap. |
+| `unhealed_deaths` | Unhealed deaths whose R6 `OwnerKind=healers` and `Owners` include this full logged name; controls the team half and output cap. |
 | `owned_deaths`, `unresolved_deaths` | Death charges owned by this player, and their unresolved deaths (evidence only). |
 | `death_severity_num`, `death_severity_den` | Exact reduced sum of death severity, each `1 - elapsed / (2 * duration)` with elapsed clipped to the fight. Multiply by configured `owned_death` penalty. |
 | `boss_swings_taken` | Landed swings from the fight's boss units on this player; no tank measure. |

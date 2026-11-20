@@ -23,6 +23,25 @@ func TestCastStartExpiresAtFallbackCap(t *testing.T) {
 	}
 }
 
+func TestCastStartUsesConfiguredCap(t *testing.T) {
+	for _, cap := range []int64{1250, 15000} {
+		c := tunedScoring(t, func(m map[string]any) { m["activity_cast_cap_ms"] = cap })
+		for _, gap := range []int64{cap - 1, cap, cap + 1} {
+			f := fixture("dps", "dps")
+			a := f.Players[0]
+			f.Events = []model.Event{{TimeMs: 110000, Kind: model.CastStart, Src: a, SpellID: 81}, {TimeMs: 110000 + gap, Kind: model.CastSuccess, Src: a, SpellID: 81}, {TimeMs: 140000, Kind: model.CastSuccess, Src: f.Players[1]}}
+			p := part(t, playerScore(t, score.Score([]model.Fight{f}, nil, nil, c), a), "activity")
+			want := int64(1500)
+			if gap <= cap {
+				want += gap
+			}
+			if p.Evidence.Counts["active_ms"] != want {
+				t.Errorf("cap=%d gap=%d active=%d want=%d", cap, gap, p.Evidence.Counts["active_ms"], want)
+			}
+		}
+	}
+}
+
 func TestSpellZeroSelfMissIsNotMelee(t *testing.T) {
 	for _, tc := range []struct {
 		self      bool

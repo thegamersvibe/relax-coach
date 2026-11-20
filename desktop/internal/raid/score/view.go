@@ -13,7 +13,6 @@ type playerView struct {
 	actor                                 model.Actor
 	role                                  string
 	alive                                 []interval
-	life                                  []model.Event
 	aliveMs, damage, activeMs, lowHealing int64
 	activityKnown                         bool
 	uncalibrated                          bool
@@ -57,8 +56,9 @@ func views(f model.Fight, c cfg.Config) map[string]*playerView {
 	}
 	events := ordered(f.Events)
 	for id, v := range out {
+		// Incoming damage/healing and target health alone are not own actions.
 		for _, e := range events {
-			if e.TimeMs >= f.StartMs && e.TimeMs <= end && (owner(f, e.Src.ID) == id || e.Dst.ID == id || e.InfoUnit == id || owner(f, e.Caster.ID) == id) {
+			if e.TimeMs >= f.StartMs && e.TimeMs <= end && (owner(f, e.Src.ID) == id || owner(f, e.Caster.ID) == id) {
 				v.observed = true
 				break
 			}
@@ -67,9 +67,6 @@ func views(f model.Fight, c cfg.Config) map[string]*playerView {
 		for _, e := range events {
 			if e.Dst.ID != id || e.TimeMs < f.StartMs {
 				continue
-			}
-			if e.IsDeath() || e.Kind == model.Resurrect {
-				v.life = append(v.life, e)
 			}
 			at := min(end, e.TimeMs)
 			if e.IsDeath() && live {

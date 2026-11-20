@@ -12,7 +12,10 @@ readers; production imports remain only model and cfg (plus stdlib).
 
 No private fixtures are committed. The real test emits ordinal log labels,
 counts, coverage sets and active-share distributions, never names, IDs or paths.
-R6 is absent from this branch, so classified deaths are deliberately empty.
+Real R6 classifications and final run-end errors are consumed by the integration
+test. Score uses its returned healer owners, never its own survival replay.
+Round-2 tests cover same-ms ownership, exact decimal shares, incoming-only
+players and configured cast caps; the manifest has 127 compile-valid mutants.
 RANGE cannot be separated from SPELL in model.Event; the optional unmatched
 range/cast check is explicitly skipped rather than guessed from spell IDs.
 

@@ -3,15 +3,10 @@ package score
 import (
 	"math/big"
 	"sort"
-	"time"
 
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/cfg"
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/model"
 )
-
-// The current model/cfg carries no spell cast time or timeout field. Use the
-// ruled fallback, expressed with time units rather than a forbidden large literal.
-const maxCastIntervalMs = int64(10 * time.Second / time.Millisecond)
 
 // Only completed casts supply intervals. A failed cast is private to the
 // logger, so it never supplies activity. RANGE events supply none either:
@@ -33,7 +28,7 @@ func activeTime(v *playerView, events []model.Event, c cfg.Config) (int64, bool)
 			delete(starts, e.SpellID)
 		case model.CastSuccess:
 			start := e.TimeMs
-			if s, ok := starts[e.SpellID]; ok && e.TimeMs-s <= maxCastIntervalMs {
+			if s, ok := starts[e.SpellID]; ok && e.TimeMs-s <= c.Scoring.ActivityCastCapMs {
 				start = s
 			}
 			delete(starts, e.SpellID)

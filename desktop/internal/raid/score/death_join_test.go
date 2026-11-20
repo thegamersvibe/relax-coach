@@ -1,6 +1,7 @@
 package score_test
 
 import (
+	"sort"
 	"testing"
 
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/death"
@@ -21,7 +22,12 @@ func TestDeathReviewUnhealedCapsHealerTeam(t *testing.T) {
 		mt.At(129000).Src(boss).Dst(victim).Spell(81, "Synthetic damage").Damage(10, -1).Build(),
 		model.Event{TimeMs: 129500, InfoUnit: victim.ID, HP: model.Some(300), HPMax: model.Some(1000)},
 		mt.At(130000).Dst(victim).Died(0).Build())
-	deaths, _, excluded := death.Review(f, 160000, c)
+	// This fixture appends earlier events; form a monotonic synthetic log.
+	sort.SliceStable(f.Events, func(i, j int) bool { return f.Events[i].TimeMs < f.Events[j].TimeMs })
+	deaths, _, excluded, err := death.Review(f, 160000, c)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if excluded != 0 || len(deaths) != 1 || deaths[0].Cause != model.CauseUnhealed || deaths[0].OwnerKind != model.OwnerHealers {
 		t.Fatalf("fixture did not produce an R6 unhealed death: %+v excluded=%d", deaths, excluded)
 	}

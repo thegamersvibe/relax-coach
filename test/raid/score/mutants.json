@@ -253,10 +253,10 @@
   },
   {
     "file": "desktop/internal/raid/score/measure_healer.go",
-    "old": "&& aliveAt(v, d.TimeMs)",
-    "new": "&& true",
-    "killed_by": "TestHealerHalvesAndAbsorbs",
-    "rule": "unhealed living healers only"
+    "old": "&& slices.Contains(d.Owners, v.actor.Name)",
+    "new": "&& (slices.Contains(d.Owners, v.actor.Name) || true)",
+    "killed_by": "TestSecondDeathJoinSameMillisecond",
+    "rule": "classifier owns the living-healer charge; no score survival replay"
   },
   {
     "file": "desktop/internal/raid/score/measure_healer.go",
@@ -694,15 +694,15 @@
   },
   {
     "file": "desktop/internal/raid/score/measure_activity.go",
-    "old": "ok && e.TimeMs-s <= maxCastIntervalMs",
+    "old": "ok && e.TimeMs-s <= c.Scoring.ActivityCastCapMs",
     "new": "ok",
-    "killed_by": "TestCastStartExpiresAtFallbackCap"
+    "killed_by": "TestCastStartUsesConfiguredCap"
   },
   {
     "file": "desktop/internal/raid/score/measure_activity.go",
-    "old": "e.TimeMs-s <= maxCastIntervalMs",
-    "new": "e.TimeMs-s < maxCastIntervalMs",
-    "killed_by": "TestCastStartExpiresAtFallbackCap"
+    "old": "e.TimeMs-s <= c.Scoring.ActivityCastCapMs",
+    "new": "e.TimeMs-s < c.Scoring.ActivityCastCapMs",
+    "killed_by": "TestCastStartUsesConfiguredCap"
   },
   {
     "file": "desktop/internal/raid/score/measure_activity.go",
@@ -793,5 +793,61 @@
     "old": "if total.Cmp(integer(1)) >= 0 {",
     "new": "if total.Cmp(integer(1)) > 0 {",
     "killed_by": "TestSubHundredthPartCannotPublishZeroCoverage"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "d.Cause == model.CauseUnhealed",
+    "new": "true",
+    "killed_by": "TestHealerDeathChargeRequiresClassifierOwnership",
+    "rule": "M1 non-unhealed death cannot charge the healing team"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "&& d.OwnerKind == model.OwnerHealers",
+    "new": "&& true",
+    "killed_by": "TestHealerDeathChargeRequiresClassifierOwnership",
+    "rule": "only classifier healer ownership"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "d.FightID == f.ID",
+    "new": "true",
+    "killed_by": "TestHealerDeathChargeRequiresClassifierOwnership",
+    "rule": "healer charge scoped to fight"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "mul(decimal(c.Scoring.Healer.TeamShare), integer(100))",
+    "new": "decimal(c.Scoring.Healer.TeamShare * 100)",
+    "killed_by": "TestSecondHealerDecimalScore",
+    "rule": "decimal team share converted before scaling"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "mul(decimal(c.Scoring.Healer.IndividualShare), integer(100))",
+    "new": "decimal(c.Scoring.Healer.IndividualShare * 100)",
+    "killed_by": "TestSecondHealerIndividualDecimalShare",
+    "rule": "decimal individual share converted before scaling"
+  },
+  {
+    "file": "desktop/internal/raid/score/view.go",
+    "old": "owner(f, e.Src.ID) == id || owner(f, e.Caster.ID) == id",
+    "new": "owner(f, e.Src.ID) == id || e.Dst.ID == id || owner(f, e.Caster.ID) == id",
+    "killed_by": "TestDamageTakenOnlyPlayerIsUnmeasured",
+    "rule": "incoming-only damage is not an action"
+  },
+  {
+    "file": "desktop/internal/raid/score/view.go",
+    "old": "owner(f, e.Src.ID) == id || owner(f, e.Caster.ID) == id",
+    "new": "owner(f, e.Src.ID) == id || e.InfoUnit == id || owner(f, e.Caster.ID) == id",
+    "killed_by": "TestDamageTakenOnlyPlayerIsUnmeasured",
+    "rule": "target health is not an action"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_activity.go",
+    "old": "c.Scoring.ActivityCastCapMs",
+    "new": "10 * *c.Scoring.GCDEnergyMs",
+    "killed_by": "TestCastStartUsesConfiguredCap",
+    "rule": "configured cap not old constant"
   }
 ]
