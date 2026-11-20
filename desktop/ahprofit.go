@@ -185,6 +185,9 @@ func (a *App) readAHProfitLocked(known string) ([]byte, time.Time, string, error
 func (a *App) loadFarmLocked(v *View, prev View) {
 	data, mod, key, err := a.readAHProfitLocked(a.farmParse.key)
 	if errors.Is(err, fs.ErrNotExist) {
+		if a.wowhead != nil {
+			a.wowhead.refresh(nil, nil)
+		}
 		return // page hidden
 	}
 	var fv FarmView
@@ -199,10 +202,19 @@ func (a *App) loadFarmLocked(v *View, prev View) {
 			}
 		}
 		if err == nil {
-			fv = buildFarmDB(db, v.Chars, time.Now(), loadFarmRef(a.game, &a.farmRef), v.itemNames, loadGearNames(a.game, &a.gearNames))
+			ref := loadFarmRef(a.game, &a.farmRef)
+			gear := loadGearNames(a.game, &a.gearNames)
+			var online map[int]farmItemRef
+			if a.wowhead != nil {
+				online = a.wowhead.refresh(db, mergedFarmItems(db, ref, v.itemNames, gear))
+			}
+			fv = buildFarmDB(db, v.Chars, time.Now(), ref, v.itemNames, gear, online)
 		}
 	}
 	if err != nil {
+		if a.wowhead != nil {
+			a.wowhead.refresh(nil, nil)
+		}
 		if prev.Farm.Present && prev.Farm.Error == "" && prev.Game == v.Game && prev.Account == v.Account {
 			v.Farm = prev.Farm
 			v.Farm.Warning = "Latest AH Profit save couldn't be read yet, showing the previous one (" + err.Error() + ")"
@@ -261,24 +273,28 @@ func parseFarm(data []byte) (map[string]any, error) {
 	return db, nil
 }
 
-func buildFarmDB(db map[string]any, chars []CharView, now time.Time, ref farmRef, fallbackNames ...map[int]farmItemRef) FarmView {
-	now = now.Truncate(time.Second) // whole seconds, like the game's GetServerTime
-	fv := FarmView{Present: true, Cut: 5}
-	// Names: AH Profit save, its bundled files (unchanged priority), Coach,
-	// GearQuest, then "item <id>". Quality is independent: Coach then GearQuest
-	// by item ID. The new sources never supply vendor prices or gatherability.
+// Keep online admission and the renderer on exactly the same local precedence.
+// Optional names never supply vendor prices or gatherability.
+func mergedFarmItems(db map[string]any, ref farmRef, fallbackNames ...map[int]farmItemRef) map[int]farmItemRef {
 	items := map[int]farmItemRef{}
 	for id, it := range ref.Items {
 		items[id] = it
 	}
-	ver, verOK := ahpInt(db["v"], 1e6)
-	v3 := verOK && ver == 3 // ledger, sessions and items exist only in version 3
-	if v3 {
+	if ver, ok := ahpInt(db["v"], 1e6); ok && ver == 3 {
 		saveItemRefs(db, items)
 	}
 	for _, names := range fallbackNames {
 		fillFarmNames(items, names)
 	}
+	return items
+}
+
+func buildFarmDB(db map[string]any, chars []CharView, now time.Time, ref farmRef, fallbackNames ...map[int]farmItemRef) FarmView {
+	now = now.Truncate(time.Second) // whole seconds, like the game's GetServerTime
+	fv := FarmView{Present: true, Cut: 5}
+	items := mergedFarmItems(db, ref, fallbackNames...)
+	ver, verOK := ahpInt(db["v"], 1e6)
+	v3 := verOK && ver == 3 // ledger, sessions and items exist only in version 3
 	fv.NamesFilling = farmNameProgress(db, items)
 	if c, ok := ahpInt(db["cut"], 100); ok && (c == 5 || c == 15) {
 		fv.Cut = c

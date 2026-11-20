@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"flag"
@@ -115,6 +116,7 @@ type App struct {
 	configWarning          string
 	canAutoSelect          bool
 	gearNames              gearNameCache
+	wowhead                *wowheadNames  // initialized by the app entrypoint; tests inject only fake servers
 	farmRef                farmRefCache   // AH Profit's bundled names, reparsed only when the files change
 	farmParse              farmParseCache // the parsed AHProfit.lua, reparsed only when the file changes
 }
@@ -161,6 +163,11 @@ func main() {
 		game = findGame()
 	}
 	app := &App{}
+	if !*once {
+		app.wowhead = newWowheadNames(context.Background(), wowheadCachePath(), wowheadTooltipURL, client)
+		app.wowhead.setEnabled(savedWowheadNames())
+		defer app.wowhead.Close()
+	}
 	app.setGame(game)
 	app.reload()
 	if *once {
