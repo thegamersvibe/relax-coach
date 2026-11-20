@@ -1,4 +1,4 @@
-"""Real Prep/Wire/Store output; only mocked client inputs, invented ASCII names.
+"""Real Prep/Wire/Store output; only mocked client inputs, invented names.
 Run with --write to regenerate; default unittest compares without writing.
 The v1/newer fixtures change ONLY a version tag on real v2 output, as Store's
 own version-gate tests do. They are not claims of an old/future writer.
@@ -34,6 +34,11 @@ def saves():
         if valid:
             assert_references(unittest.TestCase(), c)
         out[name] = "-- Synthetic client output; regenerate with test/raid/prepread_fixtures/generate.py --write\nRelaxRaidDB = " + literal(c.lua.globals().RelaxRaidDB) + "\n"
+
+    c = boot()
+    c.player_name = "Élia-Stóne"
+    put(c)
+    save("accented", c)
 
     c = boot()
     c.bags = {0: [{"itemID": 101, "stackCount": 3}, {"itemID": 102, "stackCount": 5}, {"itemID": 103, "stackCount": 1}, {"itemID": 104, "stackCount": 2}]}
@@ -150,15 +155,25 @@ class FixtureTests(unittest.TestCase):
     def test_fixtures_are_real_addon_output(self):
         for name, raw in saves().items():
             with self.subTest(name=name):
-                self.assertTrue(raw.isascii())
-                self.assertEqual((DEST / (name + ".lua")).read_text(encoding="ascii"), raw)
+                if name == "accented":
+                    self.assertIn("Élia-Stóne", raw)
+                else:
+                    self.assertTrue(raw.isascii())
+                self.assertEqual((DEST / (name + ".lua")).read_text(encoding="utf-8"), raw)
+                # Execute only our generated fixture in the test Lua 5.1 VM.
+                # The app reader never executes SavedVariables.
+                reader = Client()
+                self.assertEqual(reader.run("return _VERSION"), "Lua 5.1")
+                reader.run(raw)
+                self.assertEqual(literal(reader.lua.globals()["RelaxRaidDB"]),
+                                 raw.split("RelaxRaidDB = ", 1)[1].rstrip("\n"))
 
 
 if __name__ == "__main__":
     if sys.argv[1:] == ["--write"]:
         DEST.mkdir(parents=True, exist_ok=True)
         for name, raw in saves().items():
-            (DEST / (name + ".lua")).write_text(raw, encoding="ascii")
+            (DEST / (name + ".lua")).write_text(raw, encoding="utf-8")
             print(name, len(raw.encode()), "bytes")
     else:
         unittest.main()

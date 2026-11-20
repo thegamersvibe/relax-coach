@@ -135,7 +135,9 @@ interpretation. Neither v1 nor newer input is rewritten.
 `test/raid/prepread_fixtures/generate.py` boots `_client/Client` with the real
 RelaxRaid TOC, runs real Prep/Wire/Store, then uses `_client/serialize.literal`
 to write account SavedVariables. That serializer is the existing simulator's
-Lua-literal writer, **not a claim of native Blizzard file formatting**.
+Lua-literal writer. Its follow-up fix emits raw UTF-8 and Lua 5.1 string escapes,
+verified by actual Lua 5.1 reload; table layout/whitespace are **not a claim of
+native Blizzard file formatting**.
 
 Regeneration:
 
@@ -143,14 +145,16 @@ Regeneration:
 uv run --no-project --python 3.14 --with-requirements .github/requirements-ci.txt python -I -B test/raid/prepread_fixtures/generate.py --write
 ```
 
-Normal CI mode regenerates in memory and compares exact fixture bytes without
-writing. A discovered `prepread_fixtures` Python module runs this check; the Go
+Normal CI mode regenerates in memory, compares exact fixture bytes without
+writing, and reloads every generated fixture through Lua 5.1. A discovered
+`prepread_fixtures` Python module runs this check; the Go
 `prepread` descriptor declares the data dependency. No runner edit is needed.
 
 Committed under `desktop/internal/raid/prepread/testdata/`:
 
 | File | Scenario |
 |---|---|
+| `accented.lua` | invented accented whole name, raw UTF-8 keys/body, Lua 5.1 reload and Go ReadFile |
 | `normal.lua` | potion/food/flask/elixir, played time, two upgrades including confirmed empty worn slot, notScored slot |
 | `dedup.lua` | two window receipts sharing one body |
 | `played-refresh.lua` | second receipt refreshes played time in place; original sentAt and earlier receipt retained |
@@ -165,7 +169,8 @@ Committed under `desktop/internal/raid/prepread/testdata/`:
 | `version-one-reloaded.lua` | actual addon Init discards that tagged v1 store |
 | `newer.lua` | synthetic future tag on actual output, then actual addon Init preserves it |
 
-There are **13 fixtures** and the Go property visits **90 stored bodies**,
+There are **14 fixtures** (13 ASCII and one UTF-8 accented-name case) and the
+Go property visits **91 stored bodies**,
 including tagged version controls: all decode and re-encode identically.
 Field-by-field normal/marker/wide/retention assertions use independent expected
 model values. Hostile mutations and exact-byte controls are test-only synthetic
@@ -195,9 +200,11 @@ all original cases and both original mutants. Added an unordered-receipt mutant.
 Final result: **65/65 killed**, none survived/refused. Production guards were
 not weakened to obtain this result.
 
-## Final commands actually run
+## Reader-commit commands actually run
 
-Go 1.27.3 and the existing pinned CI Python 3.14/lupa environment. Commands were
+For reader commit `4236bd27f9de6b9a71e519f468b9413988fb5c14`, before the
+serializer follow-up below: Go 1.27.3 and the existing pinned CI Python
+3.14/lupa environment. Commands were
 run sequentially; no full desktop `go test ./...` was run.
 
 ```text
@@ -243,6 +250,89 @@ git diff --check
 Module deadlines remain unchanged at 30 seconds. This lane's discovered Go
 module took 6.2 seconds and fixture module 0.2 seconds. The existing cfg lane
 was the nearest deadline (27.0 seconds); it passed unchanged.
+
+## UTF-8 serializer follow-up (separate local commit)
+
+The lead's subsequent required fix supersedes ASCII-only fixture generation.
+`test/raid/_client/serialize.py` used JSON `ensure_ascii=True`, which emits
+`\uXXXX`. Lua 5.1 does not decode those as Unicode: the baseline changed the
+accented table key, and the strict Go parser correctly refused the invalid
+escape rather than silently repairing it.
+
+RED was run before editing the writer:
+
+```text
+python -I -B test/raid/_client/test_client.py SerializationTests -v
+FAIL test_accented_name_survives_saved_file_lua51_reload
+AssertionError: None != 'Élia-Stóne-PvP-EU'
+FAIL test_saved_strings_use_lua51_escapes
+# Lua returned u0000... / u00c9... text rather than the source bytes
+Ran 2 tests; FAILED (failures=2)
+
+go -C desktop test -count=1 ./internal/raid/prepread -run '^TestAccentedRealSave$' -v
+FAIL TestAccentedRealSave
+reports=[]model.PrepReport(nil), diagnostic={Warnings:[literal syntax] Skipped:map[]}
+```
+
+The test first wrote a real file and loaded its bytes through the client's
+actual Lua VM, explicitly asserting `_VERSION == "Lua 5.1"`. The Go RED used
+an addon-generated accented fixture emitted by the still-faulty writer, not a
+missing file or a hand-written invalid string. The follow-up changes only the
+writer/tests/fixture generation, not Go production code or the addon.
+
+The writer now leaves Unicode raw and uses backslash/quote/named Lua escapes
+plus fixed three-digit decimal escapes for other ASCII controls and DEL.
+Tests retain accented keys and values, decomposed Unicode, non-BMP Unicode,
+quotes/backslashes, all 32 ASCII controls and DEL; following digits prove that
+decimal escapes cannot consume later characters. No Unicode normalization.
+The 13 pre-existing ASCII fixtures remain byte-identical to the reader commit.
+
+Observed GREEN, then fresh final gates run sequentially after the final code edit:
+
+```text
+python -I -B test/raid/_client/test_client.py SerializationTests -v
+Ran 2 tests in 0.006s; OK
+
+python -I -B test/raid/prepread_fixtures/generate.py --write
+# accented: 420 bytes; 14 fixtures emitted
+python -I -B test/raid/prepread_fixtures/generate.py
+Ran 1 test in 0.111s; OK
+
+go -C desktop test -count=1 ./internal/raid/prepread -run 'TestAccentedRealSave|TestLuaBodiesRoundTrip' -v
+# 91 real serialized Lua bodies re-encode identically
+PASS TestAccentedRealSave
+PASS
+
+(cd desktop && gofmt -l internal/raid && go vet ./internal/raid/... && go test -count=1 ./internal/raid/...)
+# no formatting/vet diagnostics; all raid packages PASS, prepread 0.972s
+python3 -I -B tools/raidtest.py --all --kind go
+RESULT: 8/8 modules passed
+# prepread 6.4s (race enabled), cfg 26.5s, all within unchanged 30s deadlines
+
+python -I -B tools/raidtest.py --mutants prepread
+RESULT: 65/65 mutants killed
+python -I -B tools/raidtest.py --mutants _client
+RESULT: 4/4 mutants killed
+python -I -B tools/raidtest.py --all --kind lua,py
+RESULT: 18/18 modules passed
+# _client 0.1s; prepread_fixtures 0.2s; largest _runner 11.8s
+
+go -C desktop test -count=1 -cover ./internal/raid/prepread
+ok prepread 0.979s coverage: 97.6% of statements
+GOMAXPROCS=1 go -C desktop test ./internal/raid/prepread -run '^$' -fuzz FuzzParseNeverPanics -fuzztime=5s -parallel=1
+# 5/5 baseline inputs, 123,143 executions, no failure
+PASS; ok prepread 5.112s
+
+git diff --check
+# clean
+```
+
+All `python` commands above used the same uv/Python 3.14 requirements wrapper
+shown in the preceding command block. The new `_client` mutants restore JSON
+Unicode escaping, remove decimal padding, remove DEL escaping, and remove
+backslash escaping. All compile and are killed by named baseline-passing tests.
+The client's module source now includes its serializer, so these mutations are
+inside the declared source boundary. No deadline was changed.
 
 ## Not verified / release boundary
 

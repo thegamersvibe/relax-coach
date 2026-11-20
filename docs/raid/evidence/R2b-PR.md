@@ -70,14 +70,18 @@ No protocol/code contradiction or missing model field was found.
 
 ## Verification
 
-- Real addon-driven generator commits 13 small ASCII fixtures; CI checks exact
-  regeneration. 90 retained bodies round-trip byte-identically in Go.
+- Real addon-driven generator commits 14 small fixtures (13 ASCII, one accented
+  UTF-8); CI checks exact regeneration and Lua 5.1 reload. 91 retained bodies
+  round-trip byte-identically in Go. The separate serializer fix replaces JSON
+  Unicode escaping with raw UTF-8 and Lua 5.1 byte escapes, with Lua/Go RED→GREEN
+  and control-byte/Unicode tests recorded in [R2b.md](R2b.md).
 - RED normal reader, dedup/filter/file entrypoint, long-comment and future-version
   cases recorded in [R2b.md](R2b.md), including the first 62/64 mutation result.
 - Final: gofmt clean; raid-tree vet/test pass; discovery **8/8 Go** and **18/18
-  Lua/Python**; **65/65 mutants killed**; single-worker 5-second fuzz passed
-  (27,392 executions); package statement coverage **97.6%**.
-- Reader discovery module 6.2s and fixture module 0.2s against unchanged 30s caps.
+  Lua/Python**; **65/65 reader mutants** and **4/4 serializer mutants killed**;
+  single-worker 5-second fuzz passed (123,143 executions); package statement
+  coverage **97.6%**.
+- Reader discovery module 6.4s and fixture module 0.2s against unchanged 30s caps.
 - No full desktop suite, native game/Windows execution or R7/UI integration.
 
 Base: `2c962c9202bc6ca5eb3142118646252db11f72d2`; branch

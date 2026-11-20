@@ -8,6 +8,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from client import Client  # noqa: E402
+from serialize import literal  # noqa: E402
 
 
 class ClientTests(unittest.TestCase):
@@ -170,6 +171,35 @@ class ClientTests(unittest.TestCase):
             self.assertIsNone(c.run("return seenDB"), "saved variables arrive after the files run")
             self.assertEqual(c.run("return loaded"), "Fake")
             self.assertEqual(c.run("return db.x"), 1)
+
+
+class SerializationTests(unittest.TestCase):
+    def test_accented_name_survives_saved_file_lua51_reload(self):
+        import tempfile
+        from pathlib import Path
+
+        c = Client()
+        self.assertEqual(c.run("return _VERSION"), "Lua 5.1")
+        name = "Élia-Stóne-PvP-EU"
+        raw = "Saved = " + literal({name: name})
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "Saved.lua"
+            path.write_bytes(raw.encode("utf-8"))
+            c.run(path.read_bytes())
+        self.assertEqual(c.lua.globals()["Saved"][name], name)
+        self.assertIn(name, raw, "UTF-8 must be raw, not JSON Unicode escapes")
+
+    def test_saved_strings_use_lua51_escapes(self):
+        c = Client()
+        self.assertEqual(c.run("return _VERSION"), "Lua 5.1")
+        # A digit after every control byte catches variable-width decimal escapes.
+        value = "".join(chr(n) + "123" for n in range(32)) + chr(127) + "9"
+        value += '\\"\n\r\t Élia E\u0301lia \U0001f409'
+        self.assertEqual(c.run("return " + literal(value)), value)
+        cases = (("\x001", r'"\0001"'), ("\x012", r'"\0012"'),
+                 ("\x1f3", r'"\0313"'), ("\x7f9", r'"\1279"'))
+        self.assertEqual([literal(text) for text, _ in cases],
+                         [expected for _, expected in cases])
 
 
 if __name__ == "__main__":
