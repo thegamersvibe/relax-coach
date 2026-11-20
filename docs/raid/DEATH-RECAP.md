@@ -14,6 +14,8 @@ later LayerEnemies port. One `RelaxDeathRecap` global owns the window and its
 plain event frame. The higher module version owns it; the first equal version
 wins. Other copies only register named hooks. Both hooks receive the settled
 recap once, after the final retry (or before a subsequent death replaces it).
+If `C_Timer` is missing or any `After` scheduling call fails, finish and save
+immediately; previously queued callbacks cannot change the settled recap.
 Release/revive closes the UI but does not cancel the two-second read window.
 Retries never reopen the window. This lane changes no
 LayerEnemies code, tracking, scoring, wire format or updater.
@@ -40,18 +42,26 @@ from **all** copied rows, so displayed hostile-player shares need not sum to
 including when a readable owner GUID exists; owner resolution never guesses a
 name or merges their damage into a player. No hostile player means no PvP block.
 
-At each death, rows matching the previous accepted snapshot's timestamps and IDs
-are rejected: the window says `no recap data for this death` until different rows
-arrive during the 0.3/1/2-second retries, including after a quick release. Identity
-comparison is order-independent and uses timestamp, source GUID, spell ID, event
-and environmental type, not mutable amounts, health or display names. A rejected
-empty/stale death does not reset the last accepted snapshot; restored history also
-seeds this comparison. Old timers cannot write another death or notify twice.
+At each death, freeze the previous `lastRecapTs` as its cutoff. Every read drops
+rows with timestamps at or below that cutoff; once a cutoff exists, an unreadable
+timestamp is also dropped and marks the snapshot incomplete. If no rows remain,
+the window says `no recap data for this death`. Mixed snapshots retain only newer
+rows for damage, killer and shares. Subsets, reordered or changed identities and
+readability flips cannot make known older timestamps fresh. The exact-set identity
+comparison is replaced by this timestamp rule, not used as a primary guard.
 
-This is a duplicate-snapshot guard, not a native freshness guarantee: different
-rows are not proof of a client death ID or ownership of every delayed row. No
-tracking or other external action is based on it in this lane. The future LE
-integration still needs its own attribution/tracking safeguards.
+Keep the newest accepted row timestamp as `lastRecapTs`, never lower it when rows
+are withdrawn or a death is empty. The current death's cutoff stays fixed across
+0.3/1/2-second retries, including after quick release. Persist advances immediately
+(even before the final retry), independently of history retention, so reloads and
+newest-empty saved recaps cannot lose the cutoff. Old timers cannot write another
+death or notify twice. Compare only native row timestamps, never wall/game clocks.
+
+This is a timestamp freshness rule, not proof of a native death ID or ownership
+of a previously unreadable delayed row with a newer timestamp. Unknown timestamp
+rows remain displayable only before any cutoff is known. No tracking or other
+external action is based on it in this lane. The future LE integration still
+needs its own attribution/tracking safeguards.
 
 ## Hook and save interface
 
@@ -59,7 +69,7 @@ After the host's `ADDON_LOADED`, call
 `RelaxDeathRecap.register(addonName, {settings=table, avoidable=fn, identity=fn, onRecap=fn})`.
 Only the current owner supplies persisted settings. An optional
 `saveSettings(table)` hook binds initially session-local defaults when a setting,
-position or retained history is actually saved; default-only login creates no
+position, timestamp or retained history is actually saved; default-only login creates no
 character save. `avoidable(spellId)` returns
 true/nil/false. `identity(guid, name)` returns class, level, guild; absent identity
 falls back to **class only** from `GetPlayerInfoByGUID`. `onRecap(recap)` receives
@@ -67,7 +77,10 @@ a copied snapshot. Callbacks are guarded independently. No hook is required.
 
 Relax Raid stores `deathRecap` inside `RelaxRaidCharDB`; no new SavedVariables.
 Settings schema 1: `auto=true`, `autoclose=true`, `keep=false`, optional position
-`{x,y}`. A newer root or settings version is untouched. History is session-only
+`{x,y}`, optional `lastRecapTs` (one finite number in [-1e12, 1e12], absent until
+a readable row timestamp is known; invalid saved values are ignored). The number
+is always saved, even with keep off. A newer root or settings version is untouched.
+History is session-only
 unless keep is on: three recaps, twelve rows each, strings at most 160 bytes,
 finite numbers bounded to 1e12. IDs must be integers from 1 to 999999999999
 (the link's twelve-digit limit); corrupt IDs such as 1e12 drop the saved recap.
@@ -76,7 +89,7 @@ to clear saved recaps and reload. Persist only whitelisted raw fields plus ID,
 zone, clock, max health and completeness; computed UI state and foreign tables
 never persist.
 Wrong-type fields or oversized/sparse saved arrays reject the recap. Turning
-keep off deletes the saved history, not the current session tabs. Data contains
+keep off deletes the saved history, not the timestamp or current session tabs. Data contains
 player names and remains local. A replacement owner clears the previous owner's
 schema-1 saved history and alone writes subsequent history.
 
@@ -173,9 +186,11 @@ third-retry data, all fields secret/missing/throwing, zero max health, no events
 environmental/single-row recaps, shares/pets, hook failures and load order,
 retention/persistence corruption, native-popup isolation, options, combat and
 all instance types, tabs/scrolling/position, link validation and generated rules.
-Review regressions add stale/reordered previous snapshots, late data after quick
-release, whole-row failures, numeric amount rejection, saved-ID limits and 600-unit
-geometry. Mutation guards remain confined to DeathRecap.lua, including the shared
+Review regressions add stale subsets, readability flips, replay of death 1 at
+death 3, mixed old/new snapshots, frozen retry cutoffs, fresh-VM reloads with keep
+off or newest-empty history, timestamp validation, and missing/throwing timers.
+They also cover late data after quick release, whole-row failures, numeric amount
+rejection, saved-ID limits and 600-unit geometry. Mutation guards remain confined to DeathRecap.lua, including the shared
 three-attacker presentation cap. They do not execute another addon, certify native rendering, or certify the
 future LE tracking lane. The existing core frame-count assertion now separately
 requires exactly one Core dispatcher and one portable recap dispatcher.

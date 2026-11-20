@@ -14,8 +14,8 @@ Relax Raid adds a local **Death Recap**, available everywhere, including combat.
 It reads the game's recorded damage hits (usually about five, at most twelve),
 not a ten-second combat-log window; heals and duel losses have no recap. The
 window shows readable damage, source, spell, time before death, health, overkill
-and avoidable flags. Its hostile-player shares use **all recorded damage** as
-the denominator; pets remain separate and missing identity is labelled unknown.
+and avoidable flags. Its hostile-player shares use **all retained damage for this
+death** as the denominator; pets remain separate and missing identity is labelled unknown.
 The guild avoidable list is generated from enabled raid mechanics (currently
 empty); the game's own avoidable flag still works. Nothing is sent or scored.
 
@@ -27,15 +27,19 @@ Options are under **Options > AddOns > Relax Raid**, or `/recap auto on|off`,
 `/recap autoclose on|off`, `/recap keep on|off`. Automatic opening and closing on
 release/revive default on; keeping recaps after logout defaults off. Kept data
 contains player names, stays local in the existing character settings, and is
-capped at three deaths with twelve rows each. No new SavedVariables are added.
+capped at three deaths with twelve rows each. Even with keep off, one numeric
+last-recap timestamp is always saved to reject earlier-life hits after reload.
+No new SavedVariables are added.
 If another addon carries this shared module, the highest version owns one window
 and the saved history; both addons can register hooks. This change includes only
 the Relax Raid hook, not LayerEnemies tracking. If the game supplies no data, the
 window says so; missing popup callbacks leave `/recap` and the chat link working.
-Rows identical to the previous recap are not assigned to a new death: it shows
-**no recap data for this death** until different rows arrive within two seconds,
-even after a quick release (without reopening the window). Unreadable hits or
-invalid damage blank the shares and show **some hits unreadable**. The attacker
+Rows at or below the newest previously recorded recap timestamp are never
+assigned to a new death; mixed snapshots keep only newer rows. If none remain,
+it shows **no recap data for this death** until newer rows arrive within two
+seconds, even after a quick release (without reopening the window). If retry
+timers are missing or fail, the recap is finished and saved immediately.
+Unreadable hits or invalid damage blank the shares and show **some hits unreadable**. The attacker
 block shows three sources plus **+X more** so the window fits a 600-pixel-tall
 screen; all retained hits remain scrollable and all readable damage counts.
 See [API evidence and offline validation](docs/raid/DEATH-RECAP.md).

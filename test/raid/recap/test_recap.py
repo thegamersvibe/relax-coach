@@ -12,6 +12,19 @@ from client import Client
 ADDON = ROOT / 'addon/RelaxRaid'
 
 
+def saved_literal(value):
+    """Transfer only serialized SavedVariables, never runtime state, to a new VM."""
+    if value is None:
+        return 'nil'
+    if isinstance(value, bool):
+        return 'true' if value else 'false'
+    if isinstance(value, str):
+        return json.dumps(value)
+    if isinstance(value, (int, float)):
+        return repr(value)
+    return '{' + ','.join(f'[{saved_literal(k)}]={saved_literal(v)}' for k,v in value.items()) + '}'
+
+
 class RecapClient(Client):
     def __init__(self):
         super().__init__()
@@ -109,6 +122,85 @@ class RecapUITests(unittest.TestCase):
         c.fire('PLAYER_ALIVE'); c.hit(',timestamp=50'); c.fire('PLAYER_DEAD')
         self.assertEqual(c.run('return RelaxDeathRecap.history[1].rows[1].timestamp'),50)
 
+    def assert_no_current_rows(self, c):
+        self.assertEqual(c.run('return #RelaxDeathRecap.history[1].rows,RelaxDeathRecap.history[1].killer'), (0,'Unknown'))
+        self.assertEqual(c.run('return #RelaxDeathRecap.history[1].attackers'), 0)
+        self.assertEqual(c.run('return RelaxDeathRecap.empty.text'), 'no recap data for this death')
+        self.assertTrue(c.run('return RelaxDeathRecap.empty:IsShown()'))
+
+    def previous_life(self):
+        c = self.client(); c.hit()
+        c.run('events[2]={timestamp=9,amount=100,overkill=0,sourceGUID="Player-2",sourceName="Other Enemy",sourceFlags=1344,hideCaster=false}')
+        c.fire('PLAYER_DEAD'); c.advance(2); c.fire('PLAYER_ALIVE')
+        return c
+
+    def test_previous_row_subset_is_never_fresh(self):
+        # Reviewer G1 / OLD_SUBSET_ONLY, equality and strictly older bounds.
+        for index in (1,2):
+            c = self.previous_life(); c.run(f'events={{events[{index}]}}')
+            c.fire('PLAYER_DEAD')
+            for delay in (0,0.3,0.7,1):
+                c.advance(delay); self.assert_no_current_rows(c)
+
+    def test_old_identity_readability_changes_do_not_make_rows_fresh(self):
+        # Reviewer F8 / OLD_ID_*: timestamps, GUID, spell and event lose access.
+        for field in ('timestamp','sourceGUID','spellId','event'):
+            for value in ('nil','secret()', 'throw'):
+                c = self.previous_life()
+                if value == 'throw':
+                    c.run(f'''for _,r in ipairs(events) do r.{field}=nil
+                        setmetatable(r,{{__index=function(_,k) if k=="{field}" then error('hidden') end end}}) end''')
+                else:
+                    c.run(f'for _,r in ipairs(events) do r.{field}={value} end')
+                c.fire('PLAYER_DEAD'); c.advance(2); self.assert_no_current_rows(c)
+                if field == 'timestamp':
+                    self.assertTrue(c.run('return RelaxDeathRecap.history[1].incomplete'))
+                    self.assertIn('some hits unreadable', c.run('return RelaxDeathRecap.footer.text'))
+
+    def test_old_identity_becoming_readable_does_not_make_rows_fresh(self):
+        c = self.client(); c.hit(); c.run('events[1].spellId=secret()')
+        c.fire('PLAYER_DEAD'); c.advance(2); c.fire('PLAYER_ALIVE')
+        c.run('events[1].spellId=123')
+        c.fire('PLAYER_DEAD'); c.advance(2); self.assert_no_current_rows(c)
+
+    def test_old_whole_row_readability_flips_do_not_make_rows_fresh(self):
+        for hidden_first in (False,True):
+            c = self.client(); c.hit()
+            c.run('old=events[1]; events[2]={timestamp=9,amount=100,overkill=0}')
+            if hidden_first:
+                c.run('hidden=events[2]; events[2]=secret()')
+            c.fire('PLAYER_DEAD'); c.advance(2); c.fire('PLAYER_ALIVE')
+            c.run('events[2]=hidden' if hidden_first else 'events[2]=secret()')
+            c.fire('PLAYER_DEAD'); c.advance(2); self.assert_no_current_rows(c)
+
+    def test_first_death_rows_cannot_reappear_at_third_death(self):
+        c = self.previous_life(); c.run('old=events')
+        c.hit(',timestamp=30'); c.fire('PLAYER_DEAD'); c.advance(2); c.fire('PLAYER_ALIVE')
+        c.run('events=old'); c.fire('PLAYER_DEAD'); c.advance(2)
+        self.assert_no_current_rows(c)
+        self.assertEqual(c.run('return RelaxDeathRecap.history[2].rows[1].timestamp'), 30)
+
+    def test_mixed_snapshot_retains_only_new_life_rows_and_shares(self):
+        # Reviewer OVERLAP_NEW_KILLER / OVERLAP_OLD_KILLER.
+        for stamp in (8,10,30):
+            c = self.previous_life(); c.run('old=events[1]')
+            c.hit(f',timestamp={stamp},sourceGUID="Player-New",sourceName="New Enemy"')
+            c.run('events[2]=old'); c.fire('PLAYER_DEAD'); c.advance(2)
+            if stamp <= 10:
+                self.assert_no_current_rows(c)
+            else:
+                self.assertEqual(c.run('local r=RelaxDeathRecap.history[1]; return #r.rows,r.killer,#r.attackers,r.attackers[1].share'), (1,'New Enemy',1,100))
+                self.assertEqual(c.run('return RelaxDeathRecap.attackerFrames[1].share.text'), '100.0%')
+
+    def test_death_cutoff_is_frozen_while_last_timestamp_never_decreases(self):
+        c = self.previous_life(); c.hit(',timestamp=30'); c.fire('PLAYER_DEAD')
+        c.hit(',timestamp=20'); c.run('events[2]={timestamp=10,amount=100,overkill=0}')
+        c.advance(0.3)
+        self.assertEqual(c.run('return #RelaxDeathRecap.history[1].rows,RelaxDeathRecap.history[1].rows[1].timestamp'), (1,20))
+        c.advance(1.7); c.fire('PLAYER_ALIVE')
+        c.hit(',timestamp=30,spellId=456'); c.fire('PLAYER_DEAD'); c.advance(2)
+        self.assert_no_current_rows(c)
+
     def test_fresh_rows_after_quick_release_attach_without_reopening(self):
         # Reviewer P12: fresh rows appear at 0.5s, after release at 0.1s.
         for release in ('PLAYER_ALIVE','PLAYER_UNGHOST'):
@@ -176,7 +268,8 @@ class RecapUITests(unittest.TestCase):
         for value in ('0/0','math.huge','-math.huge','1e300'):
             self.assert_invalid_amount_rejected(value)
 
-    def test_freshness_compares_identity_multisets_not_order_or_amount(self):
+    def test_freshness_uses_timestamps_not_mutable_identity(self):
+        # The round-2 rule supersedes different IDs at an old timestamp.
         c=self.client(); c.hit()
         c.run('events[2]={timestamp=10,amount=50,overkill=0,spellId=456,event="SPELL_DAMAGE",sourceGUID="Player-2",hideCaster=false}')
         c.fire('PLAYER_DEAD'); c.advance(2); c.fire('PLAYER_ALIVE')
@@ -184,16 +277,15 @@ class RecapUITests(unittest.TestCase):
         c.fire('PLAYER_DEAD'); c.advance(0.3)
         self.assertEqual(c.run('return #RelaxDeathRecap.history[1].rows'),0)
         c.run('events[1].spellId=789'); c.advance(0.7)
-        self.assertEqual(c.run('return #RelaxDeathRecap.history[1].rows'),2)
-        # An old snapshot returning later must not replace the newly accepted one.
-        c.run('events[1].spellId=456'); c.advance(1)
-        self.assertEqual(c.run('local n=0; for _,r in ipairs(RelaxDeathRecap.history[1].rows) do if r.spellId==789 then n=n+1 end end; return n'),1)
+        self.assertEqual(c.run('return #RelaxDeathRecap.history[1].rows'),0)
+        c.run('events[1].timestamp=30'); c.advance(1)
+        self.assertEqual(c.run('return #RelaxDeathRecap.history[1].rows,RelaxDeathRecap.history[1].rows[1].spellId'),(1,789))
 
     def test_saved_previous_identity_blocks_stale_data_after_reload(self):
         c=self.client(); c.hit()
         c.run('settings={version=1,keep=true}; RelaxDeathRecap.register("RelaxRaid",{settings=settings})')
         c.fire('PLAYER_DEAD'); c.advance(2)
-        c.run('RelaxDeathRecap.history={}; RelaxDeathRecap.lastRows=nil; RelaxDeathRecap.configure(settings)')
+        c.run('RelaxDeathRecap.history={}; RelaxDeathRecap.lastRecapTs=nil; RelaxDeathRecap.configure(settings)')
         c.fire('PLAYER_ALIVE'); c.fire('PLAYER_DEAD'); c.advance(2)
         self.assertEqual(c.run('return #RelaxDeathRecap.history[1].rows'),0)
 
@@ -331,6 +423,82 @@ class RecapUITests(unittest.TestCase):
 
 
 class IntegrationTests(unittest.TestCase):
+    def loaded_client(self, saved=None):
+        c = UIClient(); c.load_addon(str(ADDON), saved=saved)
+        return c
+
+    def reload_client(self, c):
+        return self.loaded_client({'RelaxRaidCharDB':saved_literal(c.run('return RelaxRaidCharDB'))})
+
+    def assert_reload_rejects_old_rows(self, c):
+        d = self.reload_client(c); d.hit(); d.fire('PLAYER_DEAD'); d.advance(2)
+        self.assertEqual(d.run('return #RelaxDeathRecap.history[1].rows,RelaxDeathRecap.history[1].killer'), (0,'Unknown'))
+        self.assertEqual(d.run('return RelaxDeathRecap.empty.text'), 'no recap data for this death')
+        self.assertEqual(d.run('return RelaxRaidCharDB.deathRecap.lastRecapTs'), 10)
+        d.fire('PLAYER_ALIVE'); d.hit(',timestamp=11'); d.fire('PLAYER_DEAD'); d.advance(2)
+        self.assertEqual(d.run('return RelaxDeathRecap.history[1].rows[1].timestamp,RelaxRaidCharDB.deathRecap.lastRecapTs'), (11,11))
+
+    def test_keep_off_fresh_vm_reload_remembers_timestamp_without_history(self):
+        c = self.loaded_client(); c.hit(); c.fire('PLAYER_DEAD'); c.advance(2)
+        self.assertEqual(c.run('return RelaxRaidCharDB and RelaxRaidCharDB.deathRecap.lastRecapTs'), 10)
+        self.assertIsNone(c.run('return RelaxRaidCharDB.deathRecap.history'))
+        self.assert_reload_rejects_old_rows(c)
+
+    def test_empty_latest_recap_fresh_vm_reload_keeps_timestamp(self):
+        # Reviewer F7b / FRESH_VM_EMPTY_NEWEST, not an in-process reload.
+        c = self.loaded_client(); c.slash('/recap keep on')
+        c.hit(); c.fire('PLAYER_DEAD'); c.advance(2); c.fire('PLAYER_ALIVE')
+        c.run('events={}'); c.fire('PLAYER_DEAD'); c.advance(2)
+        self.assertEqual(c.run('return #RelaxRaidCharDB.deathRecap.history[1].rows'), 0)
+        self.assert_reload_rejects_old_rows(c)
+
+    def test_turning_keep_off_removes_history_but_preserves_timestamp(self):
+        c = self.loaded_client(); c.slash('/recap keep on')
+        c.hit(); c.fire('PLAYER_DEAD'); c.advance(2); c.slash('/recap keep off')
+        self.assertIsNone(c.run('return RelaxRaidCharDB.deathRecap.history'))
+        self.assertEqual(c.run('return RelaxRaidCharDB.deathRecap.lastRecapTs'), 10)
+        self.assert_reload_rejects_old_rows(c)
+
+    def test_pending_death_persists_timestamp_before_any_retry(self):
+        c = self.loaded_client(); c.hit(); c.fire('PLAYER_DEAD')
+        self.assertEqual(c.run('return RelaxRaidCharDB and RelaxRaidCharDB.deathRecap.lastRecapTs'), 10)
+        self.assertIsNone(c.run('return RelaxRaidCharDB.deathRecap.history'))
+        self.assert_reload_rejects_old_rows(c)
+        c.hit(',timestamp=20'); c.advance(0.3)
+        self.assertEqual(c.run('return RelaxRaidCharDB.deathRecap.lastRecapTs'), 20)
+
+    def test_invalid_saved_timestamp_is_ignored_on_load(self):
+        for bad in ('"10"','true','{}','secret()','0/0','math.huge','-math.huge','1e12+1','-1e12-1'):
+            c = self.loaded_client({'RelaxRaidCharDB':f'{{version=1,deathRecap={{version=1,lastRecapTs={bad}}}}}'})
+            self.assertIsNone(c.run('return RelaxDeathRecap.lastRecapTs'), bad)
+            self.assertIsNone(c.run('return RelaxRaidCharDB.deathRecap.lastRecapTs'), bad)
+            c.hit(); c.fire('PLAYER_DEAD'); c.advance(2)
+            self.assertEqual(c.run('return RelaxDeathRecap.history[1].rows[1].timestamp'), 10)
+            self.assertEqual(c.run('return RelaxRaidCharDB.deathRecap.lastRecapTs'), 10)
+
+    def test_throwing_saved_timestamp_is_ignored_on_load(self):
+        c = self.loaded_client({'RelaxRaidCharDB':'''{version=1,deathRecap=setmetatable({version=1},
+            {__index=function(_,k) if k=='lastRecapTs' then error('corrupt') end end})}'''})
+        self.assertEqual(c.run('return #RelaxRaid.errors'), 0)
+        self.assertIsNone(c.run('return RelaxDeathRecap.lastRecapTs'))
+        c.hit(); c.fire('PLAYER_DEAD'); c.advance(2)
+        self.assertEqual(c.run('return rawget(RelaxRaidCharDB.deathRecap,"lastRecapTs")'), 10)
+
+    def test_valid_saved_timestamp_bounds_and_fraction_are_used(self):
+        for stamp in (-1e12,0,10.5,1e12):
+            c = self.loaded_client({'RelaxRaidCharDB':f'{{version=1,deathRecap={{version=1,lastRecapTs={stamp!r}}}}}'})
+            self.assertEqual(c.run('return RelaxDeathRecap.lastRecapTs'), stamp)
+            c.hit(f',timestamp={stamp!r}'); c.fire('PLAYER_DEAD'); c.advance(2)
+            self.assertEqual(c.run('return #RelaxDeathRecap.history[1].rows'), 0)
+            self.assertEqual(c.run('return RelaxRaidCharDB.deathRecap.lastRecapTs'), stamp)
+
+    def test_reconfigure_cannot_lower_the_session_timestamp(self):
+        c = self.loaded_client(); c.hit(',timestamp=30'); c.fire('PLAYER_DEAD'); c.advance(2)
+        c.run('RelaxDeathRecap.configure({version=1,lastRecapTs=10})')
+        self.assertEqual(c.run('return RelaxRaidCharDB and RelaxRaidCharDB.deathRecap.lastRecapTs'), 30)
+        c.fire('PLAYER_ALIVE'); c.hit(',timestamp=20'); c.fire('PLAYER_DEAD'); c.advance(2)
+        self.assertEqual(c.run('return #RelaxDeathRecap.history[1].rows'), 0)
+
     def test_toc_hook_and_existing_settings_panel(self):
         c=UIClient(); c.load_addon(str(ADDON))
         self.assertIsNotNone(c.run("return RelaxDeathRecap and RelaxDeathRecap.hooks.RelaxRaid"))
@@ -481,6 +649,37 @@ class RecapTests(unittest.TestCase):
         c.fire('PLAYER_DEAD')
         c.advance(3)
         self.assertEqual(c.run('return calls,#RelaxDeathRecap.history'), (1,1))
+
+    def assert_timer_failure_finishes(self, mode):
+        c = self.client(); c.hit()
+        c.run('''calls=0; saves=0; settings={version=1,keep=true}
+            RelaxDeathRecap.register('RelaxRaid',{settings=settings,
+                onRecap=function(r) calls=calls+1; notified=r end,
+                saveSettings=function() saves=saves+1 end})
+            saves=0''')
+        c.run(mode)
+        c.fire('PLAYER_DEAD')
+        # No release, timer advance, or subsequent death is needed to settle.
+        self.assertEqual(c.run('return calls'), 1)
+        saves = c.run('return saves')
+        self.assertGreaterEqual(saves, 1)
+        self.assertIsNone(c.run('return RelaxDeathRecap.pending'))
+        self.assertEqual(c.run('return notified.id,notified.rows[1].timestamp,#settings.history'), (1,10,1))
+        c.fire('PLAYER_ALIVE'); c.hit(',timestamp=50'); c.advance(3)
+        self.assertEqual(c.run('return calls,saves,settings.history[1].rows[1].timestamp'), (1,saves,10))
+
+    def test_missing_timer_finishes_and_saves_immediately(self):
+        self.assert_timer_failure_finishes('C_Timer=nil')
+
+    def test_throwing_timer_finishes_and_saves_immediately(self):
+        self.assert_timer_failure_finishes('C_Timer.After=function() error("unavailable") end')
+
+    def test_final_timer_failure_cancels_earlier_callbacks(self):
+        self.assert_timer_failure_finishes('''local after=C_Timer.After
+            C_Timer.After=function(delay,fn)
+                if delay==2 then error('unavailable') end
+                return after(delay,fn)
+            end''')
 
     def test_both_load_orders_and_higher_version_keep_one_dispatch(self):
         for first, second, version in [('RelaxRaid','Other',1), ('Other','RelaxRaid',1), ('RelaxRaid','Other',2)]:

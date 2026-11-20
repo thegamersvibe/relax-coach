@@ -205,6 +205,8 @@ function R.configure(settings)
     R.writable = R.clean(settings, "table") ~= nil and (R.field(settings, "version", "number") or 1) <= 1
     if not R.writable then R.settings = {version=1, auto=true, autoclose=true, keep=false}; return end
     R.settings = settings
+    local savedTs = R.field(settings, "lastRecapTs", "number")
+    if savedTs and (not R.lastRecapTs or savedTs > R.lastRecapTs) then R.lastRecapTs = savedTs end
     settings.version = 1
     for key, default in pairs(defaults) do
         if type(settings[key]) ~= "boolean" then settings[key] = default end
@@ -226,13 +228,14 @@ end
 function R.persist()
     if not R.writable then return end
     R.settings.history = nil
+    R.settings.lastRecapTs = R.lastRecapTs -- one bounded number, even with history off
     if R.settings.keep then
         local saved = {}
         for i=1,math.min(3, #R.history) do saved[#saved+1] = R.validate(R.history[i]) end
         R.settings.history = saved
     end
     -- Hosts can bind the table lazily: defaults alone must not create a save.
-    if R.settings.keep or R.settings.position or not R.settings.auto or not R.settings.autoclose then
+    if R.lastRecapTs or R.settings.keep or R.settings.position or not R.settings.auto or not R.settings.autoclose then
         local hook = R.hooks[R.owner]
         R.call(hook and hook.saveSettings, R.settings)
     end
@@ -272,38 +275,32 @@ function R.finish(recap)
     for _, hook in pairs(R.hooks) do R.call(hook.onRecap, recap) end
     R.persist()
 end
--- Compare row identities, never mutable damage/health or display names.
--- Match as a multiset so equal-timestamp ordering cannot make old rows fresh.
-local function sameRows(rows, previous)
-    if not previous or #rows ~= #previous then return false end
-    local used = {}
-    for _, row in ipairs(rows) do
-        local found
-        for i, old in ipairs(previous) do
-            if not used[i] and row.timestamp == old.timestamp and row.sourceGUID == old.sourceGUID
-                and row.spellId == old.spellId and row.event == old.event
-                and row.environmentalType == old.environmentalType then
-                used[i], found = true, true
-                break
-            end
-        end
-        if not found then return false end
-    end
-    return true
-end
 function R.refresh(recap, final)
     if R.pending ~= recap then return end
     local read = R.read()
+    local lastTs = R.lastRecapTs
+    -- Freeze the prior life's cutoff for every retry of this death. Unknown
+    -- timestamps cannot prove freshness once a previous timestamp is known.
+    local fresh = {}
+    for _, row in ipairs(read.rows) do
+        if not recap.previousTs or (row.timestamp and row.timestamp > recap.previousTs) then
+            fresh[#fresh+1] = row
+            if row.timestamp and (not R.lastRecapTs or row.timestamp > R.lastRecapTs) then
+                R.lastRecapTs = row.timestamp
+            end
+        elseif not row.timestamp then read.incomplete = true end
+    end
+    read.rows = fresh
     -- Unavailable/previous-death rows cannot erase or replace fresh data.
-    if #read.rows > 0 and not sameRows(read.rows, recap.previousRows) then
+    if #read.rows > 0 then
         recap.rows, recap.maxHealth, recap.incomplete = read.rows, read.maxHealth, read.incomplete
-        R.lastRows = read.rows
         R.describe(recap)
     elseif read.incomplete then
         recap.incomplete = true
         R.describe(recap)
     end
-    if final then R.finish(recap); R.pending = nil end
+    if final then R.finish(recap); R.pending = nil
+    elseif R.lastRecapTs ~= lastTs then R.persist() end -- survives reload before the final retry
     R.call(R.render)
 end
 function R.event(event)
@@ -315,7 +312,7 @@ function R.event(event)
         local ok, hour, minute = pcall(GetGameTime)
         hour, minute = R.clean(hour, "number"), R.clean(minute, "number")
         local recap = {id=R.serial, rows={}, killer="Unknown", attackers={},
-            previousRows=R.lastRows or (R.history[1] and R.history[1].rows),
+            previousTs=R.lastRecapTs,
             clock=ok and hour and minute and string.format("%02d:%02d",hour,minute) or "--:--",
             zone=R.clean(R.call(GetZoneText), "string") or "Unknown zone"}
         table.insert(R.history, 1, recap)
@@ -325,7 +322,12 @@ function R.event(event)
         R.say("|Haddon:RelaxDeathRecap:" .. recap.id .. "|h[You died: details]|h")
         if R.settings.auto then R.call(R.open, 1) end
         for _, delay in ipairs({0.3, 1, 2}) do
-            pcall(function() C_Timer.After(delay, function() pcall(R.refresh, recap, delay == 2) end) end)
+            local scheduled = pcall(function() C_Timer.After(delay, function() pcall(R.refresh, recap, delay == 2) end) end)
+            if not scheduled then
+                R.finish(recap)
+                R.pending = nil -- already scheduled callbacks must not change a settled recap
+                break
+            end
         end
     elseif event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
         -- Release closes the UI, not the current death's bounded read window.

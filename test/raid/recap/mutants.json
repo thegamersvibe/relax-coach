@@ -121,33 +121,9 @@
   },
   {
     "file": "addon/RelaxRaid/DeathRecap.lua",
-    "old": " and not sameRows(read.rows, recap.previousRows)",
-    "new": "",
-    "killed_by": "test_stale_previous_rows_are_not_a_new_death"
-  },
-  {
-    "file": "addon/RelaxRaid/DeathRecap.lua",
-    "old": "R.lastRows = read.rows",
-    "new": "R.lastRows = nil",
-    "killed_by": "test_stale_previous_rows_are_not_a_new_death"
-  },
-  {
-    "file": "addon/RelaxRaid/DeathRecap.lua",
-    "old": " or (R.history[1] and R.history[1].rows)",
-    "new": "",
-    "killed_by": "test_saved_previous_identity_blocks_stale_data_after_reload"
-  },
-  {
-    "file": "addon/RelaxRaid/DeathRecap.lua",
     "old": "        R.dead = false\n        if R.settings.autoclose",
     "new": "        R.dead, R.pending = false, nil\n        if R.settings.autoclose",
     "killed_by": "test_fresh_rows_after_quick_release_attach_without_reopening"
-  },
-  {
-    "file": "addon/RelaxRaid/DeathRecap.lua",
-    "old": " and row.spellId == old.spellId",
-    "new": "",
-    "killed_by": "test_freshness_compares_identity_multisets_not_order_or_amount"
   },
   {
     "file": "addon/RelaxRaid/DeathRecap.lua",
@@ -214,5 +190,119 @@
     "old": "R.maxVisibleAttackers = 3",
     "new": "R.maxVisibleAttackers = 12",
     "killed_by": "test_maximum_player_block_fits_600px_screen_and_caps_attackers"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if not scheduled then",
+    "new": "if false then",
+    "killed_by": "test_missing_timer_finishes_and_saves_immediately"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if not scheduled then",
+    "new": "if not scheduled and C_Timer == nil then",
+    "killed_by": "test_throwing_timer_finishes_and_saves_immediately"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "R.pending = nil -- already scheduled callbacks",
+    "new": "R.pending = recap -- already scheduled callbacks",
+    "killed_by": "test_final_timer_failure_cancels_earlier_callbacks"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "previousTs=R.lastRecapTs,",
+    "new": "previousTs=nil,",
+    "killed_by": "test_previous_row_subset_is_never_fresh"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "row.timestamp > recap.previousTs",
+    "new": "row.timestamp >= recap.previousTs",
+    "killed_by": "test_previous_row_subset_is_never_fresh"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "(row.timestamp and row.timestamp > recap.previousTs)",
+    "new": "(not row.timestamp or row.timestamp > recap.previousTs)",
+    "killed_by": "test_old_identity_readability_changes_do_not_make_rows_fresh"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "elseif not row.timestamp then read.incomplete = true end",
+    "new": "elseif not row.timestamp then read.incomplete = false end",
+    "killed_by": "test_old_identity_readability_changes_do_not_make_rows_fresh"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "read.rows = fresh",
+    "new": "read.rows = read.rows",
+    "killed_by": "test_mixed_snapshot_retains_only_new_life_rows_and_shares"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "R.lastRecapTs = row.timestamp",
+    "new": "R.lastRecapTs = nil",
+    "killed_by": "test_first_death_rows_cannot_reappear_at_third_death"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "(not R.lastRecapTs or row.timestamp > R.lastRecapTs)",
+    "new": "true",
+    "killed_by": "test_death_cutoff_is_frozen_while_last_timestamp_never_decreases"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if not recap.previousTs or (row.timestamp and row.timestamp > recap.previousTs) then",
+    "new": "if not R.lastRecapTs or (row.timestamp and row.timestamp > R.lastRecapTs) then",
+    "killed_by": "test_death_cutoff_is_frozen_while_last_timestamp_never_decreases"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "local savedTs = R.field(settings, \"lastRecapTs\", \"number\")",
+    "new": "local savedTs = settings.lastRecapTs",
+    "killed_by": "test_invalid_saved_timestamp_is_ignored_on_load"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "then R.lastRecapTs = savedTs end",
+    "new": "then R.lastRecapTs = nil end",
+    "killed_by": "test_valid_saved_timestamp_bounds_and_fraction_are_used"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "(not R.lastRecapTs or savedTs > R.lastRecapTs)",
+    "new": "true",
+    "killed_by": "test_reconfigure_cannot_lower_the_session_timestamp"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "R.settings.lastRecapTs = R.lastRecapTs",
+    "new": "R.settings.lastRecapTs = nil",
+    "killed_by": "test_keep_off_fresh_vm_reload_remembers_timestamp_without_history"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if R.lastRecapTs or R.settings.keep or R.settings.position",
+    "new": "if R.settings.keep or R.settings.position",
+    "killed_by": "test_keep_off_fresh_vm_reload_remembers_timestamp_without_history"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "elseif R.lastRecapTs ~= lastTs then R.persist() end",
+    "new": "elseif false then R.persist() end",
+    "killed_by": "test_pending_death_persists_timestamp_before_any_retry"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "value ~= value or math.abs(value) > 1e12",
+    "new": "math.abs(value) > 1e12",
+    "killed_by": "test_invalid_saved_timestamp_is_ignored_on_load"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "math.abs(value) > 1e12",
+    "new": "false",
+    "killed_by": "test_invalid_saved_timestamp_is_ignored_on_load"
   }
 ]
