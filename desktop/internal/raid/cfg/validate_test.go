@@ -42,13 +42,13 @@ func TestValidateScoring(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			dir := copyData(t)
+			dir := copyValidationData(t)
 			change(t, dir, "scoring.json", tc.edit)
 			refused(t, dir, "scoring.json")
 		})
 	}
 	// Zero trash and explicit false are legitimate settings, not missing values.
-	dir := copyData(t)
+	dir := copyValidationData(t)
 	change(t, dir, "scoring.json", func(d map[string]any) {
 		d["night"].(map[string]any)["trash_share"] = 0
 		d["fights"].(map[string]any)["healer_strictly_greater"] = false
@@ -75,7 +75,7 @@ func TestValidateProfiles(t *testing.T) {
 		"unknown_support":    func(d map[string]any) { d["profiles"].([]any)[0].(map[string]any)["support"] = []any{"imaginary_buff"} },
 	} {
 		t.Run(name, func(t *testing.T) {
-			dir := copyData(t)
+			dir := copyValidationData(t)
 			change(t, dir, "specs.json", edit)
 			refused(t, dir, "specs.json")
 		})
@@ -85,7 +85,7 @@ func TestValidateProfiles(t *testing.T) {
 		"duplicate_id": func(d map[string]any) { p := d["classes"].(map[string]any)["WARRIOR"].([]any); p[1] = p[0] },
 	} {
 		t.Run(name, func(t *testing.T) {
-			dir := copyData(t)
+			dir := copyValidationData(t)
 			change(t, dir, "spec-ids.json", edit)
 			refused(t, dir, "spec-ids.json")
 		})
@@ -96,7 +96,7 @@ func TestSpellIDRequiresProvenance(t *testing.T) {
 	for _, field := range []string{"spells", "cast_signatures"} {
 		for _, source := range []any{nil, map[string]any{"kind": "memory", "note": "guess"}, map[string]any{"kind": "real_log", "note": ""}} {
 			t.Run(fmt.Sprint(field, source), func(t *testing.T) {
-				dir := copyData(t)
+				dir := copyValidationData(t)
 				change(t, dir, "specs.json", func(d map[string]any) {
 					d["profiles"].([]any)[0].(map[string]any)[field] = []any{map[string]any{"name": "Synthetic spell", "id": 123456, "source": source}}
 				})
@@ -106,7 +106,7 @@ func TestSpellIDRequiresProvenance(t *testing.T) {
 	}
 	for _, kind := range []string{"real_log", "forever_source"} {
 		t.Run(kind, func(t *testing.T) {
-			dir := copyData(t)
+			dir := copyValidationData(t)
 			change(t, dir, "specs.json", func(d map[string]any) {
 				d["profiles"].([]any)[0].(map[string]any)["spells"] = []any{map[string]any{"name": "Synthetic spell", "id": 123456, "source": map[string]any{"kind": kind, "note": "synthetic provenance test, not a production mapping"}}}
 			})
@@ -125,12 +125,15 @@ func TestValidateCatalogues(t *testing.T) {
 			e["scope"] = "unknown"
 			e["credit"] = true
 			e["verified"] = true
+			e["stacks"] = false
 		}},
 		{"support.json", func(d map[string]any) { e := d["effects"].([]any); e[1] = e[0] }},
 		{"support.json", func(d map[string]any) {
 			e := d["effects"].([]any)[0].(map[string]any)
 			e["scope"] = "personal"
 			e["credit"] = true
+			e["verified"] = true
+			e["stacks"] = false
 		}},
 		{"support.json", func(d map[string]any) {
 			d["effects"].([]any)[0].(map[string]any)["spell"].(map[string]any)["id"] = 123456
@@ -144,7 +147,11 @@ func TestValidateCatalogues(t *testing.T) {
 		{"instances.json", func(d map[string]any) { i := d["instances"].([]any); d["instances"] = append(i, i[0]) }},
 	}
 	for i, tc := range cases {
-		t.Run(fmt.Sprint(tc.file, i), func(t *testing.T) { dir := copyData(t); change(t, dir, tc.file, tc.edit); refused(t, dir, tc.file) })
+		t.Run(fmt.Sprint(tc.file, i), func(t *testing.T) {
+			dir := copyValidationData(t)
+			change(t, dir, tc.file, tc.edit)
+			refused(t, dir, tc.file)
+		})
 	}
 }
 
@@ -165,12 +172,12 @@ func TestEnabledRulesRequireEvidence(t *testing.T) {
 		"no_added_targets":    func(r map[string]any) { r["target_rule"] = map[string]any{"mode": "boss_and_units", "units": []any{}} },
 	} {
 		t.Run(name, func(t *testing.T) {
-			dir := copyData(t)
+			dir := copyValidationData(t)
 			change(t, dir, "encounters-enabled.json", func(d map[string]any) { r := syntheticRule(); edit(r); d["encounters"] = []any{r} })
 			refused(t, dir, "encounters-enabled.json")
 		})
 	}
-	dir := copyData(t)
+	dir := copyValidationData(t)
 	change(t, dir, "encounters-enabled.json", func(d map[string]any) { d["encounters"] = []any{syntheticRule()} })
 	load(t, dir)
 }

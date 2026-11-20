@@ -627,5 +627,109 @@
     "old": "e.TargetRule = copyPointer(e.TargetRule)",
     "new": "/* detached copy bypassed */",
     "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "fieldCheck{\"output\", !scoreValue(w.Output)}",
+    "new": "fieldCheck{\"output\", false}",
+    "killed_by": "TestRound2PartRanges",
+    "review_round2": "mut4.py #1"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "fieldCheck{\"preparation\", !scoreValue(w.Preparation)}",
+    "new": "fieldCheck{\"preparation\", false}",
+    "killed_by": "TestRound2PartRanges",
+    "review_round2": "mut4.py #2"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "*s.RoundingStep <= 0 || !scoreValue(*s.RoundingStep)",
+    "new": "*s.RoundingStep <= 0",
+    "killed_by": "TestRound2RoundingStep",
+    "review_round2": "mut4.py #19"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "oneOf(e.Scope, \"personal\", \"unknown\") && e.Credit",
+    "new": "oneOf(e.Scope, \"unknown\") && e.Credit",
+    "killed_by": "TestRound2SupportScope",
+    "review_round2": "mut4.py #38 (personal, not unknown, in actual script)"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "oneOf(e.Scope, \"personal\", \"unknown\") && e.Credit",
+    "new": "oneOf(e.Scope, \"personal\") && e.Credit",
+    "killed_by": "TestRound2SupportScope"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "fieldCheck{\"support\", !stringsUnique(p.Support)}",
+    "new": "fieldCheck{\"support\", false}",
+    "killed_by": "TestRound2DuplicateProfileSupport",
+    "review_round2": "mut4.py #42"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "validateSelectors(t.Units, path+\"target_rule.units\")",
+    "new": "validateSelectors(nil, path+\"target_rule.units\")",
+    "killed_by": "TestRound2TargetSelectors",
+    "review_round2": "mut4.py #56"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/spell_identity.go",
+    "old": "check(s, fmt.Sprintf(\"encounters-candidate.json",
+    "new": "check(Spell{Name: s.Name}, fmt.Sprintf(\"encounters-candidate.json",
+    "killed_by": "TestRound2EncounterSpellIdentities",
+    "review_round2": "mut5.py #5 / M10_candidate_identity"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/spell_identity.go",
+    "old": "check(m.Spell, fmt.Sprintf(\"encounters-enabled.json",
+    "new": "check(Spell{Name: m.Spell.Name}, fmt.Sprintf(\"encounters-enabled.json",
+    "killed_by": "TestRound2EncounterSpellIdentities",
+    "review_round2": "mut5.py #6 / M11_mechanic_identity"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if e.Credit && e.Stacks == nil {",
+    "new": "if false {",
+    "killed_by": "TestRound2CreditRequiresStacks"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "isString && !validSurrogateEscapes(b[start:d.InputOffset()])",
+    "new": "false && isString && !validSurrogateEscapes(b[start:d.InputOffset()])",
+    "killed_by": "TestRound2SurrogateStrings"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "if !validSurrogateEscapes(b[start:d.InputOffset()]) {",
+    "new": "if false && !validSurrogateEscapes(b[start:d.InputOffset()]) {",
+    "killed_by": "TestRound2SurrogateStrings"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/text.go",
+    "old": "if code>>10&1 != 0 {",
+    "new": "if false {",
+    "killed_by": "TestRound2SurrogateStrings"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/text.go",
+    "old": "if i+6 >= len(raw) || raw[i+1] != '\\\\' || raw[i+2] != 'u' {\n\t\t\treturn false",
+    "new": "if i+6 >= len(raw) || raw[i+1] != '\\\\' || raw[i+2] != 'u' {\n\t\t\treturn true",
+    "killed_by": "TestRound2SurrogateStrings"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/text.go",
+    "old": "if err != nil || !utf16.IsSurrogate(rune(low)) || low>>10&1 == 0 {",
+    "new": "if false && (err != nil || !utf16.IsSurrogate(rune(low)) || low>>10&1 == 0) {",
+    "killed_by": "TestRound2SurrogateStrings"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "rawKeyPath(b[start:], path)",
+    "new": "path",
+    "killed_by": "TestRound2NULKeyPath"
   }
 ]
