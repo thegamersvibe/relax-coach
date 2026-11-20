@@ -1,0 +1,15 @@
+{
+  "MaxFileBytes": 16777216,
+  "MaxEntries": 150000,
+  "MaxDepth": 16,
+  "MaxStringBytes": 4096,
+  "MaxBodyBytes": 4096,
+  "MaxCharacterBytes": 100000,
+  "MaxNightBytes": 4000000,
+  "MaxItemID": 999999999,
+  "MaxCount": 999999,
+  "MaxPlayed": 999999999,
+  "MaxStamp": 9999999999,
+  "MaxDay": 999999,
+  "LookbackSeconds": 7200
+}

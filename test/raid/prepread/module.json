@@ -1,0 +1,6 @@
+{
+  "kind": "go",
+  "source": "desktop/internal/raid/prepread/",
+  "test": ["go", "-C", "desktop", "test", "-race", "-count=1", "./internal/raid/prepread/..."],
+  "depends": ["model", "prepread_fixtures"]
+}

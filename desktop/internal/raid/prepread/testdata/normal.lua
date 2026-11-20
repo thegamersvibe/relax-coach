@@ -1,0 +1,2 @@
+-- Synthetic client output; regenerate with test/raid/prepread_fixtures/generate.py --write
+RelaxRaidDB = {["prep"]={["nights"]={[1]={["day"]=20832,["reports"]={["alia-stone-pvp-eu"]={[1]="1\t0.2.0\tAlia-Stone-PvP-EU\tMAGE\t60\t123\tjoin\t1800000000\tpotion,101,3;food,102,5;flask,103,1;elixir,104,2\t2,200,202;3,0,203\t1"}},["windows"]={[1]={["openedAt"]=1800000000,["reports"]={["alia-stone-pvp-eu"]={["receivedAt"]=1800000000,["report"]=1}}}}}},["version"]=2},["version"]=1}
