@@ -64,7 +64,7 @@ jobs:
         run: python -I -B tools/raidtest.py --all --kind lua,py
       - name: Relax Raid Lua mutation guards
         run: |
-          for module in core log prep wire store; do
+          for module in core log prep wire store rank; do
             python -I -B tools/raidtest.py --mutants "$module"
           done
 
@@ -147,6 +147,8 @@ jobs:
         run: python -I -B test/test_guild_bundle.py
       - name: Release gate selection and real current-bundle compatibility (fail closed)
         run: python -I -B test/test_release_gate.py
+      - name: Rank save and bundle accepted by apps 1.8.0 and 1.8.1
+        run: python -I -B test/raid/rank/test_old_apps.py
 
   required-ci:
     # Keep this check name stable: the main ruleset requires its GitHub Actions result.

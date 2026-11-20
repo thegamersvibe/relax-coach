@@ -205,7 +205,34 @@ function Store.Init()
     db.version = 1
     local nights = type(db.prep) == "table" and db.prep.version == Store.VERSION and db.prep.nights
     db.prep = {version=Store.VERSION, nights=cleanNights(nights)}
+    Store.saveRank()
 end
+-- Account-local convenience-lock evidence; not a security credential.
+-- Additive to root version 1; the prep format and SavedVariables names stay unchanged.
+-- Schema, pending policy and pinned GetServerTime/event evidence: docs/raid/RANK-SAVE.md.
+function Store.saveRank()
+    if not Store.writable() then return end
+    local P, L = RR.modules.Prep, RR.modules.Log
+    if not P or not L then return end -- modules also support isolated loading with Core
+    local result = P.read(L.readRank) or "unreadable"
+    if result == "pending" then return end -- retain the earlier entry, including its time
+    local name, now = P.identity(), P.read(GetServerTime)
+    if name == "unreadable" or not P.number(now, 0, 9999999999) then return end
+    local guild = P.read(GetGuildInfo, "player")
+    local row = {result=result, readAt=now}
+    if type(guild) == "string" then row.guild = guild end
+    local db = RelaxRaidDB
+    if type(db.ranks) ~= "table" then db.ranks = {} end
+    db.ranks[name] = row
+end
+local function rankEvent(_, unit)
+    local P = RR.modules.Prep
+    if not RR.loaded or not P or not P.plain(unit) then return end
+    if unit == nil or unit == "player" then Store.saveRank() end
+end
+RR.on("PLAYER_GUILD_UPDATE", "Rank", rankEvent)
+RR.on("GUILD_ROSTER_UPDATE", "Rank", function() rankEvent() end)
+RR.on("PLAYER_ENTERING_WORLD", "Rank", function() rankEvent() end)
 function Store.put(sender, report)
     if not Store.writable() then return false end
     local P, L = RR.modules.Prep, RR.modules.Log

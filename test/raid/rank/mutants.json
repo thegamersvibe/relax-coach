@@ -1,0 +1,177 @@
+[
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "    Store.saveRank()\nend",
+    "new": "end",
+    "killed_by": "test_login_saves_officer_guild_and_server_time",
+    "why": "login evidence omitted"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "    if result == \"pending\" then return end -- retain the earlier entry, including its time\n",
+    "new": "",
+    "killed_by": "test_pending_preserves_previous_entry_even_after_logger_timeout",
+    "why": "pending overwrites old evidence"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "    local result = P.read(L.readRank) or \"unreadable\"",
+    "new": "    local result = L.state.rank",
+    "killed_by": "test_events_refresh_rank_and_time_without_requiring_logger",
+    "why": "stale logger state used instead of fresh rank"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "    local row = {result=result, readAt=now}",
+    "new": "    local row = {result=\"officer\", readAt=now}",
+    "killed_by": "test_each_settled_result_at_login",
+    "why": "all ranks become officer"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "    local row = {result=result, readAt=now}",
+    "new": "    if result == \"unreadable\" then return end\n    local row = {result=result, readAt=now}",
+    "killed_by": "test_each_settled_result_at_login",
+    "why": "unreadable omitted"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "    local row = {result=result, readAt=now}",
+    "new": "    if result == \"noguild\" then return end\n    local row = {result=result, readAt=now}",
+    "killed_by": "test_each_settled_result_at_login",
+    "why": "noguild omitted"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "local name, now = P.identity(), P.read(GetServerTime)",
+    "new": "local name, now = P.identity(), P.read(GetTime)",
+    "killed_by": "test_login_saves_officer_guild_and_server_time",
+    "why": "session clock substituted for server time"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "    db.ranks[name] = row",
+    "new": "    db.ranks[string.lower(name)] = row",
+    "killed_by": "test_full_names_and_other_characters_survive_reload",
+    "why": "full-name spelling lost"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "    if type(db.ranks) ~= \"table\" then db.ranks = {} end",
+    "new": "    db.ranks = {}",
+    "killed_by": "test_full_names_and_other_characters_survive_reload",
+    "why": "other characters erased"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "    if type(guild) == \"string\" then row.guild = guild end",
+    "new": "    if type(guild) == \"string\" then row.guild = string.lower(guild) end",
+    "killed_by": "test_guild_name_kept_exactly_as_read",
+    "why": "guild spelling normalized"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "    if type(guild) == \"string\" then row.guild = guild end",
+    "new": "",
+    "killed_by": "test_login_saves_officer_guild_and_server_time",
+    "why": "guild omitted even when readable"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "    local guild = P.read(GetGuildInfo, \"player\")",
+    "new": "    local guild = GetGuildInfo(\"player\")",
+    "killed_by": "test_unreadable_guild_is_omitted_not_carried_forward",
+    "why": "guild read unguarded"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "    if not Store.writable() then return end\n",
+    "new": "",
+    "killed_by": "test_newer_saves_are_never_written",
+    "why": "future stores written"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "name == \"unreadable\" or not P.number(now, 0, 9999999999)",
+    "new": "not P.number(now, 0, 9999999999)",
+    "killed_by": "test_unreadable_identity_cannot_overwrite_or_create_an_entry",
+    "why": "unknown identity written as a character"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "name == \"unreadable\" or not P.number(now, 0, 9999999999)",
+    "new": "name == \"unreadable\"",
+    "killed_by": "test_bad_clock_leaves_previous_entry",
+    "why": "unknown or malformed clock stored"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "RR.on(\"GUILD_ROSTER_UPDATE\", \"Rank\", function() rankEvent() end)",
+    "new": "",
+    "killed_by": "test_events_refresh_rank_and_time_without_requiring_logger",
+    "why": "roster changes not saved"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "RR.on(\"PLAYER_ENTERING_WORLD\", \"Rank\", function() rankEvent() end)",
+    "new": "",
+    "killed_by": "test_events_refresh_rank_and_time_without_requiring_logger",
+    "why": "world/login recovery omitted"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "RR.on(\"PLAYER_GUILD_UPDATE\", \"Rank\", rankEvent)",
+    "new": "",
+    "killed_by": "test_events_refresh_rank_and_time_without_requiring_logger",
+    "why": "guild/rank changes not saved"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "    if unit == nil or unit == \"player\" then Store.saveRank() end",
+    "new": "    Store.saveRank()",
+    "killed_by": "test_foreign_or_secret_unit_and_preload_event_do_not_refresh",
+    "why": "other unit refreshes own evidence"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "if not RR.loaded or not P or not P.plain(unit) then return end",
+    "new": "if not P or not P.plain(unit) then return end",
+    "killed_by": "test_foreign_or_secret_unit_and_preload_event_do_not_refresh",
+    "why": "writes before own load"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "    local result = P.read(L.readRank) or \"unreadable\"",
+    "new": "    local result = L.readRank()",
+    "killed_by": "test_secret_rank_reads_are_saved_as_unreadable",
+    "why": "throwing rank reader not persisted as unreadable"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "local indexOk = not isSecret(index) and index ~= nil",
+    "new": "local indexOk = index ~= nil and not isSecret(index)",
+    "killed_by": "test_rank_reader_checks_secrets_before_nil_comparisons",
+    "why": "native secret index compared with nil before detection"
+  },
+  {
+    "file": "addon/RelaxRaid/Log.lua",
+    "old": "local nameOk = not isSecret(rankName) and rankName ~= nil",
+    "new": "local nameOk = rankName ~= nil and not isSecret(rankName)",
+    "killed_by": "test_rank_reader_checks_secrets_before_nil_comparisons",
+    "why": "native secret rank name compared with nil before detection"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "    if not P or not L then return end -- modules also support isolated loading with Core\n",
+    "new": "",
+    "killed_by": "test_rank_capture_without_optional_modules_is_inert",
+    "why": "capture assumes optional modules are loaded"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "old": "if not RR.loaded or not P or not P.plain(unit) then return end",
+    "new": "if not RR.loaded or not P.plain(unit) then return end",
+    "killed_by": "test_rank_capture_without_optional_modules_is_inert",
+    "why": "event path assumes Prep is loaded"
+  }
+]
