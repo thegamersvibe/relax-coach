@@ -169,15 +169,19 @@ measured number, never `null`; nothing measurable is `0.00`.
 
 The same coverage thresholds apply to each fight, which has no rank. Scores
 are rounded half away from zero to the configured step inside `score`, not by
-the writer. Stored hundredth coverage is compared to the exact configured
-threshold at both levels. Dungeon scores never have ranks, including normal
+the writer. Eligibility compares exact, unrounded coverage with the exact
+configured threshold at both levels; public coverage is rounded DOWN to whole
+hundredths. Thus 14.73 stores 14 and has no score, 15.0 has a score, 59.90
+stores 59 and has no rank, and 60.0 can rank. Dungeon scores never have ranks, including normal
 scores. Index-only fights (empty `Events`), unknown runs, and players missing
-from the fight's roles are unscored. Partial fights retain a `partialFight`
+from the fight's roles are unscored. A roster-only player with no event evidence
+inside the scoring interval is unmeasured, not idle or a zero-valued peer. An
+observed unsuccessful action may still yield a measured zero. Partial fights retain a `partialFight`
 row but no score. Boss confidence/time basis uses the server `DurationMs`;
 trash uses end minus start. Missing duration is not guessed from boss clocks.
 
 Night means use kill/wipe weights, the short-fight multiplier, and fight
-coverage. Night coverage averages coverage with kill/wipe/short weights
+exact (not stored/floored) coverage. Night coverage averages exact coverage with kill/wipe/short weights
 without applying coverage a second time. Boss and trash groups are combined
 only within their configured shares. No history, spec comparison, assignment,
 support-credit or readiness scoring is enabled by this phase-one scorer.
@@ -206,8 +210,10 @@ support-credit or readiness scoring is enabled by this phase-one scorer.
 These existing file fields are carried directly by `model.Part` (model addendum 3),
 not by reserved keys in `Evidence.Counts`:
 
-- `Coverage int`: hundredths, 0 to 100 inclusive. The writer formats it as `0.00`
-  to `1.00` without rounding again; for example, 75 becomes `0.75`.
+- `Coverage int`: hundredths, 0 to 100 inclusive, rounded down from exact measured
+  weight. Measured parts require 1..100; a part below one hundredth remains
+  unmeasured rather than inventing upward-rounded coverage. The writer formats
+  it as `0.00` to `1.00` without rounding again; for example, 75 becomes `0.75`.
 - `Provisional bool`: fewer baseline samples than the configured minimum.
   It is `false` when not set, including parts without a baseline.
 - `Baseline string`: exactly `"own"`, `"guild"`, `"role"` or `""`. The empty
@@ -219,8 +225,10 @@ part from a measured score of zero. This is an additive in-memory model change,
 not a new file field or a change to `formatVersion`.
 
 **Publication guard.** `score.ValidatePart` refuses a measured part with coverage
-outside 1..100, a baseline outside `""`, `own`, `guild`, `role`, or an output/activity
-part with an empty baseline. `score.Validate` walks the complete result and
+outside 1..100, score tenths outside 0..1000, absent/blank evidence text or an
+absent counts object, text over 200 characters, more than 20 evidence times, a
+baseline outside `""`, `own`, `guild`, `role`, or an output/activity part with an
+empty baseline. An empty counts object and zero evidence times are valid. `score.Validate` walks the complete result and
 `Score` calls it before returning. The future app/writer boundary must retain
 this check; the `result` package's model-only import boundary is unchanged.
 
@@ -229,6 +237,11 @@ this check; the `result` package's model-only import boundary is unchanged.
 Only same-role-in-this-fight baselines are available, never spec or history.
 Output and activity need at least two eligible role peers and a positive
 baseline. Two peers give a provisional part; one gives no relative measure.
+REQ-SCO-13 excludes profiles explicitly flagged `uncalibrated` from all Output
+measures and output-peer baselines (including healer halves), not merely their
+label. Other parts remain measurable. An unknown spec retains the phase-one
+role fallback and `uncalibratedSpec` flag; it is not an explicitly flagged profile.
+R6/R7 exchange model cause and owner constants, not file-format cause keys.
 DPS and tanks compare effective boss damage per millisecond alive to the role
 median (all hostile, unowned creatures for trash). Only landed swing amounts
 count; overkill is clamped at zero before subtraction. Pets use `Fight.Owners`.
@@ -247,6 +260,11 @@ player. Overlaps count once; intervals are clipped to time alive, with real
 deaths and resurrections but no feign deaths. Failed/incomplete casts, pet
 uptime, auras and RANGE damage/miss events provide no activity. Shots already
 have `SPELL_CAST_SUCCESS` lines. A zero role median is unmeasured, not a free 70.
+A start older than the known spell cast time must not pair with a success. The
+current model/config exposes no cast-time or timeout field, so the fallback
+cap is ten seconds, inclusive (`10 * time.Second / time.Millisecond`). A stale
+success contributes only its cooldown. A melee miss requires spell ID zero,
+empty spell name and distinct source/target; a spell-zero self miss is not a swing.
 
 Mechanics measures owned deaths (50) and non-tank boss swings (20); avoidable
 mechanics (30) remain unavailable. Only `OwnerKind=player` with the full logged
@@ -261,6 +279,8 @@ Preparation uses `MatchPrep(reports, names)`: full logged name first, then ASCII
 lowercase only. Ambiguous folded names and unmatched reports score nobody and
 are returned to the page. For gear, choose the latest report stamped at or
 before fight **end**, or the earliest report of the night if none is eligible.
+A same-stamp tie chooses the larger sender clock, then the bytewise greatest
+full-report JSON as a stable key; this applies to the earliest fallback too.
 Both chosen clocks are retained. Stock (30) gives 50 points each for any readable
 report of potion/food stock in the night, not necessarily the chosen gear report.
 Flasks and elixirs are evidence only. Bag gear (30) starts at 100 and loses the
@@ -270,10 +290,10 @@ bags are a measured zero stock, not missing data. Used consumables (40) are
 unmeasurable. No report leaves preparation wholly unmeasured.
 
 The fixture-night coverage table (with / without readable stock and checked gear):
-DPS 0.80 / 0.74; two or more healers 0.70 / 0.64; lone healer 0.33 / 0.27;
-two or more tanks 0.54 / 0.48; lone tank 0.24 / 0.18. Measurable peer output and
-activity are prerequisites for the non-lone rows. Lone rows round half-hundredths
-away from zero, and retain a provisional night score without a rank.
+DPS 0.80 / 0.74; two or more healers 0.70 / 0.64; lone healer 0.32 / 0.26;
+two or more tanks 0.53 / 0.47; lone tank 0.23 / 0.17. Measurable peer output and
+activity are prerequisites for the non-lone rows. All rows floor coverage; lone
+rows retain a provisional night score without a rank.
 
 ## Evidence
 
@@ -325,9 +345,11 @@ not zero. Reserved part metadata is **not** hidden in these maps.
 | `potion_count`, `food_count`, `flask_count`, `elixir_count` | Maximum summed bag count per category across readable reports, not a sum of repeated reports. Only potion and food presence score. |
 | `better_gear_slots`, `not_scored_slots` | Distinct penalized slots and distinct explicitly skipped slots in the chosen report. |
 
-Per-measure points are quantized first; inner weights recompute the part,
-part coverage and role weights recompute the fight, and fight rows with config
-and outcomes recompute the night. The healer cap is applied after combining
+Per-measure `points_tenths` values are rounded for display only. Raw, clamped
+measures retain exact fractions through inner weighting and round once at the
+part score. Recompute from raw evidence and config, not the rounded display
+points. Part coverage stays exact internally through fight and night weighting;
+stored floors must not be fed back into those calculations. The healer cap is applied after combining
 its measured halves. `atMs` contains up to 20 sorted relative owned-death times;
 raw event records are never embedded. The pure scorer returns all part evidence,
 including unavailable-measure markers, for the officer page before file formatting.

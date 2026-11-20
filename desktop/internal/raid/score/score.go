@@ -1,6 +1,7 @@
 package score
 
 import (
+	"math/big"
 	"sort"
 
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/cfg"
@@ -50,6 +51,7 @@ func Score(fights []model.Fight, deaths []model.Death, reports []model.PrepRepor
 				continue
 			}
 			fs := model.FightScore{FightID: f.ID, PlayerID: id, Role: v.role}
+			coverage := integer(0)
 			d := duration(f)
 			if d.Present && d.V < c.Scoring.Confidence.LowConfidenceFightMs {
 				fs.Flags = append(fs.Flags, "lowConfidenceFight")
@@ -60,9 +62,12 @@ func Score(fights []model.Fight, deaths []model.Death, reports []model.PrepRepor
 			if profile, ok := c.Profile(f.Specs[id]); !ok || profile.Uncalibrated {
 				fs.Flags = append(fs.Flags, "uncalibratedSpec")
 			}
-			if !f.Partial && d.Present && d.V > 0 {
-				fs.Parts = []model.Part{output(f, v, all, deaths, c), activity(v, all, c), mechanics(f, v, deaths, c), utility(f, v, c), preparation(f, matched[v.actor.Name], c)}
-				fs.Tenths, fs.Coverage = combine(fs.Parts, partWeights(v.role, c), c)
+			if !f.Partial && d.Present && d.V > 0 && v.observed {
+				parts := []partResult{output(f, v, all, deaths, c), activity(v, all, c), mechanics(f, v, deaths, c), utility(f, v, c), preparation(f, matched[v.actor.Name], c)}
+				fs.Tenths, fs.Coverage, coverage = combine(parts, partWeights(v.role, c), c)
+				for _, p := range parts {
+					fs.Parts = append(fs.Parts, p.Part)
+				}
 			} else {
 				for _, name := range []string{"output", "activity", "mechanics", "utility", "preparation"} {
 					fs.Parts = append(fs.Parts, model.Part{Name: name})
@@ -70,7 +75,7 @@ func Score(fights []model.Fight, deaths []model.Death, reports []model.PrepRepor
 			}
 			i := index[id]
 			out[i].Fights = append(out[i].Fights, fs)
-			sums[i].include(f, fs, c)
+			sums[i].include(f, fs, coverage, c)
 			for _, p := range fs.Parts {
 				if p.Tenths.Present && p.Baseline != "" {
 					out[i].Baseline = p.Baseline
@@ -78,11 +83,12 @@ func Score(fights []model.Fight, deaths []model.Death, reports []model.PrepRepor
 			}
 		}
 	}
+	coverage := make([]*big.Rat, len(out))
 	for i := range out {
-		out[i].Tenths, out[i].Coverage = sums[i].result(c)
+		out[i].Tenths, out[i].Coverage, coverage[i] = sums[i].result(c)
 	}
 	if kind == model.RunRaid {
-		rank(out, c)
+		rank(out, coverage, c)
 	}
 	// Invalid generated metadata is a programming error, never publishable output.
 	if err := Validate(out); err != nil {

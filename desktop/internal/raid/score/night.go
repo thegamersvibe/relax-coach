@@ -12,7 +12,7 @@ import (
 type groupTotal struct{ weight, coverage, scored, points big.Rat }
 type nightTotals struct{ boss, trash groupTotal }
 
-func (n *nightTotals) include(f model.Fight, fs model.FightScore, c cfg.Config) {
+func (n *nightTotals) include(f model.Fight, fs model.FightScore, coverage *big.Rat, c cfg.Config) {
 	g := &n.trash
 	w := integer(1)
 	if f.Boss {
@@ -26,23 +26,23 @@ func (n *nightTotals) include(f model.Fight, fs model.FightScore, c cfg.Config) 
 		w = mul(w, decimal(c.Scoring.Confidence.ShortFightWeight))
 	}
 	g.weight.Add(&g.weight, w)
-	covered := mul(w, integer(int64(fs.Coverage)))
+	covered := mul(w, coverage)
 	g.coverage.Add(&g.coverage, covered)
 	if fs.Tenths.Present {
 		g.scored.Add(&g.scored, covered)
 		g.points.Add(&g.points, mul(covered, div(integer(fs.Tenths.V), integer(10))))
 	}
 }
-func (n *nightTotals) result(c cfg.Config) (model.Opt, int) {
+func (n *nightTotals) result(c cfg.Config) (model.Opt, int, *big.Rat) {
 	trash := integer(0)
 	if n.trash.weight.Sign() > 0 {
 		trash = decimal(min(c.Scoring.Night.TrashShare, c.Scoring.Night.MaxTrashShare, 1-c.Scoring.Night.MinBossShare))
 	}
 	boss := sub(integer(1), trash)
 	coverage := add(mul(boss, div(&n.boss.coverage, &n.boss.weight)), mul(trash, div(&n.trash.coverage, &n.trash.weight)))
-	cov := int(round(coverage))
-	if !enough(cov, c.Scoring.Confidence.ProvisionalMinCoverage) || (n.boss.scored.Sign() == 0 && n.trash.scored.Sign() == 0) {
-		return model.Opt{}, cov
+	cov := floor(coverage)
+	if !enough(coverage, c.Scoring.Confidence.ProvisionalMinCoverage) || (n.boss.scored.Sign() == 0 && n.trash.scored.Sign() == 0) {
+		return model.Opt{}, cov, coverage
 	}
 	// An absent group contributes no invented zero score: normalize only its
 	// score share, while coverage still exposes any missing boss evidence.
@@ -56,17 +56,17 @@ func (n *nightTotals) result(c cfg.Config) (model.Opt, int) {
 		weight = add(weight, trash)
 	}
 	if weight.Sign() == 0 {
-		return model.Opt{}, cov
+		return model.Opt{}, cov, coverage
 	}
-	return points(div(total, weight), c), cov
+	return points(div(total, weight), c), cov, coverage
 }
-func enough(coverage int, threshold float64) bool {
-	return integer(int64(coverage)).Cmp(mul(decimal(threshold), integer(100))) >= 0
+func enough(coverage *big.Rat, threshold float64) bool {
+	return coverage.Cmp(mul(decimal(threshold), integer(100))) >= 0
 }
-func rank(out []model.NightScore, c cfg.Config) {
+func rank(out []model.NightScore, coverage []*big.Rat, c cfg.Config) {
 	var eligible []int
 	for i, n := range out {
-		if n.Tenths.Present && enough(n.Coverage, c.Scoring.Confidence.MinCoverage) {
+		if n.Tenths.Present && enough(coverage[i], c.Scoring.Confidence.MinCoverage) {
 			eligible = append(eligible, i)
 		}
 	}

@@ -14,7 +14,7 @@ func TestCorrectedCoverageTable(t *testing.T) {
 	for _, tc := range []struct {
 		roles         []string
 		with, without int
-	}{{[]string{"dps", "dps"}, 80, 74}, {[]string{"healer", "healer"}, 70, 64}, {[]string{"healer"}, 33, 27}, {[]string{"tank", "tank"}, 54, 48}, {[]string{"tank"}, 24, 18}} {
+	}{{[]string{"dps", "dps"}, 80, 74}, {[]string{"healer", "healer"}, 70, 64}, {[]string{"healer"}, 32, 26}, {[]string{"tank", "tank"}, 53, 47}, {[]string{"tank"}, 23, 17}} {
 		f := fixture(tc.roles...)
 		var reports []model.PrepReport
 		for _, a := range f.Players {
@@ -44,12 +44,12 @@ func TestRanksAndThresholds(t *testing.T) {
 	for _, a := range f.Players {
 		reports = append(reports, stock(a))
 	}
-	ds := []model.Death{mt.DeathOf(f.Players[4], f.ID, 100000, "avoidable").Owner("player", f.Players[4].Name).Build()}
+	ds := []model.Death{mt.DeathOf(f.Players[4], f.ID, 100000, model.CauseAvoidable).Owner(model.OwnerPlayer, f.Players[4].Name).Build()}
 	ns := score.Score([]model.Fight{f}, ds, reports, config(t))
 	for i, a := range f.Players {
 		n := playerScore(t, ns, a)
 		if i < 2 {
-			if n.Coverage != 54 || !n.Tenths.Present || n.Rank.Present {
+			if n.Coverage != 53 || !n.Tenths.Present || n.Rank.Present {
 				t.Fatalf("provisional tank %+v", n)
 			}
 		} else {
@@ -77,7 +77,7 @@ func TestRanksAndThresholds(t *testing.T) {
 		t.Fatalf("at .15 %+v", n)
 	}
 	c = config(t)
-	c.Scoring.Confidence.MinCoverage = .54
+	c.Scoring.Confidence.MinCoverage = .535
 	ns = score.Score([]model.Fight{f}, nil, reports, c)
 	if !playerScore(t, ns, f.Players[0]).Rank.Present {
 		t.Fatal("normal boundary excluded")
@@ -98,7 +98,7 @@ func TestNightWeightsAndConfidence(t *testing.T) {
 	wipe.ID = "wipe"
 	wipe.Success = model.Some(0)
 	wipe.DurationMs = model.Some(44999)
-	ds := []model.Death{mt.DeathOf(a, wipe.ID, wipe.StartMs, "avoidable").Owner("player", a.Name).Build()}
+	ds := []model.Death{mt.DeathOf(a, wipe.ID, wipe.StartMs, model.CauseAvoidable).Owner(model.OwnerPlayer, a.Name).Build()}
 	ns := score.Score([]model.Fight{kill, wipe}, ds, nil, c)
 	n := ns[0]
 	// 100 at weight 1, 60 at weight 0.5*0.5; both have coverage .5.
@@ -114,7 +114,7 @@ func TestNightWeightsAndConfidence(t *testing.T) {
 	trash := fixture("tank")
 	trash.ID = "trash"
 	trash.Boss = false
-	ds = []model.Death{mt.DeathOf(a, trash.ID, trash.StartMs, "avoidable").Owner("player", a.Name).Build()}
+	ds = []model.Death{mt.DeathOf(a, trash.ID, trash.StartMs, model.CauseAvoidable).Owner(model.OwnerPlayer, a.Name).Build()}
 	n = score.Score([]model.Fight{kill, trash, trash}, ds, nil, c)[0]
 	if n.Tenths != model.Some(980) {
 		t.Fatalf("trash cap %+v", n)
@@ -153,8 +153,8 @@ func TestGatesPurityAndDungeon(t *testing.T) {
 	}
 	f.Events = nil
 	for _, n := range score.Score([]model.Fight{f}, nil, nil, c) {
-		if n.Tenths.Present || n.Coverage != 0 {
-			t.Fatal("index scored")
+		if n.Tenths.Present || n.Coverage != 0 || len(n.Fights) != 0 {
+			t.Fatal("index scored or emitted an unselected fight")
 		}
 	}
 	f = fixture("dps", "dps")

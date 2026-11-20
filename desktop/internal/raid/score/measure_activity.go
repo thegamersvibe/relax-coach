@@ -3,10 +3,15 @@ package score
 import (
 	"math/big"
 	"sort"
+	"time"
 
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/cfg"
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/model"
 )
+
+// The current model/cfg carries no spell cast time or timeout field. Use the
+// ruled fallback, expressed with time units rather than a forbidden large literal.
+const maxCastIntervalMs = int64(10 * time.Second / time.Millisecond)
 
 // Only completed casts supply intervals. A failed cast is private to the
 // logger, so it never supplies activity. RANGE events supply none either:
@@ -28,7 +33,7 @@ func activeTime(v *playerView, events []model.Event, c cfg.Config) (int64, bool)
 			delete(starts, e.SpellID)
 		case model.CastSuccess:
 			start := e.TimeMs
-			if s, ok := starts[e.SpellID]; ok {
+			if s, ok := starts[e.SpellID]; ok && e.TimeMs-s <= maxCastIntervalMs {
 				start = s
 			}
 			delete(starts, e.SpellID)
@@ -38,7 +43,7 @@ func activeTime(v *playerView, events []model.Event, c cfg.Config) (int64, bool)
 			}
 			spans = append(spans, interval{start, e.TimeMs + gcd})
 		case model.Damage, model.Missed:
-			if e.Stream == model.SwingLanded || e.Kind == model.Missed && e.SpellID == 0 {
+			if e.Stream == model.SwingLanded || e.Kind == model.Missed && e.SpellID == 0 && e.SpellName == "" && e.Src.ID != e.Dst.ID {
 				spans = append(spans, interval{e.TimeMs, e.TimeMs + *c.Scoring.GCDMs})
 			}
 		}
@@ -61,7 +66,7 @@ func activeTime(v *playerView, events []model.Event, c cfg.Config) (int64, bool)
 	}
 	return total, true
 }
-func activity(v *playerView, all map[string]*playerView, c cfg.Config) model.Part {
+func activity(v *playerView, all map[string]*playerView, c cfg.Config) partResult {
 	counts := map[string]int64{"active_ms": v.activeMs, "alive_ms": v.aliveMs}
 	value, n, base := roleRatio(v, all, func(p *playerView) *big.Rat {
 		if !p.activityKnown {

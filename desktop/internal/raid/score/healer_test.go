@@ -35,7 +35,7 @@ func TestHealerHalvesAndAbsorbs(t *testing.T) {
 			t.Fatalf("healer %+v", p)
 		}
 	}
-	ds := []model.Death{mt.DeathOf(f.Players[2], f.ID, 130000, "unhealed").Owner("healers", a.Name, b.Name).Build()}
+	ds := []model.Death{mt.DeathOf(f.Players[2], f.ID, 130000, model.CauseUnhealed).Owner(model.OwnerHealers, a.Name, b.Name).Build()}
 	ns = score.Score([]model.Fight{f}, ds, nil, c)
 	p := part(t, playerScore(t, ns, a), "output")
 	if p.Tenths != model.Some(350) || p.Evidence.Counts["unhealed_deaths"] != 1 || part(t, playerScore(t, ns, a), "mechanics").Evidence.Counts["points_tenths.deaths"] != 1000 {
@@ -58,7 +58,7 @@ func TestHealerUnmeasuredAndCap(t *testing.T) {
 	a := f.Players[0]
 	c.Scoring.Healer.UnhealedTeamScore = 80
 	c.Scoring.Healer.UnhealedOutputCap = 50
-	ds := []model.Death{mt.DeathOf(f.Players[2], f.ID, 130000, "unhealed").Owner("healers", a.Name).Build()}
+	ds := []model.Death{mt.DeathOf(f.Players[2], f.ID, 130000, model.CauseUnhealed).Owner(model.OwnerHealers, a.Name).Build()}
 	p = part(t, playerScore(t, score.Score([]model.Fight{f}, ds, nil, c), a), "output")
 	if p.Tenths != model.Some(500) {
 		t.Fatalf("cap %+v", p)

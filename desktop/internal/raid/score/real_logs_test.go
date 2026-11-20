@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/death"
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/fights"
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/logfmt"
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/model"
@@ -62,7 +63,7 @@ func TestRealLogsR7(t *testing.T) {
 		}
 		logs++
 		nightCounts := [3]int{}
-		bosses := 0
+		bosses, classified, excluded := 0, 0, 0
 		byRole := map[string]map[string]int{}
 		coverage := map[string][]int{}
 		fightCoverage := map[string][]int{}
@@ -73,13 +74,19 @@ func TestRealLogsR7(t *testing.T) {
 			if run.Kind != model.RunDungeon {
 				t.Fatal("expected private dungeon run")
 			}
-			// R6 is not in this branch. Death classification input is deliberately empty.
-			ns := score.Score(run.Fights, nil, nil, c)
+			var deaths []model.Death
+			for _, f := range run.Fights {
+				ds, _, outside := death.Review(f, run.EndMs, c)
+				deaths = append(deaths, ds...)
+				excluded += outside
+			}
+			classified += len(deaths)
+			ns := score.Score(run.Fights, deaths, nil, c)
 			if err := evidenceCheck(ns, c); err != nil {
 				t.Fatalf("private score evidence: %v", err)
 			}
 			b1, _ := json.Marshal(ns)
-			b2, _ := json.Marshal(score.Score(run.Fights, nil, nil, c))
+			b2, _ := json.Marshal(score.Score(run.Fights, deaths, nil, c))
 			if !bytes.Equal(b1, b2) {
 				t.Fatal("private score nondeterminism")
 			}
@@ -132,7 +139,7 @@ func TestRealLogsR7(t *testing.T) {
 			t.Fatalf("private log %d: boss count %d, want 13", logs, bosses)
 		}
 		_, unmatched := score.MatchPrep(nil, names)
-		t.Logf("log %d: runs=%d bosses=%d prep_reports=0 prep_unmatched=%d classified_deaths=0 (R6 absent)", logs, len(result.Runs), bosses, len(unmatched))
+		t.Logf("log %d: runs=%d bosses=%d prep_reports=0 prep_unmatched=%d classified_deaths=%d excluded_past_run=%d", logs, len(result.Runs), bosses, len(unmatched), classified, excluded)
 		t.Logf("log %d unique players normal/provisional/none=%v; role rows use any detailed fight, so memberships may overlap", logs, nightCounts)
 		for _, role := range []string{"tank", "healer", "dps", "unknown"} {
 			counts := [3]int{}

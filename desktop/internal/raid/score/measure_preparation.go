@@ -1,13 +1,15 @@
 package score
 
 import (
+	"bytes"
+	"encoding/json"
 	"time"
 
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/cfg"
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/model"
 )
 
-func preparation(f model.Fight, reports []model.PrepReport, c cfg.Config) model.Part {
+func preparation(f model.Fight, reports []model.PrepReport, c cfg.Config) partResult {
 	counts := map[string]int64{}
 	measures := []measure{{"stock", nil}, {"bag_gear", nil}, {"used", nil}}
 	if len(reports) == 0 {
@@ -16,13 +18,13 @@ func preparation(f model.Fight, reports []model.PrepReport, c cfg.Config) model.
 	chosen := reports[0]
 	// First find the earliest, then replace it with the latest eligible report.
 	for _, r := range reports {
-		if r.Stamped < chosen.Stamped {
+		if r.Stamped < chosen.Stamped || r.Stamped == chosen.Stamped && prepTieAfter(r, chosen) {
 			chosen = r
 		}
 	}
 	found := false
 	for _, r := range reports {
-		if r.Stamped <= f.EndMs/int64(time.Second/time.Millisecond) && (!found || r.Stamped > chosen.Stamped) {
+		if r.Stamped <= f.EndMs/int64(time.Second/time.Millisecond) && (!found || r.Stamped > chosen.Stamped || r.Stamped == chosen.Stamped && prepTieAfter(r, chosen)) {
 			chosen = r
 			found = true
 		}
@@ -74,4 +76,16 @@ func preparation(f model.Fight, reports []model.PrepReport, c cfg.Config) model.
 		}
 	}
 	return makePart("preparation", measures, c.Scoring.MeasureWeights["preparation"], counts, c)
+}
+
+// Clocks establish recency; an exact clock tie uses the bytewise JSON of the
+// full report as a stable key, not slice arrival order. PrepReport has no maps,
+// floats or unsupported JSON values, so marshaling cannot fail.
+func prepTieAfter(a, b model.PrepReport) bool {
+	if a.SenderClock != b.SenderClock {
+		return a.SenderClock > b.SenderClock
+	}
+	ak, _ := json.Marshal(a)
+	bk, _ := json.Marshal(b)
+	return bytes.Compare(ak, bk) > 0
 }

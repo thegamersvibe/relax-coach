@@ -281,14 +281,14 @@
   },
   {
     "file": "desktop/internal/raid/score/measure_mechanics.go",
-    "old": "death.OwnerKind != \"player\"",
-    "new": "death.OwnerKind == \"nobody\"",
+    "old": "death.OwnerKind != model.OwnerPlayer",
+    "new": "death.OwnerKind == model.OwnerNobody",
     "killed_by": "TestMechanicsOwnership",
     "rule": "only owned player deaths"
   },
   {
     "file": "desktop/internal/raid/score/measure_mechanics.go",
-    "old": "death.Cause == \"afterWipeCall\" ||",
+    "old": "death.Cause == model.CauseAfterWipe ||",
     "new": "false ||",
     "killed_by": "TestMechanicsOwnership",
     "rule": "after wipe no penalty"
@@ -365,8 +365,8 @@
   },
   {
     "file": "desktop/internal/raid/score/measure_preparation.go",
-    "old": "if r.Stamped < chosen.Stamped {",
-    "new": "if r.Stamped > chosen.Stamped {",
+    "old": "if r.Stamped < chosen.Stamped ||",
+    "new": "if r.Stamped > chosen.Stamped ||",
     "killed_by": "TestPrepSelectionAndMeasures",
     "rule": "earliest fallback"
   },
@@ -470,7 +470,7 @@
   },
   {
     "file": "desktop/internal/raid/score/numbers.go",
-    "old": "div(integer(int64(p.Coverage)), integer(100))",
+    "old": "div(p.coverage, integer(100))",
     "new": "integer(1)",
     "killed_by": "TestCorrectedCoverageTable",
     "rule": "weighted part coverage"
@@ -484,8 +484,8 @@
   },
   {
     "file": "desktop/internal/raid/score/night.go",
-    "old": "!enough(cov, c.Scoring.Confidence.ProvisionalMinCoverage)",
-    "new": "!enough(cov, c.Scoring.Confidence.MinCoverage)",
+    "old": "!enough(coverage, c.Scoring.Confidence.ProvisionalMinCoverage)",
+    "new": "!enough(coverage, c.Scoring.Confidence.MinCoverage)",
     "killed_by": "TestLoneTankCoverage",
     "rule": "night provisional threshold"
   },
@@ -505,7 +505,7 @@
   },
   {
     "file": "desktop/internal/raid/score/night.go",
-    "old": "covered := mul(w, integer(int64(fs.Coverage)))",
+    "old": "covered := mul(w, coverage)",
     "new": "covered := mul(w, integer(100))",
     "killed_by": "TestCoverageWeightedNight",
     "rule": "coverage scales night weight"
@@ -519,7 +519,7 @@
   },
   {
     "file": "desktop/internal/raid/score/night.go",
-    "old": "n.Tenths.Present && enough(n.Coverage, c.Scoring.Confidence.MinCoverage)",
+    "old": "n.Tenths.Present && enough(coverage[i], c.Scoring.Confidence.MinCoverage)",
     "new": "n.Tenths.Present",
     "killed_by": "TestRanksAndThresholds",
     "rule": "provisional absent rank order"
@@ -561,9 +561,237 @@
   },
   {
     "file": "desktop/internal/raid/score/numbers.go",
-    "old": "!enough(coverage, c.Scoring.Confidence.ProvisionalMinCoverage)",
-    "new": "coverage < int(round(mul(decimal(c.Scoring.Confidence.ProvisionalMinCoverage), integer(100))))",
+    "old": "!enough(measured, c.Scoring.Confidence.ProvisionalMinCoverage)",
+    "new": "measured.Cmp(integer(round(mul(decimal(c.Scoring.Confidence.ProvisionalMinCoverage), integer(100))))) < 0",
     "killed_by": "TestFractionalCoverageThreshold",
     "rule": "same exact threshold at fight and night"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "d.Cause == model.CauseUnhealed",
+    "new": "d.Cause == model.CauseUnresolved",
+    "killed_by": "TestDeathReviewUnhealedCapsHealerTeam"
+  },
+  {
+    "file": "desktop/internal/raid/score/score.go",
+    "old": "if profile, ok := c.Profile(f.Specs[id]); !ok || profile.Uncalibrated {",
+    "new": "if profile, ok := c.Profile(f.Specs[id]); false && (!ok || profile.Uncalibrated) {",
+    "killed_by": "TestUncalibratedOutputExcluded"
+  },
+  {
+    "file": "desktop/internal/raid/score/view.go",
+    "old": "uncalibrated: known && profile.Uncalibrated",
+    "new": "uncalibrated: known && false && profile.Uncalibrated",
+    "killed_by": "TestUncalibratedOutputExcluded"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_output.go",
+    "old": "if p.uncalibrated {",
+    "new": "if false && p.uncalibrated {",
+    "killed_by": "TestUncalibratedOutputExcluded"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "&& !p.uncalibrated",
+    "new": "&& true",
+    "killed_by": "TestUncalibratedOutputExcluded"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "v.aliveMs <= 0 || v.uncalibrated",
+    "new": "v.aliveMs <= 0",
+    "killed_by": "TestUncalibratedOutputExcluded"
+  },
+  {
+    "file": "desktop/internal/raid/score/numbers.go",
+    "old": "weighted = add(weighted, mul(w, clamp(m.value)))",
+    "new": "weighted = add(weighted, mul(w, div(integer(v.V), integer(10))))",
+    "killed_by": "TestMeasuresRoundOnlyAtPart"
+  },
+  {
+    "file": "desktop/internal/raid/score/numbers.go",
+    "old": "p.Coverage = floor(total)",
+    "new": "p.Coverage = int(round(total))",
+    "killed_by": "TestExactCoverageEdges"
+  },
+  {
+    "file": "desktop/internal/raid/score/numbers.go",
+    "old": "coverage := floor(measured)",
+    "new": "coverage := int(round(measured))",
+    "killed_by": "TestExactCoverageEdges"
+  },
+  {
+    "file": "desktop/internal/raid/score/numbers.go",
+    "old": "p.coverage = total",
+    "new": "p.coverage = integer(int64(floor(total)))",
+    "killed_by": "TestExactFractionalThresholdSurvivesStoredFloor"
+  },
+  {
+    "file": "desktop/internal/raid/score/numbers.go",
+    "old": "!enough(measured, c.Scoring.Confidence.ProvisionalMinCoverage)",
+    "new": "!enough(integer(round(measured)), c.Scoring.Confidence.ProvisionalMinCoverage)",
+    "killed_by": "TestExactCoverageEdges"
+  },
+  {
+    "file": "desktop/internal/raid/score/night.go",
+    "old": "cov := floor(coverage)",
+    "new": "cov := int(round(coverage))",
+    "killed_by": "TestExactNightCoverageBeforeFloor"
+  },
+  {
+    "file": "desktop/internal/raid/score/night.go",
+    "old": "!enough(coverage, c.Scoring.Confidence.ProvisionalMinCoverage)",
+    "new": "!enough(integer(round(coverage)), c.Scoring.Confidence.ProvisionalMinCoverage)",
+    "killed_by": "TestExactNightCoverageBeforeFloor"
+  },
+  {
+    "file": "desktop/internal/raid/score/night.go",
+    "old": "enough(coverage[i], c.Scoring.Confidence.MinCoverage)",
+    "new": "enough(integer(round(coverage[i])), c.Scoring.Confidence.MinCoverage)",
+    "killed_by": "TestExactNightCoverageBeforeFloor"
+  },
+  {
+    "file": "desktop/internal/raid/score/night.go",
+    "old": "enough(coverage[i], c.Scoring.Confidence.MinCoverage)",
+    "new": "enough(integer(int64(n.Coverage)), c.Scoring.Confidence.MinCoverage)",
+    "killed_by": "TestExactFractionalThresholdSurvivesStoredFloor"
+  },
+  {
+    "file": "desktop/internal/raid/score/night.go",
+    "old": "return coverage.Cmp(mul(decimal(threshold), integer(100))) >= 0",
+    "new": "return coverage.Cmp(mul(decimal(threshold), integer(100))) > 0",
+    "killed_by": "TestExactCoverageEdges"
+  },
+  {
+    "file": "desktop/internal/raid/score/night.go",
+    "old": "covered := mul(w, coverage)",
+    "new": "covered := mul(w, integer(int64(fs.Coverage)))",
+    "killed_by": "TestCoverageWeightedNight"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "return a.SenderClock > b.SenderClock",
+    "new": "return a.SenderClock < b.SenderClock",
+    "killed_by": "TestPrepSameStampUsesSenderThenStableKey"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "return bytes.Compare(ak, bk) > 0",
+    "new": "return false && bytes.Compare(ak, bk) > 0",
+    "killed_by": "TestPrepSameStampUsesSenderThenStableKey"
+  },
+  {
+    "file": "desktop/internal/raid/score/score.go",
+    "old": "d.V > 0 && v.observed",
+    "new": "d.V > 0",
+    "killed_by": "TestUnobservedRosterPlayerIsUnmeasured"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_output.go",
+    "old": "&& p.observed",
+    "new": "&& true",
+    "killed_by": "TestUnobservedRosterPlayerIsUnmeasured"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_activity.go",
+    "old": "ok && e.TimeMs-s <= maxCastIntervalMs",
+    "new": "ok",
+    "killed_by": "TestCastStartExpiresAtFallbackCap"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_activity.go",
+    "old": "e.TimeMs-s <= maxCastIntervalMs",
+    "new": "e.TimeMs-s < maxCastIntervalMs",
+    "killed_by": "TestCastStartExpiresAtFallbackCap"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_activity.go",
+    "old": "&& e.Src.ID != e.Dst.ID",
+    "new": "&& true",
+    "killed_by": "TestSpellZeroSelfMissIsNotMelee"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_activity.go",
+    "old": "&& e.SpellName == \"\"",
+    "new": "&& true",
+    "killed_by": "TestSpellZeroSelfMissIsNotMelee"
+  },
+  {
+    "file": "desktop/internal/raid/score/view.go",
+    "old": "e.Kind != model.Damage || e.Stream == model.SwingSource",
+    "new": "e.Kind != model.Damage",
+    "killed_by": "TestSwingStreamsAreSeparate"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_activity.go",
+    "old": "e.Stream == model.SwingLanded ||",
+    "new": "e.Stream != model.StreamNone ||",
+    "killed_by": "TestSwingStreamsAreSeparate"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_mechanics.go",
+    "old": "e.Stream == model.SwingLanded &&",
+    "new": "e.Stream != model.StreamNone &&",
+    "killed_by": "TestSwingStreamsAreSeparate"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_output.go",
+    "old": " || v.aliveMs <= 0",
+    "new": "",
+    "killed_by": "TestZeroAliveHasNoRelativeOrHealerOutput"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "v.aliveMs <= 0 || v.uncalibrated",
+    "new": "v.uncalibrated",
+    "killed_by": "TestZeroAliveHasNoRelativeOrHealerOutput"
+  },
+  {
+    "file": "desktop/internal/raid/score/validate.go",
+    "old": "p.Tenths.V < 0 || p.Tenths.V > 100*tenthsPerPoint",
+    "new": "p.Tenths.V < 0",
+    "killed_by": "TestMeasuredPartBoundsAndEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/score/validate.go",
+    "old": "p.Tenths.V < 0 || p.Tenths.V > 100*tenthsPerPoint",
+    "new": "p.Tenths.V > 100*tenthsPerPoint",
+    "killed_by": "TestMeasuredPartBoundsAndEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/score/validate.go",
+    "old": "strings.TrimSpace(p.Evidence.Text) == \"\"",
+    "new": "false && strings.TrimSpace(p.Evidence.Text) == \"\"",
+    "killed_by": "TestMeasuredPartBoundsAndEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/score/validate.go",
+    "old": "|| p.Evidence.Counts == nil",
+    "new": "",
+    "killed_by": "TestMeasuredPartBoundsAndEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/score/validate.go",
+    "old": "utf8.RuneCountInString(p.Evidence.Text) > 200",
+    "new": "false && utf8.RuneCountInString(p.Evidence.Text) > 200",
+    "killed_by": "TestMeasuredPartBoundsAndEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/score/validate.go",
+    "old": "|| len(p.Evidence.AtMs) > 20",
+    "new": "",
+    "killed_by": "TestMeasuredPartBoundsAndEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/score/numbers.go",
+    "old": "if total.Cmp(integer(1)) >= 0 {",
+    "new": "if total.Sign() > 0 {",
+    "killed_by": "TestSubHundredthPartCannotPublishZeroCoverage"
+  },
+  {
+    "file": "desktop/internal/raid/score/numbers.go",
+    "old": "if total.Cmp(integer(1)) >= 0 {",
+    "new": "if total.Cmp(integer(1)) > 0 {",
+    "killed_by": "TestSubHundredthPartCannotPublishZeroCoverage"
   }
 ]

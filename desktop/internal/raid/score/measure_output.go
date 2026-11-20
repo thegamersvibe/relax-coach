@@ -39,7 +39,7 @@ func ratioPoints(r *big.Rat, c cfg.Config) *big.Rat {
 func roleRatio(v *playerView, all map[string]*playerView, value func(*playerView) *big.Rat, c cfg.Config) (*big.Rat, int, *big.Rat) {
 	var peers []*big.Rat
 	for _, p := range all {
-		if p.role == v.role && p.aliveMs > 0 {
+		if p.role == v.role && p.aliveMs > 0 && p.observed {
 			if x := value(p); x != nil {
 				peers = append(peers, x)
 			}
@@ -56,12 +56,17 @@ func roleRatio(v *playerView, all map[string]*playerView, value func(*playerView
 	}
 	return ratioPoints(div(x, base), c), n, base
 }
-func output(f model.Fight, v *playerView, all map[string]*playerView, deaths []model.Death, c cfg.Config) model.Part {
+func output(f model.Fight, v *playerView, all map[string]*playerView, deaths []model.Death, c cfg.Config) partResult {
 	if v.role == "healer" {
 		return healerOutput(f, v, all, deaths, c)
 	}
 	counts := map[string]int64{"boss_damage": v.damage, "alive_ms": v.aliveMs}
-	value, n, base := roleRatio(v, all, func(p *playerView) *big.Rat { return div(integer(p.damage), integer(p.aliveMs)) }, c)
+	value, n, base := roleRatio(v, all, func(p *playerView) *big.Rat {
+		if p.uncalibrated {
+			return nil
+		}
+		return div(integer(p.damage), integer(p.aliveMs))
+	}, c)
 	p := makePart("output", []measure{{"boss_damage", value}}, c.Scoring.MeasureWeights["output"], counts, c)
 	counts["baseline_players"] = int64(n)
 	if base != nil {

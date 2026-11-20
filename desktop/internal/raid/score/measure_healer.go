@@ -48,17 +48,17 @@ func aliveAt(v *playerView, at int64) bool {
 	}
 	return live
 }
-func healerOutput(f model.Fight, v *playerView, all map[string]*playerView, deaths []model.Death, c cfg.Config) model.Part {
+func healerOutput(f model.Fight, v *playerView, all map[string]*playerView, deaths []model.Death, c cfg.Config) partResult {
 	n, total := 0, int64(0)
 	for _, p := range all {
-		if p.role == "healer" && p.aliveMs > 0 {
+		if p.role == "healer" && p.aliveMs > 0 && p.observed && !p.uncalibrated {
 			n++
 			total += p.lowHealing
 		}
 	}
 	unhealed := int64(0)
 	for _, d := range deaths {
-		if d.FightID == f.ID && d.Cause == "unhealed" && aliveAt(v, d.TimeMs) {
+		if d.FightID == f.ID && d.Cause == model.CauseUnhealed && aliveAt(v, d.TimeMs) {
 			unhealed++
 		}
 	}
@@ -70,7 +70,7 @@ func healerOutput(f model.Fight, v *playerView, all map[string]*playerView, deat
 	if n >= c.Scoring.Confidence.MinMeasurablePlayers && total > 0 && c.Scoring.Healer.LowHealthFraction != nil {
 		individual = ratioPoints(div(mul(integer(v.lowHealing), integer(int64(n))), integer(total)), c)
 	}
-	if v.aliveMs <= 0 {
+	if v.aliveMs <= 0 || v.uncalibrated {
 		team = nil
 		individual = nil
 	}

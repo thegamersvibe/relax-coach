@@ -30,9 +30,9 @@ func TestActiveIntervals(t *testing.T) {
 	if p.Evidence.Counts["active_ms"] != 10000 || p.Evidence.Counts["alive_ms"] != 60000 || p.Coverage != 100 || p.Baseline != "role" {
 		t.Fatalf("activity %+v", p)
 	}
-	// No own events (nor pet uptime) means zero, not unmeasured, with a positive role baseline.
+	// No own or owned events is unmeasured, never an idle-player zero.
 	p = part(t, playerScore(t, got, f.Players[2]), "activity")
-	if p.Tenths != model.Some(0) || p.Evidence.Counts["active_ms"] != 0 {
+	if p.Tenths.Present || p.Evidence.Counts["active_ms"] != 0 {
 		t.Fatalf("zero activity %+v", p)
 	}
 }

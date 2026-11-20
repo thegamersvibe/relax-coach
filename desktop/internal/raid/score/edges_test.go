@@ -13,7 +13,7 @@ func TestZeroBaselinesAndNullableConfig(t *testing.T) {
 	f.Events = f.Events[:2]
 	c := config(t)
 	for _, n := range score.Score([]model.Fight{f}, nil, nil, c) {
-		if n.Tenths.Present || n.Coverage != 14 {
+		if n.Tenths.Present || n.Coverage != 0 {
 			t.Fatalf("zero median invented baseline: %v/%d", n.Tenths, n.Coverage)
 		}
 	}
@@ -36,7 +36,7 @@ func TestRoundingAndClockShift(t *testing.T) {
 	c := config(t)
 	c.Scoring.CountPenalties["owned_death"] = 10.05
 	a := f.Players[0]
-	ds := []model.Death{mt.DeathOf(a, f.ID, f.StartMs, "avoidable").Owner("player", a.Name).Build()}
+	ds := []model.Death{mt.DeathOf(a, f.ID, f.StartMs, model.CauseAvoidable).Owner(model.OwnerPlayer, a.Name).Build()}
 	ns := score.Score([]model.Fight{f}, ds, nil, c)
 	if part(t, ns[0], "mechanics").Tenths != model.Some(900) {
 		t.Fatal("half-away decimal rounding")
@@ -59,7 +59,7 @@ func TestUnhealedAtEndAndTail(t *testing.T) {
 	a, b := f.Players[0], f.Players[1]
 	f.Events = append(f.Events, mt.At(159000).Dst(b).Died(0).Build())
 	for _, at := range []int64{160000, 160035} {
-		ds := []model.Death{mt.DeathOf(f.Players[2], f.ID, at, "unhealed").Owner("healers", a.Name).Build()}
+		ds := []model.Death{mt.DeathOf(f.Players[2], f.ID, at, model.CauseUnhealed).Owner(model.OwnerHealers, a.Name).Build()}
 		ns := score.Score([]model.Fight{f}, ds, nil, c)
 		if part(t, playerScore(t, ns, a), "output").Evidence.Counts["unhealed_deaths"] != 1 || part(t, playerScore(t, ns, b), "output").Evidence.Counts["unhealed_deaths"] != 0 {
 			t.Fatal("end/tail must charge only living healers")

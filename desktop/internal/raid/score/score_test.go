@@ -50,7 +50,7 @@ func TestLoneTankCoverage(t *testing.T) {
 	for _, tc := range []struct {
 		reports []model.PrepReport
 		cov     int
-	}{{nil, 18}, {[]model.PrepReport{stock(f.Players[0])}, 24}} {
+	}{{nil, 17}, {[]model.PrepReport{stock(f.Players[0])}, 23}} {
 		got := score.Score([]model.Fight{f}, nil, tc.reports, c)
 		if len(got) != 1 || got[0].Coverage != tc.cov || !got[0].Tenths.Present || got[0].Rank.Present {
 			t.Fatalf("want provisional %d got %+v", tc.cov, got)
@@ -66,7 +66,7 @@ func TestLoneTankCoverage(t *testing.T) {
 		}
 	}
 	c.Scoring.Confidence.ProvisionalMinCoverage = .19
-	if got := score.Score([]model.Fight{f}, nil, nil, c)[0]; got.Tenths.Present || got.Coverage != 18 {
+	if got := score.Score([]model.Fight{f}, nil, nil, c)[0]; got.Tenths.Present || got.Coverage != 17 {
 		t.Fatalf("below threshold %+v", got)
 	}
 	f.Events = nil
@@ -92,6 +92,9 @@ func TestPrepSelectionAndMeasures(t *testing.T) {
 	counts := got.Evidence.Counts
 	if got.Coverage != 60 || got.Tenths != model.Some(875) || counts["points_tenths.bag_gear"] != 750 || counts["points_tenths.stock"] != 1000 || counts["measured.used"] != 0 || counts["prep_stamped_s"] != 160 || counts["prep_sender_clock_s"] != 22 || counts["better_gear_slots"] != 1 {
 		t.Fatalf("prep %+v", got)
+	}
+	for i := range f.Events {
+		f.Events[i].TimeMs -= f.StartMs
 	}
 	f.StartMs = 0
 	f.EndMs = 100000

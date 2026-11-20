@@ -8,7 +8,7 @@ import (
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/model"
 )
 
-func mechanics(f model.Fight, v *playerView, deaths []model.Death, c cfg.Config) model.Part {
+func mechanics(f model.Fight, v *playerView, deaths []model.Death, c cfg.Config) partResult {
 	counts := map[string]int64{"owned_deaths": 0, "unresolved_deaths": 0, "boss_swings_taken": 0}
 	var at []int64
 	severity := integer(0)
@@ -17,10 +17,10 @@ func mechanics(f model.Fight, v *playerView, deaths []model.Death, c cfg.Config)
 		if death.FightID != f.ID {
 			continue
 		}
-		if death.Player.ID == v.actor.ID && death.Cause == "unresolved" {
+		if death.Player.ID == v.actor.ID && death.Cause == model.CauseUnresolved {
 			counts["unresolved_deaths"]++
 		}
-		if death.OwnerKind != "player" || death.Cause == "unhealed" || death.Cause == "unresolved" || death.Cause == "afterWipeCall" || !slices.Contains(death.Owners, v.actor.Name) {
+		if death.OwnerKind != model.OwnerPlayer || death.Cause == model.CauseUnhealed || death.Cause == model.CauseUnresolved || death.Cause == model.CauseAfterWipe || !slices.Contains(death.Owners, v.actor.Name) {
 			continue
 		}
 		counts["owned_deaths"]++
@@ -53,7 +53,7 @@ func mechanics(f model.Fight, v *playerView, deaths []model.Death, c cfg.Config)
 	p.Evidence.AtMs = at
 	return p
 }
-func utility(f model.Fight, v *playerView, c cfg.Config) model.Part {
+func utility(f model.Fight, v *playerView, c cfg.Config) partResult {
 	counts := map[string]int64{"interrupts": 0, "dispels": 0}
 	for _, e := range f.Events {
 		if owner(f, e.Src.ID) == v.actor.ID {

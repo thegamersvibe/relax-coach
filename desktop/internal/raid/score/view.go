@@ -16,6 +16,8 @@ type playerView struct {
 	life                                  []model.Event
 	aliveMs, damage, activeMs, lowHealing int64
 	activityKnown                         bool
+	uncalibrated                          bool
+	observed                              bool
 }
 
 func duration(f model.Fight) model.Opt {
@@ -50,10 +52,17 @@ func views(f model.Fight, c cfg.Config) map[string]*playerView {
 	d := duration(f)
 	end := f.StartMs + max(int64(0), d.V)
 	for _, p := range f.Players {
-		out[p.ID] = &playerView{actor: p, role: f.Roles[p.ID]}
+		profile, known := c.Profile(f.Specs[p.ID])
+		out[p.ID] = &playerView{actor: p, role: f.Roles[p.ID], uncalibrated: known && profile.Uncalibrated}
 	}
 	events := ordered(f.Events)
 	for id, v := range out {
+		for _, e := range events {
+			if e.TimeMs >= f.StartMs && e.TimeMs <= end && (owner(f, e.Src.ID) == id || e.Dst.ID == id || e.InfoUnit == id || owner(f, e.Caster.ID) == id) {
+				v.observed = true
+				break
+			}
+		}
 		live, since := true, f.StartMs
 		for _, e := range events {
 			if e.Dst.ID != id || e.TimeMs < f.StartMs {

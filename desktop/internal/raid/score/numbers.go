@@ -58,13 +58,24 @@ func points(a *big.Rat, c cfg.Config) model.Opt {
 	return model.Some(round(mul(clamp(quantized), integer(10))))
 }
 
+// partResult keeps exact measured weight private until fight/night aggregation.
+// Only the floored coverage and rounded part score cross the model boundary.
+type partResult struct {
+	model.Part
+	coverage *big.Rat
+}
+
+func floor(a *big.Rat) int {
+	return int(new(big.Int).Quo(a.Num(), a.Denom()).Int64())
+}
+
 type measure struct {
 	name  string
 	value *big.Rat
 }
 
-func makePart(name string, measures []measure, weights map[string]float64, counts map[string]int64, c cfg.Config) model.Part {
-	p := model.Part{Name: name, Evidence: model.Evidence{Text: "Measured values only; unavailable measures are excluded.", Counts: counts}}
+func makePart(name string, measures []measure, weights map[string]float64, counts map[string]int64, c cfg.Config) partResult {
+	p := partResult{Part: model.Part{Name: name, Evidence: model.Evidence{Text: "Measured values only; unavailable measures are excluded.", Counts: counts}}, coverage: integer(0)}
 	total, weighted := integer(0), integer(0)
 	for _, m := range measures {
 		p.Evidence.Counts["measured."+m.name] = 0
@@ -76,10 +87,13 @@ func makePart(name string, measures []measure, weights map[string]float64, count
 		p.Evidence.Counts["points_tenths."+m.name] = v.V
 		w := decimal(weights[m.name])
 		total = add(total, w)
-		weighted = add(weighted, mul(w, div(integer(v.V), integer(10))))
+		weighted = add(weighted, mul(w, clamp(m.value)))
 	}
-	if total.Sign() > 0 {
-		p.Coverage = int(round(total))
+	// A measured part must be representable with coverage 1..100. Below one
+	// hundredth it remains unmeasured, rather than rounding evidence upward.
+	if total.Cmp(integer(1)) >= 0 {
+		p.coverage = total
+		p.Coverage = floor(total)
 		p.Tenths = points(div(weighted, total), c)
 	}
 	return p
@@ -98,19 +112,19 @@ func partWeights(role string, c cfg.Config) map[string]float64 {
 	return map[string]float64{"output": w.Output, "activity": w.Activity, "mechanics": w.Mechanics, "utility": w.Utility, "preparation": w.Preparation}
 }
 
-func combine(parts []model.Part, weights map[string]float64, c cfg.Config) (model.Opt, int) {
+func combine(parts []partResult, weights map[string]float64, c cfg.Config) (model.Opt, int, *big.Rat) {
 	measured, weighted := integer(0), integer(0)
 	for _, p := range parts {
 		if !p.Tenths.Present {
 			continue
 		}
-		w := mul(decimal(weights[p.Name]), div(integer(int64(p.Coverage)), integer(100)))
+		w := mul(decimal(weights[p.Name]), div(p.coverage, integer(100)))
 		measured = add(measured, w)
 		weighted = add(weighted, mul(w, div(integer(p.Tenths.V), integer(10))))
 	}
-	coverage := int(round(measured))
-	if !enough(coverage, c.Scoring.Confidence.ProvisionalMinCoverage) || measured.Sign() == 0 {
-		return model.Opt{}, coverage
+	coverage := floor(measured)
+	if !enough(measured, c.Scoring.Confidence.ProvisionalMinCoverage) || measured.Sign() == 0 {
+		return model.Opt{}, coverage, measured
 	}
-	return points(div(weighted, measured), c), coverage
+	return points(div(weighted, measured), c), coverage, measured
 }

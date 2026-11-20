@@ -2,9 +2,13 @@ package score
 
 import (
 	"fmt"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/thegamersvibe/relax-coach/desktop/internal/raid/model"
 )
+
+const tenthsPerPoint = 10
 
 // ValidatePart refuses missing or invalid metadata on a measured part. A file
 // writer must not turn a forgotten coverage/baseline into a valid-looking zero.
@@ -14,6 +18,15 @@ func ValidatePart(p model.Part) error {
 	}
 	if p.Coverage < 1 || p.Coverage > 100 {
 		return fmt.Errorf("score: measured %s coverage outside 1..100", p.Name)
+	}
+	if p.Tenths.V < 0 || p.Tenths.V > 100*tenthsPerPoint {
+		return fmt.Errorf("score: measured %s score outside 0..100", p.Name)
+	}
+	if strings.TrimSpace(p.Evidence.Text) == "" || p.Evidence.Counts == nil {
+		return fmt.Errorf("score: measured %s requires evidence", p.Name)
+	}
+	if utf8.RuneCountInString(p.Evidence.Text) > 200 || len(p.Evidence.AtMs) > 20 {
+		return fmt.Errorf("score: measured %s evidence exceeds bounds", p.Name)
 	}
 	switch p.Baseline {
 	case "", "own", "guild", "role":

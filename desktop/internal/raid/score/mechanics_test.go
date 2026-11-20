@@ -13,13 +13,13 @@ func TestMechanicsOwnership(t *testing.T) {
 	boss := model.Actor{ID: f.BossUnits[0]}
 	f.Events = append(f.Events, mt.At(110000).Src(boss).Dst(a).Damage(1, 0).Landed().Build(), model.Event{TimeMs: 110000, Kind: model.Damage, Src: boss, Dst: a, Stream: model.SwingSource}, mt.At(111000).Src(boss).Dst(a).Damage(1, 0).Landed().Build(), model.Event{TimeMs: 112000, Kind: model.Interrupt, Src: a}, model.Event{TimeMs: 113000, Kind: model.Dispel, Src: a})
 	ds := []model.Death{
-		mt.DeathOf(a, f.ID, 100000, "avoidable").Owner("player", a.Name).Build(),
-		mt.DeathOf(b, f.ID, 160000, "avoidable").Owner("player", a.Name).Build(),
-		mt.DeathOf(a, f.ID, 120000, "unhealed").Owner("healers", a.Name).Build(),
-		mt.DeathOf(a, f.ID, 120000, "unresolved").Owner("undecided").Build(),
-		mt.DeathOf(a, f.ID, 140000, "afterWipeCall").Owner("player", a.Name).Build(),
-		mt.DeathOf(a, "other", 100000, "avoidable").Owner("player", a.Name).Build(),
-		mt.DeathOf(a, f.ID, 100000, "avoidable").Owner("undecided", a.Name).Build(), // ownership, never a stray name, grants a charge
+		mt.DeathOf(a, f.ID, 100000, model.CauseAvoidable).Owner(model.OwnerPlayer, a.Name).Build(),
+		mt.DeathOf(b, f.ID, 160000, model.CauseAvoidable).Owner(model.OwnerPlayer, a.Name).Build(),
+		mt.DeathOf(a, f.ID, 120000, model.CauseUnhealed).Owner(model.OwnerHealers, a.Name).Build(),
+		mt.DeathOf(a, f.ID, 120000, model.CauseUnresolved).Owner(model.OwnerUndecided).Build(),
+		mt.DeathOf(a, f.ID, 140000, model.CauseAfterWipe).Owner(model.OwnerPlayer, a.Name).Build(),
+		mt.DeathOf(a, "other", 100000, model.CauseAvoidable).Owner(model.OwnerPlayer, a.Name).Build(),
+		mt.DeathOf(a, f.ID, 100000, model.CauseAvoidable).Owner(model.OwnerUndecided, a.Name).Build(), // ownership, never a stray name, grants a charge
 	}
 	ns := score.Score([]model.Fight{f}, ds, nil, config(t))
 	p := part(t, playerScore(t, ns, a), "mechanics")
@@ -42,7 +42,7 @@ func TestMechanicsConfigAndFloor(t *testing.T) {
 	f := fixture("dps")
 	a := f.Players[0]
 	c := config(t)
-	ds := []model.Death{mt.DeathOf(a, f.ID, 130000, "avoidable").Owner("player", a.Name).Build()}
+	ds := []model.Death{mt.DeathOf(a, f.ID, 130000, model.CauseAvoidable).Owner(model.OwnerPlayer, a.Name).Build()}
 	c.Scoring.CountPenalties["owned_death"] = 20
 	p := part(t, score.Score([]model.Fight{f}, ds, nil, c)[0], "mechanics")
 	if p.Evidence.Counts["points_tenths.deaths"] != 850 {

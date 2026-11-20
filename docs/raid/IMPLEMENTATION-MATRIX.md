@@ -38,7 +38,7 @@
 | IMP-027 | REQ-SCO-11 | forever | R12 | R8 | unassigned | `desktop/internal/raid/score`, officer page | planned | V-027 |
 | IMP-028 | REQ-SCO-12 | forever | R7 | R0 + R5 + Part addendum | R7 builder | `desktop/internal/raid/score` | implemented; role baseline only | V-028 |
 | IMP-029 | REQ-SCO-12 | forever | R7 | R0 + R5 + Part addendum | R7 builder | `desktop/internal/raid/score` | deferred; history fallback is phase 2 | V-029 |
-| IMP-030 | REQ-SCO-13 | forever | R7 | R0 + R5 + Part addendum | R7 builder | `desktop/internal/raid/score` | implemented; role fallback and uncalibrated label supersede spec-only exclusion | V-030 |
+| IMP-030 | REQ-SCO-13 | forever | R7 | R0 + R5 + Part addendum | R7 builder | `desktop/internal/raid/score` | implemented; flagged profiles have no Output or output-baseline membership; unknown specs retain role fallback | V-030 |
 | IMP-031 | REQ-SCO-14 | forever | R7 | R0 + R5 + Part addendum | R7 builder | `desktop/internal/raid/score` | open; comparison JSON contract/owner unconfirmed, page is R8 | V-031 |
 | IMP-032 | REQ-DTH-01 | forever | R6 | model addendum 2, R5 | R6 builder | `desktop/internal/raid/death` | verified (engine; no UI) | V-032 |
 | IMP-033 | REQ-DTH-02 | forever | R6 | model addendum 2, R5 | R6 builder | `desktop/internal/raid/death` | verified (engine; no UI) | V-033 |

@@ -91,10 +91,10 @@ func evidenceCheck(ns []model.NightScore, c cfg.Config) error {
 						return fmt.Errorf("raw evidence %s: got %d want %d", key, x["points_tenths."+key], expected)
 					}
 					w += inner[key]
-					sum += float64(expected) * inner[key] / 10
+					sum += math.Max(0, math.Min(100, v)) * inner[key]
 				}
 				if p.Tenths.Present {
-					if w == 0 || p.Coverage != int(math.Round(w)) {
+					if w == 0 || p.Coverage != int(math.Floor(w)) {
 						return fmt.Errorf("part coverage")
 					}
 					want := quantize(sum / w)
@@ -104,7 +104,7 @@ func evidenceCheck(ns []model.NightScore, c cfg.Config) error {
 					if p.Tenths.V != want {
 						return fmt.Errorf("part recomputation %s: got %d want %d", p.Name, p.Tenths.V, want)
 					}
-					weight := weights[p.Name] * float64(p.Coverage) / 100
+					weight := weights[p.Name] * w / 100
 					fightWeight += weight
 					fightSum += weight * float64(p.Tenths.V) / 10
 				}
@@ -112,7 +112,7 @@ func evidenceCheck(ns []model.NightScore, c cfg.Config) error {
 					return fmt.Errorf("evidence bound")
 				}
 			}
-			if f.Coverage != int(math.Round(fightWeight)) {
+			if f.Coverage != int(math.Floor(fightWeight)) {
 				return fmt.Errorf("fight coverage")
 			}
 			if f.Tenths.Present && f.Tenths.V != quantize(fightSum/fightWeight) {
@@ -154,10 +154,11 @@ func TestCoverageWeightedNight(t *testing.T) {
 	b.ID = "low"
 	ns := score.Score([]model.Fight{a, b}, nil, nil, c)
 	n := playerScore(t, ns, a.Players[0])
-	// Independent calculation from the two fight rows; equal kill weights, unequal coverage.
+	// Exact coverage is 47.5 and 17.5 before storage floors it to 47 and 17.
+	// Aggregation must not use those displayed integers as weights.
 	x, y := n.Fights[0], n.Fights[1]
-	want := int64(math.Round(float64(x.Tenths.V*int64(x.Coverage)+y.Tenths.V*int64(y.Coverage)) / float64(x.Coverage+y.Coverage)))
-	if n.Tenths != model.Some(want) || n.Coverage != 33 {
-		t.Fatalf("night coverage weighting got %v/%d want %d/33", n.Tenths, n.Coverage, want)
+	want := int64(math.Round((float64(x.Tenths.V)*47.5 + float64(y.Tenths.V)*17.5) / 65))
+	if n.Tenths != model.Some(want) || n.Coverage != 32 {
+		t.Fatalf("night coverage weighting got %v/%d want %d/32", n.Tenths, n.Coverage, want)
 	}
 }

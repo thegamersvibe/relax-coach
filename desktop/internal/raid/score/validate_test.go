@@ -30,7 +30,7 @@ func TestWriterGuard(t *testing.T) {
 		{"output", "role", 0, true}, {"mechanics", "", -1, true}, {"activity", "role", 101, true},
 		{"output", "spec", 100, true}, {"output", "", 100, true}, {"activity", "", 100, true},
 	} {
-		p := mt.NewPart(tc.name, 700, mt.Evidence("Measured.", nil)).Coverage(tc.coverage).Baseline(tc.baseline).Build()
+		p := mt.NewPart(tc.name, 700, mt.Evidence("Measured.", nil, "observations", 1)).Coverage(tc.coverage).Baseline(tc.baseline).Build()
 		if err := score.ValidatePart(p); (err != nil) != tc.bad {
 			t.Fatalf("%+v: %v", tc, err)
 		}
