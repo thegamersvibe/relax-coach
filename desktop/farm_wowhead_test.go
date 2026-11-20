@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -301,11 +302,31 @@ func TestWowheadMalformedAndOfflineLeaveCacheAlone(t *testing.T) {
 				t.Fatalf("invalid/offline response changed names: %+v", got)
 			}
 			after, err := os.ReadFile(path)
-			if err != nil || string(after) != original {
-				t.Fatalf("cache changed after failure: %s %v", after, err)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tt.status == 0 {
+				if string(after) != original {
+					t.Fatal("offline failure changed the cache")
+				}
+			} else {
+				// Invalid 200s now add a negative marker, without altering any
+				// previously cached names, qualities or fetch timestamps.
+				var before, saved map[string]map[string]any
+				if json.Unmarshal([]byte(original), &before) != nil || json.Unmarshal(after, &saved) != nil {
+					t.Fatal("invalid cache JSON")
+				}
+				marker := saved["900001"]
+				if len(marker) != 2 || marker["missing"] != true || marker["fetched_at"] == nil {
+					t.Fatal("invalid 200 must persist only a negative marker")
+				}
+				delete(saved, "900001")
+				if !reflect.DeepEqual(saved, before) {
+					t.Fatal("invalid response changed existing cache entries")
+				}
 			}
 			if calls.Load() > 1 {
-				t.Fatal("malformed responses should back off too")
+				t.Fatal("negative caching or offline backoff must prevent repeated requests")
 			}
 		})
 	}

@@ -67,6 +67,38 @@ test('Wowhead opt-out is loaded on startup and a failed write restores it',async
   assert.match($('wowhead-names-status').textContent,/Test settings failure/);
 });
 
+// Regression from the held native-reply probe: a setting save must not cross
+// the same account boundary already guarded by ordinary report refreshes.
+for (const ordering of ['during-switch','after-switch']) for (const outcome of ['success','failure']) test('preference reply cannot restore account A '+ordering+' '+outcome,async t=>{
+  let finishPreference,finishSelection;
+  const state=account=>({...report(account,true,'<p>Synthetic farm '+account+'</p>'),WowheadNames:false});
+  const {$}=await setup(t,{
+    reportRefresh:()=>({...state('A#1'),WowheadNames:true}),
+    setWowheadNames:()=>new Promise((resolve,reject)=>{finishPreference=result=>outcome==='success'?resolve(result):reject(new Error('Old request failed'))}),
+    selectAccount:()=>new Promise(r=>{finishSelection=r})
+  });
+  $('wowhead-names').checked=false;fire($('wowhead-names'));await settle();
+  assert.equal(typeof finishPreference,'function','preference request pending');
+  assert.equal($('account-select').disabled,false,'account selector stays usable during save');
+  $('account-select').value='B#2';fire($('account-select'));await settle();
+  assert.equal(typeof finishSelection,'function','account switch pending');
+  assert.equal($('farm-body').textContent,'','old farm initially cleared');
+  assert.equal($('report-body').textContent,'','old report initially cleared');
+  if (ordering==='after-switch') { finishSelection(state('B#2'));await settle(); }
+  finishPreference(state('A#1'));await settle();await settle();
+  assert.equal($('account-select').value,'B#2','late preference reply must not restore A');
+  assert.equal($('farm-body').textContent,ordering==='during-switch'?'':'Synthetic farm B#2');
+  assert.equal($('report-body').textContent,ordering==='during-switch'?'':'report B#2');
+  assert.equal($('wowhead-names').checked,false,'stale failures cannot restore the old preference');
+  assert.equal($('wowhead-names-status').textContent,'','stale replies leave no success, error or saving message');
+  if (ordering==='during-switch') { finishSelection(state('B#2'));await settle(); }
+  assert.equal($('account-select').value,'B#2');
+  assert.equal($('farm-body').textContent,'Synthetic farm B#2');
+  assert.equal($('report-body').textContent,'report B#2');
+  assert.equal($('account-select').disabled,false);
+  assert.equal($('wowhead-names').disabled,false);
+});
+
 test('no AH Profit save: no Farming entry' ,async t=>{
   const {$}=await setup(t,{reportRefresh:()=>report('A#1',false)});
   assert.equal($('nav-farm').hidden,true);

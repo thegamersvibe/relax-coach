@@ -78,7 +78,15 @@ func validateExternalURL(raw string) error {
 		if u.Path != "/"+Repo && !strings.HasPrefix(u.Path, "/"+Repo+"/") {
 			return denied
 		}
-	case "www.wowhead.com", "wowhead.com", "www.icy-veins.com", "icy-veins.com":
+	case "www.wowhead.com":
+		// Validate the literal route, not a decoded/normalized equivalent.
+		// Queries, fragments (even empty ones), ports and escapes are refused.
+		const prefix = "https://www.wowhead.com/forever/item="
+		id, ok := strings.CutPrefix(raw, prefix)
+		if !ok || id == "" || strings.IndexFunc(id, func(r rune) bool { return r < '0' || r > '9' }) >= 0 {
+			return denied
+		}
+	case "www.icy-veins.com", "icy-veins.com":
 	default:
 		return denied
 	}

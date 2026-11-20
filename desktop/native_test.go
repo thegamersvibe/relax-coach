@@ -111,7 +111,7 @@ func TestNativeShellInitialReportContextEscapesValues(t *testing.T) {
 }
 
 func TestNativeExternalURLAllowlist(t *testing.T) {
-	for _, u := range []string{"https://github.com/thegamersvibe/relax-coach/releases/tag/v1.5.0", "https://www.wowhead.com/classic/guide/classes/warrior/leveling"} {
+	for _, u := range []string{"https://github.com/thegamersvibe/relax-coach/releases/tag/v1.5.0", "https://www.wowhead.com/forever/item=900001"} {
 		if err := validateExternalURL(u); err != nil {
 			t.Errorf("allowed URL %q: %v", u, err)
 		}

@@ -286,16 +286,22 @@ $('wowhead-names').addEventListener('change',async()=>{
   if (wowheadSaving || busy) return;
   const previous = lastReport && typeof lastReport.WowheadNames === 'boolean' ? lastReport.WowheadNames : true;
   wowheadSaving = true; updateButtons();
+  const generation = reportGeneration;
   $('wowhead-names-status').textContent = 'Saving…';
   try {
     const result = await rc.setWowheadNames($('wowhead-names').checked);
+    if (generation !== reportGeneration) return;
     wowheadSaving = false;
     displayReport(result);
     $('wowhead-names-status').textContent = result.WowheadNames ? 'Online lookup enabled.' : 'Online lookup off. Cached names can still display.';
   } catch (err) {
+    if (generation !== reportGeneration) return;
     $('wowhead-names').checked = previous;
     $('wowhead-names-status').textContent = 'Could not save preference: '+err.message;
-  } finally { wowheadSaving = false; updateButtons(); }
+  } finally {
+    if (generation !== reportGeneration) $('wowhead-names-status').textContent = '';
+    wowheadSaving = false; updateButtons();
+  }
 });
 $('farm-body').addEventListener('change',event=>{ if (event.target && event.target.id === 'farm-house') filterFarmHouse(); });
 function displayReport(result,folderChanged = false) {

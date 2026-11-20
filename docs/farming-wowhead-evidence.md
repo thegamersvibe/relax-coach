@@ -41,20 +41,27 @@ none of the automated tests contacts Wowhead.
 - Cache: `os.UserConfigDir()/ForeverCoach/wowhead-names-16.json` (on Windows,
   `%AppData%\ForeverCoach\wowhead-names-16.json`). The root is an object keyed by
   decimal item ID. Positive entries contain `name`, optional numeric `quality`,
-  and Unix-seconds `fetched_at`. A 404 entry contains only `missing: true` and
-  `fetched_at`. There is no player/account key, response body, or upload path.
-  Writes use a synced private temporary file and replacement, like config.json.
+  and Unix-seconds `fetched_at`. A 404 or invalid HTTP 200 entry contains only
+  `missing: true` and `fetched_at`. There is no player/account key, response body,
+  or upload path. Each changed batch writes one synced private temporary file
+  and replacement, including partial progress before failure or cancellation.
+  An unchanged refresh does not write the cache.
   Read/write failures are nonfatal; malformed, oversized, expired or invalid
   saved entries are ignored. Retention evicts the oldest entry at its cap.
 - `config.json` stores the boolean `wowheadNames` through the existing serialized
   read/modify/write helper, preserving all other settings. The absent setting
   defaults on; unreadable settings fail closed. Settings exposes
   **Look up missing item names online (Wowhead)**. Off cancels the current batch
-  and prevents new requests; still-valid cached names remain usable.
+  and prevents new requests; still-valid cached names remain usable. Preference
+  replies use the report-generation guard, so stale successes or failures cannot
+  restore an earlier account. The account selector stays usable during a save.
 - Sell-now, rising and falling item names link to
   `https://www.wowhead.com/forever/item=<id>`. The existing delegated link handler
-  prevents WebView navigation and calls `openExternal`; the native HTTPS
-  allowlist and `ShellExecuteW` open the default browser. No PowerShell was added.
+  prevents WebView navigation and calls `openExternal`; both the bridge and OS
+  opener validate the literal `https://www.wowhead.com/forever/item=<digits>`
+  shape. Other Wowhead paths/hosts, encoded digits, ports, queries and fragments
+  are refused; existing project-release and Icy Veins links remain allowed.
+  `ShellExecuteW` opens the default browser. No PowerShell was added.
   Auction statistics have names but no IDs; gathering kinds have hashes rather
   than item IDs. These cannot get reliable item links without changing the donor
   format, so no IDs are guessed.
@@ -73,11 +80,13 @@ none of the automated tests contacts Wowhead.
 | `wowheadMaxCacheBytes` / `wowheadMaxCacheItems` | 4 MiB / 10,000 entries |
 
 429/5xx stop the batch. Retry-After delta seconds and HTTP dates extend backoff
-when longer; the server's delay is not capped at the exponential limit. Other
-HTTP failures, offline failures and malformed responses also stop/back off,
-without changing the existing cache. 404 is the only negative-cache status.
+when longer, capped at 30 minutes; overflowing all-digit delays also use that cap.
+Other HTTP failures and offline/read failures stop/back off without discarding
+previous cache entries. A 404 or invalid HTTP 200 is negative-cached for 24 hours
+and does not stop the batch. Invalid includes malformed JSON, wrong field types,
+invalid names/qualities and bounded reads exceeding the response-size limit.
 
-## Red-to-green evidence
+## Initial implementation red-to-green evidence
 
 - `TestFarmWowheadLinks`: RED, hot/sell names had no Forever links; GREEN after
   adding anchors around the existing quality-coloured name spans.
@@ -106,7 +115,51 @@ without changing the existing cache. 404 is the only negative-cache status.
   navigation, the external-open binding, persisted off state, write failure
   restoration and absence of remote script/stylesheet tags.
 
-## Verification status
+## Review correction red-to-green evidence
+
+- The committed preference-race probe in `native_farm_ui_test.cjs` first failed
+  both reply orders: A replaced B. With the generation guard it passes before
+  and after B's reply. Failure replies are covered too; the follow-up RED exposed
+  a stale toggle restoration and stuck saving message. All four ordering/outcome
+  combinations pass, with the selector usable throughout the preference save.
+- `TestWowheadInvalidResponseDoesNotStarveBatch`: all 15 invalid-response cases
+  first stopped at the bad ID (`bad=1 good=0`). GREEN checks continued work over
+  40 refreshes, a response-free persisted marker, restart and exact 24-hour expiry.
+  The inherited malformed-response test now permits only that negative marker;
+  existing positive values and timestamps, and offline cache bytes, remain pinned.
+- `TestNativeWowheadOpenerExactShape`: RED admitted non-item Wowhead URLs at the
+  real native bridge's recording browser service. GREEN rejects all invalid
+  shapes, including empty query/fragment delimiters. The prior broad Wowhead
+  guide allowance is intentionally replaced by the exact item-route contract;
+  unrelated project-release and Icy Veins controls still reach the service.
+- `TestWowheadRetryAfterCapped`: six RED cases delayed 24 hours, saturated the
+  duration, or fell back to one minute on overflow. All eight cases now pass,
+  including HTTP dates, huge decimals, the exact cap and leading-zero seconds.
+- `TestWowheadBatchPersistsOnce`: RED observed 200 atomic replacements for a full
+  batch and two for both partial exits. GREEN observes one replacement for each
+  changed batch, zero for no progress, complete positive/negative entries, and no
+  extra writes on unchanged refresh. Open file handles prevent inode reuse from
+  hiding replacements. The writer still performs one write and one sync per file.
+- Targeted final race run of all Wowhead tests and native opener/allowlist tests:
+  `ok github.com/thegamersvibe/relax-coach/desktop 5.196s`, exit 0.
+- Full `go test -race -count=1 -timeout 20m ./...`, under the shared heavy-job
+  lock: `ok github.com/thegamersvibe/relax-coach/desktop 518.128s`, exit 0.
+  All eight tested packages passed; the model test-helper package has no tests.
+- Fresh Go-generated fixtures and CI's `node --test desktop/*_ui_test.cjs`, also
+  under the shared lock: `tests 162`, `pass 162`, `fail 0`, `cancelled 0`,
+  `skipped 0`, exit 0. Both complete jobs ran in the background and were polled
+  to completion; the UI job waited for a free slot before running.
+- The unchanged original preference-race probe independently passed both orders:
+  during the switch B remained selected with an empty farm; after it, B's farm
+  remained displayed. `tests 2`, `pass 2`, `fail 0`, exit 0.
+- `go vet ./...` and the Windows amd64 cross-build both exited 0. No dependency
+  files changed. The private-token scan found no matches in changed/new source
+  files across the feature stack; this fix does not change README.md.
+
+## Initial implementation verification
+
+The results below predate the review corrections; they are retained as historical
+evidence, not claimed as final-tree runs for the correction commit.
 
 Commands ran with the repository's Go toolchain, locked jsdom dependencies,
 Python 3.14 and the pinned CI Python requirements. Full desktop tests, race tests

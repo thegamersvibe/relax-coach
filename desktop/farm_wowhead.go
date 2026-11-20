@@ -187,6 +187,14 @@ func (w *wowheadNames) refresh(db map[string]any, local map[int]farmItemRef) map
 func (w *wowheadNames) run(ctx context.Context, ids []int) {
 	defer w.workers.Done()
 	defer func() { w.mu.Lock(); w.batchCancel(); w.running = false; w.mu.Unlock() }()
+	changed := false
+	defer func() {
+		// Flush once before releasing this batch, including partial progress
+		// when a later request fails or is cancelled. No report-path disk I/O.
+		if changed {
+			w.save()
+		}
+	}()
 	for _, id := range ids {
 		w.mu.Lock()
 		wanted := w.wanted[id] && !w.closed && w.enabled && ctx.Err() == nil
@@ -218,34 +226,24 @@ func (w *wowheadNames) run(ctx context.Context, ids []int) {
 			return
 		}
 		data, err := io.ReadAll(io.LimitReader(resp.Body, wowheadMaxResponseBytes+1))
-		if len(data) > wowheadMaxResponseBytes {
-			err = fmt.Errorf("tooltip response too large")
-		}
 		resp.Body.Close()
-		if err == nil && resp.StatusCode == http.StatusNotFound {
-			w.mu.Lock()
-			if ctx.Err() != nil {
-				w.mu.Unlock()
-				return
-			}
-			w.backoff = 0
-			w.storeLocked(id, wowheadNameEntry{Missing: true, FetchedAt: w.now().Unix()})
-			w.mu.Unlock()
-			w.save()
-			continue
-		}
-		if err != nil || resp.StatusCode != http.StatusOK {
+		oversized := len(data) > wowheadMaxResponseBytes
+		if err != nil || (resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound) || (oversized && resp.StatusCode != http.StatusOK) {
 			w.failed(ctx, resp.Header.Get("Retry-After"))
 			return
 		}
-		// Decode only these two fields; never retain the response body.
-		var value struct {
-			Name    string `json:"name"`
-			Quality *int   `json:"quality"`
-		}
-		if json.Unmarshal(data, &value) != nil || !validWowheadName(id, value.Name, value.Quality) {
-			w.failed(ctx, "")
-			return
+		// Invalid 200s are item-local misses, like 404s, not server pressure.
+		// Cache no response data for them and continue with the next ID.
+		entry := wowheadNameEntry{Missing: true}
+		if resp.StatusCode == http.StatusOK && !oversized {
+			// Decode only these two fields; never retain the response body.
+			var value struct {
+				Name    string `json:"name"`
+				Quality *int   `json:"quality"`
+			}
+			if json.Unmarshal(data, &value) == nil && validWowheadName(id, value.Name, value.Quality) {
+				entry = wowheadNameEntry{Name: value.Name, Quality: value.Quality}
+			}
 		}
 		w.mu.Lock()
 		if ctx.Err() != nil {
@@ -253,9 +251,10 @@ func (w *wowheadNames) run(ctx context.Context, ids []int) {
 			return
 		}
 		w.backoff = 0
-		w.storeLocked(id, wowheadNameEntry{Name: value.Name, Quality: value.Quality, FetchedAt: w.now().Unix()})
+		entry.FetchedAt = w.now().Unix()
+		w.storeLocked(id, entry)
 		w.mu.Unlock()
-		w.save()
+		changed = true
 	}
 }
 
@@ -277,15 +276,21 @@ func (w *wowheadNames) failed(ctx context.Context, header string) {
 	now := w.now()
 	w.retryAt = now.Add(w.backoff)
 	until, err := http.ParseTime(header)
-	if seconds, e := strconv.ParseInt(header, 10, 64); e == nil && seconds >= 0 {
-		delay := time.Duration(1<<63 - 1)
-		if seconds <= int64(delay/time.Second) {
+	if header != "" && strings.Trim(header, "0123456789") == "" {
+		// An overflowing decimal is still a delay, not a malformed header.
+		// Clamp before duration conversion so neither integer type can wrap.
+		seconds, e := strconv.ParseUint(header, 10, 64)
+		delay := wowheadBackoffMax
+		if e == nil && seconds <= uint64(wowheadBackoffMax/time.Second) {
 			delay = time.Duration(seconds) * time.Second
 		}
 		until, err = now.Add(delay), nil
 	}
 	if err == nil && until.After(w.retryAt) {
 		w.retryAt = until
+		if limit := now.Add(wowheadBackoffMax); w.retryAt.After(limit) {
+			w.retryAt = limit
+		}
 	}
 }
 
