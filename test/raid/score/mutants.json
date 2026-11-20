@@ -849,5 +849,26 @@
     "new": "10 * *c.Scoring.GCDEnergyMs",
     "killed_by": "TestCastStartUsesConfiguredCap",
     "rule": "configured cap not old constant"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "ownerUnique := v.actor.Name != \"\"",
+    "new": "ownerUnique := true",
+    "killed_by": "TestHealerOwnerNameResolution",
+    "rule": "empty owner name cannot identify a healer even without a collision"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "ownerUnique = false",
+    "new": "ownerUnique = true",
+    "killed_by": "TestHealerOwnerNameResolution",
+    "rule": "ambiguous owner name never cross-charges distinct roster IDs"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "p.ID != v.actor.ID",
+    "new": "true",
+    "killed_by": "TestHealerOwnerNameResolution",
+    "rule": "one distinct ID remains resolvable, including duplicate roster rows"
   }
 ]

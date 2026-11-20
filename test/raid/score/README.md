@@ -15,7 +15,12 @@ counts, coverage sets and active-share distributions, never names, IDs or paths.
 Real R6 classifications and final run-end errors are consumed by the integration
 test. Score uses its returned healer owners, never its own survival replay.
 Round-2 tests cover same-ms ownership, exact decimal shares, incoming-only
-players and configured cast caps; the manifest has 127 compile-valid mutants.
+players and configured cast caps. Round 3 requires a nonempty exact owner name
+mapping to one distinct roster ID across the entire fight, not merely its
+healers or living subset. Empty, unknown or ambiguous names yield no charge
+for that death; the scorer does not guess an identity or replay survival.
+Joined tests include duplicate names, a nonhealer collision, and repeated rows
+for the same ID as a positive control. The manifest has 130 behavioral mutants.
 RANGE cannot be separated from SPELL in model.Event; the optional unmatched
 range/cast check is explicitly skipped rather than guessed from spell IDs.
 

@@ -42,9 +42,18 @@ func healerOutput(f model.Fight, v *playerView, all map[string]*playerView, deat
 			total += p.lowHealing
 		}
 	}
+	// v is already a roster member. Exact owner names must identify only its
+	// ID across the entire roster, not just the measured/living healer subset.
+	ownerUnique := v.actor.Name != ""
+	for _, p := range f.Players {
+		if p.Name == v.actor.Name && p.ID != v.actor.ID {
+			ownerUnique = false
+			break
+		}
+	}
 	unhealed := int64(0)
 	for _, d := range deaths {
-		if d.FightID == f.ID && d.Cause == model.CauseUnhealed && d.OwnerKind == model.OwnerHealers && slices.Contains(d.Owners, v.actor.Name) {
+		if ownerUnique && d.FightID == f.ID && d.Cause == model.CauseUnhealed && d.OwnerKind == model.OwnerHealers && slices.Contains(d.Owners, v.actor.Name) {
 			unhealed++
 		}
 	}
