@@ -78,8 +78,15 @@ func validateExternalURL(raw string) error {
 		if u.Path != "/"+Repo && !strings.HasPrefix(u.Path, "/"+Repo+"/") {
 			return denied
 		}
-	case "www.wowhead.com":
-		// Validate the literal route, not a decoded/normalized equivalent.
+	case "www.wowhead.com", "wowhead.com":
+		// Keep main's documentation allowance for guide routes (with or
+		// without a game prefix), including queries, fragments and port 443.
+		parts := strings.SplitN(u.Path, "/", 4)
+		if (len(parts) > 2 && parts[1] == "guide") ||
+			(len(parts) > 3 && parts[2] == "guide" && !strings.Contains(parts[1], "=")) {
+			break
+		}
+		// Item links use the literal route, not a decoded/normalized equivalent.
 		// Queries, fragments (even empty ones), ports and escapes are refused.
 		const prefix = "https://www.wowhead.com/forever/item="
 		id, ok := strings.CutPrefix(raw, prefix)

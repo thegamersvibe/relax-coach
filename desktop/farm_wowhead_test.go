@@ -554,6 +554,44 @@ func TestWowheadAppAllLocalSourcesFirst(t *testing.T) {
 	}
 }
 
+func TestWowheadStoredOffMakesNoRequests(t *testing.T) {
+	a, _ := nameGame(t, "", "", "")
+	if err := saveWowheadNames(false); err != nil {
+		t.Fatal(err)
+	}
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		rw.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+	// A fresh worker starts enabled; the bridge must apply the stored setting
+	// before refreshing the eligible, still-unnamed history ID.
+	w := newWowheadNames(context.Background(), "", server.URL+"/", server.Client())
+	defer w.Close()
+	a.wowhead = w
+	b := newNativeBridge(a, true, nativeServices{})
+	defer b.Close()
+	for i := 0; i < 2; i++ {
+		result, err := b.Call("reportRefresh", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		waitWowhead(t, w)
+		if result.(nativeReport).WowheadNames || calls.Load() != 0 {
+			t.Fatalf("stored off must report off and make zero requests: requests=%d", calls.Load())
+		}
+	}
+	// Positive control: the same fixture must really have lookup work.
+	if _, err := b.Call("setWowheadNames", nativeArgs("true")); err != nil {
+		t.Fatal(err)
+	}
+	waitWowhead(t, w)
+	if calls.Load() != 1 {
+		t.Fatalf("enabled control did not request the eligible ID: requests=%d", calls.Load())
+	}
+}
+
 func TestWowheadToggleOffAndCancel(t *testing.T) {
 	a, _ := nameGame(t, "", "", "")
 	var calls atomic.Int32

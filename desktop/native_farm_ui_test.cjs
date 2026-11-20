@@ -71,7 +71,8 @@ test('Wowhead opt-out is loaded on startup and a failed write restores it',async
 // the same account boundary already guarded by ordinary report refreshes.
 for (const ordering of ['during-switch','after-switch']) for (const outcome of ['success','failure']) test('preference reply cannot restore account A '+ordering+' '+outcome,async t=>{
   let finishPreference,finishSelection;
-  const state=account=>({...report(account,true,'<p>Synthetic farm '+account+'</p>'),WowheadNames:false});
+  // A failed write leaves the stored preference on in the next account report.
+  const state=account=>({...report(account,true,'<p>Synthetic farm '+account+'</p>'),WowheadNames:outcome==='failure'});
   const {$}=await setup(t,{
     reportRefresh:()=>({...state('A#1'),WowheadNames:true}),
     setWowheadNames:()=>new Promise((resolve,reject)=>{finishPreference=result=>outcome==='success'?resolve(result):reject(new Error('Old request failed'))}),
@@ -89,7 +90,7 @@ for (const ordering of ['during-switch','after-switch']) for (const outcome of [
   assert.equal($('account-select').value,'B#2','late preference reply must not restore A');
   assert.equal($('farm-body').textContent,ordering==='during-switch'?'':'Synthetic farm B#2');
   assert.equal($('report-body').textContent,ordering==='during-switch'?'':'report B#2');
-  assert.equal($('wowhead-names').checked,false,'stale failures cannot restore the old preference');
+  assert.equal($('wowhead-names').checked,ordering==='during-switch'||outcome==='failure','dropped replies must use the latest report stored value');
   assert.equal($('wowhead-names-status').textContent,'','stale replies leave no success, error or saving message');
   if (ordering==='during-switch') { finishSelection(state('B#2'));await settle(); }
   assert.equal($('account-select').value,'B#2');
@@ -97,6 +98,30 @@ for (const ordering of ['during-switch','after-switch']) for (const outcome of [
   assert.equal($('report-body').textContent,'report B#2');
   assert.equal($('account-select').disabled,false);
   assert.equal($('wowhead-names').disabled,false);
+  assert.equal($('wowhead-names').checked,outcome==='failure','settled checkbox matches the stored preference');
+});
+
+test('failed preference for the current account is reported after switching away and back',async t=>{
+  let failPreference;
+  const state=account=>({...report(account,true,'<p>Synthetic farm '+account+'</p>'),WowheadNames:true});
+  const {$}=await setup(t,{
+    reportRefresh:()=>state('A#1'),
+    setWowheadNames:()=>new Promise((_,reject)=>{failPreference=()=>reject(new Error('Current settings failure'))}),
+    selectAccount:account=>state(account)
+  });
+  const toggle=$('wowhead-names');
+  toggle.checked=false;fire(toggle);await settle();
+  assert.equal(typeof failPreference,'function');
+  for (const account of ['B#2','A#1']) {
+    $('account-select').value=account;fire($('account-select'));await settle();
+    assert.equal($('report-body').textContent,'report '+account);
+  }
+  failPreference();await settle();await settle();
+  assert.equal(toggle.checked,true,'failed opt-out cannot claim lookups are off');
+  assert.equal(toggle.disabled,false);
+  assert.match($('wowhead-names-status').textContent,/Could not save preference: Current settings failure/);
+  assert.equal($('account-select').value,'A#1');
+  assert.equal($('farm-body').textContent,'Synthetic farm A#1');
 });
 
 test('no AH Profit save: no Farming entry' ,async t=>{

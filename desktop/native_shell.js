@@ -284,7 +284,8 @@ function displayFarm(result) {
 }
 $('wowhead-names').addEventListener('change',async()=>{
   if (wowheadSaving || busy) return;
-  const previous = lastReport && typeof lastReport.WowheadNames === 'boolean' ? lastReport.WowheadNames : true;
+  const context = lastReport;
+  let saveError = '';
   wowheadSaving = true; updateButtons();
   const generation = reportGeneration;
   $('wowhead-names-status').textContent = 'Saving…';
@@ -295,12 +296,16 @@ $('wowhead-names').addEventListener('change',async()=>{
     displayReport(result);
     $('wowhead-names-status').textContent = result.WowheadNames ? 'Online lookup enabled.' : 'Online lookup off. Cached names can still display.';
   } catch (err) {
-    if (generation !== reportGeneration) return;
-    $('wowhead-names').checked = previous;
-    $('wowhead-names-status').textContent = 'Could not save preference: '+err.message;
+    if (generation === reportGeneration || (!switchingAccount && !switchingFolder && context && lastReport && context.Game === lastReport.Game && context.Account === lastReport.Account)) {
+      saveError = 'Could not save preference: '+err.message;
+    }
   } finally {
-    if (generation !== reportGeneration) $('wowhead-names-status').textContent = '';
-    wowheadSaving = false; updateButtons();
+    if (generation !== reportGeneration || saveError) $('wowhead-names-status').textContent = saveError;
+    wowheadSaving = false;
+    // Even a dropped reply must reflect the latest stored setting, not an
+    // unsaved click or the old account's report. The worker uses this value.
+    if (lastReport && typeof lastReport.WowheadNames === 'boolean') $('wowhead-names').checked = lastReport.WowheadNames;
+    updateButtons();
   }
 });
 $('farm-body').addEventListener('change',event=>{ if (event.target && event.target.id === 'farm-house') filterFarmHouse(); });

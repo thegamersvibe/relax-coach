@@ -54,13 +54,18 @@ none of the automated tests contacts Wowhead.
   **Look up missing item names online (Wowhead)**. Off cancels the current batch
   and prevents new requests; still-valid cached names remain usable. Preference
   replies use the report-generation guard, so stale successes or failures cannot
-  restore an earlier account. The account selector stays usable during a save.
+  restore an earlier account. After any reply the checkbox is reconciled with
+  the latest report's stored setting; a failed save for the current account still
+  shows its error. The account selector stays usable during a save.
 - Sell-now, rising and falling item names link to
   `https://www.wowhead.com/forever/item=<id>`. The existing delegated link handler
   prevents WebView navigation and calls `openExternal`; both the bridge and OS
   opener validate the literal `https://www.wowhead.com/forever/item=<digits>`
-  shape. Other Wowhead paths/hosts, encoded digits, ports, queries and fragments
-  are refused; existing project-release and Icy Veins links remain allowed.
+  shape. Invalid item paths/hosts, encoded digits, ports, queries and fragments
+  are refused. Wowhead guide routes retain main's documentation behavior on
+  `www.wowhead.com` and `wowhead.com`, including port 443, escaped paths, queries
+  and fragments; the existing HTTPS, credentials and dot-segment guards remain.
+  Project-release and Icy Veins links are unchanged.
   `ShellExecuteW` opens the default browser. No PowerShell was added.
   Auction statistics have names but no IDs; gathering kinds have hashes rather
   than item IDs. These cannot get reliable item links without changing the donor
@@ -129,9 +134,9 @@ invalid names/qualities and bounded reads exceeding the response-size limit.
   existing positive values and timestamps, and offline cache bytes, remain pinned.
 - `TestNativeWowheadOpenerExactShape`: RED admitted non-item Wowhead URLs at the
   real native bridge's recording browser service. GREEN rejects all invalid
-  shapes, including empty query/fragment delimiters. The prior broad Wowhead
-  guide allowance is intentionally replaced by the exact item-route contract;
-  unrelated project-release and Icy Veins controls still reach the service.
+  shapes, including empty query/fragment delimiters. That correction also
+  refused existing Wowhead guide links; the compatibility correction below
+  restores their prior allowance. Project-release and Icy Veins controls pass.
 - `TestWowheadRetryAfterCapped`: six RED cases delayed 24 hours, saturated the
   duration, or fell back to one minute on overflow. All eight cases now pass,
   including HTTP dates, huge decimals, the exact cap and leading-zero seconds.
@@ -155,6 +160,31 @@ invalid names/qualities and bounded reads exceeding the response-size limit.
 - `go vet ./...` and the Windows amd64 cross-build both exited 0. No dependency
   files changed. The private-token scan found no matches in changed/new source
   files across the feature stack; this fix does not change README.md.
+
+## Preference truth and guide compatibility correction
+
+- The held-reply jsdom tests use the unchanged stored value after a failed
+  opt-out. Four assertions failed before the fix; all seven focused preference
+  tests now pass. Returning to the original account before rejection still
+  reports the save error. A separate error-suppression mutant fails that check.
+- `TestWowheadStoredOffMakesNoRequests` verifies two native refreshes make zero
+  loopback requests with stored opt-out, then enabling the same fixture makes
+  one request. It passes unchanged production code; forcing the worker on in a
+  private overlay fails with `requests=1`.
+- All eight `TestNativeWowheadTalentGuideLinks` cases first failed at the browser
+  service, after successfully traversing `enrich` and the report template. They
+  pass with the fix and with main's original validator in a private overlay.
+  The exact item rule and all prior non-guide refusals remain covered; only the
+  guide expectation in the previous refusal matrix moves to the allowed set.
+- Targeted race tests: `ok github.com/thegamersvibe/relax-coach/desktop 6.021s`.
+  The unchanged reviewer's preference probe also passes: `tests 10`, `pass 10`,
+  `fail 0`, `skipped 0`.
+- Full locked `go test -race -count=1 -timeout 20m ./...`: all eight tested
+  packages pass, exit 0; desktop result is `616.224s`. The model test-helper
+  package has no tests. Linux/Windows vet and the Windows amd64 cross-build
+  exit 0. Fresh-fixture UI tests under the same lock and CI glob pass:
+  `tests 163`, `pass 163`, `fail 0`, `cancelled 0`, `skipped 0`, exit 0.
+  These are offline tests, not native Windows acceptance.
 
 ## Initial implementation verification
 
