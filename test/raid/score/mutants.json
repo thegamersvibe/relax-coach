@@ -365,22 +365,22 @@
   },
   {
     "file": "desktop/internal/raid/score/measure_preparation.go",
-    "old": "if r.Stamped < chosen.Stamped ||",
-    "new": "if r.Stamped > chosen.Stamped ||",
-    "killed_by": "TestPrepSelectionAndMeasures",
-    "rule": "earliest fallback"
+    "old": "if !found {\n\t\treturn makePart(\"preparation\", measures, c.Scoring.MeasureWeights[\"preparation\"], counts, c)\n\t}",
+    "new": "if !found {\n\t\tchosen = reports[0]\n\t\tfor _, r := range reports {\n\t\t\tif r.Stamped < chosen.Stamped || r.Stamped == chosen.Stamped && prepTieAfter(r, chosen) {\n\t\t\t\tchosen = r\n\t\t\t}\n\t\t}\n\t}",
+    "killed_by": "TestPrepOnlyAfterEndIsUnmeasured",
+    "rule": "restoring earliest fallback must not use future gear"
   },
   {
     "file": "desktop/internal/raid/score/measure_preparation.go",
-    "old": "r.Stamped <= f.EndMs/",
-    "new": "r.Stamped <= f.StartMs/",
+    "old": "(f.EndMs - offset)",
+    "new": "(f.StartMs - offset)",
     "killed_by": "TestPrepSelectionAndMeasures",
     "rule": "last before END not start"
   },
   {
     "file": "desktop/internal/raid/score/measure_preparation.go",
-    "old": "r.Stamped <= f.EndMs/",
-    "new": "r.Stamped < f.EndMs/",
+    "old": "r.Stamped <= endUTC",
+    "new": "r.Stamped < endUTC",
     "killed_by": "TestPrepSelectionAndMeasures",
     "rule": "END inclusive"
   },
@@ -512,8 +512,8 @@
   },
   {
     "file": "desktop/internal/raid/score/night.go",
-    "old": "trash = decimal(min(c.Scoring.Night.TrashShare, c.Scoring.Night.MaxTrashShare, 1-c.Scoring.Night.MinBossShare))",
-    "new": "trash = decimal(0.5)",
+    "old": "return sub(integer(1), trash), trash",
+    "new": "return decimal(0.5), decimal(0.5)",
     "killed_by": "TestNightWeightsAndConfidence",
     "rule": "trash at most configured share"
   },
@@ -870,5 +870,131 @@
     "new": "true",
     "killed_by": "TestHealerOwnerNameResolution",
     "rule": "one distinct ID remains resolvable, including duplicate roster rows"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "(f.EndMs - offset)",
+    "new": "(f.EndMs - 0*offset)",
+    "killed_by": "TestPrepUTCClockSelection"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "f.Events[0].OffsetH",
+    "new": "f.Events[len(f.Events)-1].OffsetH",
+    "killed_by": "TestPrepUTCClockSelection"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "counts[\"fight_end_utc_s\"] = endUTC",
+    "new": "counts[\"fight_end_utc_s\"] = endUTC+1",
+    "killed_by": "TestPrepUTCClockSelection"
+  },
+  {
+    "file": "desktop/internal/raid/score/night_parts.go",
+    "old": "if !fs.Tenths.Present {",
+    "new": "if false && !fs.Tenths.Present {",
+    "killed_by": "TestNightRolePartsWeightAndSplit"
+  },
+  {
+    "file": "desktop/internal/raid/score/night_parts.go",
+    "old": "roles[fs.Role] = add(roles[fs.Role], w)",
+    "new": "roles[fs.Role] = add(roles[fs.Role], integer(int64(1+0*w.Sign())))",
+    "killed_by": "TestNightRolePartsWeightAndSplit"
+  },
+  {
+    "file": "desktop/internal/raid/score/night_parts.go",
+    "old": "out.Split = true",
+    "new": "out.Split = false",
+    "killed_by": "TestNightRolePartsWeightAndSplit"
+  },
+  {
+    "file": "desktop/internal/raid/score/night_parts.go",
+    "old": "if fs.Role != out.Role {",
+    "new": "if false && fs.Role != out.Role {",
+    "killed_by": "TestNightRolePartsGroups"
+  },
+  {
+    "file": "desktop/internal/raid/score/night_parts.go",
+    "old": "if !p.Tenths.Present {",
+    "new": "if false && !p.Tenths.Present {",
+    "killed_by": "TestNightRolePartsGroups"
+  },
+  {
+    "file": "desktop/internal/raid/score/night_parts.go",
+    "old": "w := fightWeight(f, fs, c)",
+    "new": "w := integer(1)",
+    "killed_by": "TestNightRolePartsGroups"
+  },
+  {
+    "file": "desktop/internal/raid/score/night_parts.go",
+    "old": "g = &sums[p.Name].boss",
+    "new": "g = &sums[p.Name].trash",
+    "killed_by": "TestNightRolePartsGroups"
+  },
+  {
+    "file": "desktop/internal/raid/score/night_parts.go",
+    "old": "weight = add(weight, group.share)",
+    "new": "weight = integer(1)",
+    "killed_by": "TestNightRolePartsGroups"
+  },
+  {
+    "file": "desktop/internal/raid/score/night_parts.go",
+    "old": "if _, ok := byID[fs.FightID]; !ok {",
+    "new": "if _, ok := byID[fs.FightID]; false && !ok {",
+    "killed_by": "TestNightRolePartsMissingMetadata"
+  },
+  {
+    "file": "desktop/internal/raid/score/night.go",
+    "old": "sub(integer(1), decimal(c.Scoring.Night.MinBossShare))",
+    "new": "decimal(1-c.Scoring.Night.MinBossShare)",
+    "killed_by": "TestNightRolePartsGroups"
+  },
+  {
+    "file": "desktop/internal/raid/score/night_parts.go",
+    "old": "roles[fs.Role] = add(roles[fs.Role], w)",
+    "new": "roles[fs.Role] = w",
+    "killed_by": "TestNightRolePartsSumAndPurity"
+  },
+  {
+    "file": "desktop/internal/raid/score/night_parts.go",
+    "old": "if w.Sign() <= 0 {",
+    "new": "if false && w.Sign() <= 0 {",
+    "killed_by": "TestNightRolePartsZeroWeightIsNoData",
+    "rule": "only positive summed role weights can lead or tie"
+  },
+  {
+    "file": "desktop/internal/raid/score/night.go",
+    "old": "sub(integer(1), decimal(c.Scoring.Night.MinBossShare))",
+    "new": "decimal(1 - c.Scoring.Night.MinBossShare)",
+    "killed_by": "TestNightExactDecimalTrashCap",
+    "rule": "accepted .2/.2/.8 correction reaches exact coverage 15"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "if !found {",
+    "new": "if false && !found {",
+    "killed_by": "TestPrepOnlyAfterEndIsUnmeasured",
+    "rule": "no eligible prep emits no selected clocks or measured evidence"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "r.Stamped <= endUTC && (",
+    "new": "true && (",
+    "killed_by": "TestPrepOnlyAfterEndIsUnmeasured",
+    "rule": "future gear cannot create a credit or charge"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "if r.Stamped > endUTC {",
+    "new": "if false && r.Stamped > endUTC {",
+    "killed_by": "TestPrepFutureStockCannotCreditEarlierFight",
+    "rule": "future stock cannot add points or coverage"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "if r.Stamped > endUTC {",
+    "new": "if r.Stamped >= endUTC {",
+    "killed_by": "TestPrepCutoffInclusiveAndLatest",
+    "rule": "stock at the true UTC end remains eligible"
   }
 ]

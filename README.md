@@ -8,6 +8,8 @@ Four **separate WoW Forever addons**, plus a native Windows report app:
 - **Relax Raid** (from v1.8.0) — the guild raid logger: turns on the game's combat log in raids (`/rraid`) and, from v1.8.1, sends a short preparation report to the raid. Works without the other addons.
 - **RelaxCoach.exe** — a real Windows app window with account selection, saved-character reports and explicit app and addon/content updates.
 
+Relax Raid also keeps each character's latest settled guild-rank reading, readable guild name and server time in the account's existing save. It refreshes on login, world entry and guild updates; a still-loading rank leaves the previous reading alone. These local readings support a **convenience lock, not security**: saves can be edited or become stale. This addon change supplies the readings only; the app's officer page and lock are a separate change.
+
 ## Download
 
 **[Download release v1.8.1](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.8.1)**:

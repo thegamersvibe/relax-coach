@@ -1,0 +1,14 @@
+{
+  "kind": "lua",
+  "source": "addon/RelaxRaid/",
+  "test": [
+    "python3",
+    "-I",
+    "-B",
+    "test/raid/rank/test_rank.py"
+  ],
+  "depends": [
+    "store",
+    "wire"
+  ]
+}

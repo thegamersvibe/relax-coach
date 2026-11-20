@@ -10,28 +10,36 @@ import (
 )
 
 func preparation(f model.Fight, reports []model.PrepReport, c cfg.Config) partResult {
+	// Model timestamps are the logger's wall clock parsed as UTC. Receipts
+	// are server Unix seconds; remove the first event's east-of-UTC offset.
+	var offset int64
+	if len(f.Events) > 0 {
+		offset = int64(f.Events[0].OffsetH) * int64(time.Hour/time.Millisecond)
+	}
+	endUTC := (f.EndMs - offset) / int64(time.Second/time.Millisecond)
 	counts := map[string]int64{}
 	measures := []measure{{"stock", nil}, {"bag_gear", nil}, {"used", nil}}
 	if len(reports) == 0 {
 		return makePart("preparation", measures, c.Scoring.MeasureWeights["preparation"], counts, c)
 	}
-	chosen := reports[0]
-	// First find the earliest, then replace it with the latest eligible report.
-	for _, r := range reports {
-		if r.Stamped < chosen.Stamped || r.Stamped == chosen.Stamped && prepTieAfter(r, chosen) {
-			chosen = r
-		}
-	}
+	var chosen model.PrepReport
 	found := false
 	for _, r := range reports {
-		if r.Stamped <= f.EndMs/int64(time.Second/time.Millisecond) && (!found || r.Stamped > chosen.Stamped || r.Stamped == chosen.Stamped && prepTieAfter(r, chosen)) {
+		if r.Stamped <= endUTC && (!found || r.Stamped > chosen.Stamped || r.Stamped == chosen.Stamped && prepTieAfter(r, chosen)) {
 			chosen = r
 			found = true
 		}
 	}
+	if !found {
+		return makePart("preparation", measures, c.Scoring.MeasureWeights["preparation"], counts, c)
+	}
+	counts["fight_end_utc_s"] = endUTC
 	counts["prep_stamped_s"], counts["prep_sender_clock_s"] = chosen.Stamped, chosen.SenderClock
 	readable := false
 	for _, r := range reports {
+		if r.Stamped > endUTC {
+			continue
+		}
 		if r.ConsumablesUnreadable {
 			continue
 		}
