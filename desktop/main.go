@@ -115,6 +115,7 @@ type App struct {
 	accounts               []AccountChoice
 	configWarning          string
 	canAutoSelect          bool
+	raidNow                func() time.Time // nil uses the PC UTC clock; tests inject it
 	gearNames              gearNameCache
 	farmRef                farmRefCache   // AH Profit's bundled names, reparsed only when the files change
 	farmParse              farmParseCache // the parsed AHProfit.lua, reparsed only when the file changes

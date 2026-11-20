@@ -16,12 +16,13 @@ func raidRankSave(t *testing.T, game, account, body string) string {
 	}
 	return p
 }
+func raidOfficer(data []byte) bool { return raidAdmission(data, raidTestClock()) == nil }
 func officerSave() string {
 	return `RelaxRaidDB={version=1,ranks={["Alia-Stone-PvP-EU"]={result="officer",guild="Invented Guild",readAt=1800000000}}}`
 }
 func TestRaidLockBudgetAndOptionalGuild(t *testing.T) {
 	for _, guild := range []string{"", `guild="",`, `guild="Invented Guild",`} {
-		data := []byte(`RelaxRaidDB={version=1,ranks={["Alia-PvP-EU"]={result="officer",` + guild + `readAt=1}}}`)
+		data := []byte(`RelaxRaidDB={version=1,ranks={["Alia-PvP-EU"]={result="officer",` + guild + `readAt=1800000000}}}`)
 		if !raidOfficer(data) {
 			t.Fatal("optional string guild rejected")
 		}
@@ -55,7 +56,7 @@ func TestRaidLockSelectedAccount(t *testing.T) {
 	accountSave(t, game, "A#1", "Alpha")
 	accountSave(t, game, "B#2", "Beta")
 	raidRankSave(t, game, "B#2", officerSave())
-	a, b := accountApp(t, game)
+	a, b := raidLockApp(t, game, raidTestClock)
 	for _, tc := range []struct {
 		account string
 		allowed bool
@@ -91,8 +92,8 @@ func TestRaidLockInvalidAndRevocation(t *testing.T) {
 	game := filepath.Join(t.TempDir(), "_forever_")
 	accountSave(t, game, "A#1", "Alpha")
 	p := raidRankSave(t, game, "A#1", officerSave())
-	_, b := accountApp(t, game)
-	bad := []string{"", `RelaxRaidDB={version=1}`, `RelaxRaidDB={version=2,ranks={}}`, strings.Replace(officerSave(), `"officer"`, `"member"`, 1), strings.Replace(officerSave(), `"officer"`, `"noguild"`, 1), strings.Replace(officerSave(), `"officer"`, `"unreadable"`, 1), strings.Replace(officerSave(), `"officer"`, `"pending"`, 1), strings.Replace(officerSave(), `"officer"`, `true`, 1), strings.Replace(officerSave(), `1800000000`, `"1800000000"`, 1), strings.Replace(officerSave(), `1800000000`, `1.5`, 1), strings.Replace(officerSave(), `1800000000`, `-1`, 1), strings.Replace(officerSave(), `"Invented Guild"`, `false`, 1), `RelaxRaidDB={version=1,ranks=true}`, `RelaxRaidDB={version=1,ranks={[1]={result="officer",readAt=1}}}`, strings.TrimSuffix(officerSave(), "}}") + `,["Bram-Oak-Hill-PvP-EU"]={result="bad",readAt=1}}}`}
+	_, b := raidLockApp(t, game, raidTestClock)
+	bad := []string{"", `RelaxRaidDB={version=1}`, `RelaxRaidDB={version=2,ranks={}}`, strings.Replace(officerSave(), `"officer"`, `"member"`, 1), strings.Replace(officerSave(), `"officer"`, `"noguild"`, 1), strings.Replace(officerSave(), `"officer"`, `"unreadable"`, 1), strings.Replace(officerSave(), `"officer"`, `"pending"`, 1), strings.Replace(officerSave(), `"officer"`, `true`, 1), strings.Replace(officerSave(), `1800000000`, `"1800000000"`, 1), strings.Replace(officerSave(), `1800000000`, `1800000000.5`, 1), strings.Replace(officerSave(), `1800000000`, `-1`, 1), strings.Replace(officerSave(), `"Invented Guild"`, `false`, 1), `RelaxRaidDB={version=1,ranks=true}`, `RelaxRaidDB={version=1,ranks={[1]={result="officer",readAt=1}}}`}
 	// A valid officer sibling is essential: empty ranks already lock for a
 	// different reason and cannot prove the version admission guard.
 	for _, version := range []string{`version=2`, `version="1"`, `version=true`, `other=1`} {
@@ -100,7 +101,7 @@ func TestRaidLockInvalidAndRevocation(t *testing.T) {
 	}
 	var rows strings.Builder
 	for i := 0; i < 257; i++ {
-		fmt.Fprintf(&rows, `["Sample%d-PvP-EU"]={result="officer",readAt=1},`, i)
+		fmt.Fprintf(&rows, `["Sample%d-PvP-EU"]={result="officer",readAt=1800000000},`, i)
 	}
 	bad = append(bad, `RelaxRaidDB={version=1,ranks={`+rows.String()+`}}`)
 	for i, s := range bad {

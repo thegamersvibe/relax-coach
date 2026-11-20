@@ -5,74 +5,91 @@ import (
 	"io"
 	"math"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
-// Input budgets, not guild/raid-size rules. The rank table is local characters,
-// not the raid roster. The byte budget also accommodates the bounded prep store.
+// Input budgets, not raid-size rules. Ranks hold local characters; the save's
+// byte budget also accommodates the bounded preparation store.
 const raidSaveMaxBytes = 16 << 20
 const raidSaveMaxValues = 1000000
-const raidRankMaxCharacters = 256
+const raidRankMaxCharacters = 50
+
+// Starting admission limit, deliberately tunable. Compare server seconds with
+// PC UTC; a badly set PC clock fails closed rather than keeping a stale unlock.
+const raidOfficerMaxAge = 14 * 24 * time.Hour
+const raidOfficerFutureAllowance = 24 * time.Hour
+
+var errRaidRankLocked = errors.New("Raids locked: no validated officer reading in the selected account's save")
+var errRaidTimeLocked = errors.New("Raids locked: the officer reading is too old or its time is invalid")
 
 func raidRankText(s string, limit int) bool {
 	return s != "" && len(s) <= limit && utf8.ValidString(s) && strings.TrimSpace(s) == s && strings.IndexFunc(s, func(r rune) bool { return r < 32 || r == 127 }) < 0
 }
 
-// Validate every row before accepting any officer. Do not return early on an
-// officer: a malformed sibling means the untrusted table cannot unlock anything.
-func raidOfficer(data []byte) bool {
+// Bad rows never admit, but do not poison another current, valid officer.
+// The root/table and the 50-row cap are whole-save admission boundaries.
+func raidAdmission(data []byte, now time.Time) error {
 	if len(data) > raidSaveMaxBytes {
-		return false
+		return errRaidRankLocked
 	}
 	vars, err := ParseSavedVariablesLimited(string(data), raidSaveMaxValues)
 	if err != nil {
-		return false
+		return errRaidRankLocked
 	}
 	db, ok := vars["RelaxRaidDB"].(map[string]any)
 	if !ok || db["version"] != float64(1) {
-		return false
+		return errRaidRankLocked
 	}
 	ranks, ok := db["ranks"].(map[string]any)
 	if !ok || len(ranks) > raidRankMaxCharacters {
-		return false
+		return errRaidRankLocked
 	}
-	officer := false
+	officer, badTime := false, false
+	nowS := now.UTC().Unix()
 	for name, raw := range ranks {
 		if !raidRankText(name, 64) || !strings.Contains(name, "-") {
-			return false
+			continue
 		}
 		row, ok := raw.(map[string]any)
 		if !ok {
-			return false
+			continue
 		}
+		valid := true
 		for key := range row {
 			if key != "result" && key != "guild" && key != "readAt" {
-				return false
+				valid = false
 			}
 		}
 		result, ok := row["result"].(string)
-		if !ok {
-			return false
-		}
-		switch result {
-		case "officer":
-			officer = true
-		case "member", "noguild", "unreadable":
-		default:
-			return false
-		}
-		at, ok := row["readAt"].(float64)
-		if !ok || math.IsNaN(at) || math.IsInf(at, 0) || at <= 0 || at > 4294967295 || math.Trunc(at) != at {
-			return false
+		if !valid || !ok || result != "officer" {
+			continue
 		}
 		if g, exists := row["guild"]; exists {
 			s, ok := g.(string)
-			if !ok || s != "" && !raidRankText(s, 256) {
-				return false
+			if !ok || s != "" && !raidRankText(s, 96) {
+				continue
 			}
 		}
+		at, ok := row["readAt"].(float64)
+		if !ok || math.IsNaN(at) || math.IsInf(at, 0) || at <= 0 || at > 4294967295 || math.Trunc(at) != at {
+			badTime = true
+			continue
+		}
+		delta := nowS - int64(at)
+		if nowS <= 0 || delta > int64(raidOfficerMaxAge/time.Second) || delta < -int64(raidOfficerFutureAllowance/time.Second) {
+			badTime = true
+			continue
+		}
+		officer = true
 	}
-	return officer
+	if officer {
+		return nil
+	}
+	if badTime {
+		return errRaidTimeLocked
+	}
+	return errRaidRankLocked
 }
 
 // Called under App.mu. Never consult another account or a last-good save.
@@ -88,17 +105,24 @@ func (a *App) raidSaveLocked() ([]byte, error) {
 	}
 	root, err := openAccountsRoot(a.game)
 	if err != nil {
-		return nil, err
+		return nil, errRaidRankLocked
 	}
 	defer root.Close()
 	f, err := openAccountFile(root, a.account, "RelaxRaid.lua")
 	if err != nil {
-		return nil, err
+		return nil, errRaidRankLocked
 	}
 	defer f.Close()
 	data, err := io.ReadAll(io.LimitReader(f, raidSaveMaxBytes+1))
-	if err != nil || !raidOfficer(data) {
-		return nil, errors.New("Raids locked: no validated officer reading in the selected account's save")
+	if err != nil {
+		return nil, errRaidRankLocked
+	}
+	now := time.Now()
+	if a.raidNow != nil {
+		now = a.raidNow()
+	}
+	if err := raidAdmission(data, now); err != nil {
+		return nil, err
 	}
 	return data, nil
 }
@@ -111,7 +135,7 @@ func (b *nativeBridge) raidPage() (any, error) {
 	defer b.app.mu.Unlock()
 	b.app.rescanAccountsLocked()
 	if _, err := b.app.raidSaveLocked(); err != nil {
-		return nil, errors.New("Raids locked: no validated officer reading in the selected account's save")
+		return nil, err
 	}
 	return renderRaidShell()
 }

@@ -43,11 +43,19 @@ new data, engine rules, deployment paths or night-level scoring arithmetic.
 The rank writer is a separate additive addon lane; this branch only reads.
 One selected-account `RelaxRaid.lua` is opened through the existing contained,
 identity-checked account reader. There is no other-account fallback or stale
-unlock. Every row must validate before any officer unlocks the page. Limits:
-16 MiB file, 1,000,000 literal entries, 256 character rank rows, 64-byte full
-names, optional guild string at most 256 bytes, positive integral server seconds
-at most 4,294,967,295. Unknown results/fields and wrong types lock the page.
-Unknown root fields remain additive. Neither save nor prediction is written.
+unlock. Limits: 16 MiB file, 1,000,000 literal entries, 50 character rank rows,
+64-byte full names, optional guild string at most 96 bytes without control bytes,
+and positive integral server seconds at most 4,294,967,295. A larger rank table
+locks the whole page. Invalid rows are ignored and cannot admit; they do not
+poison a separate valid officer. Non-officer rows may omit `readAt`.
+
+An officer must have a valid `readAt`: at most 14 days old, or at most one day
+in the future, compared with the PC's UTC clock. The named `raidOfficerMaxAge`
+constant is the tunable starting limit. Missing/bad/stale/far-future times do not
+admit. The direct-route error explains that the reading is too old or its time
+is invalid. Tests inject the clock, including exact boundaries, timezone and
+expiry without a preceding refresh. Unknown root fields remain additive.
+Neither save nor prediction is written.
 
 No Raids DOM is rendered for a locked account. Account/folder transitions remove
 it before a reply; late page replies cannot restore it. The native route checks

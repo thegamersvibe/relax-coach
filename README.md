@@ -11,9 +11,11 @@ Four **separate WoW Forever addons**, plus a native Windows report app:
 ## Raids officer view (in development)
 
 The local Raids menu and page exist only when the **selected account's**
-Relax Raid save contains a validated `officer` reading. Missing, unreadable,
-non-officer or malformed rank data keeps both absent, and the native page route
-also refuses access. This is a **convenience lock, not security**: local saves
+Relax Raid save contains a validated, current `officer` reading. Its server
+stamp must be no more than 14 days old or one day ahead of the PC's UTC clock;
+missing/invalid times never admit. More than 50 rank rows locks the whole page.
+Invalid rows are ignored, never used to unlock it. Without an eligible officer,
+both menu and page stay absent, and the native page route also refuses access. This is a **convenience lock, not security**: local saves
 can be edited or stale. The stage-2 `/api/companion/me` check is a later lane.
 
 The offline page renderer covers score groups, per-fight evidence, wipes,
