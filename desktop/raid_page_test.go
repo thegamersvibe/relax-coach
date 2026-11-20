@@ -71,6 +71,10 @@ func TestRaidPageEvidence(t *testing.T) {
 			for _, part := range f.Parts {
 				if part.Tenths.Present {
 					want := fmt.Sprintf("%d.%d", part.Tenths.V/10, part.Tenths.V%10)
+					// A matching night-table value must not hide broken fight formatting.
+					if got := raidTenths(part.Tenths, "not measured"); got != want {
+						t.Fatalf("per-fight tenth %s; want %s", got, want)
+					}
 					if !strings.Contains(html, want) {
 						t.Fatalf("lost engine tenth %s", want)
 					}
