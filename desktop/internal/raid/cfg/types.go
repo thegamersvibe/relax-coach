@@ -40,6 +40,7 @@ type Scoring struct {
 	// affected measure unmeasured until a sourced/tuned value is supplied.
 	NewAt60Seconds *int64   `json:"new_at_60_seconds"`
 	GCDMs          *int64   `json:"gcd_ms"`
+	GCDEnergyMs    *int64   `json:"gcd_energy_ms"` // cast PowerType 3; other casts use GCDMs
 	RoundingStep   *float64 `json:"rounding_step"`
 	// Inner measure ids belong to the score registry, not to cfg. Empty maps
 	// do not authorize guessed equal weights or guessed death charges.
@@ -67,11 +68,12 @@ type NightWeights struct {
 	WipeWeight    float64 `json:"wipe_weight"`
 }
 type Confidence struct {
-	MinCoverage          float64 `json:"min_coverage"`
-	LowConfidenceFightMs int64   `json:"low_confidence_fight_ms"`
-	ShortFightWeight     float64 `json:"short_fight_weight"`
-	MinBaselinePlayers   int     `json:"min_baseline_players"`
-	MinMeasurablePlayers int     `json:"min_measurable_players"`
+	MinCoverage            float64 `json:"min_coverage"`
+	ProvisionalMinCoverage float64 `json:"provisional_min_coverage"`
+	LowConfidenceFightMs   int64   `json:"low_confidence_fight_ms"`
+	ShortFightWeight       float64 `json:"short_fight_weight"`
+	MinBaselinePlayers     int     `json:"min_baseline_players"`
+	MinMeasurablePlayers   int     `json:"min_measurable_players"`
 }
 type RatioPoint struct {
 	Ratio float64 `json:"ratio"`

@@ -55,6 +55,7 @@ func (s Scoring) validate() error {
 		fieldCheck{"night.kill_weight", n.KillWeight <= 0 || n.KillWeight > 1},
 		fieldCheck{"night.wipe_weight", n.WipeWeight < 0 || n.WipeWeight >= n.KillWeight},
 		fieldCheck{"confidence.min_coverage", !fraction(c.MinCoverage)},
+		fieldCheck{"confidence.provisional_min_coverage", c.ProvisionalMinCoverage <= 0 || c.ProvisionalMinCoverage >= c.MinCoverage},
 		fieldCheck{"confidence.low_confidence_fight_ms", c.LowConfidenceFightMs <= 0},
 		fieldCheck{"confidence.short_fight_weight", c.ShortFightWeight <= 0 || c.ShortFightWeight > 1},
 		fieldCheck{"confidence.min_measurable_players", c.MinMeasurablePlayers < 2},
@@ -80,6 +81,7 @@ func (s Scoring) validate() error {
 		fieldCheck{"death.summary_window_ms", !positiveOptional(d.SummaryWindowMs)},
 		fieldCheck{"new_at_60_seconds", !positiveOptional(s.NewAt60Seconds)},
 		fieldCheck{"gcd_ms", !positiveOptional(s.GCDMs)},
+		fieldCheck{"gcd_energy_ms", !positiveOptional(s.GCDEnergyMs)},
 		fieldCheck{"rounding_step", s.RoundingStep != nil && (*s.RoundingStep <= 0 || !scoreValue(*s.RoundingStep))},
 	); err != nil {
 		return err

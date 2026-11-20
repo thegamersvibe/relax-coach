@@ -33,7 +33,7 @@ func TestRound2SurrogateStrings(t *testing.T) {
 					replaceJSONText(t, dir, "scoring.json", `"source": "`, `"source": "`+escaped)
 				} else {
 					field = "$.count_penalties."
-					replaceJSONText(t, dir, "scoring.json", `"count_penalties": {}`, `"count_penalties": {"review_`+escaped+`": 1}`)
+					replaceJSONText(t, dir, "scoring.json", `"count_penalties": {`, `"count_penalties": {"review_`+escaped+`": 1,`)
 				}
 				err := refused(t, dir, "scoring.json")
 				if !strings.Contains(err.Error(), field) || !strings.Contains(err.Error(), "surrogate") {
@@ -68,7 +68,7 @@ func TestRound2NULKeyPath(t *testing.T) {
 		{"scoring.json", `"source":`, "\"sou\x00rce\":", `$["sou\x00rce"]`},
 		{"scoring.json", `"tail_ms":`, "\"\x00tail_ms\":", `$.fights["\x00tail_ms"]`},
 		{"support.json", `"note":`, "\"note\x00\":", `$.effects[0]["note\x00"]`},
-		{"scoring.json", `"count_penalties": {}`, "\"count_penalties\": {\"a\\\"b\x00c\": 1}", `$.count_penalties["a\\\"b\x00c"]`},
+		{"scoring.json", `"count_penalties": {`, "\"count_penalties\": {\"a\\\"b\x00c\": 1,", `$.count_penalties["a\\\"b\x00c"]`},
 	} {
 		t.Run(tc.path, func(t *testing.T) {
 			dir := copyValidationData(t)
@@ -90,7 +90,10 @@ func TestRound2ValidStringEscapes(t *testing.T) {
 	} {
 		t.Run(tc.encoded, func(t *testing.T) {
 			dir := copyValidationData(t)
-			change(t, dir, "scoring.json", func(d map[string]any) { d["source"] = "marker" })
+			change(t, dir, "scoring.json", func(d map[string]any) {
+				d["source"] = "marker"
+				d["count_penalties"] = map[string]any{}
+			})
 			replaceJSONText(t, dir, "scoring.json", `"source":"marker"`, `"source":"prefix_`+tc.encoded+`"`)
 			replaceJSONText(t, dir, "scoring.json", `"count_penalties":{}`, `"count_penalties":{"key_`+tc.encoded+`":1}`)
 			c := load(t, dir)

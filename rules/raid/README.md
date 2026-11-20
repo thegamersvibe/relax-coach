@@ -108,26 +108,80 @@ All file structs embed `Metadata { Schema int; Version, Source string }`.
   `PartWeights { Output, Activity, Mechanics, Utility, Preparation float64 }`.
 - `Scoring.Night NightWeights { TrashShare, MaxTrashShare, MinBossShare,
   KillWeight, WipeWeight float64 }`.
-- `Scoring.Confidence Confidence { MinCoverage float64;
+- `Scoring.Confidence Confidence { MinCoverage, ProvisionalMinCoverage float64;
   LowConfidenceFightMs int64; ShortFightWeight float64;
   MinBaselinePlayers, MinMeasurablePlayers int }` (3 and 2; a sole player is N/A).
+  `MinCoverage` stays 0.6; `ProvisionalMinCoverage` is 0.25. At or above 0.6 a
+  raid night can receive a normal score/rank; at or above 0.25 but below 0.6 it
+  receives an unranked provisional score, labelled with measured coverage.
+  Below 0.25, or without a scored fight, the night score is null. The same
+  coverage thresholds apply per fight (which has no rank). Dungeon runs still
+  have no rank. These are consumer rules, not a scorer implemented in cfg.
 - `Scoring.RatioPoints []RatioPoint { Ratio, Score float64 }` stores
   0.5→0, 1→70, 1.3→100. `CountStartScore float64` = 100.
 - `Scoring.Healer Healer { TeamShare, IndividualShare, UnhealedTeamScore,
   UnhealedOutputCap float64; LowHealthFraction *float64 }` stores the half/half
-  split and the unhealed-death guard. The health cutoff is not specified yet.
+  split and the unhealed-death guard. The health cutoff is 0.5, an architect-ruled
+  starting guess, not a calibrated threshold.
 - `Scoring.Death Death { WindowMs int64; WipeDeadShare float64;
   WipeAllTanksDead, WipeAllHealersDead bool; OneShotWindowMs, UnhealedMinMs int64;
   LostBossGapMs, SummaryWindowMs *int64 }` holds DESIGN 8/9 values for R6 too.
+  `LostBossGapMs` is 4000 (starting guess for rule 4); `SummaryWindowMs` is
+  10000, matching `WindowMs`, for deaths following the first death in a wipe.
 - `Scoring.Toggles Toggles { RequiredConsumables, Readiness, SupportCredit,
   History bool }` starts all off. `Assignments []Assignment` holds the five
   future jobs and 15-point output-to-utility transfers. Neither implements
   phase-2 behavior in cfg.
-- `NewAt60Seconds, GCDMs *int64`, `RoundingStep *float64`,
+- `NewAt60Seconds, GCDMs, GCDEnergyMs *int64`, `RoundingStep *float64`,
   `MeasureWeights map[string]map[string]float64`,
-  `CountPenalties map[string]float64` are exposed without guessed defaults.
-  The maps are empty and the optional fields are null until values are agreed.
-  R7 must not silently treat an unconfigured measure as fully measured.
+  `CountPenalties map[string]float64` expose data, with no compiled-in defaults.
+  `GCDMs` is 1500; `GCDEnergyMs` is 1000 and applies when a cast's `PowerType`
+  is 3. `RoundingStep` is 0.1. `NewAt60Seconds` stays null: it is a prep-report
+  label, not a score. All these JSON keys are required; the pointer values,
+  including `gcd_energy_ms`, may explicitly be null to mean unconfigured.
+  Consumers must leave the affected measure unmeasured, not substitute zero
+  or treat it as fully measured. The shipped GCD/rounding values are non-null.
+
+### Architect-ruled raid-1 data (scoring 1.2.0)
+
+The PHASE1-BRIEF section **R6 and R7 on main 6208b16** supplies the starting
+values; **Raid 1 gets a score** supersedes its tank-output, preparation and
+provisional-score rules. No role-part weights, healer shares or phase-2 toggles
+change. The JSON `source` distinguishes measured evidence, rulings and guesses.
+
+| JSON field | Value | Source / status |
+|---|---|---|
+| `rounding_step` | 0.1 | PLAN 4A row 7 |
+| `gcd_ms` | 1500 | Architect reports second-log cast-gap peak at 1.4–1.5 s |
+| `gcd_energy_ms` | 1000 | Second peak at 0.9–1.0 s; cast PowerType 3 |
+| `healer.low_health_fraction` | 0.5 | Starting guess |
+| `death.lost_boss_gap_ms` | 4000 | Starting guess |
+| `death.summary_window_ms` | 10000 | Same as the death window |
+| `confidence.provisional_min_coverage` | 0.25 | Raid-1 architect ruling, starting value |
+| `count_penalties.owned_death` | 40 | Starting guess |
+| `count_penalties.boss_swing_taken` | 2 | Starting guess |
+| `count_penalties.better_item_in_bags` | 25 | Raid-1 architect ruling, per better-gear slot |
+| `new_at_60_seconds` | null (unchanged) | Prep-report label, not scored |
+
+Exact `measure_weights` (original measures are guesses; preparation weights are
+the newer architect ruling; none are calibrated):
+
+| Part | Measure weights | Phase-1 consumer meaning |
+|---|---|---|
+| `output` | `boss_damage: 100` | DPS **and tanks**, each against their own role's median; two tanks are provisional, one is unmeasured |
+| `activity` | `active_time: 100` | Cast/swing activity against the role median |
+| `mechanics` | `deaths: 50`, `avoidable: 30`, `boss_swings: 20` | Avoidable is unmeasured until mechanics are enabled; tanks have no boss-swings measure |
+| `preparation` | `stock: 30`, `bag_gear: 30`, `used: 40` | Prep-report stock and better gear; used is unmeasured until a consumable aura map exists |
+
+Utility is absent from the map and remains unmeasured (interrupts/dispels are
+evidence only). Healer output uses the existing team/individual shares, not a
+new damage measure. No separate tank-output key or weight is added.
+Preparation requires a report: potion and food stock contribute 50 each;
+flasks/elixirs are evidence only. Bag gear subtracts the configured 25 per
+better-item slot, floors at zero, and is unmeasured if unchecked or unreadable;
+not-scored slots are skipped. With both stock and bag gear measurable,
+preparation coverage is 0.6, not 1. A weight is not evidence of measurability.
+The app-side prep reader and scoring/attribution belong to later lanes.
 
 ### Validation bounds
 
@@ -149,9 +203,19 @@ All file structs embed `Metadata { Schema int; Version, Source string }`.
 - A configured `rounding_step` is in `(0, 100]` score points: 100 is the entire
   score scale, so a larger quantum exceeds that scale rather than expressing
   useful score precision. Null stays unconfigured; this bound chooses no default.
+- `0 < confidence.provisional_min_coverage < confidence.min_coverage`;
+  the new provisional threshold is required and non-null, and compares against
+  the configured normal threshold rather than a hardcoded 0.6.
+- Non-null `gcd_ms`, `gcd_energy_ms`, `death.lost_boss_gap_ms` and
+  `death.summary_window_ms` are positive `int64` milliseconds. Their upper
+  representation bound is `9223372036854775807`; overflow is refused by the
+  typed decoder. No unsourced gameplay ceiling or equality to the starting
+  value is imposed. `rounding_step` is in `(0, 100]` and
+  `healer.low_health_fraction` in `(0, 1]` when configured. All configured
+  measure weights and count penalties remain in `[0, 100]`.
 
-These bounds preserve the existing fractional-versus-point distinction in
-`scoring.json` and its DESIGN 7/9 source; no weight defaults were added.
+These bounds preserve the fractional-versus-point distinction in `scoring.json`
+and its DESIGN 7/9 source; they do not supply compiled-in weight defaults.
 
 ## Evidence boundaries and open tuning
 
@@ -192,11 +256,12 @@ personal scope remain ineligible even with `verified=true` and known stacking.
 Consumables are categories only; requirements and item mappings need
 separate evidence.
 
-The brief does not provide inner-measure weights, per-death penalties, the
-low-health cutoff, GCD duration, rounding step, new-at-60 threshold, lost-boss gap
-or wipe-summary window. These remain explicit null/empty data, rather than
-new builder-invented values. They must be settled before the corresponding R6/R7
-measures are enabled.
+The raid-1 rulings now supply the inner-measure weights, penalties, low-health
+cutoff, GCD durations, rounding step, provisional coverage, lost-boss gap and
+wipe-summary window listed above. These are replaceable starting data, not
+validated numerical benchmarks. `new_at_60_seconds` remains null by ruling;
+utility, consumable-use mappings and phase-2 history/support credit remain
+unmeasured or disabled, never filled from builder memory.
 
 `desktop/internal/itemdata` does not exist on this base. `cfg.ItemLabel(id)`
 returns the decimal ID. There is no duplicate loot/item database, no item-based

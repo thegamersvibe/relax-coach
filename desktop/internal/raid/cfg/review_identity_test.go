@@ -12,12 +12,14 @@ import (
 func TestNormalizedDuplicates(t *testing.T) {
 	// json.Marshal sorts uppercase keys first; exercise authored reverse order too.
 	dir := copyValidationData(t)
+	// Construct the empty map explicitly: the shipped seed now has penalties.
+	change(t, dir, "scoring.json", func(d map[string]any) { d["count_penalties"] = map[string]any{} })
 	path := filepath.Join(dir, "scoring.json")
 	b, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	bad := bytes.Replace(b, []byte(`"count_penalties": {}`), []byte(`"count_penalties": {"owned_death": 1, "OWNED_DEATH": 2}`), 1)
+	bad := bytes.Replace(b, []byte(`"count_penalties":{}`), []byte(`"count_penalties":{"owned_death": 1, "OWNED_DEATH": 2}`), 1)
 	if bytes.Equal(b, bad) {
 		t.Fatal("missing duplicate-key fixture anchor")
 	}

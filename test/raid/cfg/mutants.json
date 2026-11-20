@@ -731,5 +731,125 @@
     "old": "rawKeyPath(b[start:], path)",
     "new": "path",
     "killed_by": "TestRound2NULKeyPath"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "!positiveOptional(s.GCDEnergyMs)",
+    "new": "false",
+    "killed_by": "TestEnergyGCDRange"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "!positiveOptional(s.GCDEnergyMs)",
+    "new": "s.GCDEnergyMs != nil && *s.GCDEnergyMs < 0",
+    "killed_by": "TestEnergyGCDRange"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/types.go",
+    "old": "`json:\"gcd_energy_ms\"`",
+    "new": "`json:\"gcd_energy_ms,omitempty\"`",
+    "killed_by": "TestEnergyGCDDecode"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "s.GCDEnergyMs = copyPointer(s.GCDEnergyMs)",
+    "new": "/* detached energy GCD copy bypassed */",
+    "killed_by": "TestEnergyGCDSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "c.ProvisionalMinCoverage <= 0",
+    "new": "false",
+    "killed_by": "TestProvisionalCoverageRange"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "c.ProvisionalMinCoverage <= 0",
+    "new": "c.ProvisionalMinCoverage < 0",
+    "killed_by": "TestProvisionalCoverageRange"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "c.ProvisionalMinCoverage >= c.MinCoverage",
+    "new": "false",
+    "killed_by": "TestProvisionalCoverageRange"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "c.ProvisionalMinCoverage >= c.MinCoverage",
+    "new": "c.ProvisionalMinCoverage > c.MinCoverage",
+    "killed_by": "TestProvisionalCoverageRange"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "c.ProvisionalMinCoverage >= c.MinCoverage",
+    "new": "c.ProvisionalMinCoverage >= .6",
+    "killed_by": "TestProvisionalCoverageRange"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/types.go",
+    "old": "`json:\"provisional_min_coverage\"`",
+    "new": "`json:\"provisional_min_coverage,omitempty\"`",
+    "killed_by": "TestProvisionalCoverageDecode"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "if bytes.Equal(bytes.TrimSpace(b), []byte(\"null\")) {\n\t\treturn fmt.Errorf(\"%s cannot be null\", path)",
+    "new": "if false && bytes.Equal(bytes.TrimSpace(b), []byte(\"null\")) {\n\t\treturn fmt.Errorf(\"%s cannot be null\", path)",
+    "killed_by": "TestProvisionalCoverageDecode"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "!positiveOptional(s.GCDMs)",
+    "new": "false",
+    "killed_by": "TestRaidOneScalarRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "!positiveOptional(d.LostBossGapMs)",
+    "new": "false",
+    "killed_by": "TestRaidOneScalarRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "!positiveOptional(d.SummaryWindowMs)",
+    "new": "false",
+    "killed_by": "TestRaidOneScalarRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "s.RoundingStep != nil && (*s.RoundingStep <= 0 || !scoreValue(*s.RoundingStep))",
+    "new": "false",
+    "killed_by": "TestRaidOneScalarRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "h.LowHealthFraction != nil && (*h.LowHealthFraction <= 0 || !fraction(*h.LowHealthFraction))",
+    "new": "false",
+    "killed_by": "TestRaidOneScalarRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if !nonblank(id) || !scoreValue(v) {\n\t\t\t\treturn fmt.Errorf(\"measure_weights.",
+    "new": "if !nonblank(id) || v > 100 {\n\t\t\t\treturn fmt.Errorf(\"measure_weights.",
+    "killed_by": "TestRaidOneMeasureWeightRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if !nonblank(id) || !scoreValue(v) {\n\t\t\t\treturn fmt.Errorf(\"measure_weights.",
+    "new": "if !nonblank(id) || v < 0 {\n\t\t\t\treturn fmt.Errorf(\"measure_weights.",
+    "killed_by": "TestRaidOneMeasureWeightRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if !nonblank(id) || !scoreValue(v) {\n\t\t\treturn fmt.Errorf(\"count_penalties.",
+    "new": "if !nonblank(id) || v > 100 {\n\t\t\treturn fmt.Errorf(\"count_penalties.",
+    "killed_by": "TestRaidOneCountPenaltyRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if !nonblank(id) || !scoreValue(v) {\n\t\t\treturn fmt.Errorf(\"count_penalties.",
+    "new": "if !nonblank(id) || v < 0 {\n\t\t\treturn fmt.Errorf(\"count_penalties.",
+    "killed_by": "TestRaidOneCountPenaltyRanges"
   }
 ]
