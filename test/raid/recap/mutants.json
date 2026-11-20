@@ -1,0 +1,362 @@
+[
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "local value, invalidNumber = R.field(raw, key, kind)",
+    "new": "local value, invalidNumber = raw[key], nil",
+    "killed_by": "test_inaccessible_amount_is_not_used"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "row.amount - math.max(0, row.overkill)",
+    "new": "row.amount + math.max(0, row.overkill)",
+    "killed_by": "test_read_copies_sorts_and_calculates"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "row.timestamp > latest",
+    "new": "row.timestamp < latest",
+    "killed_by": "test_read_copies_sorts_and_calculates"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "row.currentHP / recap.maxHealth * 100",
+    "new": "row.currentHP / recap.maxHealth * 10",
+    "killed_by": "test_read_copies_sorts_and_calculates"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "for i = 1, 12 do",
+    "new": "for i = 1, 13 do",
+    "killed_by": "test_tabs_labels_and_twelve_row_scroll"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "total = total + row.effective",
+    "new": "total = total + row.effective * 2",
+    "killed_by": "test_pvp_shares_use_all_damage_and_pets_stay_separate"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if flag(row.sourceFlags, 64) and kind and row.sourceGUID then",
+    "new": "if kind and row.sourceGUID then",
+    "killed_by": "test_pvp_hidden_for_environment_creatures_or_unreadable_flags"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "recap.attackers = player and list or {}",
+    "new": "recap.attackers = list",
+    "killed_by": "test_pvp_hidden_for_environment_creatures_or_unreadable_flags"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "== true then row.guildAvoidable = true end",
+    "new": "== true then row.guildAvoidable = false end",
+    "killed_by": "test_avoidable_hooks_and_identity_are_guarded"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "R.hooks[name] = hooks",
+    "new": "if name == R.owner then R.hooks[name] = hooks end",
+    "killed_by": "test_both_load_orders_and_higher_version_keep_one_dispatch"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "^addon:RelaxDeathRecap:(%d+)$",
+    "new": "^addon:%a+:(%d+)$",
+    "killed_by": "test_links_reject_foreign_and_expired_ids"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if #R.history > 3 then",
+    "new": "if #R.history > 4 then",
+    "killed_by": "test_four_deaths_keep_three_and_cancel_old_timers"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if R.dead then return end",
+    "new": "if false then return end",
+    "killed_by": "test_late_third_retry_and_one_notification"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "ipairs({0.3, 1, 2})",
+    "new": "ipairs({0.3, 1})",
+    "killed_by": "test_late_third_retry_and_one_notification"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if R.settings.auto then",
+    "new": "if true then",
+    "killed_by": "test_auto_off_and_link_route_and_no_data"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if R.settings.autoclose then",
+    "new": "if false then",
+    "killed_by": "test_open_in_combat_everywhere_close_escape_and_autoclose"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if R.settings.keep then",
+    "new": "if true then",
+    "killed_by": "test_saved_roundtrip_corrupt_drop_caps_and_owner_only"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "array(rows, 12)",
+    "new": "array(rows, 13)",
+    "killed_by": "test_saved_roundtrip_corrupt_drop_caps_and_owner_only"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "recap.killer, recap.killingBlow = \"Unknown\", nil",
+    "new": "recap.killer = \"Unknown\"",
+    "killed_by": "test_retry_clears_unreadable_killing_blow"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if R.pending ~= recap then return end",
+    "new": "if false then return end",
+    "killed_by": "test_four_deaths_keep_three_and_cancel_old_timers"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "        R.dead = false\n        if R.settings.autoclose",
+    "new": "        R.dead, R.pending = false, nil\n        if R.settings.autoclose",
+    "killed_by": "test_fresh_rows_after_quick_release_attach_without_reopening"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "else recap.incomplete = true end",
+    "new": "else recap.incomplete = false end",
+    "killed_by": "test_unreadable_whole_rows_mark_partial_and_blank_shares"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "local groups, list, total, complete, player = {}, {}, 0, not recap.incomplete, false",
+    "new": "local groups, list, total, complete, player = {}, {}, 0, true, false",
+    "killed_by": "test_unreadable_whole_rows_mark_partial_and_blank_shares"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "local rows, latest, completeTime = recap.rows, nil, not recap.incomplete",
+    "new": "local rows, latest, completeTime = recap.rows, nil, true",
+    "killed_by": "test_unreadable_whole_rows_mark_partial_and_blank_shares"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "incomplete=R.field(raw, \"incomplete\", \"boolean\")",
+    "new": "incomplete=false",
+    "killed_by": "test_incomplete_recaps_stay_incomplete_after_saved_roundtrip"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "    elseif read.incomplete then\n        recap.incomplete = true",
+    "new": "    elseif read.incomplete then\n        recap.incomplete = false",
+    "killed_by": "test_only_unreadable_rows_still_report_incomplete"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if not row.effective then recap.incomplete = true end",
+    "new": "if not row.effective then recap.incomplete = false end",
+    "killed_by": "test_unreadable_amount_and_overkill_warn_without_inventing_shares"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if row.amount and row.amount < 0 then return nil end",
+    "new": "",
+    "killed_by": "test_negative_amount_row_is_unreadable_not_zero_damage"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if key == \"amount\" and invalidNumber then return nil end",
+    "new": "",
+    "killed_by": "test_nonfinite_amount_row_is_unreadable"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": " or id > MAX_ID",
+    "new": "",
+    "killed_by": "test_saved_ids_are_bounded_integers_and_new_links_work"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if R.serial >= MAX_ID then",
+    "new": "if false then",
+    "killed_by": "test_largest_valid_id_never_emits_an_unusable_or_reused_link"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "R.maxVisibleAttackers = 3",
+    "new": "R.maxVisibleAttackers = 12",
+    "killed_by": "test_maximum_player_block_fits_600px_screen_and_caps_attackers"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if not scheduled then",
+    "new": "if false then",
+    "killed_by": "test_missing_timer_finishes_and_saves_immediately"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if not scheduled then",
+    "new": "if not scheduled and C_Timer == nil then",
+    "killed_by": "test_throwing_timer_finishes_and_saves_immediately"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "R.pending = nil -- already scheduled callbacks",
+    "new": "R.pending = recap -- already scheduled callbacks",
+    "killed_by": "test_final_timer_failure_cancels_earlier_callbacks"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "previousTs=R.lastRecapTs,",
+    "new": "previousTs=nil,",
+    "killed_by": "test_previous_row_subset_is_never_fresh"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "row.timestamp > recap.previousTs",
+    "new": "row.timestamp >= recap.previousTs",
+    "killed_by": "test_previous_row_subset_is_never_fresh"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "(row.timestamp and row.timestamp > recap.previousTs)",
+    "new": "(not row.timestamp or row.timestamp > recap.previousTs)",
+    "killed_by": "test_old_identity_readability_changes_do_not_make_rows_fresh"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "elseif not row.timestamp then read.incomplete = true end",
+    "new": "elseif not row.timestamp then read.incomplete = false end",
+    "killed_by": "test_old_identity_readability_changes_do_not_make_rows_fresh"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "read.rows = fresh",
+    "new": "read.rows = read.rows",
+    "killed_by": "test_mixed_snapshot_retains_only_new_life_rows_and_shares"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "R.lastRecapTs = row.timestamp",
+    "new": "R.lastRecapTs = nil",
+    "killed_by": "test_first_death_rows_cannot_reappear_at_third_death"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "(not R.lastRecapTs or row.timestamp > R.lastRecapTs)",
+    "new": "true",
+    "killed_by": "test_death_cutoff_is_frozen_while_last_timestamp_never_decreases"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if not recap.previousTs or (row.timestamp and row.timestamp > recap.previousTs) then",
+    "new": "if not R.lastRecapTs or (row.timestamp and row.timestamp > R.lastRecapTs) then",
+    "killed_by": "test_death_cutoff_is_frozen_while_last_timestamp_never_decreases"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "local savedTs = R.field(settings, \"lastRecapTs\", \"number\")",
+    "new": "local savedTs = settings.lastRecapTs",
+    "killed_by": "test_invalid_saved_timestamp_is_ignored_on_load"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "then R.lastRecapTs = savedTs end",
+    "new": "then R.lastRecapTs = nil end",
+    "killed_by": "test_valid_saved_timestamp_bounds_and_fraction_are_used"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "(not R.lastRecapTs or savedTs > R.lastRecapTs)",
+    "new": "true",
+    "killed_by": "test_reconfigure_cannot_lower_the_session_timestamp"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "R.settings.lastRecapTs = R.lastRecapTs",
+    "new": "R.settings.lastRecapTs = nil",
+    "killed_by": "test_keep_off_fresh_vm_reload_remembers_timestamp_without_history"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if R.lastRecapTs or R.settings.keep or R.settings.position",
+    "new": "if R.settings.keep or R.settings.position",
+    "killed_by": "test_keep_off_fresh_vm_reload_remembers_timestamp_without_history"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "elseif R.lastRecapTs ~= lastTs then R.persist() end",
+    "new": "elseif false then R.persist() end",
+    "killed_by": "test_pending_death_persists_timestamp_before_any_retry"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "value ~= value or math.abs(value) > 1e12",
+    "new": "math.abs(value) > 1e12",
+    "killed_by": "test_invalid_saved_timestamp_is_ignored_on_load"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "math.abs(value) > 1e12",
+    "new": "false",
+    "killed_by": "test_invalid_saved_timestamp_is_ignored_on_load"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if newestTs and (not savedTs or newestTs > savedTs) then savedTs = newestTs end",
+    "new": "",
+    "killed_by": "test_history_without_saved_timestamp_seeds_cutoff"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "row.timestamp > newestTs",
+    "new": "row.timestamp < newestTs",
+    "killed_by": "test_history_without_saved_timestamp_seeds_cutoff"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "for _, recap in ipairs(R.history) do",
+    "new": "for _, recap in ipairs({R.history[1]}) do",
+    "killed_by": "test_history_without_saved_timestamp_seeds_cutoff"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if nowTs and savedTs > nowTs + MAX_SAVED_TS_AHEAD_SECONDS then savedTs = nil end",
+    "new": "if not nowTs then savedTs = nil end",
+    "killed_by": "test_unreadable_server_clock_keeps_valid_saved_cutoff"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "local nowTs = R.clean(R.call(GetServerTime), \"number\")",
+    "new": "local nowTs = newestTs or R.clean(R.call(GetServerTime), \"number\")",
+    "killed_by": "test_saved_cutoff_above_history_within_server_day_is_kept"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "savedTs > nowTs + MAX_SAVED_TS_AHEAD_SECONDS",
+    "new": "savedTs >= nowTs + MAX_SAVED_TS_AHEAD_SECONDS",
+    "killed_by": "test_valid_saved_timestamp_bounds_and_fraction_are_used"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "local nowTs = R.clean(R.call(GetServerTime), \"number\")",
+    "new": "local nowTs = savedTs",
+    "killed_by": "test_implausible_saved_timestamp_without_history_is_dropped"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if newestTs and (not savedTs or newestTs > savedTs) then savedTs = newestTs end",
+    "new": "if newestTs then savedTs = newestTs end",
+    "killed_by": "test_valid_saved_timestamp_above_history_is_preserved"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if nowTs and savedTs > nowTs + MAX_SAVED_TS_AHEAD_SECONDS then savedTs = nil end",
+    "new": "if not nowTs or savedTs > nowTs + MAX_SAVED_TS_AHEAD_SECONDS then savedTs = nil end",
+    "killed_by": "test_unreadable_server_clock_keeps_valid_saved_cutoff"
+  }
+]

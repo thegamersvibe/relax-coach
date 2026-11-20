@@ -10,6 +10,42 @@ Four **separate WoW Forever addons**, plus a native Windows report app:
 
 Relax Raid also keeps each character's latest settled guild-rank reading, readable guild name and server time in the account's existing save. It refreshes on login, world entry and guild updates; a still-loading rank leaves the previous reading alone. These local readings support a **convenience lock, not security**: saves can be edited or become stale. This addon change supplies the readings only; the app's officer page and lock are a separate change.
 
+## Death recap
+
+Relax Raid adds a local **Death Recap**, available everywhere, including combat.
+It reads the game's recorded damage hits (usually about five, at most twelve),
+not a ten-second combat-log window; heals and duel losses have no recap. The
+window shows readable damage, source, spell, time before death, health, overkill
+and avoidable flags. Its hostile-player shares use **all retained damage for this
+death** as the denominator; pets remain separate and missing identity is labelled unknown.
+The guild avoidable list is generated from enabled raid mechanics (currently
+empty); the game's own avoidable flag still works. Nothing is sent or scored.
+
+Use `/recap`, `/recap 2`, `/recap 3`, the local **[You died: details]** chat link,
+or **Detailed recap** beside the death popup. Blizzard's buttons are unchanged.
+The three newest deaths have tabs. Close with X, Close or Escape; drag the title
+to move the window and use `/recap reset` to reset its character-specific position.
+Options are under **Options > AddOns > Relax Raid**, or `/recap auto on|off`,
+`/recap autoclose on|off`, `/recap keep on|off`. Automatic opening and closing on
+release/revive default on; keeping recaps after logout defaults off. Kept data
+contains player names, stays local in the existing character settings, and is
+capped at three deaths with twelve rows each. Even with keep off, one numeric
+last-recap timestamp is always saved to reject earlier-life hits after reload.
+No new SavedVariables are added.
+If another addon carries this shared module, the highest version owns one window
+and the saved history; both addons can register hooks. This change includes only
+the Relax Raid hook, not LayerEnemies tracking. If the game supplies no data, the
+window says so; missing popup callbacks leave `/recap` and the chat link working.
+Rows at or below the newest previously recorded recap timestamp are never
+assigned to a new death; mixed snapshots keep only newer rows. If none remain,
+it shows **no recap data for this death** until newer rows arrive within two
+seconds, even after a quick release (without reopening the window). If retry
+timers are missing or fail, the recap is finished and saved immediately.
+Unreadable hits or invalid damage blank the shares and show **some hits unreadable**. The attacker
+block shows three sources plus **+X more** so the window fits a 600-pixel-tall
+screen; all retained hits remain scrollable and all readable damage counts.
+See [API evidence and offline validation](docs/raid/DEATH-RECAP.md).
+
 ## Download
 
 **[Download release v1.8.1](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.8.1)**:
