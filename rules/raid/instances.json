@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "version": "1.0.0",
+  "source": "PHASE1-BRIEF R5: id 329, Stratholme, dungeon, seen in the first real log. Raid instance ids are not established; unlisted ids stay reported even when group size identifies a raid.",
+  "raid_group_size_above": 5,
+  "instances": [
+    {
+      "id": 329,
+      "name": "Stratholme",
+      "kind": "dungeon",
+      "source": "seen in the first real log"
+    }
+  ]
+}

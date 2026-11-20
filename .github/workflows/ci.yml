@@ -93,6 +93,18 @@ jobs:
         run: go vet ./...
       - name: Relax Raid modules (Go)
         run: python3 -I -B tools/raidtest.py --all --kind go
+      - name: Relax Raid model, decoder and fixture mutants
+        run: |
+          python3 -I -B tools/raidtest.py --mutants model
+          python3 -I -B tools/raidtest.py --mutants logfmt
+          python3 -I -B tools/raidtest.py --mutants fixture
+      - name: Relax Raid fights mutants
+        run: python3 -I -B tools/raidtest.py --mutants fights
+      - name: Relax Raid log discovery glue
+        run: |
+          go -C desktop test -count=1 -run '^TestRaidLog' .
+          python3 -I -B tools/raidtest.py --mutants raidlogs
+          python3 -I -B tools/raidtest.py --mutants _runner
       - name: Install locked UI test dependencies without lifecycle scripts
         run: npm ci --prefix .github --ignore-scripts
       - name: Existing offline UI tests

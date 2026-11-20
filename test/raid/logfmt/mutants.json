@@ -1,0 +1,362 @@
+[
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "if !ok {\n\t\treturn model.Event{}, UnknownWidth, true",
+    "new": "if !ok && false {\n\t\treturn model.Event{}, UnknownWidth, true",
+    "killed_by": "TestKnownWidthSkippedAndOptionalNumbersStayUnknown"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "v, err := strconv.ParseInt(s, 10, 64)\n\tif err != nil {\n\t\treturn model.Opt{}",
+    "new": "v, err := strconv.ParseInt(s, 10, 64)\n\tif err != nil {\n\t\treturn model.Some(0)",
+    "killed_by": "TestKnownWidthSkippedAndOptionalNumbersStayUnknown"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "return strings.Clone(s)",
+    "new": "return s",
+    "killed_by": "TestTypedEventsDoNotRetainWholeLines"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "e.InfoUnit, e.InfoOwnerID = absent(f[p]), absent(f[p+1])",
+    "new": "e.InfoUnit, e.InfoOwnerID = e.Src.ID, absent(f[p+1])",
+    "killed_by": "TestDamageLayoutsAndAdvancedAttribution"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "case model.Damage:\n",
+    "new": "case model.Damage:\n e.Raw=f\n",
+    "killed_by": "TestDamageLayoutsAndAdvancedAttribution"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "e.DiedFlag = number(f[p])",
+    "new": "e.DiedFlag = model.Some(0)",
+    "killed_by": "TestDeathsAndKnownOther"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "schema.kind == model.Absorb && len(f) == 22",
+    "new": "schema.kind == model.Absorb && len(f) == 19",
+    "killed_by": "TestMissAndAbsorbWidths"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "e.Amount, e.Overheal, e.Absorbed = number(f[p]), number(f[p+2]), number(f[p+3])",
+    "new": "e.Amount, e.Overheal, e.Absorbed = number(f[p]), model.Some(0), number(f[p+3])",
+    "killed_by": "TestCombatFamilies"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/layouts.go",
+    "old": "damageFormat(38, model.SwingSource, false, false)",
+    "new": "damageFormat(38, model.SwingLanded, false, false)",
+    "killed_by": "TestDamageLayoutsAndAdvancedAttribution"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/fields.go",
+    "old": "if (c == ']' && open != '[') || (c == ')' && open != '(') {",
+    "new": "if false && open != 0 {",
+    "killed_by": "TestCombatantNestedListsAndMalformedCollections"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/decode.go",
+    "old": "offset += n",
+    "new": "offset += n-1",
+    "killed_by": "TestEveryByteCutAndExactOffsets"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/decode.go",
+    "old": "r.HeadersSeen++",
+    "new": "r.Parsed++",
+    "killed_by": "TestReportRepeatedHeadersAndFieldCountEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/decode.go",
+    "old": "if schema.widths[len(fields)] {",
+    "new": "if false {",
+    "killed_by": "TestReportRepeatedHeadersAndFieldCountEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/reader.go",
+    "old": "n += int64(len(part))",
+    "new": "n = int64(len(part))",
+    "killed_by": "TestOversizedLineResumesWithoutLosingOffsets"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/structure.go",
+    "old": "e.Enc.Success, e.Enc.FightMs = number(f[5]), number(f[6])",
+    "new": "e.Enc.InstanceID = number(f[5])",
+    "killed_by": "TestEncounterAndZonePayloadsReportedWipeAndRaid"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "e.PowerType, m1 = firstPower(f[p+10])",
+    "new": "_, m1 = firstPower(f[p+10])",
+    "killed_by": "TestAdvancedPowerFields"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "e.Power, m2 = firstPower(f[p+11])\n\t\te.PowerMax, m3 = firstPower(f[p+12])",
+    "new": "e.Power, m2 = firstPower(f[p+12])\n\t\te.PowerMax, m3 = firstPower(f[p+11])",
+    "killed_by": "TestAdvancedPowerFields"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "first, _, two := strings.Cut(s, \"|\")\n\treturn number(first), two",
+    "new": "_, _, two := strings.Cut(s, \"|\")\n\treturn number(s), two",
+    "killed_by": "TestTwoPowerTypesKeepTheFirst"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "multi = m1 || m2 || m3",
+    "new": "multi = false && (m1 || m2 || m3)",
+    "killed_by": "TestTwoPowerTypesKeepTheFirst"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/reader.go",
+    "old": "if n <= int64(limits.MaxLineBytes) {",
+    "new": "if n < int64(limits.MaxLineBytes) {",
+    "killed_by": "TestLineCapInclusiveBoundary"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/decode.go",
+    "old": "offset < -23 || offset > 23",
+    "new": "offset < -24 || offset > 24",
+    "killed_by": "TestOffsetBoundsAndUnsignedPositive"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/decode.go",
+    "old": "if suffix[0] == '+' {",
+    "new": "if false && suffix[0] == '+' {",
+    "killed_by": "TestOffsetBoundsAndUnsignedPositive"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/decode.go",
+    "old": "\tr.Last = timePoint\n",
+    "new": "\tif r.Last == nil {\n\t\tr.Last = timePoint\n\t}\n",
+    "killed_by": "TestReportLastFollowsFileOrder"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "strings.Trim(fraction, \"0\") != \"\"",
+    "new": "false",
+    "killed_by": "TestFractionalNumbersStayUnknown"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "s == \"nil\" || s == \"0000000000000000\"",
+    "new": "s == \"nil\"",
+    "killed_by": "TestAbsentUnitIDs"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "\t\te.Src = model.Actor{}\n",
+    "new": "",
+    "killed_by": "TestEnvironmentalSourceCleared"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "f[2] != \"ADVANCED_LOG_ENABLED\" || ",
+    "new": "",
+    "killed_by": "TestHeaderRequiresNamedKeys"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/structure.go",
+    "old": "len(parts) != 5",
+    "new": "len(parts) < 5",
+    "killed_by": "TestCombatantGearTupleWidth"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/structure.go",
+    "old": "!ok || len(auras)%3 != 0",
+    "new": "!ok",
+    "killed_by": "TestCombatantAuraTriples"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/structure.go",
+    "old": "Name: strings.Clone(f[2]), Difficulty: difficulty.V}",
+    "new": "Name: strings.Clone(f[2]), Difficulty: id.V}",
+    "killed_by": "TestZoneDifficultyDistinctFromInstance"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/fields.go",
+    "old": "c = '\\n'",
+    "new": "c = 'n'",
+    "killed_by": "TestActorNameNewlineEscape"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/layouts.go",
+    "old": "\"SPELL_AURA_BROKEN_SPELL\": plain(model.AuraBroken, true, 16)",
+    "new": "\"SPELL_AURA_BROKEN_SPELL\": plain(model.AuraBroken, true, 16, 13)",
+    "killed_by": "TestAuraBrokenSpellRejectsShortWidth"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "strconv.ParseInt(s, 10, 64)",
+    "new": "strconv.ParseInt(s, 10, 32)",
+    "killed_by": "TestNumbersKeepInt64Range"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "multi = m1 || m2 || m3",
+    "new": "multi = (false && m1) || m2 || m3",
+    "killed_by": "TestTypeOnlyMultiPowerCounted"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "e.Caster, ok = actor(f[p : p+4])",
+    "new": "e.Caster, ok = model.Actor{}, true",
+    "killed_by": "TestAbsorbCasterBothWidths"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "e.Caster, ok = actor(f[p : p+4])",
+    "new": "e.Caster, ok = actor(f[p+1 : p+5])",
+    "killed_by": "TestAbsorbCasterBothWidths"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "e.Caster, ok = actor(f[p : p+4])",
+    "new": "if len(f) == 22 { e.Caster, ok = actor(f[p : p+4]) }",
+    "killed_by": "TestAbsorbCasterBothWidths"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "e.Caster, ok = actor(f[p : p+4])",
+    "new": "if len(f) == 19 { e.Caster, ok = actor(f[p : p+4]) }",
+    "killed_by": "TestAbsorbCasterBothWidths"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "flags, err := strconv.ParseUint(f[2][2:], 16, 32)\n\tif err != nil {",
+    "new": "flags, err := strconv.ParseUint(f[2][2:], 16, 32)\n\tif err != nil && false {",
+    "killed_by": "TestInvalidActorFlagsSkipped"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "strconv.ParseUint(f[2][2:], 16, 32)",
+    "new": "strconv.ParseUint(f[2][2:], 16, 64)",
+    "killed_by": "TestInvalidActorFlagsSkipped"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "strconv.ParseUint(f[2][2:], 16, 32)",
+    "new": "strconv.ParseUint(f[2][2:], 10, 32)",
+    "killed_by": "TestValidActorFlagsPreserved"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "if !srcOK || !dstOK {",
+    "new": "if !srcOK && !dstOK {",
+    "killed_by": "TestInvalidActorFlagsSkipped"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "e.Caster, ok = actor(f[p : p+4])\n\t\tif !ok {",
+    "new": "e.Caster, ok = actor(f[p : p+4])\n\t\tif !ok && false {",
+    "killed_by": "TestInvalidActorFlagsSkipped"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/report.go",
+    "old": "len(name) > maxReportNameBytes",
+    "new": "len(name) > maxReportNameBytes+1",
+    "killed_by": "TestReportRejectsUnsafeNames"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/report.go",
+    "old": "c != '_' && (c < 'A' || c > 'Z')",
+    "new": "false && c != '_' && (c < 'A' || c > 'Z')",
+    "killed_by": "TestReportRejectsUnsafeNames"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/report.go",
+    "old": "len(r.unknownNames) >= maxUnknownNames",
+    "new": "len(r.unknownNames) > maxUnknownNames",
+    "killed_by": "TestReportUnknownNameBudget"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/report.go",
+    "old": "return strings.Clone(name)",
+    "new": "return name",
+    "killed_by": "TestReportNamesDoNotRetainLines"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/report.go",
+    "old": "r.unknownNames[strings.Clone(name)]",
+    "new": "r.unknownNames[name]",
+    "killed_by": "TestReportNamesDoNotRetainLines"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/decode.go",
+    "old": "r.skip(InvalidTime, reportedName, 0)",
+    "new": "r.skip(InvalidTime, name, 0)",
+    "killed_by": "TestReportRejectsUnsafeNames"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/decode.go",
+    "old": "r.UnknownEvents[reportedName]++",
+    "new": "r.UnknownEvents[name]++",
+    "killed_by": "TestReportRejectsUnsafeNames"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/decode.go",
+    "old": "\tr.countActorNames(fields)\n",
+    "new": "",
+    "killed_by": "TestActorNameAnomaliesPreserved"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/report.go",
+    "old": "r.NameNULBytes += int64(strings.Count(f[i], \"\\x00\"))",
+    "new": "r.NameNULBytes += 0 * int64(strings.Count(f[i], \"\\x00\"))",
+    "killed_by": "TestActorNameAnomaliesPreserved"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/report.go",
+    "old": "if !utf8.ValidString(f[i]) {",
+    "new": "if false && !utf8.ValidString(f[i]) {",
+    "killed_by": "TestActorNameAnomaliesPreserved"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/report.go",
+    "old": "\t\tp := 10\n",
+    "new": "\t\tp := 11\n",
+    "killed_by": "TestActorNameAnomaliesPreserved"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/decode.go",
+    "old": "r.skip(InvalidFields, reportedName, 0)",
+    "new": "r.skip(InvalidFields, name, 0)",
+    "killed_by": "TestInvalidFieldsReportNamesBounded"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "e.Caster, ok = actor(f[p : p+4])",
+    "new": "e.Caster, ok = actor(f[p : p+4])\n\t\tif e.Caster.ID == e.Dst.ID { e.Caster = model.Actor{} }",
+    "killed_by": "TestAbsorbSelfShieldCasterPreserved"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "e.Caster, ok = actor(f[p : p+4])",
+    "new": "e.Caster, ok = actor(f[p : p+4])\n\t\tif e.Caster.ID == \"\" { e.Caster.ID = e.Dst.ID }",
+    "killed_by": "TestAbsorbAbsentCasterNotInferred"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "if !strings.HasPrefix(f[2], \"0x\") {",
+    "new": "if len(f[2]) < 2 {",
+    "killed_by": "TestInvalidActorFlagsSkipped"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "if !strings.HasPrefix(f[2], \"0x\") {",
+    "new": "if !strings.HasPrefix(f[2], \"0x\") && !strings.HasPrefix(f[2], \"0X\") {",
+    "killed_by": "TestInvalidActorFlagsSkipped"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "strconv.ParseUint(f[2][2:], 16, 32)",
+    "new": "strconv.ParseUint(f[2], 0, 32)",
+    "killed_by": "TestInvalidActorFlagsSkipped"
+  }
+]
