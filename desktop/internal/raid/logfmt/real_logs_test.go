@@ -33,12 +33,15 @@ func TestRealLogsOptInCountsOnly(t *testing.T) {
 			t.Fatalf("log %d open failed", i+1)
 		}
 		var r logfmt.ParseReport
-		var success, rawViolations, absorbs, casters int64
+		var success, rawViolations, absorbs, casters, selfShields int64
 		for e := range logfmt.Decode(f, &r) {
 			if e.Kind == model.Absorb {
 				absorbs++
 				if e.Caster.ID != "" && e.Caster.Name != "" {
 					casters++
+				}
+				if e.Caster.ID != "" && e.Caster.ID == e.Dst.ID {
+					selfShields++
 				}
 			}
 			if e.Kind == model.EncounterEnd && e.Enc != nil && e.Enc.Success == model.Some(1) {
@@ -66,7 +69,7 @@ func TestRealLogsOptInCountsOnly(t *testing.T) {
 			unknownLines += n
 		}
 		absorbLines := r.EventCounts["SPELL_ABSORBED"]
-		fmt.Printf("REAL_LOG %d absorbCasterSet=%d absorbDecoded=%d absorbLines=%d invalidFlagsSkipped=%d nameNULBytes=%d invalidUTF8Names=%d unknownBuckets=%d unknownOther=%d unknownLines=%d\n", i+1, casters, absorbs, absorbLines, r.Skipped[logfmt.InvalidFlags], r.NameNULBytes, r.InvalidUTF8Names, len(r.UnknownEvents), r.UnknownEvents["other"], unknownLines)
+		fmt.Printf("REAL_LOG %d absorbCasterSet=%d absorbDecoded=%d absorbLines=%d selfShields=%d invalidFlagsSkipped=%d nameNULBytes=%d invalidUTF8Names=%d unknownBuckets=%d unknownOther=%d unknownLines=%d\n", i+1, casters, absorbs, absorbLines, selfShields, r.Skipped[logfmt.InvalidFlags], r.NameNULBytes, r.InvalidUTF8Names, len(r.UnknownEvents), r.UnknownEvents["other"], unknownLines)
 		if casters != absorbLines || absorbs != absorbLines {
 			t.Errorf("log %d absorb caster count differs: set=%d decoded=%d total=%d", i+1, casters, absorbs, absorbLines)
 		}

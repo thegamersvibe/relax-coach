@@ -151,6 +151,9 @@ func TestDeathsAndKnownOther(t *testing.T) {
 		for i := range f {
 			f[i] = "0"
 		}
+		if name != "MAP_CHANGE" {
+			f[2], f[6] = "0x0", "0x0"
+		}
 		events, r := decode(line(t, name, f...))
 		if len(events) != 1 || events[0].Kind != model.Other || len(events[0].Raw) != width || len(r.UnknownEvents) != 0 {
 			t.Fatal(r, events)
