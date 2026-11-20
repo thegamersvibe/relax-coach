@@ -112,5 +112,23 @@
     "old": "if f.Boss && d.Cause",
     "new": "if true && d.Cause",
     "killed_by": "TestRaidPageDeathLabels"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "return -1",
+    "new": "return r",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid.html",
+    "old": "<bdi>{{raidName .}}</bdi>",
+    "new": "{{raidName .}}",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid_pipeline.go",
+    "old": "officer, err := compare.ParseOfficer(data)",
+    "new": "officer, err := compare.OfficerFile{Version: 1, Officer: \"forged\"}, error(nil)",
+    "killed_by": "TestRaidPageComparisonRereads"
   }
 ]

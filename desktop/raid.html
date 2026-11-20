@@ -1,6 +1,7 @@
+{{define "raid-name"}}<bdi>{{raidName .}}</bdi>{{end}}
 {{define "raid-body"}}
-<div class="card raid-head"><h3>Raids &gt; {{.Title}}, {{.Date}}</h3>
-<p>Logged by {{if .Logger}}{{.Logger}}{{else}}unknown{{end}} · {{.Bosses}} bosses · {{len .Wipes}} wipes · {{.Trash}} trash pulls · {{.Duration}}</p>
+<div class="card raid-head"><h3>Raids &gt; {{template "raid-name" .Title}}, {{.Date}}</h3>
+<p>Logged by {{if .Logger}}{{template "raid-name" .Logger}}{{else}}unknown{{end}} · {{.Bosses}} bosses · {{len .Wipes}} wipes · {{.Trash}} trash pulls · {{.Duration}}</p>
 <p>Scoring {{.ConfigVersion}} · Baseline: same role, same fight (first raid, no history)</p>
 <p>Log: {{.LogStatus}} · Prep reports: {{.PrepPlayers}} of {{.Players}} players</p>
 {{if .Dungeon}}<p>Dungeon run: no ranks</p>{{end}}</div>
@@ -9,50 +10,50 @@
 <section id="raid-unscored" class="card"><h3>Not enough data ({{len .Unscored}})</h3>{{template "raid-players" .Unscored}}</section>
 {{template "raid-player-detail" .Ranked}}{{template "raid-player-detail" .Provisional}}{{template "raid-player-detail" .Unscored}}
 <section class="card" id="raid-wipes"><h3>Wipes ({{len .Wipes}})</h3>
-{{range .Wipes}}<details><summary>Wipe {{.Number}} · {{.Fight}} · fight duration: {{.Duration}}{{if .HasFirst}} · first death at {{.First.Time}}{{end}}</summary>
-{{if .HasFirst}}<p>First death: {{.First.Player}} · {{.First.KilledBy}} · {{.First.Cause}}</p>{{else}}<p>No first death recorded</p>{{end}}<p>Then ({{.Window}}): {{range .Following}}{{.Player}} · {{.Cause}}; {{else}}none{{end}}</p></details>{{else}}<p>No wipe summaries.</p>{{end}}</section>
+{{range .Wipes}}<details><summary>Wipe {{.Number}} · {{template "raid-name" .Fight}} · fight duration: {{.Duration}}{{if .HasFirst}} · first death at {{.First.Time}}{{end}}</summary>
+{{if .HasFirst}}<p>First death: {{template "raid-name" .First.Player}} · {{template "raid-name" .First.KilledBy}} · {{.First.Cause}}</p>{{else}}<p>No first death recorded</p>{{end}}<p>Then ({{.Window}}): {{range .Following}}{{template "raid-name" .Player}} · {{.Cause}}; {{else}}none{{end}}</p></details>{{else}}<p>No wipe summaries.</p>{{end}}</section>
 <section class="card" id="raid-deaths"><h3>Deaths ({{len .Deaths}})</h3>
 <div class="actions" aria-label="Death filters"><button class="secondary" data-death-filter="all" aria-pressed="true">All</button><button class="secondary" data-death-filter="avoidable" aria-pressed="false">Avoidable</button><button class="secondary" data-death-filter="unknown" aria-pressed="false">Unknown</button></div>
 <table class="farm-table"><thead><tr><th>Time (log clock)</th><th>Fight</th><th>Player</th><th>Killed by</th><th>Cause</th></tr></thead><tbody>
-{{range .Deaths}}<tr data-death-kind="{{.Filter}}"><td>{{.Time}}</td><td>{{.Fight}}</td><td>{{.Player}}</td><td>{{.KilledBy}}</td><td><details><summary>{{.Cause}}</summary><p>Confidence: {{.Confidence}} · owner: {{.OwnerKind}} {{range .Owners}}{{.}} {{end}}</p>{{if .Suggestion}}<p>Suggested, not confirmed: {{.Suggestion}}</p>{{end}}<ul>{{range .Evidence}}<li>Log wall time (ms): {{.}}</li>{{end}}</ul></details></td></tr>{{else}}<tr><td colspan="5">No reviewed deaths.</td></tr>{{end}}</tbody></table></section>
+{{range .Deaths}}<tr data-death-kind="{{.Filter}}"><td>{{.Time}}</td><td>{{template "raid-name" .Fight}}</td><td>{{template "raid-name" .Player}}</td><td>{{template "raid-name" .KilledBy}}</td><td><details><summary>{{.Cause}}</summary><p>Confidence: {{.Confidence}} · owner: {{.OwnerKind}} {{range .Owners}}{{template "raid-name" .}} {{end}}</p>{{if .Suggestion}}<p>Suggested, not confirmed: {{.Suggestion}}</p>{{end}}<ul>{{range .Evidence}}<li>Log wall time (ms): {{.}}</li>{{end}}</ul></details></td></tr>{{else}}<tr><td colspan="5">No reviewed deaths.</td></tr>{{end}}</tbody></table></section>
 <section class="card" id="raid-comparison"><h3>Compare with the officers' own ranking</h3>
 <p>Use a file written before seeing any scores. Read from disk each time; never stored in a night file.</p>
-{{with .Comparison}}<p>Officer: {{.Officer}}</p>
+{{with .Comparison}}<p>Officer: {{template "raid-name" .Officer}}</p>
 {{if lt .Ranked 10}}<p>Fewer than 10 players are ranked: the score's top 5 and bottom 5 overlap.</p>{{end}}
 {{if .NoReportReason}}<p>{{.NoReportReason}}</p>{{else}}
 <h4>Top picks</h4>{{template "raid-comparison-rows" .Top}}
 <h4>Bottom picks</h4>{{template "raid-comparison-rows" .Bottom}}
-<p>Score's top 5 you did not name: {{range .ScoreTop}}{{.LoggedName}} (rank {{.Rank.V}}); {{else}}none{{end}}</p>
-<p>Score's bottom 5 you did not name: {{range .ScoreBottom}}{{.LoggedName}} (rank {{.Rank.V}}); {{else}}none{{end}}</p>
+<p>Score's top 5 you did not name: {{range .ScoreTop}}{{template "raid-name" .LoggedName}} (rank {{.Rank.V}}); {{else}}none{{end}}</p>
+<p>Score's bottom 5 you did not name: {{range .ScoreBottom}}{{template "raid-name" .LoggedName}} (rank {{.Rank.V}}); {{else}}none{{end}}</p>
 {{end}}{{else}}<p>No comparison file selected. File selection awaits night-opening wiring.</p>{{end}}</section>
 <section class="card" id="raid-problems"><h3>Problems</h3>
-<p>Unmatched prep reports ({{len .Unmatched}}):</p><ul>{{range .Unmatched}}<li>{{.Name}} · server stamp {{.Stamped}}</li>{{end}}</ul>
+<p>Unmatched prep reports ({{len .Unmatched}}):</p><ul>{{range .Unmatched}}<li>{{template "raid-name" .Name}} · server stamp {{.Stamped}}</li>{{end}}</ul>
 <p>Deaths beyond the run end ({{.Excluded}}): not scored</p>
 <p>File-wide player deaths outside runs ({{.OutsideRuns}}): not scored</p><p>File-wide player deaths in runs without a fight ({{.MissingPulls}}): segmentation diagnostic</p>
 <details><summary>Parse report</summary><p>Lines read: {{.Parsed.LinesRead}} · Parsed events: {{.Parsed.Parsed}} · Headers: {{.Parsed.HeadersSeen}}</p><ul>{{range $why,$count:=.Parsed.Skipped}}<li>{{$why}}: {{$count}}</li>{{end}}</ul></details>
 <details><summary>Prep diagnostics</summary>{{range .Warnings}}<p>{{.}}</p>{{end}}<ul>{{range $why,$count:=.PrepSkipped}}<li>{{$why}}: {{$count}}</li>{{end}}</ul></details></section>
 {{end}}
-{{define "raid-comparison-rows"}}<ul>{{range .}}<li>{{.Name}}: {{if .Status}}{{.Status}}{{else}}{{.Verdict}} (rank {{.Rank.V}}){{end}}
+{{define "raid-comparison-rows"}}<ul>{{range .}}<li>{{template "raid-name" .Name}}: {{if .Status}}{{.Status}}{{else}}{{.Verdict}} (rank {{.Rank.V}}){{end}}
 {{if .PartReason}}<p>{{.PartReason}}</p>{{end}}
-{{with .Part}}<details><summary>{{.Name}} · {{.Impact.FloatString 1}} weighted impact vs {{.Role}} median</summary>
+{{with .Part}}<details><summary>{{template "raid-name" .Name}} · {{.Impact.FloatString 1}} weighted impact vs {{.Role}} median</summary>
 <p>Part score: {{.Score.FloatString 1}} · role median: {{.Median.FloatString 1}} · configured weight: {{.Weight}}</p></details>{{end}}</li>{{end}}</ul>{{end}}
 {{define "raid-player-detail"}}
 {{range .}}<section class="card raid-player-detail" id="raid-player-{{.Key}}" hidden tabindex="-1">
-<h3>{{.Name}} · {{.Role}} · {{.Score}}{{if .Rank}} · rank {{.Rank}}{{end}} · {{.Coverage}}% measured</h3>
+<h3>{{template "raid-name" .Name}} · {{.Role}} · {{.Score}}{{if .Rank}} · rank {{.Rank}}{{end}} · {{.Coverage}}% measured</h3>
 <button class="secondary" type="button" data-raid-close>Close player</button>
 <p class="subtle">Per-fight parts below. The night-level part layout awaits a ruling; deaths are currently a measure inside mechanics, not a separate part.</p>
-{{range .Fights}}<h4>{{.Name}} ({{.Outcome}}, {{.Duration}}) · {{.Role}} · {{.Score}} · {{.Coverage}}% measured</h4>
+{{range .Fights}}<h4>{{template "raid-name" .Name}} ({{.Outcome}}, {{.Duration}}) · {{.Role}} · {{.Score}} · {{.Coverage}}% measured</h4>
 <p>{{range .Flags}}{{.}} {{end}}</p><table class="farm-table"><thead><tr><th>Part</th><th>Weight</th><th>Score</th><th>Against</th><th>Evidence</th></tr></thead><tbody>
-{{range .Parts}}<tr><td>{{.Name}}</td><td>{{.Weight}}</td><td>{{.Score}}<br>{{.Coverage}}% measured{{if .Provisional}} · provisional{{end}}</td><td>{{.Against}}</td>
+{{range .Parts}}<tr><td>{{template "raid-name" .Name}}</td><td>{{.Weight}}</td><td>{{.Score}}<br>{{.Coverage}}% measured{{if .Provisional}} · provisional{{end}}</td><td>{{.Against}}</td>
 <td><details><summary>Show evidence</summary><p>{{.Evidence.Text}}</p>
-<ul>{{range .Measures}}<li>{{.Name}}: {{.Score}}</li>{{end}}</ul>
+<ul>{{range .Measures}}<li>{{template "raid-name" .Name}}: {{.Score}}</li>{{end}}</ul>
 <dl>{{range $key,$value:=.Evidence.Counts}}<dt>{{$key}}</dt><dd>{{$value}}</dd>{{end}}</dl>
 <ul>{{range .Evidence.AtMs}}<li>Log wall time (ms): {{.}}</li>{{end}}</ul>
 <p class="subtle">prep_stamped_s is the earliest stored receipt (server seconds), not necessarily first receipt; prep_sender_clock_s is the sender's clock. fight_end_utc_s is log wall time minus its zone offset. PC clock error cannot be corrected.</p>
 </details></td></tr>{{end}}</tbody></table>{{else}}<p>No scored fights.</p>{{end}}</section>{{end}}
 {{end}}
 {{define "raid-players"}}<table class="farm-table"><thead><tr><th>#</th><th>Player</th><th>Role</th><th>Score</th><th>Measured</th><th>Flags</th></tr></thead><tbody>
-{{range .}}<tr data-raid-player="{{.Key}}"><td>{{.Rank}}</td><td><button class="secondary" type="button" aria-controls="raid-player-{{.Key}}">{{.Name}}</button></td><td>{{.Role}}</td><td>{{.Score}}</td><td>{{.Coverage}}% measured</td><td>{{range .Flags}}{{.}} {{end}}</td></tr>{{else}}<tr><td colspan="5">None</td></tr>{{end}}</tbody></table>{{end}}
+{{range .}}<tr data-raid-player="{{.Key}}"><td>{{.Rank}}</td><td><button class="secondary" type="button" aria-controls="raid-player-{{.Key}}">{{template "raid-name" .Name}}</button></td><td>{{.Role}}</td><td>{{.Score}}</td><td>{{.Coverage}}% measured</td><td>{{range .Flags}}{{.}} {{end}}</td></tr>{{else}}<tr><td colspan="5">None</td></tr>{{end}}</tbody></table>{{end}}
 {{define "raid-shell"}}
 <section id="raids-view" hidden><header class="pagehead"><div><h2>Raids</h2><p class="subtle">Officer tool · local only · selected account</p></div></header>
 <div id="raids-body" class="pane"><p class="note">Night opening is not available yet: the scoring-data installation location needs to be settled. No log has been read.</p></div></section>

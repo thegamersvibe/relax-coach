@@ -43,6 +43,27 @@ test('all player and officer names stay text at the real HTML insertion sink',as
   assert.ok($('raids-view').textContent.includes(prefix+special),prefix+' lost literal name text');
  }
 });
+test('every name is escaped, control-free and bidi-isolated at insertion',async t=>{
+ const content=readFileSync(process.env.NATIVE_HTML_OUT+'.raid-bidi','utf8');
+ const expected=JSON.parse(readFileSync(process.env.NATIVE_HTML_OUT+'.raid-bidi-names.json','utf8'));
+ const {$,dom}=await setup(t,{reportRefresh:()=>report(true),raidPage:()=>withBody(content)});
+ $('nav-raids').click();await settle();
+ const view=$('raids-view');
+ assert.equal(view.querySelector('img,script,[onerror]'),null);
+ assert.doesNotMatch(view.textContent,/[\u200b-\u200f\u202a-\u202e\u2066-\u2069]/u);
+ for(const name of expected) assert.ok([...view.querySelectorAll('bdi')].some(n=>n.textContent===name),'missing isolated name');
+ // Check every occurrence, including names repeated in closed player details.
+ const walker=dom.window.document.createTreeWalker(view,dom.window.NodeFilter.SHOW_TEXT);
+ let checked=0;
+ while(walker.nextNode()) {
+  const node=walker.currentNode;
+  if(!node.textContent.includes('<img src=')) continue;
+  assert.equal(node.parentElement.tagName,'BDI','name escaped isolation');
+  assert.ok(expected.includes(node.textContent),'name text was changed');
+  checked++;
+ }
+ assert.ok(checked>=expected.length);
+});
 test('death filters keep unknown separate and restore all rows',async t=>{
  const {$,dom}=await setup(t,{reportRefresh:()=>report(true),raidPage:()=>withBody(deaths)});
  $('nav-raids').click();await settle();

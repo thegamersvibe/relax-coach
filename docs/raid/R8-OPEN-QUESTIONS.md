@@ -30,6 +30,9 @@ new data, engine rules, deployment paths or night-level scoring arithmetic.
    rounded once to tenths for display. Fewer than ten ranked players get an
    explicit top-five/bottom-five overlap note. A selected prediction file is
    read anew, bounded and read-only; opening it from the live UI awaits item 1.
+   The app always passes `ParseOfficer(data)` directly to `Compare`; a source
+   gate forbids app-owned `OfficerFile` construction or editing that result.
+   A runtime mutant also challenges bypassing the parser.
 4. **Labels with no supplied data.** `new_at_60_seconds` is unset. There is no
    verified aura-to-consumable map for a claim such as "no flask used". Neither
    label is invented. Prep clocks remain raw server seconds with their meaning;
@@ -60,6 +63,15 @@ Neither save nor prediction is written.
 No Raids DOM is rendered for a locked account. Account/folder transitions remove
 it before a reply; late page replies cannot restore it. The native route checks
 the selected save afresh, regardless of what the UI last displayed.
+
+## Display safety
+
+Every displayed name, including the officer label, logger, all player lists,
+opened details, owners, wipes, enemies/spells and comparisons, is HTML-escaped
+inside a `bdi` isolate. The display removes U+200B–U+200F, U+202A–U+202E and
+U+2066–U+2069. Engine names and matching inputs are untouched. Go and jsdom tests
+exercise every name location with markup, quotes, Arabic and all those controls.
+The native shell and standalone page register the same rendering helper.
 
 ## Offline checks
 
