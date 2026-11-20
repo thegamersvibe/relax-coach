@@ -54,17 +54,21 @@ none of the automated tests contacts Wowhead.
   **Look up missing item names online (Wowhead)**. Off cancels the current batch
   and prevents new requests; still-valid cached names remain usable. Preference
   replies use the report-generation guard, so stale successes or failures cannot
-  restore an earlier account. After any reply the checkbox is reconciled with
-  the latest report's stored setting; a failed save for the current account still
-  shows its error. The account selector stays usable during a save.
+  restore an earlier account. Successful replies supply the app-wide setting;
+  only failed replies fall back to the latest report's value. Reports already in
+  flight cannot undo a completed preference write. A failed save for the current
+  context still shows its error, including after a cancelled folder chooser.
+  The account selector stays usable during a save.
 - Sell-now, rising and falling item names link to
   `https://www.wowhead.com/forever/item=<id>`. The existing delegated link handler
   prevents WebView navigation and calls `openExternal`; both the bridge and OS
   opener validate the literal `https://www.wowhead.com/forever/item=<digits>`
   shape. Invalid item paths/hosts, encoded digits, ports, queries and fragments
   are refused. Wowhead guide routes retain main's documentation behavior on
-  `www.wowhead.com` and `wowhead.com`, including port 443, escaped paths, queries
-  and fragments; the existing HTTPS, credentials and dot-segment guards remain.
+  `www.wowhead.com` and `wowhead.com`, including port 443, safe escaped text,
+  queries and fragments. Guide boundaries match the raw path, with nonempty
+  segments; encoded slashes/ASCII controls and raw quotes/pipes in path or query
+  are refused. The existing HTTPS, credentials and dot-segment guards remain.
   Project-release and Icy Veins links are unchanged.
   `ShellExecuteW` opens the default browser. No PowerShell was added.
   Auction statistics have names but no IDs; gathering kinds have hashes rather
@@ -185,6 +189,36 @@ invalid names/qualities and bounded reads exceeding the response-size limit.
   exit 0. Fresh-fixture UI tests under the same lock and CI glob pass:
   `tests 163`, `pass 163`, `fail 0`, `cancelled 0`, `skipped 0`, exit 0.
   These are offline tests, not native Windows acceptance.
+
+## Dropped-success authority and raw guide-route correction
+
+- Preference regression first: `tests 77`, `pass 38`, `fail 39`. The adapted
+  shared-backend matrix separates save/selection work from reply delivery: all
+  six valid orders, both boolean directions and both outcomes, for account,
+  folder and cancelled-chooser actions. GREEN: `tests 77`, `pass 77`, `fail 0`;
+  each action covers 24 cases with zero wrong states. Cancelled-chooser failures
+  retain their error. Removing in-flight report revision protection fails four
+  cases; discarding the deferred chooser error fails six.
+- The unchanged reviewer late-success probe moves from `pass 0`, `fail 4` to
+  `pass 4`, `fail 0`. Its separate diagnostic suite passes 20 tests and produces
+  32 state observations with zero checkbox/backend disagreements.
+- `TestNativeWowheadGuideRawPath`: RED admitted 155 unsafe cases; GREEN refuses
+  all 157 cases. This covers empty segments, encoded route letters/slashes,
+  every ASCII control in path/query, and raw quotes/pipes. The previously allowed
+  encoded `guide` keyword is intentionally refused under the raw-path rule;
+  safe escaped suffix/query text still passes through enrich and report rendering.
+  All eight talent-link controls and 38 existing exact-shape refusal subtests
+  pass; the exact item-rule implementation is byte-unchanged. The unchanged
+  reviewer's empty-game probe also moves from two failures to two passes.
+- Targeted race run: `ok github.com/thegamersvibe/relax-coach/desktop 6.105s`.
+  Full `go test -race -count=1 -timeout 20m ./...` passes under the shared heavy
+  lock, exit 0; desktop result: `537.786s`. Every tested internal package passes.
+- Fresh-fixture CI UI glob under the same lock: `tests 235`, `pass 235`, `fail 0`,
+  `cancelled 0`, `skipped 0`, exit 0. Both full jobs ran in the background and
+  were polled to completion after waiting for lock admission.
+- `go vet ./...`, the Windows amd64 cross-build, diff checks and the added-line/
+  commit-message privacy scan pass. No actual item names, dependency files,
+  versions, addon code or README text are added by this correction.
 
 ## Initial implementation verification
 

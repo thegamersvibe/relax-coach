@@ -90,7 +90,7 @@ for (const ordering of ['during-switch','after-switch']) for (const outcome of [
   assert.equal($('account-select').value,'B#2','late preference reply must not restore A');
   assert.equal($('farm-body').textContent,ordering==='during-switch'?'':'Synthetic farm B#2');
   assert.equal($('report-body').textContent,ordering==='during-switch'?'':'report B#2');
-  assert.equal($('wowhead-names').checked,ordering==='during-switch'||outcome==='failure','dropped replies must use the latest report stored value');
+  assert.equal($('wowhead-names').checked,outcome==='failure','successful replies own the app-wide setting; failed replies use the latest report');
   assert.equal($('wowhead-names-status').textContent,'','stale replies leave no success, error or saving message');
   if (ordering==='during-switch') { finishSelection(state('B#2'));await settle(); }
   assert.equal($('account-select').value,'B#2');
@@ -99,6 +99,67 @@ for (const ordering of ['during-switch','after-switch']) for (const outcome of [
   assert.equal($('account-select').disabled,false);
   assert.equal($('wowhead-names').disabled,false);
   assert.equal($('wowhead-names').checked,outcome==='failure','settled checkbox matches the stored preference');
+});
+
+// The backend serializes writes/report snapshots, but native reply delivery can
+// interleave. Adapt the held-service probe with a single app-wide stored value,
+// separating backend completion from transport delivery (24 cases per action).
+const preferenceOrders = [
+  ['save','saveReply','select','selectReply'],
+  ['save','select','saveReply','selectReply'],
+  ['save','select','selectReply','saveReply'],
+  ['select','selectReply','save','saveReply'],
+  ['select','save','selectReply','saveReply'],
+  ['select','save','saveReply','selectReply']
+];
+for (const action of ['account','folder','folder-cancel']) for (const initial of [false,true]) for (const outcome of ['success','failure']) for (const order of preferenceOrders) test('preference backend order '+[action,initial,outcome,order.join('/')].join(' '),async t=>{
+  let stored=initial,account='A#1',game='C:\\WoW\\_forever_',saveResult,selectionResult;
+  const steps={};
+  const snapshot=()=>({...report(account,true,'<p>Synthetic farm '+account+' '+game+'</p>'),Game:game,WowheadNames:stored});
+  const select=(nextAccount,nextGame)=>new Promise(resolve=>{
+    steps.select=()=>{
+      account=nextAccount;game=nextGame;
+      selectionResult=action==='folder-cancel'?null:snapshot();
+    };
+    steps.selectReply=()=>resolve(selectionResult);
+  });
+  const {$,dom}=await setup(t,{
+    reportRefresh:snapshot,
+    setWowheadNames:value=>new Promise((resolve,reject)=>{
+      steps.save=()=>{if(outcome==='success')stored=value==='true';saveResult=snapshot();};
+      steps.saveReply=()=>outcome==='success'?resolve(saveResult):reject(new Error('Synthetic settings failure'));
+    }),
+    selectAccount:next=>select(next,game),
+    setGame:next=>select(account,next),
+    chooseGame:()=>select(account,game)
+  });
+  const toggle=$('wowhead-names');
+  assert.equal(toggle.checked,initial);
+  toggle.checked=!initial;fire(toggle);await settle();
+  if(action==='account'){$('account-select').value='B#2';fire($('account-select'));}
+  else if(action==='folder'){$('game-path').value='D:\\WoW\\_forever_';$('game-form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));}
+  else $('browse-folder').click();
+  await settle();
+  for(const step of order){
+    assert.equal(typeof steps[step],'function',step+' admitted');
+    const body=$('report-body').innerHTML,farmBody=$('farm-body').innerHTML;
+    steps[step]();await settle();
+    if(step==='saveReply'){
+      assert.equal(toggle.checked,outcome==='success'?saveResult.WowheadNames:initial,'reply reconciles the setting');
+      assert.equal($('report-body').innerHTML,body,'save cannot restore an earlier report');
+      assert.equal($('farm-body').innerHTML,farmBody,'save cannot restore an earlier farm');
+    }
+  }
+  assert.equal(toggle.checked,stored,'settled checkbox matches the app-wide backend');
+  assert.equal(toggle.disabled,false);
+  assert.equal($('account-select').value,account);
+  assert.equal($('folder-label').textContent,game);
+  assert.equal($('report-body').textContent,'report '+account);
+  assert.equal($('farm-body').textContent,'Synthetic farm '+account+' '+game);
+  assert.equal($('report-body').hidden,false);
+  assert.equal($('farm-body').hidden,false);
+  if(action==='folder-cancel'&&outcome==='failure')assert.match($('wowhead-names-status').textContent,/Could not save preference: Synthetic settings failure/,'cancelled chooser must retain the current save error');
+  else assert.equal($('wowhead-names-status').textContent,'','dropped reply leaves no stale status');
 });
 
 test('failed preference for the current account is reported after switching away and back',async t=>{

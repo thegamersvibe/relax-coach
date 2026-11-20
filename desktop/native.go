@@ -79,11 +79,24 @@ func validateExternalURL(raw string) error {
 			return denied
 		}
 	case "www.wowhead.com", "wowhead.com":
-		// Keep main's documentation allowance for guide routes (with or
-		// without a game prefix), including queries, fragments and port 443.
-		parts := strings.SplitN(u.Path, "/", 4)
+		// Match literal guide boundaries, not routes manufactured by decoding.
+		// Keep safe escaped text, queries, fragments and the default HTTPS port.
+		path := u.EscapedPath()
+		pathQuery, _, _ := strings.Cut(raw, "#")
+		query, err := url.PathUnescape(u.RawQuery)
+		if err != nil || strings.ContainsAny(pathQuery, `"'|`) ||
+			strings.Contains(strings.ToLower(path+u.RawQuery), "%2f") ||
+			strings.IndexFunc(u.Path+query, func(r rune) bool { return r < 32 || r == 127 }) >= 0 {
+			return denied
+		}
+		parts := strings.Split(path, "/")
 		if (len(parts) > 2 && parts[1] == "guide") ||
-			(len(parts) > 3 && parts[2] == "guide" && !strings.Contains(parts[1], "=")) {
+			(len(parts) > 3 && parts[1] != "" && parts[2] == "guide" && !strings.Contains(strings.SplitN(u.Path, "/", 3)[1], "=")) {
+			for _, part := range parts[1:] {
+				if part == "" {
+					return denied
+				}
+			}
 			break
 		}
 		// Item links use the literal route, not a decoded/normalized equivalent.
