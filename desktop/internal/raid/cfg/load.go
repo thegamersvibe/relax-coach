@@ -1,15 +1,29 @@
 package cfg
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 )
 
 // Load reads all files from a rules/raid directory on every call. Nothing is
 // cached or written. Callers keep their previous snapshot on error.
 func Load(dir string) (*Config, error) {
-	return LoadFS(os.DirFS(dir))
+	// Match the lexical filepath.Join used before LoadFS, including an empty
+	// directory (cwd), missing/.. and symlink/.. components.
+	dir = filepath.Clean(dir)
+	c, err := LoadFS(os.DirFS(dir))
+	var pathErr *fs.PathError
+	if errors.As(err, &pathErr) {
+		// DirFS makes PathError paths relative; retain Load's original diagnostic
+		// and wrapped OS error without changing LoadFS's filesystem-relative API.
+		full := *pathErr
+		full.Path = filepath.Join(dir, pathErr.Path)
+		return nil, fmt.Errorf("%s: %w", pathErr.Path, &full)
+	}
+	return c, err
 }
 
 // LoadFS reads the rule files at the root of files on every call, applying the

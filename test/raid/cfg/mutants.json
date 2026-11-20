@@ -1091,5 +1091,17 @@
     "old": "func LoadFS(fsys fs.FS) (*Config, error) {\n\tc := new(Config)",
     "new": "var fsCached *Config\nfunc LoadFS(fsys fs.FS) (*Config, error) {\n\tif fsCached != nil { return fsCached, nil }; c := new(Config); fsCached = c",
     "killed_by": "TestLoadFSReloadAndOwnership"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/load.go",
+    "old": "dir = filepath.Clean(dir)",
+    "new": "// lexical directory cleaning bypassed",
+    "killed_by": "TestLoadDirCleaning"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/load.go",
+    "old": "full.Path = filepath.Join(dir, pathErr.Path)",
+    "new": "full.Path = pathErr.Path",
+    "killed_by": "TestLoadDirReadError"
   }
 ]
