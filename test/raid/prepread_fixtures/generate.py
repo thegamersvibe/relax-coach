@@ -19,6 +19,9 @@ DEST = ROOT / "desktop/internal/raid/prepread/testdata"
 def boot(saved=None):
     c = Client()
     c.guild = ("Invented Guild", "Rank F", 5)
+    # Keep the historical prep-only fixtures unchanged: rank is still loading.
+    # Settled rank output has its own real-writer fixture in test/raid/rank/.
+    c.guild_loaded = False
     c.load_addon(str(ROOT / "addon/RelaxRaid"), saved)
     c.in_raid = True
     return c
