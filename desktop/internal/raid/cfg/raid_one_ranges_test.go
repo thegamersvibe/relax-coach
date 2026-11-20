@@ -62,14 +62,18 @@ func TestRaidOneMeasureWeightRanges(t *testing.T) {
 		"preparation": {"stock", "bag_gear", "used"},
 	} {
 		for _, measure := range measures {
-			for _, value := range []float64{-.01, 0, 100, 100.01} {
+			for _, value := range []float64{-.01, 0, 100, math.Nextafter(100, 101), 100.01} {
 				path := "measure_weights." + part + "." + measure
 				t.Run(path+"/"+nameValue(value), func(t *testing.T) {
 					dir := copyValidationData(t)
 					change(t, dir, "scoring.json", func(d map[string]any) {
-						weights := d["measure_weights"].(map[string]any)[part].(map[string]any)
-						weights["boundary_control"] = 1 // Keep total positive; isolate this component's guard.
-						weights[measure] = value
+						// Keep the total at 100 while only the challenged component
+						// is negative. Adjacent upper floats exercise the ceiling
+						// independently of the total comparison's tolerance.
+						control := math.Max(0, (100-value)/2)
+						d["measure_weights"].(map[string]any)[part] = map[string]any{
+							measure: value, "boundary_control_a": control, "boundary_control_b": control,
+						}
 					})
 					if value >= 0 && value <= 100 {
 						load(t, dir)

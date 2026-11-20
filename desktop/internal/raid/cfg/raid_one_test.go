@@ -88,11 +88,11 @@ func TestProvisionalCoverageDecode(t *testing.T) {
 	t.Run("explicit_value", func(t *testing.T) {
 		dir := copyValidationData(t)
 		change(t, dir, "scoring.json", func(d map[string]any) {
-			d["confidence"].(map[string]any)["provisional_min_coverage"] = .25
+			d["confidence"].(map[string]any)["provisional_min_coverage"] = .15
 		})
 		got := scoringObject(t, load(t, dir).Scoring.Confidence)
-		if got["provisional_min_coverage"] != .25 {
-			t.Fatalf("provisional_min_coverage = %v; want .25", got["provisional_min_coverage"])
+		if got["provisional_min_coverage"] != .15 {
+			t.Fatalf("provisional_min_coverage = %v; want .15", got["provisional_min_coverage"])
 		}
 	})
 	t.Run("required_key", func(t *testing.T) {
@@ -154,7 +154,7 @@ func TestRaidOneScoringSeed(t *testing.T) {
 	s := load(t, seedDir).Scoring
 	got := scoringObject(t, s)
 	for key, want := range map[string]any{
-		"version": "1.3.0", "rounding_step": .1, "gcd_ms": float64(1500),
+		"schema": float64(2), "version": "1.3.0", "rounding_step": .1, "gcd_ms": float64(1500),
 		"gcd_energy_ms": float64(1000), "new_at_60_seconds": nil,
 	} {
 		if actual, ok := got[key]; !ok || !reflect.DeepEqual(actual, want) {
@@ -190,6 +190,7 @@ func TestRaidOneScoringSeed(t *testing.T) {
 		"R6 and R7 on main 6208b16", "Raid 1 gets a score", "architect ruling",
 		"starting values", "guesses", "not calibrated", "PLAN 4A row 7",
 		"second-log cast-gap peaks", "PowerType 3", "prep-report label, not a score",
+		"confidence.provisional_min_coverage=0.15",
 	} {
 		if !strings.Contains(s.Source, provenance) {
 			t.Errorf("source lacks provenance %q", provenance)

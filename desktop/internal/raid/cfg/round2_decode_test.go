@@ -23,8 +23,17 @@ func replaceJSONText(t *testing.T, dir, file, old, replacement string) {
 	}
 }
 
+func TestDataRound2SurrogateLeftovers(t *testing.T) {
+	rejectSurrogateStrings(t, []string{`\ud800\u0400`, `\ud800xudc00`})
+}
+
 func TestRound2SurrogateStrings(t *testing.T) {
-	for _, escaped := range []string{`\ud800`, `\udc00`, `\udc00\ud800`, `\udc00\udc00`, `\ud800\ud800`, `\ud800\u0041`, `\ud800x\udc00`, `\uDBFF`, `\uDFFF`} {
+	rejectSurrogateStrings(t, []string{`\ud800`, `\udc00`, `\udc00\ud800`, `\udc00\udc00`, `\ud800\ud800`, `\ud800\u0041`, `\ud800x\udc00`, `\uDBFF`, `\uDFFF`})
+}
+
+func rejectSurrogateStrings(t *testing.T, escapedValues []string) {
+	t.Helper()
+	for _, escaped := range escapedValues {
 		for _, location := range []string{"value", "key"} {
 			t.Run(location+"/"+escaped, func(t *testing.T) {
 				dir := copyValidationData(t)
@@ -56,7 +65,7 @@ func TestRound2TrailingWhitespace(t *testing.T) {
 			if err := os.WriteFile(path, append(b, []byte(suffix)...), 0600); err != nil {
 				t.Fatal(err)
 			}
-			if load(t, dir).Scoring.Schema != 1 {
+			if load(t, dir).Scoring.Schema != 2 {
 				t.Fatal("legal trailing whitespace changed the value")
 			}
 		})

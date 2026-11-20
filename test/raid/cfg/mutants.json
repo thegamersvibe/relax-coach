@@ -8,7 +8,7 @@
   },
   {
     "file": "desktop/internal/raid/cfg/decode.go",
-    "old": "if m.Schema != 1 {",
+    "old": "if m.Schema != schema {",
     "new": "if false {",
     "killed_by": "TestRejectVersions"
   },
@@ -205,7 +205,7 @@
   },
   {
     "file": "desktop/internal/raid/cfg/validate.go",
-    "old": "if total <= 0 {",
+    "old": "if !same(total, 100) {",
     "new": "if false {",
     "killed_by": "TestReviewSurvivorCases",
     "reviewer_hand_index": 25
@@ -941,5 +941,83 @@
     "old": "return c.snapshot",
     "new": "return c",
     "killed_by": "TestDeathPredicateCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if !same(total, 100) {",
+    "new": "if total <= 0 {",
+    "killed_by": "TestDataRound2MeasureTotals"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "if _, scoring := dst.(*Scoring); scoring {",
+    "new": "if _, scoring := dst.(*Scoring); false && scoring {",
+    "killed_by": "TestDataRound2ScoringSchema"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "if m.Schema != schema {",
+    "new": "if m.Schema != schema && m.Schema != 1 {",
+    "killed_by": "TestDataRound2ScoringSchema"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/text.go",
+    "old": "if len(key) > 64 {",
+    "new": "if false && len(key) > 64 {",
+    "killed_by": "TestDataRound2NULKeyLimit"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/text.go",
+    "old": "if len(key) > 64 {",
+    "new": "if len(key) >= 64 {",
+    "killed_by": "TestDataRound2NULKeyLimit"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/text.go",
+    "old": "key = key[:64] + \"...\"",
+    "new": "key = key[:63] + \"...\"",
+    "killed_by": "TestDataRound2NULKeyLimit"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/text.go",
+    "old": "key = key[:64] + \"...\"",
+    "new": "key = key[:64]",
+    "killed_by": "TestDataRound2NULKeyLimit"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/text.go",
+    "old": "!utf16.IsSurrogate(rune(low)) || ",
+    "new": "",
+    "killed_by": "TestDataRound2SurrogateLeftovers"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/text.go",
+    "old": "raw[i+1] != '\\\\' || ",
+    "new": "",
+    "killed_by": "TestDataRound2SurrogateLeftovers"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "len(m.Roles) != 0 && !rolesValid(m.Roles)",
+    "new": "!rolesValid(m.Roles)",
+    "killed_by": "TestDataRound2MechanicRoles"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "len(m.Roles) != 0 && !rolesValid(m.Roles)",
+    "new": "false",
+    "killed_by": "TestDataRound2MechanicRoles"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if len(values) == 0 || !stringsUnique(values) {",
+    "new": "if len(values) == 0 {",
+    "killed_by": "TestDataRound2MechanicRoles"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if !oneOf(v, \"dps\", \"healer\", \"tank\") {",
+    "new": "if false && !oneOf(v, \"dps\", \"healer\", \"tank\") {",
+    "killed_by": "TestDataRound2MechanicRoles"
   }
 ]

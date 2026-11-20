@@ -235,7 +235,7 @@ type Mechanic struct {
 	ID              string      `json:"id"`
 	Spell           Spell       `json:"spell"`
 	Avoidable       bool        `json:"avoidable"`
-	Roles           []string    `json:"roles"`
+	Roles           []string    `json:"roles"` // empty means every role; key remains required
 	AffectedPlayers string      `json:"affected_players"`
 	ValidResponse   string      `json:"valid_response"`
 	EvidenceSource  SpellSource `json:"evidence_source"` // real Forever log evidence, not a datamine

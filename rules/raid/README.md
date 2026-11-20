@@ -17,7 +17,10 @@ than mutate a returned view.
 ## Version and validation contract
 
 Like `rules/rules.json`, `schema` is the reader format and `version` is the
-content revision. Schema 1 is supported; another schema is refused. A newer
+content revision. `scoring.json` requires schema 2; the other eight files require
+schema 1. Any other schema is refused, including scoring schema 1 (no implicit
+migration or defaults). Schema 2 accounts for the newly required energy GCD,
+provisional coverage and four death-predicate fields. Nothing has been released. A newer
 `major.minor.patch` **content** version is accepted without rebuilding, provided
 its schema is supported. Every file requires a source note. Bump content versions
 when tuning data; bump schema for incompatible field changes.
@@ -204,7 +207,7 @@ withhold attribution, and the raid-wide share/window to test distinct players
 hit around the killing hit. Pets belong in neither side of that share.
 
 Version 1.3.0 also follows **R7: three gaps found by the builder** and PLAN 4A
-row 15: `confidence.provisional_min_coverage` changes from 0.25 to 0.15. A lone
+row 15: `confidence.provisional_min_coverage` is 0.15. A lone
 tank's measurable coverage can now qualify without inventing a peer baseline.
 The validation rule stays `0 < provisional_min_coverage < min_coverage`.
 
@@ -216,9 +219,10 @@ The validation rule stays `0 < provisional_min_coverage < min_coverage`.
 - `0 <= fights.tail_ms <= fights.pull_gap_ms`, with a positive pull gap: a
   post-combat tail cannot bridge more than the gap that separates pulls.
 - Role-part weights and inner measure weights are in `[0, 100]`, matching the
-  existing 100-point weighting/score semantics. Role parts sum to 100; a present
-  inner measure set has positive total but need not sum to 100 (relative weights
-  can be normalized). Empty maps remain unconfigured, not implicit equal weights.
+  existing 100-point weighting/score semantics. Role parts and each configured
+  inner measure set must sum to 100, using the same floating-point tolerance.
+  An absent part (or an empty outer map) remains unconfigured, not implicit
+  equal weights; a present part with an empty inner map is refused.
 - Night kill weight is in `(0, 1]`, and wipe weight in `[0, kill_weight)`:
   the existing full-kill contribution is the unit reference, while a wipe
   contributes strictly less (the pre-existing kill/wipe distinction). This is a guardrail, not a new tuned seed value.
@@ -259,6 +263,13 @@ with sourced NPC selectors and no enabled mechanics. Enabling a
 mechanic requires affected-player and valid-response descriptions plus
 `EvidenceSource SpellSource` with kind `real_log`; datamining alone is refused.
 Unknown-ability reports belong to the event consumers, not the loader.
+
+Per PHASE1-BRIEF **R6: four predicates DESIGN 8 left open**, rule 3, an empty
+mechanic `roles: []` means **every role**. A nonempty list restricts applicability
+to its named roles (`dps`, `healer`, `tank`) and must not contain duplicates.
+The encounters schema still requires the `roles` key and a non-null array; an
+absent key or explicit null is refused, not interpreted as all roles. Profile
+roles remain nonempty; this relaxation is specific to mechanics.
 
 Support `Stacks *bool` describes additive copies from **different providers**,
 not a single aura's charges or Sunder stack count. It is null where unverified;

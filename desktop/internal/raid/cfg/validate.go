@@ -121,8 +121,8 @@ func (s Scoring) validate() error {
 			}
 			total += v
 		}
-		if total <= 0 {
-			return fmt.Errorf("measure_weights.%s: weights are all zero", part)
+		if !same(total, 100) {
+			return fmt.Errorf("measure_weights.%s: weights must sum to 100", part)
 		}
 	}
 	for id, v := range s.CountPenalties {
@@ -347,7 +347,7 @@ func (c *Config) validateEncounters() error {
 		for j, m := range e.Mechanics {
 			mp := fmt.Sprintf("%smechanics[%d].", path, j)
 			if err := checkFields(mp,
-				fieldCheck{"id", !nonblank(m.ID) || mechanics[normalized(m.ID)]}, fieldCheck{"roles", !rolesValid(m.Roles)},
+				fieldCheck{"id", !nonblank(m.ID) || mechanics[normalized(m.ID)]}, fieldCheck{"roles", len(m.Roles) != 0 && !rolesValid(m.Roles)},
 				fieldCheck{"affected_players", !nonblank(m.AffectedPlayers)}, fieldCheck{"valid_response", !nonblank(m.ValidResponse)},
 				fieldCheck{"evidence_source.kind", m.EvidenceSource.Kind != "real_log"}, fieldCheck{"evidence_source.note", !nonblank(m.EvidenceSource.Note)}); err != nil {
 				return err

@@ -25,6 +25,18 @@ func decode(b []byte, dst any) error {
 		return fmt.Errorf("$: expected exactly one JSON value")
 	}
 	b = value // Shape/type checks consume the one value; the check above owns trailing data.
+	var m Metadata
+	if err := json.Unmarshal(b, &m); err != nil {
+		return err
+	}
+	schema := 1
+	if _, scoring := dst.(*Scoring); scoring {
+		schema = 2
+	}
+	// Refuse an old scoring format before checking newly required keys.
+	if m.Schema != schema {
+		return fmt.Errorf("unsupported schema %d (reader supports %d)", m.Schema, schema)
+	}
 	if err := requiredShape(b, reflect.TypeOf(dst).Elem(), "$"); err != nil {
 		return err
 	}
@@ -32,13 +44,6 @@ func decode(b []byte, dst any) error {
 	// requiredShape checks unknown fields with full JSON paths.
 	if err := d.Decode(dst); err != nil {
 		return err
-	}
-	var m Metadata
-	if err := json.Unmarshal(b, &m); err != nil {
-		return err
-	}
-	if m.Schema != 1 {
-		return fmt.Errorf("unsupported schema %d (reader supports 1)", m.Schema)
 	}
 	if !contentVersion.MatchString(m.Version) {
 		return fmt.Errorf("version must be a major.minor.patch content revision")

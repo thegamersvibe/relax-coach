@@ -104,7 +104,7 @@ func TestNormalizedDuplicates(t *testing.T) {
 				d["count_penalties"] = map[string]any{"owned_death": 1, f("owned_death"): 2}
 			}},
 			{"nested_map_keys", "scoring.json", func(d map[string]any, f func(string) string) {
-				d["measure_weights"] = map[string]any{"output": map[string]any{"damage": 1, f("damage"): 2}}
+				d["measure_weights"] = map[string]any{"output": map[string]any{"damage": 50, f("damage"): 50}}
 			}},
 		} {
 			t.Run(transform.name+"/"+tc.name, func(t *testing.T) {
