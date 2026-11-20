@@ -8,8 +8,8 @@ edit a source filesystem while a snapshot is loading.
 For raid 1 the app uses only the rules compiled into the exe: one app version
 means one config. There is no override beside the exe, in app data, or through
 an update channel. After editing these canonical JSON files, run
-`go generate` in `desktop/` (or `python3 scripts/gen_raid_rules.py` from the repo
-root), then commit the generated `desktop/raid_rules/` copy. The normal Go test
+`go generate` in `desktop/raidrules/` (or `python3 scripts/gen_raid_rules.py` from the repo
+root), then commit the generated `desktop/raidrules/raid_rules/` copy. The normal Go test
 suite compares every byte and the complete embedded file inventory before any
 regeneration; stale, missing and extra files fail CI. The app accessor loads
 once, retains any error for the Raids page, and hands callers detached snapshots.

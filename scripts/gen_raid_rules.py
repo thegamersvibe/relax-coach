@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Copy the canonical raid JSON files for go:embed; run via go generate in desktop.
+"""Copy the canonical raid JSON files for go:embed; run via go generate in desktop/raidrules.
 
 The byte/inventory test runs before regeneration in CI, so stale copies fail.
 No normalization or schema conversion: every copied byte is canonical.
@@ -10,7 +10,7 @@ import shutil
 
 def generate(root):
     source = root / "rules" / "raid"
-    destination = root / "desktop" / "raid_rules"
+    destination = root / "desktop" / "raidrules" / "raid_rules"
     files = sorted(source.glob("*.json"))
     if not files:
         raise SystemExit("no canonical raid rules")

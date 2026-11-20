@@ -1,4 +1,4 @@
-package main
+package raidrules
 
 import (
 	"bytes"
@@ -38,29 +38,29 @@ func raidRuleBytes(fsys fs.FS, root string, jsonOnly bool) (map[string]string, e
 }
 
 func TestRaidEmbeddedBytes(t *testing.T) {
-	want, err := raidRuleBytes(os.DirFS(".."), "rules/raid", true)
+	want, err := raidRuleBytes(os.DirFS("../.."), "rules/raid", true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := raidRuleBytes(embeddedRaidRules, "raid_rules", false)
+	got, err := raidRuleBytes(embedded, "raid_rules", false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(want) != 9 || !reflect.DeepEqual(got, want) {
-		t.Fatal("embedded raid rules differ (bytes, missing or extra files); run go generate in desktop")
+		t.Fatal("embedded raid rules differ (bytes, missing or extra files); run go generate in desktop/raidrules")
 	}
 }
 
 func TestRaidConfigCachedSnapshot(t *testing.T) {
 	files := fstest.MapFS{}
-	data, err := raidRuleBytes(embeddedRaidRules, "raid_rules", false)
+	data, err := raidRuleBytes(embedded, "raid_rules", false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for name, b := range data {
 		files["raid_rules/"+name] = &fstest.MapFile{Data: []byte(b)}
 	}
-	load := cachedRaidConfig(files)
+	load := cached(files)
 	first, err := load()
 	if err != nil {
 		t.Fatal(err)
@@ -87,13 +87,13 @@ func TestRaidConfigCachedSnapshot(t *testing.T) {
 
 func TestRaidConfigRetainsError(t *testing.T) {
 	files := fstest.MapFS{"raid_rules/scoring.json": &fstest.MapFile{Data: []byte("invalid")}}
-	load := cachedRaidConfig(files)
+	load := cached(files)
 	first, err := load()
 	if err == nil || !reflect.DeepEqual(first, reflect.Zero(reflect.TypeOf(first)).Interface()) {
 		t.Fatal("invalid config admitted")
 	}
 	want := err
-	data, err := raidRuleBytes(embeddedRaidRules, "raid_rules", false)
+	data, err := raidRuleBytes(embedded, "raid_rules", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestRaidConfigRetainsError(t *testing.T) {
 	if err != want {
 		t.Fatalf("initial error was retried/lost: %v, want %v", err, want)
 	}
-	_, err = raidConfig()
+	_, err = Config()
 	if err != nil {
 		t.Fatal(fmt.Errorf("shipped config: %w", err))
 	}
