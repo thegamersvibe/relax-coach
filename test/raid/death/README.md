@@ -26,11 +26,14 @@ wipe call time and summary boundaries. Round-1 regressions add bounded
 fight-wide openers, proven roles, observed holders, missed swings, log-order
 survival, exact death-line/life cutoffs, environmental provenance, confidence
 counting and unowned guardians. Round 2 adds raw clock-order, nonpositive-run-end
-and survivor regressions. `mutants.json` now has 118 behavioral mutants;
+and survivor regressions. Round 3 adds prerequisite-history guards, future-wipe
+line exclusion, seeded timestamp perturbation and both reviewer survivors.
+`mutants.json` now has 124 behavioral mutants;
 all must be killed by their named test, not by compiler errors.
-The observed final race-enabled module run was 2.6 seconds against the unchanged
-30-second runner deadline. The all-Go runner passed 8/8 modules and the
-Lua/Python runner passed 7/7.
+The initial race-enabled module run was 2.6 seconds. Round 3 passed in 25.8
+seconds against the unchanged 30-second death-module deadline, with the full
+40000-fight perturbation test. Current all-Go and Lua/Python totals are 9/9
+and 18/18; historical runs are retained in the evidence document.
 
 Each rule was exercised RED before implementation, then GREEN. The first
 mutation pass exposed eight masked boundary tests and two uncompilable
@@ -50,6 +53,37 @@ The first death mutation run killed 90/91; adding a prior alternate holder
 made the remaining last-target mutant observable. The final pack killed
 104/104, including 44 additions to the 60 inherited entries. Obsolete anchors
 were migrated to the replacement predicates, never counted as compiler kills.
+
+## Chronology ranges (round 3)
+
+`monotonic(view, from, to)` checks every adjacent pair of original log-order
+indices in the inclusive span, including unrelated lines. Equal timestamps
+are valid. The common life-scoped death window is still checked before any
+rule runs. Each rule additionally uses the span of all history it relies on:
+
+| Rule | Inclusive checked span |
+|---|---|
+| 1, after wipe call | Fight index 0 through this death line: all roster survival transitions. The call also carries its original index; only a later line with a strictly later timestamp qualifies. |
+| 2, avoidable | First line of the victim's life-scoped death window through this death line. Earlier lives/pre-window history is not evidence for this rule. |
+| 3, pulled aggro | Fight index 0 through this death line: first victim/tank damage can predate the window or the current life. |
+| 4, tank lost boss | Fight index 0 through this death line: prior boss target, holder survival, holder damage, and rule-3 exclusion all read that prefix. |
+| 5, environmental/one-shot | Life-scoped death window through this death line. |
+| 5, raid-wide subrule | Entire selected fight, because its symmetric timestamp interval and alive-at-start denominator scan that input, including post-death lines. |
+| 6, unhealed | Fight index 0 through this death line: health/damage stays life-window scoped, but healer survival reads the prefix. |
+
+A failed span declines that rule without owners or suggestion; independently
+valid narrower rules are not discarded for history they never read. The
+pre-window aggro probes therefore return unresolved/low/undecided with empty
+owners/suggestion, while the avoidable earlier-life/pre-window controls retain
+their verdict. The full 40000-fight seeded perturbation test also checks that
+one corrupt timestamp cannot create or change a personal charge. Native Go
+fuzzing exercises the same assertion on generated seeds.
+
+The holder's `e.TimeMs > at` defensive guard is independently unit-tested below
+dispatch, so the prefix guard cannot mask its deletion. Both reported survivor
+mutants now have named behavioral killing tests; compiler errors are refusals.
+Only cfg's module declares a 60-second budget. Death and every other module
+retain the runner's 30-second default; named-mutant deadlines are unchanged.
 
 ## Private integration, opt-in only
 

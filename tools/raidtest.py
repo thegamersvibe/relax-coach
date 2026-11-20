@@ -10,6 +10,8 @@ Modules are the directories test/raid/<name>/ holding a module.json:
   {"kind": "go"|"lua"|"py", "source": "<path>", "test": ["<argv>", ...], "depends": ["<module>", ...]}
 Optional "inputs": ["<path>", ...] declares data dependencies for --changed selection only;
 mutant targets remain restricted to source.
+Optional positive finite "limit" sets that module's wall-time budget in seconds,
+overriding the --limit fallback (30s). It does not change named-mutant deadlines.
 Test commands run from the repository root (Go modules use "go -C desktop ..."). A module whose command runs no
 test at all fails. mutants.json holds a list of {"file", "old", "new", "killed_by"}; an empty list is "no mutants".
 
@@ -28,6 +30,7 @@ Exit 1 when a module fails, a mutant survives or is refused, or a module runs lo
 """
 import argparse
 import json
+import math
 import os
 import re
 import shutil
@@ -58,6 +61,9 @@ def load_modules(root):
             spec = json.load(f)
         if spec.get("kind") not in KINDS or not isinstance(spec.get("source"), str) or not isinstance(spec.get("test"), list):
             raise SystemExit("%s: needs kind (go|lua|py), source and test" % path)
+        if "limit" in spec and (type(spec["limit"]) not in (int, float)
+                                or not math.isfinite(spec["limit"]) or spec["limit"] <= 0):
+            raise SystemExit("%s: limit must be positive finite seconds" % path)
         spec.setdefault("depends", [])
         spec["name"] = name
         spec["dir"] = "test/raid/%s/" % name
@@ -110,6 +116,7 @@ def ran_nothing(kind, output):
 
 
 def run_module(root, spec, limit):
+    limit = spec.get("limit", limit)
     start = time.monotonic()
     try:
         proc = subprocess.run(spec["test"], cwd=root, capture_output=True, text=True, timeout=limit + 5)

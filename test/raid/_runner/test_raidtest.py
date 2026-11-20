@@ -3,6 +3,7 @@
   python -I -B test/raid/_runner/test_raidtest.py
 """
 import hashlib
+import importlib.util
 import json
 import os
 import shutil
@@ -10,8 +11,16 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 RUNNER = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "tools", "raidtest.py"))
+
+
+def runner_module():
+    spec = importlib.util.spec_from_file_location("raidtest", RUNNER)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 PASSING = """import unittest
 import pathlib
@@ -219,6 +228,42 @@ class RunnerTests(unittest.TestCase):
         rc, out = self.t.run("s", "--limit", "1")
         self.assertEqual(rc, 1, out)
         self.assertIn("slower than the 1s limit", out)
+
+    def test_module_limit_override_and_default(self):
+        runner = runner_module()
+        spec = {"kind": "py", "test": ["synthetic-command"]}
+        proc = subprocess.CompletedProcess(spec["test"], 0, "Ran 1 test\nOK\n", "")
+        for override, elapsed, expected, limit in ((None, 40, False, 30),
+                                                   (60, 40, True, 60),
+                                                   (60, 60, True, 60),
+                                                   (60, 61, False, 60)):
+            with self.subTest(override=override, elapsed=elapsed):
+                current = dict(spec)
+                if override is not None:
+                    current["limit"] = override
+                with mock.patch.object(runner.subprocess, "run", return_value=proc) as run, \
+                     mock.patch.object(runner.time, "monotonic", side_effect=[0, elapsed]):
+                    ok, seconds, why, output = runner.run_module(self.t.root, current, 30)
+                self.assertEqual(ok, expected, why)
+                self.assertEqual(seconds, elapsed)
+                self.assertEqual(run.call_args.kwargs["timeout"], limit + 5)
+
+    def test_module_limit_validation_and_cfg_only_override(self):
+        runner = runner_module()
+        self.t.module("a", "lib/a/")
+        path = "test/raid/a/module.json"
+        with open(os.path.join(self.t.root, path), encoding="utf-8") as f:
+            spec = json.load(f)
+        for value in (0, -1, True, None, "60", [], float("inf"), float("nan")):
+            with self.subTest(value=value):
+                self.t.write(path, json.dumps(dict(spec, limit=value)))
+                with self.assertRaisesRegex(SystemExit, "limit"):
+                    runner.load_modules(self.t.root)
+        self.t.write(path, json.dumps(dict(spec, limit=60)))
+        self.assertEqual(runner.load_modules(self.t.root)["a"]["limit"], 60)
+        root = os.path.dirname(os.path.dirname(RUNNER))
+        modules = runner.load_modules(root)
+        self.assertEqual({name: s["limit"] for name, s in modules.items() if "limit" in s}, {"cfg": 60})
 
     def test_failing_module_fails(self):
         self.t.write("lib/f/x.py", "VALUE = 2\n")

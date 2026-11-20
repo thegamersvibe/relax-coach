@@ -7,15 +7,15 @@ import (
 
 func init() { Register(1, afterWipe) }
 func afterWipe(c *context) verdict {
-	if c.wipeCall.Present && c.at > c.wipeCall.V {
+	if c.wipeCall.Present && c.end > c.wipeLine && c.at > c.wipeCall.V {
 		// Keep priority, but still count other actual matches for confidence.
 		return verdict{cause: AfterWipeCall, owner: model.OwnerNobody}
 	}
 	return verdict{}
 }
-func wipeCall(v *fightView, p cfg.Death) model.Opt {
+func wipeCall(v *fightView, p cfg.Death) (model.Opt, int) {
 	dead := map[string]bool{}
-	for _, e := range v.events {
+	for i, e := range v.events {
 		if _, ok := v.players[e.Dst.ID]; !ok {
 			continue
 		}
@@ -40,10 +40,10 @@ func wipeCall(v *fightView, p cfg.Death) model.Opt {
 			return count > 0
 		}
 		if p.WipeDeadShare > 0 && float64(len(dead))/float64(len(v.ids)) >= p.WipeDeadShare || p.WipeAllTanksDead && allRoleDead("tank") || p.WipeAllHealersDead && allRoleDead("healer") {
-			return model.Some(e.TimeMs)
+			return model.Some(e.TimeMs), i
 		}
 	}
-	return model.Opt{}
+	return model.Opt{}, -1
 }
 func summaries(v *fightView, deaths []model.Death, p cfg.Death) []model.Wipe {
 	if !v.f.Boss || v.f.Success != model.Some(0) || p.SummaryWindowMs == nil {

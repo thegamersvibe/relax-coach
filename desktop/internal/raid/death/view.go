@@ -14,6 +14,17 @@ type fightView struct {
 	timelines map[string][]model.Event
 }
 
+// monotonic checks every adjacent pair in an inclusive log-order span.
+// Equal timestamps are valid; irrelevant events must not hide a clock step.
+func monotonic(v *fightView, from, to int) bool {
+	for i := from + 1; i <= to; i++ {
+		if v.events[i].TimeMs < v.events[i-1].TimeMs {
+			return false
+		}
+	}
+	return true
+}
+
 func newView(f model.Fight) *fightView {
 	v := &fightView{f: f, events: append([]model.Event(nil), f.Events...), players: map[string]model.Actor{}, timelines: map[string][]model.Event{}}
 	// Fight.Events is log order. Positions must never be timestamp-sorted.

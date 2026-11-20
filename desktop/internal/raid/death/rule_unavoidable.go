@@ -66,6 +66,11 @@ func (v *fightView) creature(a model.Actor) bool {
 }
 
 func raidwide(c *context, killing, spell model.Event) bool {
+	// This predicate reads survival and symmetric timestamp evidence across
+	// the whole selected fight, including lines after the victim's death.
+	if !monotonic(c.view, 0, len(c.view.events)-1) {
+		return false
+	}
 	if spell.Stream != model.StreamNone || !c.view.creature(spell.Src) || spell.Src.Flags&0x40 == 0 {
 		return false
 	}

@@ -669,15 +669,15 @@
     "killed_by": "TestPulledAggroDoesNotAlsoMatchLostBoss"
   },
   {
-    "file": "desktop/internal/raid/death/death.go",
-    "old": "c.view.events[i].TimeMs < c.view.events[i-1].TimeMs",
+    "file": "desktop/internal/raid/death/view.go",
+    "old": "v.events[i].TimeMs < v.events[i-1].TimeMs",
     "new": "false",
     "killed_by": "TestClockRollbackDeclinesEveryRule"
   },
   {
-    "file": "desktop/internal/raid/death/death.go",
-    "old": "c.view.events[i].TimeMs < c.view.events[i-1].TimeMs",
-    "new": "c.view.events[i].TimeMs <= c.view.events[i-1].TimeMs",
+    "file": "desktop/internal/raid/death/view.go",
+    "old": "v.events[i].TimeMs < v.events[i-1].TimeMs",
+    "new": "v.events[i].TimeMs <= v.events[i-1].TimeMs",
     "killed_by": "TestClockRollbackScope"
   },
   {
@@ -708,6 +708,42 @@
   "file": "desktop/internal/raid/death/rule_lost_boss.go",
   "old": "if e.TimeMs > at || at-e.TimeMs > c.params.WindowMs {\n\t\t\t\treturn unknown",
   "new": "if e.TimeMs > at || at-e.TimeMs > c.params.WindowMs {\n\t\t\t\tcontinue",
-  "killed_by": "TestLastHolderLineOutsideWindowIsNotSkipped"
+  "killed_by": "TestLostBossDoesNotSkipInvalidHolder"
+},
+{
+  "file": "desktop/internal/raid/death/view.go",
+  "old": "for i := from + 1; i <= to; i++ {",
+  "new": "for i := from + 2; i <= to; i++ {",
+  "killed_by": "TestClockGuardFirstAdjacentPair"
+},
+{
+  "file": "desktop/internal/raid/death/rule_lost_boss.go",
+  "old": "if e.TimeMs > at || at-e.TimeMs > c.params.WindowMs {",
+  "new": "if at-e.TimeMs > c.params.WindowMs {",
+  "killed_by": "TestLostBossRejectsFutureStampedHolder"
+},
+{
+  "file": "desktop/internal/raid/death/death.go",
+  "old": "from = 0",
+  "new": "from = c.start",
+  "killed_by": "TestPreWindowHistoryRollback"
+},
+{
+  "file": "desktop/internal/raid/death/death.go",
+  "old": "case 1, 3, 4, 6:",
+  "new": "case 3, 4:",
+  "killed_by": "TestHistoryRollbackDeclinesSurvivalRules"
+},
+{
+  "file": "desktop/internal/raid/death/rule_unavoidable.go",
+  "old": "if !monotonic(c.view, 0, len(c.view.events)-1) {",
+  "new": "if false {",
+  "killed_by": "TestRaidwideFutureClockStep"
+},
+{
+  "file": "desktop/internal/raid/death/rule_wipe.go",
+  "old": " && c.end > c.wipeLine",
+  "new": "",
+  "killed_by": "TestFutureWipeCallLine"
 }
 ]

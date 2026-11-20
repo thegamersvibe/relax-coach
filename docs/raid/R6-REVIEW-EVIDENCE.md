@@ -238,3 +238,66 @@ unresolved 1, low 1, empty suggestion 1, feigns excluded 15, wipes 0,
 past-run exclusions 0, health samples 0. **Neither death result changes.**
 These logs still supply no positive-cause/wipe calibration. No model/fights/logfmt
 edit, native/game test, full-desktop suite, push, PR or release was performed.
+
+## Round-3 prerequisite-history correction
+
+Base: `9ffa9c26ae9b79446033e5fd3555daf5533c96a7`. One correction commit includes
+the ruled cfg module budget override; all reviewer evidence was read-only.
+
+- `TestPreWindowHistoryRollback` was RED with false pulled-aggro or lost-boss
+  charges for the exact 9999/9998 opener, 6000/5999 engagement and 1000/999
+  opener with death at 11002. It is GREEN for both test and shipped config,
+  including multiple step sizes, earlier-life history and positive controls.
+- One inclusive log-index `monotonic` helper now checks the full prerequisite
+  range of each positional rule. The module README gives the complete range
+  table. Wipe, opener, holder and healer survival read the fight prefix;
+  avoidable/environmental/one-shot stay life-window scoped. Raid-wide evidence
+  checks the full selected input because its symmetric scan reads later lines.
+  Separate history/survival and future raid-wide probes were RED then GREEN.
+- `TestFutureWipeCallLine` was RED: the later tank-death line stamped 9998
+  retroactively labelled the victim at 10000 after-wipe/medium. GREEN preserves
+  avoidable/high. The call now carries its log index; the strict timestamp
+  boundary remains as well. No model change was needed.
+- `TestClockPerturbation` was RED: a single timestamp change turned a victim's
+  pulled-aggro charge into a different tank's lost-boss charge. GREEN on all
+  40000 seeded fights: baseline causes pulled-aggro 4418, lost-boss 11665,
+  unresolved 23917; after perturbation unresolved 40000, low, no owners or
+  suggestion. Native fuzzing also passed 5734 executions in 15 seconds.
+- Both reviewer survivors are behavioral kills: starting the guard at `from+2`
+  fails `TestClockGuardFirstAdjacentPair`; deleting holder `e.TimeMs > at ||`
+  fails `TestLostBossRejectsFutureStampedHolder`. The latter directly exercises
+  the defensive rule beneath dispatch, where the full-prefix guard cannot mask it.
+- The first complete mutant run killed 122/124. The new full-history guard
+  masked two inherited tests, not production defects: the unowned-guardian
+  fixture appended earlier lines after death, and the last-holder fallback
+  fixture deliberately rolled back. The former now explicitly constructs a
+  chronological fixture and adds a positive source control, without changing
+  its existing assertion. The latter retains its public test and gains a
+  direct rule-level test. All 118 inherited mutants remain; only helper-move
+  anchors 112/113 and the killing test for 118 were migrated. Final: **124/124**,
+  no survivor or refusal. Six entries are additive.
+- Runner tests were RED on ignored/invalid per-module limits, then GREEN.
+  Only `test/raid/cfg/module.json` declares `limit: 60`; absent overrides still
+  use 30 seconds. Acceptance at 60, refusal at 61, subprocess budget, invalid
+  forms and cfg-only scope are pinned. Named-mutant deadlines are unchanged.
+
+Executed with Go on PATH, CI Python 3.14 requirements and the shared heavy-job
+lock for race/module/mutant runs:
+
+```text
+gofmt -l internal/raid; go vet ./internal/raid/...     silent
+go test -count=1 ./internal/raid/...                 PASS (death 7.538s)
+raidtest.py --all --kind go                         9/9 (cfg 13.8s, death 25.8s)
+raidtest.py --all --kind lua,py                     18/18
+raidtest.py --mutants cfg                           172/172 killed
+raidtest.py --mutants death                         124/124 killed
+go test -run '^$' -fuzz '^FuzzClockPerturbation$' -fuzztime=15s -parallel=2 ./internal/raid/death
+PASS: 5734 fuzz executions
+```
+
+Gated real-log before/after PASS (1.60s / 1.48s). The four emitted JSON rows
+compare equal. Each of two anonymous logs still has one unresolved/low death,
+empty suggestion, 15 feigns, zero wipes, zero past-run exclusions and zero
+health samples; candidate/share remains null. These logs still cannot validate
+positive personal charges. No model, fights, logfmt, dependency, native/game,
+full-desktop, remote, release or installation change was made.

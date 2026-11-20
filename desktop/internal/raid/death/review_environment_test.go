@@ -74,6 +74,10 @@ func TestUnownedGuardianExclusion(t *testing.T) {
 			i = 2
 		}
 		f.Events[i].Src = guardian
+		// This is a source-ownership fixture, not a raw rollback probe.
+		f = chronological(f)
 		wantDeath(t, forVictim(t, f, config()), death.Unresolved, "low", model.OwnerUndecided, "")
+		f.Unowned = nil
+		wantDeath(t, forVictim(t, f, config()), death.Unavoidable, "high", model.OwnerNobody, "")
 	}
 }

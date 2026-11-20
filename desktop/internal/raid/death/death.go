@@ -55,6 +55,7 @@ type context struct {
 	start, end int // absolute event indices; end identifies this UNIT_DIED line
 	window     []model.Event
 	wipeCall   model.Opt
+	wipeLine   int
 }
 
 // Review returns deaths in stable time order, summaries of wiped boss fights,
@@ -74,7 +75,7 @@ func Review(f model.Fight, runEndMs int64, config cfg.Config) ([]model.Death, []
 	snapshot := config.Snapshot()
 	v := newView(f)
 	encounter, _ := snapshot.Encounter(f.EncounterID)
-	call := wipeCall(v, snapshot.Scoring.Death)
+	call, callLine := wipeCall(v, snapshot.Scoring.Death)
 	var deaths []model.Death
 	excluded := 0
 	for i, e := range v.events {
@@ -86,7 +87,7 @@ func Review(f model.Fight, runEndMs int64, config cfg.Config) ([]model.Death, []
 			excluded++
 			continue
 		}
-		c := context{view: v, params: snapshot.Scoring.Death, victim: p, at: e.TimeMs, end: i, mechanics: encounter.Mechanics, wipeCall: call}
+		c := context{view: v, params: snapshot.Scoring.Death, victim: p, at: e.TimeMs, end: i, mechanics: encounter.Mechanics, wipeCall: call, wipeLine: callLine}
 		c.start, c.window = v.deathWindow(p.ID, c.at-c.params.WindowMs, i)
 		deaths = append(deaths, classify(&c))
 	}
@@ -100,14 +101,22 @@ func classify(c *context) model.Death {
 		Cause: Unresolved, Confidence: "low", OwnerKind: model.OwnerUndecided, Evidence: recap(c.window, c.victim.ID)}
 	// A backward clock inside this life/window invalidates every attribution,
 	// including low-confidence suggestions. Unrelated lines count too.
-	for i := c.start + 1; i <= c.end; i++ {
-		if c.view.events[i].TimeMs < c.view.events[i-1].TimeMs {
-			return d
-		}
+	if !monotonic(c.view, c.start, c.end) {
+		return d
 	}
 	var best verdict
 	matches := 0
 	for _, r := range rules {
+		from := c.start
+		switch r.order {
+		case 1, 3, 4, 6:
+			// Wipe state, openers, holder engagement and healer survival
+			// read history before this life/window, up to this death line.
+			from = 0
+		}
+		if !monotonic(c.view, from, c.end) {
+			continue
+		}
 		m := r.apply(c)
 		if m.cause == "" {
 			continue
