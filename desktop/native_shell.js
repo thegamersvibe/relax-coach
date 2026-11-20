@@ -22,6 +22,7 @@ window.chrome.webview.addEventListener('message', event => {
 });
 const rc = Object.freeze({
   refresh: () => call('reportRefresh'),
+  raidPage: () => call('raidPage'),
   setGame: path => call('setGame',path),
   selectAccount: id => call('selectAccount',id),
   chooseGame: () => call('chooseGame'),
@@ -98,6 +99,12 @@ function show(view) {
   $('update-view').hidden = view !== 'update';
   $('farm-view').hidden = view !== 'farm';
   $('settings-view').hidden = view !== 'settings';
+  if ($('raids-view')) $('raids-view').hidden = view !== 'raids';
+  if ($('nav-raids')) {
+    $('nav-raids').classList.toggle('active',view === 'raids');
+    if (view === 'raids') $('nav-raids').setAttribute('aria-current','page');
+    else $('nav-raids').removeAttribute('aria-current');
+  }
   for (const name of ['setup','report','farm','update','settings']) {
     $('nav-'+name).classList.toggle('active',name === view);
     if (name === view) $('nav-'+name).setAttribute('aria-current','page');
@@ -280,6 +287,60 @@ function displayFarm(result) {
   filterFarmHouse();
 }
 $('farm-body').addEventListener('change',event=>{ if (event.target && event.target.id === 'farm-house') filterFarmHouse(); });
+// Raids are removed, not CSS-hidden, when admission changes. No retained
+// template/fragment contains a locked account's raid data.
+let raidGeneration = 0;
+function clearRaids() {
+  ++raidGeneration;
+  if ($('raids-view') && !$('raids-view').hidden) show('report');
+  if ($('raids-view')) $('raids-view').remove();
+  if ($('nav-raids')) $('nav-raids').remove();
+}
+function displayRaids(result) {
+  if (result.HasRaids !== true) { clearRaids(); return; }
+  if (!$('raids-view')) {
+    // Only escaped, Go-template-owned HTML may enter this sink.
+    $('update-view').insertAdjacentHTML('beforebegin',result.RaidHTML);
+  }
+  if (!$('nav-raids')) {
+    const button=document.createElement('button');button.id='nav-raids';button.className='navbtn';
+    const text=document.createElement('span');text.textContent='Raids';button.append(text);
+    $('nav-update').before(button);
+  }
+}
+document.addEventListener('click',event=>{
+  const page=$('raids-view');
+  if (!page || !page.contains(event.target)) return;
+  const row=event.target.closest('[data-raid-player]');
+  if (row) {
+    const detail=$('raid-player-'+row.dataset.raidPlayer);
+    if (detail) {detail.hidden=false;detail.focus();}
+  }
+  const close=event.target.closest('[data-raid-close]');
+  if (close) {
+    const detail=close.closest('.raid-player-detail');detail.hidden=true;
+    const key=detail.id.slice('raid-player-'.length);
+    const button=page.querySelector('[data-raid-player="'+key+'"] button');if (button) button.focus();
+  }
+  const filter=event.target.closest('[data-death-filter]');
+  if (filter) {
+    for (const b of page.querySelectorAll('[data-death-filter]')) b.setAttribute('aria-pressed',String(b===filter));
+    for (const death of page.querySelectorAll('[data-death-kind]')) death.hidden=filter.dataset.deathFilter!=='all'&&death.dataset.deathKind!==filter.dataset.deathFilter;
+  }
+});
+document.addEventListener('click',async event=>{
+  if (!event.target.closest('#nav-raids') || switchingAccount || switchingFolder) return;
+  const generation=++raidGeneration, context=reportGeneration;
+  try {
+    const html=await rc.raidPage();
+    if (generation!==raidGeneration || context!==reportGeneration || !$('nav-raids')) return;
+    $('raids-view').outerHTML=html;
+    userNavigated=true;show('raids');
+  } catch(err) {
+    if (generation!==raidGeneration || context!==reportGeneration) return;
+    clearRaids();message(err.message);
+  }
+});
 function displayReport(result,folderChanged = false) {
   lastReport = result;
   if (result.AppVersion) $('installed-app-version').textContent = result.AppVersion;
@@ -305,6 +366,8 @@ function displayReport(result,folderChanged = false) {
     renderedReport = {HTML:result.HTML,Game:result.Game,Account:result.Account};
   }
   displayFarm(result);
+  if (!sameContext) clearRaids();
+  displayRaids(result);
   $('installed-version').textContent = result.InstalledVersion === '0.0.0' ? 'Not installed' : result.InstalledVersion;
   $('setup-installed').textContent = $('installed-version').textContent;
   $('setup-folder').textContent = result.Game || 'Not chosen yet.';
@@ -366,6 +429,7 @@ async function changeFolder(select) {
   busy = switchingFolder = true;
   // Invalidate earlier replies before Go can change the selected/update target.
   ++reportGeneration;
+  clearRaids();
   $('folder-label').textContent = 'Changing game folder…';
   $('account-source').textContent = 'Changing game folder…';
   $('report-body').hidden = true;
@@ -404,6 +468,7 @@ $('account-select').addEventListener('change',async()=>{
   if (!id || (lastReport && id === lastReport.Account)) return;
   busy = switchingAccount = true;
   const generation = ++reportGeneration;
+  clearRaids();
   // An account switch is a data boundary, including failed reads or writes.
   $('report-body').replaceChildren();
   renderedReport = null;

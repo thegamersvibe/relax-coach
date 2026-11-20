@@ -1,0 +1,104 @@
+[
+  {
+    "file": "desktop/raid_page.go",
+    "old": "if run.Partial {",
+    "new": "if !run.Partial {",
+    "killed_by": "TestRaidPageHeaderAndLists"
+  },
+  {
+    "file": "desktop/raid_page.go",
+    "old": "row.Rank = fmt.Sprint(s.Rank.V)",
+    "new": "row.Rank = \"\"",
+    "killed_by": "TestRaidPageHeaderAndLists"
+  },
+  {
+    "file": "desktop/raid_page.go",
+    "old": "p.Unmatched = prep.Unmatched",
+    "new": "p.Unmatched = nil",
+    "killed_by": "TestRaidPageWipesAndProblems"
+  },
+  {
+    "file": "desktop/raid_page.go",
+    "old": "p.Excluded += excluded",
+    "new": "p.Excluded += 0 * excluded",
+    "killed_by": "TestRaidPageWipesAndProblems"
+  },
+  {
+    "file": "desktop/raid_page.go",
+    "old": "v.Following = append(v.Following, rows[i])",
+    "new": "v.Following = append(v.Following, rows[i])[:0]",
+    "killed_by": "TestRaidPageWipesAndProblems"
+  },
+  {
+    "file": "desktop/raid_page.go",
+    "old": "if wipe.FirstDeath >= 0 && wipe.FirstDeath < len(rows) {",
+    "new": "if wipe.FirstDeath < len(rows) {",
+    "killed_by": "TestRaidPageWipeWithoutDeath"
+  },
+  {
+    "file": "desktop/raid_page.go",
+    "old": "v.V/10, v.V%10",
+    "new": "v.V/100, v.V%10",
+    "killed_by": "TestRaidPageEvidence"
+  },
+  {
+    "file": "desktop/raid_deaths.go",
+    "old": "d.SuggestedCause == \"\"",
+    "new": "true",
+    "killed_by": "TestRaidPageDeathLabels"
+  },
+  {
+    "file": "desktop/raid_deaths.go",
+    "old": "f.Roles[d.Player.ID] != \"tank\"",
+    "new": "true",
+    "killed_by": "TestRaidPageDeathLabels"
+  },
+  {
+    "file": "desktop/raid_deaths.go",
+    "old": "e.Stream == model.SwingLanded && slices.Contains",
+    "new": "true && slices.Contains",
+    "killed_by": "TestRaidPageDeathLabels"
+  },
+  {
+    "file": "desktop/raid_evidence.go",
+    "old": "Evidence: part.Evidence",
+    "new": "Evidence: model.Evidence{}",
+    "killed_by": "TestRaidPageEvidence"
+  },
+  {
+    "file": "desktop/raid_pipeline.go",
+    "old": "DetailsFor: func(model.Fight) bool { return true }",
+    "new": "DetailsFor: func(model.Fight) bool { return false }",
+    "killed_by": "TestRaidPageReadStream"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "\"html/template\"",
+    "new": "\"text/template\"",
+    "killed_by": "TestRaidPageEscapesAllNames"
+  },
+  {
+    "file": "desktop/raid.html",
+    "old": "{{if lt .Ranked 10}}",
+    "new": "{{if lt .Ranked 9}}",
+    "killed_by": "TestRaidPageComparisonPresentation"
+  },
+  {
+    "file": "desktop/raid.html",
+    "old": "{{if .PartReason}}<p>{{.PartReason}}</p>{{end}}",
+    "new": "",
+    "killed_by": "TestRaidPageComparisonPresentation"
+  },
+  {
+    "file": "desktop/raid.html",
+    "old": "{{.Impact.FloatString 1}}",
+    "new": "0.0",
+    "killed_by": "TestRaidPageComparisonPresentation"
+  },
+  {
+    "file": "desktop/raid_page.go",
+    "old": "v.Duration = (time.Duration(f.DurationMs.V) * time.Millisecond).String()",
+    "new": "v.Duration = \"unknown duration\"",
+    "killed_by": "TestRaidPageWipesAndProblems"
+  }
+]

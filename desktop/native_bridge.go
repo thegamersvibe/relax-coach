@@ -61,6 +61,8 @@ type nativeReport struct {
 	// Farming page (AH Profit, same account): HasFarm shows its nav entry.
 	HasFarm  bool
 	FarmHTML string
+	HasRaids bool
+	RaidHTML string
 }
 
 // Deliberately omit the download URL/checksum fields from the UI projection.
@@ -178,7 +180,7 @@ func (b *nativeBridge) Call(method string, args []json.RawMessage) (any, error) 
 		if len(args) != 1 || !strings.HasPrefix(strings.TrimSpace(string(args[0])), `"`) || json.Unmarshal(args[0], &arg) != nil || len(arg) > 4096 || strings.IndexByte(arg, 0) >= 0 {
 			return nil, errors.New("expected one text argument")
 		}
-	case "reportRefresh", "chooseGame", "checkAddon", "checkApp", "checkAppStartup", "appReady", "extraList", "appPlacement", "installAppCopy", "openInstalledApp", "afterAppUpdate", "gameState":
+	case "raidPage", "reportRefresh", "chooseGame", "checkAddon", "checkApp", "checkAppStartup", "appReady", "extraList", "appPlacement", "installAppCopy", "openInstalledApp", "afterAppUpdate", "gameState":
 		if len(args) != 0 {
 			return nil, errors.New("this method takes no arguments")
 		}
@@ -186,6 +188,8 @@ func (b *nativeBridge) Call(method string, args []json.RawMessage) (any, error) 
 		return nil, errors.New("unknown native method")
 	}
 	switch method {
+	case "raidPage":
+		return b.raidPage()
 	case "reportRefresh":
 		return b.report()
 	case "setGame":
@@ -266,6 +270,14 @@ func (b *nativeBridge) reportLocked() (nativeReport, error) {
 	if err == nil {
 		err = ferr
 	}
+	raidHTML := ""
+	if v.HasRaids {
+		var rerr error
+		raidHTML, rerr = renderRaidShell()
+		if err == nil {
+			err = rerr
+		}
+	}
 	saveTime := ""
 	if !v.SaveTime.IsZero() {
 		saveTime = v.SaveTime.Format(time.RFC3339)
@@ -274,7 +286,7 @@ func (b *nativeBridge) reportLocked() (nativeReport, error) {
 		AppVersion: Version, AppUpdateStatus: currentAppUpdateStatus(),
 		Account: v.Account, Accounts: v.Accounts, SVPath: v.SVPath, SaveTime: saveTime,
 		Stale: v.Warning != "", ConfigWarning: v.ConfigWarning, Bundle: InstalledBundleState(v.Game),
-		HasFarm: v.Farm.Present, FarmHTML: farmHTML}, err
+		HasFarm: v.Farm.Present, FarmHTML: farmHTML, HasRaids: v.HasRaids, RaidHTML: raidHTML}, err
 }
 
 func (b *nativeBridge) selectAccount(id string) (nativeReport, error) {

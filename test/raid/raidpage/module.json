@@ -1,0 +1,22 @@
+{
+  "kind": "go",
+  "source": "desktop/",
+  "test": [
+    "go",
+    "-C",
+    "desktop",
+    "test",
+    "-race",
+    "-count=1",
+    "-run",
+    "^TestRaidPage",
+    "."
+  ],
+  "depends": [
+    "raidprep",
+    "compare"
+  ],
+  "inputs": [
+    "rules/raid/"
+  ]
+}

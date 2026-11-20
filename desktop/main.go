@@ -20,7 +20,7 @@ var Version = "1.8.1" // May be overridden with -X main.Version for private veri
 const Repo = "thegamersvibe/relax-coach"
 const RulesSchema = 1
 
-//go:embed report.html farm.html logo.png native_shell.html native_shell.js
+//go:embed report.html farm.html raid.html logo.png native_shell.html native_shell.js
 var assets embed.FS
 
 type Finding struct {
@@ -89,6 +89,7 @@ type StatView struct {
 }
 
 type View struct {
+	HasRaids                    bool
 	Chars                       []CharView
 	SVPath, Error, RulesVersion string
 	Warning                     string
@@ -272,8 +273,10 @@ func (a *App) reloadLocked() {
 	farmFor := View{Game: v.Game, Account: v.Account, Chars: chars, itemNames: v.itemNames, hasItemNames: v.hasItemNames}
 	a.loadFarmLocked(&farmFor, prev)
 	v.Farm = farmFor.Farm
+	v.HasRaids = a.raidAllowedLocked()
 	if v.Error != "" && prev.SVPath != "" && prev.Error == "" && prev.Game == v.Game && prev.Account == v.Account {
 		prev.Farm = v.Farm
+		prev.HasRaids = v.HasRaids
 		prev.Accounts = v.Accounts
 		prev.ConfigWarning = v.ConfigWarning
 		prev.Warning = "Latest save couldn't be read yet, showing the previous one (" + v.Error + ")"

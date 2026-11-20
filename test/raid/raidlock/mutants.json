@@ -1,0 +1,38 @@
+[
+  {
+    "file": "desktop/raid_lock.go",
+    "old": "if len(data) > raidSaveMaxBytes {",
+    "new": "if false && len(data) > raidSaveMaxBytes {",
+    "killed_by": "TestRaidLockBudgetAndOptionalGuild"
+  },
+  {
+    "file": "desktop/raid_lock.go",
+    "old": "len(ranks) > raidRankMaxCharacters",
+    "new": "false",
+    "killed_by": "TestRaidLockInvalidAndRevocation"
+  },
+  {
+    "file": "desktop/raid_lock.go",
+    "old": "db[\"version\"] != float64(1)",
+    "new": "false",
+    "killed_by": "TestRaidLockInvalidAndRevocation"
+  },
+  {
+    "file": "desktop/raid_lock.go",
+    "old": "return officer",
+    "new": "return !officer",
+    "killed_by": "TestRaidLockSelectedAccount"
+  },
+  {
+    "file": "desktop/raid_lock.go",
+    "old": "math.Trunc(at) != at",
+    "new": "false",
+    "killed_by": "TestRaidLockInvalidAndRevocation"
+  },
+  {
+    "file": "desktop/raid_lock.go",
+    "old": "if _, err := b.app.raidSaveLocked(); err != nil {",
+    "new": "if _, err := b.app.raidSaveLocked(); false && err != nil {",
+    "killed_by": "TestRaidLockSelectedAccount"
+  }
+]

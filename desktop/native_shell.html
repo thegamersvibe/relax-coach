@@ -34,7 +34,7 @@ button:disabled{opacity:.5;cursor:default;box-shadow:none}
 .navbtn.active{color:var(--gold)}
 .navbtn.active:after{opacity:1}
 #nav-setup{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M10 8.5l5.5 3.5-5.5 3.5z'/%3E%3C/svg%3E")}
-#nav-report{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 20v-6'/%3E%3Cpath d='M12 20V4'/%3E%3Cpath d='M19 20V10'/%3E%3C/svg%3E")}
+#nav-report,#nav-raids{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 20v-6'/%3E%3Cpath d='M12 20V4'/%3E%3Cpath d='M19 20V10'/%3E%3C/svg%3E")}
 #nav-farm{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Ccircle cx='12' cy='12' r='4'/%3E%3C/svg%3E")}
 #nav-update{--i:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 4v11'/%3E%3Cpath d='M7 10.5l5 5 5-5'/%3E%3Cpath d='M5 20h14'/%3E%3C/svg%3E")}
 .sidebar .smallprint{margin-top:auto;color:var(--mut);font-size:12.5px;line-height:1.5;padding:14px 4px 0;border-top:1px solid var(--line);text-wrap:pretty;position:relative}
@@ -116,6 +116,12 @@ button:focus-visible,a:focus-visible,.smallprint:focus-visible,input:focus-visib
 .account-meta #account-source{color:var(--mut);grid-column:1/-1;grid-row:2;margin-top:6px}
 .account-meta #account-help{grid-column:1/-1;grid-row:3}
 .account-meta #account-status{grid-column:1/-1;grid-row:4;color:var(--warn)}
+#raids-view .card{margin-bottom:16px;overflow-x:auto}
+#raids-view .farm-table{min-width:620px}
+#raids-view details{margin:6px 0}
+#raids-view dl{display:grid;grid-template-columns:minmax(150px,1fr) auto;gap:4px 12px}
+#raids-view dt,#raids-view dd{margin:0;overflow-wrap:anywhere}
+#raids-view summary,[data-raid-player]{cursor:pointer}
 .farm-head{margin-bottom:16px}.farm-head .account-controls{margin-top:12px}
 .farm-grid{grid-template-columns:1fr 1fr;margin:16px 0;align-items:start}
 .farm-table{width:100%;border-collapse:collapse;font-size:13.5px}
@@ -194,7 +200,7 @@ button:focus-visible,a:focus-visible,.smallprint:focus-visible,input:focus-visib
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
 </style></head><body data-token="{{.Token}}" data-updates-disabled="{{.UpdatesDisabled}}">
 <aside class="sidebar"><div class="brand"><img class="crest" src="{{.Logo}}" alt="Relax Coach tea-glass emblem"><h1>Relax Coach</h1><small>WoW Forever companion</small></div>
-<nav aria-label="Main"><button id="nav-setup" class="navbtn"><span>Get started</span></button><button id="nav-report" class="navbtn active" aria-current="page"><span>Coach Report</span></button><button id="nav-farm" class="navbtn"{{if not .View.Farm.Present}} hidden{{end}}><span>Farming</span></button><button id="nav-update" class="navbtn"><span>Updates</span></button><button id="nav-settings" class="navbtn"><span>Settings</span></button></nav>
+<nav aria-label="Main"><button id="nav-setup" class="navbtn"><span>Get started</span></button><button id="nav-report" class="navbtn active" aria-current="page"><span>Coach Report</span></button><button id="nav-farm" class="navbtn"{{if not .View.Farm.Present}} hidden{{end}}><span>Farming</span></button>{{if .View.HasRaids}}<button id="nav-raids" class="navbtn"><span>Raids</span></button>{{end}}<button id="nav-update" class="navbtn"><span>Updates</span></button><button id="nav-settings" class="navbtn"><span>Settings</span></button></nav>
 <div class="smallprint" tabindex="0" role="note"><span class="ver">App {{.View.AppVersion}}</span><span class="fine">Local report · no online sign-in<br><br>Reads Relax Coach and AH Profit saved data, and AH Profit's bundled data files <span class="nb">(read-only)</span>.<br>No game input or memory access.</span></div></aside>
 <main class="workspace">
 <details class="folder card" id="folder-panel"{{if .View.NoGame}} open{{end}}><summary>Game folder <span id="folder-label">{{.View.Game}}</span></summary>
@@ -221,6 +227,7 @@ button:focus-visible,a:focus-visible,.smallprint:focus-visible,input:focus-visib
 <div id="report-body" data-game="{{.View.Game}}" data-account="{{.View.Account}}">{{template "report-body" .View}}</div></section>
 <section id="farm-view" hidden><header class="pagehead"><div><h2>Farming</h2><p class="subtle">From the AH Profit addon's save for the selected account. Updates when the game saves: /reload or logout.</p></div></header>
 <div id="farm-body">{{template "farm-body" .View.Farm}}</div></section>
+{{if .View.HasRaids}}{{template "raid-shell" .}}{{end}}
 <section id="update-view" hidden><header class="pagehead"><div><h2>Updates</h2><p class="subtle">Stable releases from thegamersvibe/relax-coach on GitHub.</p></div></header>
 <div class="pane"><div class="card updatecard" id="update-all-card"><h3>Update everything</h3>
 <p class="subtle">One click: the app first (it restarts and carries on by itself), then the Relax Coach addons, then the More addons you installed. Each step is checked and verified on its own; a failed step stops the rest.</p>

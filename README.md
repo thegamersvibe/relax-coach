@@ -8,6 +8,21 @@ Four **separate WoW Forever addons**, plus a native Windows report app:
 - **Relax Raid** (from v1.8.0) — the guild raid logger: turns on the game's combat log in raids (`/rraid`) and, from v1.8.1, sends a short preparation report to the raid. Works without the other addons.
 - **RelaxCoach.exe** — a real Windows app window with account selection, saved-character reports and explicit app and addon/content updates.
 
+## Raids officer view (in development)
+
+The local Raids menu and page exist only when the **selected account's**
+Relax Raid save contains a validated `officer` reading. Missing, unreadable,
+non-officer or malformed rank data keeps both absent, and the native page route
+also refuses access. This is a **convenience lock, not security**: local saves
+can be edited or stale. The stage-2 `/api/companion/me` check is a later lane.
+
+The offline page renderer covers score groups, per-fight evidence, wipes,
+deaths and comparison results. Opening nights in the app is not enabled yet:
+the scoring-data installation contract and the remaining mock-up/API differences
+are listed in [R8 open questions](docs/raid/R8-OPEN-QUESTIONS.md). No files are
+uploaded or modified by this view, and officer predictions are never stored in
+night files.
+
 ## Download
 
 **[Download release v1.8.1](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.8.1)**:
