@@ -18,7 +18,12 @@ func TestInvalidActorFlagsSkipped(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			for _, bad := range []string{"0x100000000", "0xFFFFFFFFFF", "4294967296", "-1", "abc", "", "nil"} {
+			for _, bad := range []string{
+				"1297", "4294967295", "0b10100010001", "0o2421", "0511",
+				"0x5_11", "0x_511", "0X511", "", "0x", "nil",
+				"+1297", "-1297", "-1", "+0x511", "-0x511", "0x+511", "0x-511",
+				"0x100000000", "0xFFFFFFFFFF", "4294967296", "abc", "0xg",
+			} {
 				t.Run(bad, func(t *testing.T) {
 					f := absorbFields(tc.withSpell)
 					f[tc.flagIndex] = fixture.Field(bad)
@@ -52,7 +57,9 @@ func TestValidActorFlagsPreserved(t *testing.T) {
 		wire  string
 		flags uint32
 	}{
-		{"0x0", 0}, {"0x511", 0x511}, {"0xffffffff", 0xffffffff}, {"4294967295", 0xffffffff},
+		{"0x0", 0}, {"0x511", 0x511}, {"0x10a48", 0x10a48}, {"0x10A48", 0x10a48},
+		{"0xabcdef", 0xabcdef}, {"0xABCDEF", 0xabcdef}, {"0xAbCdEf", 0xabcdef},
+		{"0xffffffff", 0xffffffff}, {"0xFFFFFFFF", 0xffffffff},
 	} {
 		f := absorbFields(false)
 		f[2], f[6], f[10] = fixture.Field(tc.wire), fixture.Field(tc.wire), fixture.Field(tc.wire)

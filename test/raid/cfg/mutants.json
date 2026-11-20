@@ -1,0 +1,631 @@
+[
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "if _, ok := known[key]; !ok {",
+    "new": "if _, ok := known[key]; false && !ok {",
+    "killed_by": "TestRejectUnknownKeys",
+    "reanchored_from": 1
+  },
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "if m.Schema != 1 {",
+    "new": "if false {",
+    "killed_by": "TestRejectVersions"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "if seen[normalized(name)] {",
+    "new": "if false {",
+    "killed_by": "TestRejectJSONShape",
+    "reanchored_from": 3
+  },
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "return fmt.Errorf(\"%s.%s is required (keys are case sensitive)\", path, name)",
+    "new": "continue",
+    "killed_by": "TestRejectJSONShape"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "if seen[normalized(name)] {",
+    "new": "if seen[name] {",
+    "killed_by": "TestNormalizedDuplicates",
+    "reanchored_from": 5
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if s.ID != 0 && s.Source == nil {",
+    "new": "if false {",
+    "killed_by": "TestSpellIDRequiresProvenance"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if !seen[normalized(id)] {",
+    "new": "if false {",
+    "killed_by": "TestValidateProfiles",
+    "reanchored_from": 7
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "oneOf(e.Scope, \"personal\", \"unknown\") && e.Credit",
+    "new": "false",
+    "killed_by": "TestValidateCatalogues",
+    "reanchored_from": 8
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "m.EvidenceSource.Kind != \"real_log\"",
+    "new": "false",
+    "killed_by": "TestEnabledRulesRequireEvidence",
+    "reanchored_from": 9
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "n.TrashShare > n.MaxTrashShare",
+    "new": "false",
+    "killed_by": "TestValidateScoring"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": " || n.WipeWeight >= n.KillWeight",
+    "new": "",
+    "killed_by": "TestValidateScoring"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/lookup.go",
+    "old": "groupSize > c.Instances.RaidGroupSizeAbove",
+    "new": "groupSize >= c.Instances.RaidGroupSizeAbove",
+    "killed_by": "TestInstanceClassification"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/lookup.go",
+    "old": "return model.RunRaid, false",
+    "new": "return model.RunRaid, true",
+    "killed_by": "TestInstanceClassification"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/lookup.go",
+    "old": "if e.ID == id {",
+    "new": "if e.ID != id {",
+    "killed_by": "TestBossOnlyDefaultAndOverrides"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/lookup.go",
+    "old": "Mode: c.Encounters.DefaultTargetRule",
+    "new": "Mode: \"all\"",
+    "killed_by": "TestBossOnlyDefaultAndOverrides"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/load.go",
+    "old": "func Load(dir string) (*Config, error) {\n\tc := new(Config)",
+    "new": "var cached *Config\n\nfunc Load(dir string) (*Config, error) {\n\tif cached != nil { return cached, nil }; c := new(Config); cached = c",
+    "killed_by": "TestReloadWeight"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/load.go",
+    "old": "func Load(dir string) (*Config, error) {\n\tc := new(Config)",
+    "new": "var cached *Config\n\nfunc Load(dir string) (*Config, error) {\n\tif cached != nil { return cached, nil }; c := new(Config); cached = c",
+    "killed_by": "TestReloadThreshold"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/load.go",
+    "old": "func Load(dir string) (*Config, error) {\n\tc := new(Config)",
+    "new": "var cached *Config\n\nfunc Load(dir string) (*Config, error) {\n\tif cached != nil { return cached, nil }; c := new(Config); cached = c",
+    "killed_by": "TestReloadProfile"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/load.go",
+    "old": "func Load(dir string) (*Config, error) {\n\tc := new(Config)",
+    "new": "var cached *Config\n\nfunc Load(dir string) (*Config, error) {\n\tif cached != nil { return cached, nil }; c := new(Config); cached = c",
+    "killed_by": "TestReloadEncounter"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "f.TankMinTopRatio <= 0 || !fraction(f.TankMinTopRatio)",
+    "new": "false",
+    "killed_by": "TestValidateScoring",
+    "reanchored_from": 20
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "f.ReentryGapMs <= 0",
+    "new": "false",
+    "killed_by": "TestValidateScoring",
+    "reanchored_from": 21
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "n.KillWeight <= 0",
+    "new": "false",
+    "killed_by": "TestReviewScoringFields",
+    "reviewer_hand_index": 2
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "n.WipeWeight < 0",
+    "new": "false",
+    "killed_by": "TestReviewScoringFields",
+    "reviewer_hand_index": 3
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "c.LowConfidenceFightMs <= 0",
+    "new": "false",
+    "killed_by": "TestReviewScoringFields",
+    "reviewer_hand_index": 5
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "c.ShortFightWeight > 1",
+    "new": "false",
+    "killed_by": "TestReviewScoringFields",
+    "reviewer_hand_index": 6
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "p.Score < s.RatioPoints[i-1].Score",
+    "new": "false",
+    "killed_by": "TestReviewSurvivorCases",
+    "reviewer_hand_index": 16
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.OneShotWindowMs > d.WindowMs",
+    "new": "false",
+    "killed_by": "TestReviewScoringFields",
+    "reviewer_hand_index": 18
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.UnhealedMinMs > d.WindowMs",
+    "new": "false",
+    "killed_by": "TestReviewScoringFields",
+    "reviewer_hand_index": 19
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "!positiveOptional(d.LostBossGapMs)",
+    "new": "false",
+    "killed_by": "TestReviewScoringFields",
+    "reviewer_hand_index": 21
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "|| seen[normalized(a.Job)]",
+    "new": "|| false",
+    "killed_by": "TestReviewSurvivorCases",
+    "reviewer_hand_index": 23
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "!oneOf(part, \"output\", \"activity\", \"mechanics\", \"utility\", \"preparation\")",
+    "new": "false",
+    "killed_by": "TestReviewSurvivorCases",
+    "reviewer_hand_index": 24
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if total <= 0 {",
+    "new": "if false {",
+    "killed_by": "TestReviewSurvivorCases",
+    "reviewer_hand_index": 25
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if c.Support.Overlap != \"split_equally\" {",
+    "new": "if false {",
+    "killed_by": "TestReviewSurvivorCases",
+    "reviewer_hand_index": 27
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "!expected[p.ID] || seen[normalized(p.ID)] ||",
+    "new": "!expected[p.ID] ||",
+    "killed_by": "TestReviewSurvivorCases",
+    "reviewer_hand_index": 30
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "len(p.Spells) == 0",
+    "new": "false",
+    "killed_by": "TestReviewSurvivorCases",
+    "reviewer_hand_index": 32
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if c.Instances.RaidGroupSizeAbove < 5 {",
+    "new": "if false {",
+    "killed_by": "TestReviewRanges",
+    "reviewer_hand_index": 34
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "e.ID <= 0 || ids[e.ID]",
+    "new": "e.ID <= 0",
+    "killed_by": "TestReviewSurvivorCases",
+    "reviewer_hand_index": 40
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "(t.Mode == \"boss_only\" && len(t.Units) != 0)",
+    "new": "false",
+    "killed_by": "TestReviewSurvivorCases",
+    "reviewer_hand_index": 42
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if candidates[key] {",
+    "new": "if false {",
+    "killed_by": "TestReviewSurvivorCases",
+    "reviewer_hand_index": 46
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "class != strings.ToUpper(class)",
+    "new": "false",
+    "killed_by": "TestLowercaseClassRefused",
+    "reviewer_hand_index": 47
+  },
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "if _, err := d.Token(); err != io.EOF {",
+    "new": "if _, err := d.Token(); false && err != io.EOF {",
+    "killed_by": "TestTrailingJSON",
+    "reviewer_hand_index": 48
+  },
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "case reflect.Map:",
+    "new": "case reflect.Chan:",
+    "killed_by": "TestReviewSurvivorCases",
+    "reviewer_hand_index": 53
+  },
+  {
+    "file": "desktop/internal/raid/cfg/lookup.go",
+    "old": "s.ID > 0 && s.ID == npcID",
+    "new": "s.ID > 0 && s.ID != npcID",
+    "killed_by": "TestSelectorNPCIdentity"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/lookup.go",
+    "old": "s.ID > 0 && s.ID == npcID",
+    "new": "s.ID == npcID",
+    "killed_by": "TestSelectorNPCIdentity"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/lookup.go",
+    "old": "s.ID > 0 && s.ID == npcID",
+    "new": "s.ID > 0 && s.ID == npcID && s.Name != \"\"",
+    "killed_by": "TestSelectorNPCIdentity"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "u.ID <= 0 || seen[u.ID]",
+    "new": "u.ID < 0 || seen[u.ID]",
+    "killed_by": "TestSelectorNPCIdentity"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "u.ID <= 0 || seen[u.ID]",
+    "new": "u.ID <= 0",
+    "killed_by": "TestDuplicateBossNPC"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if e.Credit && !e.Verified {",
+    "new": "if false {",
+    "killed_by": "TestUnverifiedCreditRefused"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "if !utf8.Valid(b[start:d.InputOffset()]) {\n\t\treturn fmt.Errorf(\"%s: invalid UTF-8\", path)",
+    "new": "if false && !utf8.Valid(b[start:d.InputOffset()]) {\n\t\treturn fmt.Errorf(\"%s: invalid UTF-8\", path)",
+    "killed_by": "TestRejectInvalidUTF8"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "if !utf8.Valid(b[start:d.InputOffset()]) {\n\t\t\t\treturn fmt.Errorf(\"%s: invalid UTF-8 in object key\", field)",
+    "new": "if false && !utf8.Valid(b[start:d.InputOffset()]) {\n\t\t\t\treturn fmt.Errorf(\"%s: invalid UTF-8 in object key\", field)",
+    "killed_by": "TestRejectInvalidUTF8"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "c.Instances.RaidGroupSizeAbove < 5",
+    "new": "c.Instances.RaidGroupSizeAbove < 1",
+    "killed_by": "TestReviewRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "c.Instances.RaidGroupSizeAbove < 5",
+    "new": "c.Instances.RaidGroupSizeAbove <= 5",
+    "killed_by": "TestReviewRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "f.TailMs > f.PullGapMs",
+    "new": "false",
+    "killed_by": "TestReviewRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "f.TailMs > f.PullGapMs",
+    "new": "f.TailMs >= f.PullGapMs",
+    "killed_by": "TestReviewRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "n.KillWeight > 1",
+    "new": "false",
+    "killed_by": "TestReviewRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "if !nonblank(id) || !scoreValue(v) {\n\t\t\t\treturn fmt.Errorf(\"measure_weights.",
+    "new": "if !nonblank(id) || v < 0 {\n\t\t\t\treturn fmt.Errorf(\"measure_weights.",
+    "killed_by": "TestReviewRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "return strings.ToLower(strings.TrimSpace(v))",
+    "new": "return strings.TrimSpace(v)",
+    "killed_by": "TestNormalizedDuplicates"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "return strings.ToLower(strings.TrimSpace(v))",
+    "new": "return strings.ToLower(v)",
+    "killed_by": "TestNormalizedDuplicates"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "specKeys[normalizedKey]}",
+    "new": "false}",
+    "killed_by": "TestNormalizedDuplicates"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "effectIDs[normalized(e.ID)]}",
+    "new": "false}",
+    "killed_by": "TestNormalizedDuplicates"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "mechanics[normalized(m.ID)]}",
+    "new": "false}",
+    "killed_by": "TestNormalizedDuplicates"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "key := normalized(s.Name)",
+    "new": "key := s.Name",
+    "killed_by": "TestNormalizedDuplicates"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/spell_identity.go",
+    "old": "ok && prior.name != normalized(s.Name)",
+    "new": "false && ok && prior.name != normalized(s.Name)",
+    "killed_by": "TestSpellIdentity"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/decode.go",
+    "old": "return fmt.Errorf(\"%s.%s: unknown field (keys are case sensitive)\", path, key)",
+    "new": "return fmt.Errorf(\"unknown field %s\", key)",
+    "killed_by": "TestNestedDecodeFieldErrors"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "return fmt.Errorf(\"%s%s: invalid value\", prefix, c.field)",
+    "new": "return fmt.Errorf(\"%s: invalid value\", prefix)",
+    "killed_by": "TestReviewScoringFields"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/load.go",
+    "old": "view := c.clone()",
+    "new": "view := *c",
+    "killed_by": "TestLoadViewCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/lookup.go",
+    "old": "return copyProfile(p), true",
+    "new": "return p, true",
+    "killed_by": "TestLookupCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/lookup.go",
+    "old": "return copyEncounter(e), true",
+    "new": "return e, true",
+    "killed_by": "TestLookupCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "if c.snapshot != nil {",
+    "new": "if false {",
+    "killed_by": "TestLoadViewCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "return c.readOnly().clone()",
+    "new": "return *c.readOnly()",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "p.Roles = slices.Clone(p.Roles)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "p.ResourceExceptions = slices.Clone(p.ResourceExceptions)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "p.Support = slices.Clone(p.Support)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "e.BossUnits = slices.Clone(e.BossUnits)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "e.TargetRule.Units = slices.Clone(e.TargetRule.Units)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "e.Mechanics = slices.Clone(e.Mechanics)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "e.Mechanics[i].Roles = slices.Clone(e.Mechanics[i].Roles)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "s.RatioPoints = slices.Clone(s.RatioPoints)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "s.Assignments = slices.Clone(s.Assignments)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "s.NewAt60Seconds = copyPointer(s.NewAt60Seconds)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "s.GCDMs = copyPointer(s.GCDMs)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "s.RoundingStep = copyPointer(s.RoundingStep)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "s.Healer.LowHealthFraction = copyPointer(s.Healer.LowHealthFraction)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "s.Death.LostBossGapMs = copyPointer(s.Death.LostBossGapMs)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "s.Death.SummaryWindowMs = copyPointer(s.Death.SummaryWindowMs)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "s.MeasureWeights = maps.Clone(s.MeasureWeights)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "s.MeasureWeights[part] = maps.Clone(w)",
+    "new": "s.MeasureWeights[part] = w",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "s.CountPenalties = maps.Clone(s.CountPenalties)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "out.Specs.Profiles = slices.Clone(out.Specs.Profiles)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "out.SpecIDs.Classes = maps.Clone(out.SpecIDs.Classes)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "out.SpecIDs.Classes[class] = slices.Clone(ids)",
+    "new": "out.SpecIDs.Classes[class] = ids",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "out.Support.Effects = slices.Clone(out.Support.Effects)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "e.Stacks = copyPointer(e.Stacks)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "out.Candidates.Encounters = slices.Clone(out.Candidates.Encounters)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "out.Encounters.Encounters = slices.Clone(out.Encounters.Encounters)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "out.Consumables.Categories = slices.Clone(out.Consumables.Categories)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "out.Realms.Labels = slices.Clone(out.Realms.Labels)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "out.Instances.Instances = slices.Clone(out.Instances.Instances)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "s.Source = copyPointer(s.Source)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "e.TargetRule = copyPointer(e.TargetRule)",
+    "new": "/* detached copy bypassed */",
+    "killed_by": "TestSnapshotCopies"
+  }
+]

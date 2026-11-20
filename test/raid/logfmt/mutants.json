@@ -229,20 +229,20 @@
   },
   {
     "file": "desktop/internal/raid/logfmt/event.go",
-    "old": "flags, err := strconv.ParseUint(f[2], 0, 32)\n\tif err != nil {",
-    "new": "flags, err := strconv.ParseUint(f[2], 0, 32)\n\tif err != nil && false {",
+    "old": "flags, err := strconv.ParseUint(f[2][2:], 16, 32)\n\tif err != nil {",
+    "new": "flags, err := strconv.ParseUint(f[2][2:], 16, 32)\n\tif err != nil && false {",
     "killed_by": "TestInvalidActorFlagsSkipped"
   },
   {
     "file": "desktop/internal/raid/logfmt/event.go",
-    "old": "strconv.ParseUint(f[2], 0, 32)",
-    "new": "strconv.ParseUint(f[2], 0, 64)",
+    "old": "strconv.ParseUint(f[2][2:], 16, 32)",
+    "new": "strconv.ParseUint(f[2][2:], 16, 64)",
     "killed_by": "TestInvalidActorFlagsSkipped"
   },
   {
     "file": "desktop/internal/raid/logfmt/event.go",
-    "old": "strconv.ParseUint(f[2], 0, 32)",
-    "new": "strconv.ParseUint(f[2], 10, 32)",
+    "old": "strconv.ParseUint(f[2][2:], 16, 32)",
+    "new": "strconv.ParseUint(f[2][2:], 10, 32)",
     "killed_by": "TestValidActorFlagsPreserved"
   },
   {
@@ -322,5 +322,41 @@
     "old": "\t\tp := 10\n",
     "new": "\t\tp := 11\n",
     "killed_by": "TestActorNameAnomaliesPreserved"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/decode.go",
+    "old": "r.skip(InvalidFields, reportedName, 0)",
+    "new": "r.skip(InvalidFields, name, 0)",
+    "killed_by": "TestInvalidFieldsReportNamesBounded"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "e.Caster, ok = actor(f[p : p+4])",
+    "new": "e.Caster, ok = actor(f[p : p+4])\n\t\tif e.Caster.ID == e.Dst.ID { e.Caster = model.Actor{} }",
+    "killed_by": "TestAbsorbSelfShieldCasterPreserved"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "e.Caster, ok = actor(f[p : p+4])",
+    "new": "e.Caster, ok = actor(f[p : p+4])\n\t\tif e.Caster.ID == \"\" { e.Caster.ID = e.Dst.ID }",
+    "killed_by": "TestAbsorbAbsentCasterNotInferred"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "if !strings.HasPrefix(f[2], \"0x\") {",
+    "new": "if len(f[2]) < 2 {",
+    "killed_by": "TestInvalidActorFlagsSkipped"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "if !strings.HasPrefix(f[2], \"0x\") {",
+    "new": "if !strings.HasPrefix(f[2], \"0x\") && !strings.HasPrefix(f[2], \"0X\") {",
+    "killed_by": "TestInvalidActorFlagsSkipped"
+  },
+  {
+    "file": "desktop/internal/raid/logfmt/event.go",
+    "old": "strconv.ParseUint(f[2][2:], 16, 32)",
+    "new": "strconv.ParseUint(f[2], 0, 32)",
+    "killed_by": "TestInvalidActorFlagsSkipped"
   }
 ]
