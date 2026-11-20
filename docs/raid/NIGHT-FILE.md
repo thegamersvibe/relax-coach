@@ -348,6 +348,7 @@ not zero. Reserved part metadata is **not** hidden in these maps.
 | `boss_swings_taken` | Landed swings from the fight's boss units on this player; no tank measure. |
 | `interrupts`, `dispels` | Counts including actions credited through the fight's owner map; not scored. |
 | `prep_stamped_s`, `prep_sender_clock_s` | Server receipt stamp and sender clock of the chosen gear report, in seconds. |
+| `fight_end_utc_s` | Fight end used to select that report, in Unix seconds: subtract the first event's east-of-UTC `OffsetH` from the log's wall time before converting to seconds. Receipt stamps are never shifted. Present beside the two prep clocks when a report is selected. |
 | `potion_count`, `food_count`, `flask_count`, `elixir_count` | Maximum summed bag count per category across readable reports, not a sum of repeated reports. Only potion and food presence score. |
 | `better_gear_slots`, `not_scored_slots` | Distinct penalized slots and distinct explicitly skipped slots in the chosen report. |
 

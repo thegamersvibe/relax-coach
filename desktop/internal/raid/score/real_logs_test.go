@@ -64,6 +64,7 @@ func TestRealLogsR7(t *testing.T) {
 		logs++
 		nightCounts := [3]int{}
 		bosses, classified, excluded := 0, 0, 0
+		clockSelected, clockAfter := 0, 0
 		byRole := map[string]map[string]int{}
 		coverage := map[string][]int{}
 		fightCoverage := map[string][]int{}
@@ -76,6 +77,9 @@ func TestRealLogsR7(t *testing.T) {
 			}
 			var deaths []model.Death
 			for _, f := range run.Fights {
+				selected, after := realClockCounts(t, f, c)
+				clockSelected += selected
+				clockAfter += after
 				ds, _, outside, err := death.Review(f, run.EndMs, c)
 				if err != nil {
 					t.Fatal("private death review failed")
@@ -140,6 +144,10 @@ func TestRealLogsR7(t *testing.T) {
 		}
 		if bosses != 13 {
 			t.Fatalf("private log %d: boss count %d, want 13", logs, bosses)
+		}
+		t.Logf("log %d prep clock replay (synthetic receipts, real offset=3): selected=%d after_true_end=%d", logs, clockSelected, clockAfter)
+		if clockSelected == 0 || clockAfter != 0 {
+			t.Errorf("log %d prep clock replay failed", logs)
 		}
 		_, unmatched := score.MatchPrep(nil, names)
 		t.Logf("log %d: runs=%d bosses=%d prep_reports=0 prep_unmatched=%d classified_deaths=%d excluded_past_run=%d", logs, len(result.Runs), bosses, len(unmatched), classified, excluded)

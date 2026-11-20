@@ -14,17 +14,10 @@ type nightTotals struct{ boss, trash groupTotal }
 
 func (n *nightTotals) include(f model.Fight, fs model.FightScore, coverage *big.Rat, c cfg.Config) {
 	g := &n.trash
-	w := integer(1)
 	if f.Boss {
 		g = &n.boss
-		w = decimal(c.Scoring.Night.KillWeight)
-		if f.Success == model.Some(0) {
-			w = decimal(c.Scoring.Night.WipeWeight)
-		}
 	}
-	if slices.Contains(fs.Flags, "lowConfidenceFight") {
-		w = mul(w, decimal(c.Scoring.Confidence.ShortFightWeight))
-	}
+	w := fightWeight(f, fs, c)
 	g.weight.Add(&g.weight, w)
 	covered := mul(w, coverage)
 	g.coverage.Add(&g.coverage, covered)
@@ -34,11 +27,7 @@ func (n *nightTotals) include(f model.Fight, fs model.FightScore, coverage *big.
 	}
 }
 func (n *nightTotals) result(c cfg.Config) (model.Opt, int, *big.Rat) {
-	trash := integer(0)
-	if n.trash.weight.Sign() > 0 {
-		trash = decimal(min(c.Scoring.Night.TrashShare, c.Scoring.Night.MaxTrashShare, 1-c.Scoring.Night.MinBossShare))
-	}
-	boss := sub(integer(1), trash)
+	boss, trash := nightShares(n.trash.weight.Sign() > 0, c)
 	coverage := add(mul(boss, div(&n.boss.coverage, &n.boss.weight)), mul(trash, div(&n.trash.coverage, &n.trash.weight)))
 	cov := floor(coverage)
 	if !enough(coverage, c.Scoring.Confidence.ProvisionalMinCoverage) || (n.boss.scored.Sign() == 0 && n.trash.scored.Sign() == 0) {
@@ -60,6 +49,37 @@ func (n *nightTotals) result(c cfg.Config) (model.Opt, int, *big.Rat) {
 	}
 	return points(div(total, weight), c), cov, coverage
 }
+
+// nightShares interprets all configured shares as authored decimals, including
+// the complement of MinBossShare. Both consumers normalize missing score groups.
+func nightShares(hasTrash bool, c cfg.Config) (boss, trash *big.Rat) {
+	trash = integer(0)
+	if hasTrash {
+		trash = decimal(c.Scoring.Night.TrashShare)
+		for _, cap := range []*big.Rat{decimal(c.Scoring.Night.MaxTrashShare), sub(integer(1), decimal(c.Scoring.Night.MinBossShare))} {
+			if cap.Cmp(trash) < 0 {
+				trash = cap
+			}
+		}
+	}
+	return sub(integer(1), trash), trash
+}
+
+// fightWeight is shared by score aggregation and the transient comparison.
+func fightWeight(f model.Fight, fs model.FightScore, c cfg.Config) *big.Rat {
+	w := integer(1)
+	if f.Boss {
+		w = decimal(c.Scoring.Night.KillWeight)
+		if f.Success == model.Some(0) {
+			w = decimal(c.Scoring.Night.WipeWeight)
+		}
+	}
+	if slices.Contains(fs.Flags, "lowConfidenceFight") {
+		w = mul(w, decimal(c.Scoring.Confidence.ShortFightWeight))
+	}
+	return w
+}
+
 func enough(coverage *big.Rat, threshold float64) bool {
 	return coverage.Cmp(mul(decimal(threshold), integer(100))) >= 0
 }
