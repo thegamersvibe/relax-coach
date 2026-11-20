@@ -454,3 +454,91 @@ at least one landed boss swing on a player (`top == 0` skips roles).
 - Real logs: both gated tests pass; all 13 complete boss ids and the full
   night identity unchanged; roles 345 assigned / 25 absent and 336 / 28,
   identical to round 2.
+
+## R4 follow-up: player-death scope
+
+Base: `6208b163a0a5491a641809d7cd3c764905276c36` (`origin/main` when
+this follow-up started). The architect's "R6 on the real logs" ruling is
+implemented as two per-file `fights.Result` counters, beside the existing
+`DuplicateEncounterEnds` counter:
+
+- `PlayerDeathsOutsideRuns`: real player-death lines whose timestamp is outside
+  every returned run's inclusive `[StartMs, EndMs]`. These deaths are out of
+  scope, not reviewed or scored. Empty visits do not emit runs, so their deaths
+  count here too.
+- `PlayerDeathsInRunsWithoutFight`: real player-death lines inside at least one
+  returned run's span but assigned to no fight. This is a runtime segmentation
+  diagnostic, expected zero, also asserted by the gated real-log tests.
+
+Both counters use `Event.IsDeath()` and the destination's `Player-` GUID, never
+actor flags or pet ownership. Feigns, absent/nonzero death flags, `PARTY_KILL`,
+NPCs and pets do not count. The classifier runs after final run boundaries are
+known: pending re-entry, headers, empty visits and non-monotonic timestamps
+cannot make the current zone flag stand in for the union of returned spans.
+Per the literal span rule, a death in an accepted re-entry gap is in-run and
+unassigned; this reports a diagnostic without admitting outside lines to fights.
+
+Fight membership means the actual event assignment, including the inclusive
+boss tail, not only the displayed fight end. One timestamp and membership bit
+are temporarily retained per real player-death line, not an event, name or
+GUID; they are released after counting. This adds O(player deaths) temporary
+metadata to the earlier streaming-retention contract, not a whole-file event
+buffer. Build and streaming Read, with full detail or nil/index selection,
+return the same counters. No segmentation, identity, model, parser or config
+behavior was changed. The counters are local report metadata, not night-file
+fields; `NIGHT-FILE.md` documents that distinction without a format bump.
+
+### Tests first and behavioral mutants
+
+- After declaring the new outside-count field, the new fixture tests failed
+  with `player deaths outside runs=0, want 1` (and the two-death fixtures wanted
+  2). GREEN: targeted `TestPlayerDeath` and the full fights suite passed.
+- After declaring the diagnostic field, the negative fixtures failed with
+  `in-run-no-fight=0 outside-runs=0, want 1 / 0`; the two-line fixture wanted
+  `2 / 0`. GREEN: targeted tests and the full fights suite passed.
+- Fixtures cover boss/pull membership, start/end inclusivity, tail equality and
+  one millisecond past it, idle gaps, no runs, pre-instance and post-exit deaths,
+  multiple runs, header flush, re-entry, clock rollback/spikes and distinct
+  same-time lines with different membership. Death-kind/flag/GUID controls run
+  both outside and inside runs, in all four Build/Read and detail/index modes.
+- The 114 inherited mutant entries are unchanged. All 18 added substitutions
+  build and are killed by their named fixture tests: death/GUID filtering,
+  disabled-zone observation, timestamp preservation, detail-independent and
+  tail-aware membership, final accounting, both inclusive span guards and their
+  removal, outside/diagnostic increments, and checking all runs rather than only
+  the first. Full pack: `RESULT: 132/132 mutants killed`, zero refused/survived.
+
+### Real-log evidence (counts only)
+
+The original gated tests passed before edits; complete boss and full night
+identities were saved privately outside the repository. After edits, an
+independent decoded-line oracle checks every real player death against the run
+span and actual selected fight events by source byte offset. The measurement
+test also asserts and prints the counters with both all-detail and index reads.
+
+| Log | Player deaths outside runs | Player deaths in runs without a fight |
+|---|---:|---:|
+| 1 | 0 | 0 |
+| 2 | 1 | 0 |
+
+Both gated tests PASS. The full-identity comparison reports `all complete boss
+identities and full night identities unchanged from baseline`; all 13 complete
+boss ids per log, cross-logger equality, the privately supplied night-prefix
+check, 15 feign lines per log and the original zone-out assertions still pass.
+No private line, name, id or fixture path was added to the repository.
+
+### Commands actually observed
+
+All test jobs ran sequentially with the requested Go toolchain and uv Python
+3.14 plus the CI requirements, with no full desktop suite:
+
+- `(cd desktop && gofmt -l internal/raid && go vet ./internal/raid/... && go test -count=1 ./internal/raid/...)`: no formatting output; vet exit 0; raid, cfg, fights, fixture, logfmt and model all `ok`.
+- `python3 -I -B tools/raidtest.py --all --kind go`: `RESULT: 7/7 modules passed`.
+- `$PY -I -B tools/raidtest.py --mutants fights`: `RESULT: 132/132 mutants killed`.
+- `$PY -I -B tools/raidtest.py --all --kind lua,py`: `RESULT: 7/7 modules passed`.
+- Gated `go test -C desktop -count=1 -v -run RealLogs ./internal/raid/fights/`, with the supplied prefix and private identity baseline: both tests PASS, package `ok .../fights 4.337s`.
+- `git diff --check`: exit 0. No model, logfmt, cfg, dependency or root README changes.
+
+No native Windows/game testing, installation, push, PR, tag or release. No
+segmentation fix or scoring rule was added; a nonzero in-run diagnostic reports
+the defect rather than hiding it. No unresolved ruling questions.

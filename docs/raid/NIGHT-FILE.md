@@ -110,6 +110,25 @@ The parser retains each fight's raw byte range from its first line's `Offset` th
 its last line's `Offset + Len`, including the final line ending. Those ranges are
 local indexing metadata, not raw events added to the night file.
 
+### Local segmentation report (not serialized)
+
+`fights.Result` exposes per-source-file counters, separate from this per-run
+night/dungeon format:
+
+- `PlayerDeathsOutsideRuns` ("player deaths outside runs"): non-feign player
+  death lines outside every returned run's inclusive `[StartMs, EndMs]`. They
+  are out of scope: not reviewed and not scored.
+- `PlayerDeathsInRunsWithoutFight`: non-feign player death lines inside a
+  returned run's span but assigned to no fight. Expected zero; a nonzero count
+  is a segmentation diagnostic, not a death cause or a score adjustment.
+
+Both require a `Player-` destination GUID and `model.Event.IsDeath()`. Fight
+membership includes its retained post-end tail. Run-span membership uses the
+final boundaries, including accepted re-entry gaps; it does not change which
+outside lines are excluded from fight events. These counters are available in
+Build and streaming Read, including index-only reads. They are not copied into
+`model.RaidNight`, `model.DungeonRun` or this JSON format; `formatVersion` stays 1.
+
 ## Fight
 
 | Field | Type | Required | Meaning |
