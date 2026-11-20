@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "test/raid/_client"))
 from client import Client
 from serialize import literal
-from prep_store import report_at
+from prep_store import report_at, assert_references
 ADDON = ROOT / "addon/RelaxRaid"
 
 
@@ -60,6 +60,213 @@ def night_bytes(night):
 
 
 class StoreTests(unittest.TestCase):
+    def test_last_reference_replacement_drops_body_before_budget(self):
+        c = boot()
+        s = c.lua.globals().RelaxRaid.modules.Store
+        r = c.run("return RelaxRaid.modules.Prep.build('ready')")
+        encode = c.lua.globals().RelaxRaid.modules.Wire.encode
+        s.MAX_BYTES = len(encode(r).encode()) * 2
+        r["level"] = 58
+        self.assertTrue(s.put(r["name"], r))
+        c.fire("ENCOUNTER_END")
+        self.assertTrue(s.put(r["name"], r))  # two references to body 1
+        r["level"] = 59
+        self.assertTrue(s.put(r["name"], r))  # body 1 still has window 1
+        assert_references(self, c)
+        night = c.run("return RelaxRaidDB.prep.nights[1]")
+        self.assertEqual(len(night["reports"][r["name"].lower()]), 2)
+        # A third body replaces the LAST reference to body 2. GC must precede
+        # budgets, or it evicts still-live body 1 and loses the first window.
+        r["level"] = 60
+        self.assertTrue(s.put(r["name"], r))
+        self.assertEqual(len(night["windows"]), 2)
+        assert_references(self, c)
+        self.assertEqual(report_at(c, window=1)["level"], 58)
+        self.assertEqual(report_at(c, window=2)["level"], 60)
+        self.assertEqual(night["windows"][2]["reports"][r["name"].lower()]["report"], 2)
+        assert_references(self, c)
+        self.assertIsNone(s.stats.budgetEvicted)
+        raw = literal(c.lua.globals().RelaxRaidDB)
+        second = boot({"RelaxRaidDB": raw})
+        self.assertEqual(literal(second.lua.globals().RelaxRaidDB), raw)
+        assert_references(self, second)
+
+    def test_reload_discards_unreferenced_bodies_before_budget(self):
+        c = boot()
+        c.lua.globals().R = large_report(c)
+        c.run("""
+            local W=RelaxRaid.modules.Wire
+            local bodies,windows={},{}
+            for i=1,80 do
+                R.consumables[1].count=999900+i
+                bodies[i]=W.encode(R)
+            end
+            -- Only bodies 1 and 80 are live. Dead newer history must not
+            -- spend the budget and cause live body 1 to be discarded.
+            windows[1]={openedAt=1,reports={['alia-stone-pvp-eu']={receivedAt=1,report=1}}}
+            windows[2]={openedAt=2,reports={['alia-stone-pvp-eu']={receivedAt=2,report=80}}}
+            RelaxRaidDB.prep.nights={{day=1,reports={['alia-stone-pvp-eu']=bodies},windows=windows}}
+        """)
+        second = boot({"RelaxRaidDB": literal(c.lua.globals().RelaxRaidDB)})
+        night = second.run("return RelaxRaidDB.prep.nights[1]")
+        self.assertEqual(len(night["windows"]), 2)
+        self.assertEqual(len(night["reports"]["alia-stone-pvp-eu"]), 2)
+        self.assertEqual(report_at(second, window=1)["consumables"][1]["count"], 999901)
+        self.assertEqual(report_at(second, window=2)["consumables"][1]["count"], 999980)
+        assert_references(self, second)
+        raw = literal(second.lua.globals().RelaxRaidDB)
+        self.assertEqual(literal(boot({"RelaxRaidDB": raw}).lua.globals().RelaxRaidDB), raw)
+
+    def test_cap_removes_last_reference_to_individual_body(self):
+        for cap in ("window", "player"):
+            c = boot()
+            s = c.lua.globals().RelaxRaid.modules.Store
+            s.MAX_WINDOWS, s.MAX_PLAYERS = 2, 1
+            r = c.run("return RelaxRaid.modules.Prep.build('ready')")
+            for level in (58, 59):
+                c.fire("ENCOUNTER_END")
+                r["level"] = level
+                self.assertTrue(s.put(r["name"], r))
+                assert_references(self, c)
+            if cap == "window":
+                c.fire("ENCOUNTER_END")
+            other = c.run("local r=RelaxRaid.modules.Prep.build('ready'); r.name='Bram-EU'; return r")
+            self.assertTrue(s.put(other["name"], other))
+            assert_references(self, c)
+            night = c.run("return RelaxRaidDB.prep.nights[1]")
+            self.assertEqual(len(night["reports"][r["name"].lower()]), 1, cap)
+            self.assertEqual(report_at(c)["level"], 59 if cap == "window" else 58)
+            raw = literal(c.lua.globals().RelaxRaidDB)
+            self.assertEqual(literal(boot({"RelaxRaidDB": raw}).lua.globals().RelaxRaidDB), raw)
+
+    def test_played_eighty_reports_share_one_body_with_latest_time(self):
+        c = boot()
+        c.level = 60
+        c.wall = 1800014400  # UTC noon: all eighty five-minute steps in one night
+        c.fire("TIME_PLAYED_MSG", 500000, 90000)
+        s = c.lua.globals().RelaxRaid.modules.Store
+        for i in range(80):
+            c.now = i * 300  # do not dispatch unrelated transport timers
+            c.fire("ENCOUNTER_END")
+            r = c.run("return RelaxRaid.modules.Prep.build('ready')")
+            self.assertEqual(r["playedLevel"], 90000 + i * 300)
+            self.assertTrue(s.put(r["name"], r))
+            assert_references(self, c)
+        night = c.run("return RelaxRaidDB.prep.nights[1]")
+        self.assertEqual(c.run("return #RelaxRaidDB.prep.nights"), 1)
+        self.assertEqual(len(night["reports"][r["name"].lower()]), 1)
+        self.assertEqual(len(night["windows"]), 80)
+        for i in range(1, 81):
+            self.assertEqual(night["windows"][i]["reports"][r["name"].lower()]["report"], 1)
+            self.assertEqual(report_at(c, window=i)["playedLevel"], 113700)
+            self.assertEqual(report_at(c, window=i)["sentAt"], c.wall)
+        raw = literal(c.lua.globals().RelaxRaidDB)
+        self.assertEqual(literal(boot({"RelaxRaidDB": raw}).lua.globals().RelaxRaidDB), raw)
+
+    def test_played_refresh_updates_in_place_and_rechecks_budgets(self):
+        for budget in ("MAX_BYTES", "MAX_NIGHT_BYTES"):
+            c = boot()
+            s = c.lua.globals().RelaxRaid.modules.Store
+            r = c.run("local r=RelaxRaid.modules.Prep.build('ready'); r.playedLevel=9; return r")
+            enc = c.lua.globals().RelaxRaid.modules.Wire.encode
+            size = len(enc(r).encode())
+            s[budget] = size * 2
+            self.assertTrue(s.put(r["name"], r))
+            c.fire("ENCOUNTER_END")
+            r["level"] = 59
+            self.assertTrue(s.put(r["name"], r))
+            # Same content, one more byte of played time: refresh latest only,
+            # not an append, and the newly exceeded budget loses oldest body.
+            r["playedLevel"] = 10
+            self.assertTrue(s.put(r["name"], r))
+            night = c.run("return RelaxRaidDB.prep.nights[1]")
+            self.assertEqual(len(night["reports"][r["name"].lower()]), 1)
+            self.assertEqual(report_at(c)["playedLevel"], 10)
+            self.assertEqual(report_at(c)["level"], 59)
+            self.assertEqual(night_bytes(night), size + 1)
+            assert_references(self, c)
+            # Shrinking/unknown played values also replace in place and release
+            # the byte delta, allowing another distinct body at the boundary.
+            r["playedLevel"] = "unreadable"
+            self.assertTrue(s.put(r["name"], r))
+            c.fire("ENCOUNTER_END")
+            r["level"] = 58
+            self.assertTrue(s.put(r["name"], r))
+            self.assertEqual(night_bytes(night), size * 2)
+            self.assertEqual(len(night["windows"]), 2)
+            assert_references(self, c)
+
+    def test_character_budget_plus_one_put_and_reload(self):
+        c = boot()
+        r = large_report(c)
+        r["addonVersion"] = "v" * 23
+        enc = c.lua.globals().RelaxRaid.modules.Wire.encode
+        while len(enc(r).encode()) > 1250:
+            r["consumables"][len(r["consumables"])] = None
+        r["name"] = "Z" * (1250 - len(enc(r).encode())) + r["name"]
+        bodies, windows = {}, {}
+        for i in range(1, 81):
+            c.fire("ENCOUNTER_END")
+            r["consumables"][1]["count"] = 999900 + i
+            if i == 80:
+                r["addonVersion"] += "v"
+            bodies[i] = enc(r)
+            windows[i] = {"openedAt": c.wall, "reports": {r["name"].lower(): {"receivedAt": c.wall, "report": i}}}
+            self.assertTrue(c.lua.globals().RelaxRaid.modules.Store.put(r["name"], r))
+        self.assertEqual(sum(len(b.encode()) for b in bodies.values()), 100001)
+        night = c.run("return RelaxRaidDB.prep.nights[1]")
+        raw = literal({"version": 1, "prep": {"version": 2, "nights": {1: {
+            "day": night["day"], "reports": {r["name"].lower(): bodies}, "windows": windows}}}})
+        for client in (c, boot({"RelaxRaidDB": raw})):
+            n = client.run("return RelaxRaidDB.prep.nights[1]")
+            self.assertEqual(night_bytes(n), 100001 - 1250)
+            self.assertEqual(list(n["reports"][r["name"].lower()].values()), list(bodies.values())[1:])
+            self.assertEqual(len(n["windows"]), 79)
+            for wi in range(1, 80):
+                self.assertEqual(report_at(client, r["name"].lower(), window=wi)["consumables"][1]["count"], 999901 + wi)
+            assert_references(self, client)
+        self.assertEqual(literal(boot({"RelaxRaidDB": raw}).lua.globals().RelaxRaidDB), literal(c.lua.globals().RelaxRaidDB))
+
+    def test_night_budget_plus_one_put_and_reload(self):
+        # 39 x 100000 + 98750 leaves one roster slot for a new 1250/1251-byte
+        # holder. No per-character/window cap can mask the night boundary.
+        for extra in (0, 1):
+            seed = boot()
+            seed.run("RelaxRaidDB=" + exact_forty_save())  # unvalidated input fixture
+            n = seed.run("return RelaxRaidDB.prep.nights[1]")
+            keys = sorted(n["reports"].keys())
+            n["reports"][keys[-1]][80] = None
+            n["windows"][80]["reports"][keys[-1]] = None
+            c = boot({"RelaxRaidDB": literal(seed.lua.globals().RelaxRaidDB)})
+            self.assertEqual(night_bytes(c.run("return RelaxRaidDB.prep.nights[1]")), 3998750)
+            r = large_report(c)
+            r["name"], r["addonVersion"] = "Zora-EU", "v" * 23
+            enc = c.lua.globals().RelaxRaid.modules.Wire.encode
+            while len(enc(r).encode()) > 1250:
+                r["consumables"][len(r["consumables"])] = None
+            r["name"] = "Zora" + "Z" * (1250 - len(enc(r).encode())) + "-EU"
+            r["addonVersion"] += "v" * extra
+            body, key = enc(r), r["name"].lower()
+            self.assertEqual(len(body.encode()), 1250 + extra)
+            # Independent over-budget saved input: exactly the same row as put.
+            n["reports"][key] = seed.lua.table_from([body])
+            n["windows"][80]["reports"][key] = seed.lua.table_from({"receivedAt": c.wall, "report": 1})
+            self.assertEqual(night_bytes(n), 4000000 + extra)
+            raw = literal(seed.lua.globals().RelaxRaidDB)
+            self.assertTrue(c.lua.globals().RelaxRaid.modules.Store.put(r["name"], r))
+            second = boot({"RelaxRaidDB": raw})
+            self.assertEqual(literal(second.lua.globals().RelaxRaidDB), literal(c.lua.globals().RelaxRaidDB))
+            for client in (c, second):
+                night = client.run("return RelaxRaidDB.prep.nights[1]")
+                self.assertEqual(night_bytes(night), 4000000 + extra - (1250 if extra else 0))
+                self.assertEqual(len(night["windows"]), 80)
+                for k in keys:
+                    expected = [n["reports"][k][i] for i in range(1, len(n["reports"][k]) + 1)]
+                    if extra and k == keys[0]:
+                        expected = expected[1:]
+                    self.assertEqual(list(night["reports"][k].values()), expected)
+                assert_references(self, client)
+
     def test_night_budget_largest_holder_oldest_body_and_remapping(self):
         c = boot()
         store = c.lua.globals().RelaxRaid.modules.Store
@@ -70,6 +277,7 @@ class StoreTests(unittest.TestCase):
         newest = c.run("local r=RelaxRaid.modules.Prep.build('ready'); r.name='Cato-EU'; return r")
         # The oldest window/character has MORE bodies, but far fewer bytes.
         for revision in range(3):
+            c.fire("ENCOUNTER_END")
             older["level"] = 58 + revision
             self.assertTrue(store.put(older["name"], older))
         c.fire("ENCOUNTER_END")
@@ -83,7 +291,7 @@ class StoreTests(unittest.TestCase):
         self.assertTrue(store.put(holder["name"], holder))
         night = c.run("return RelaxRaidDB.prep.nights[1]")
         old_bodies = literal(night["reports"]["alia-eu"])
-        old_row = literal(night["windows"][3]["reports"]["alia-eu"])
+        old_row = literal(night["windows"][5]["reports"]["alia-eu"])
         before = night_bytes(night)
         store.MAX_NIGHT_BYTES = before
         c.fire("ENCOUNTER_END")
@@ -95,11 +303,11 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(night["reports"]["bram-eu"][1], encode(holder))
         self.assertEqual(night["reports"]["cato-eu"][1], encode(newest))
         # The holder-only old window is pruned; its shared window keeps Alia.
-        self.assertEqual(len(night["windows"]), 4)
-        self.assertEqual(literal(night["windows"][2]["reports"]["alia-eu"]), old_row)
-        self.assertIsNone(night["windows"][2]["reports"]["bram-eu"])
-        self.assertEqual(night["windows"][3]["reports"]["bram-eu"]["report"], 1)
-        self.assertEqual(report_at(c, "bram-eu", window=3)["consumables"][1]["count"], 999902)
+        self.assertEqual(len(night["windows"]), 6)
+        self.assertEqual(literal(night["windows"][4]["reports"]["alia-eu"]), old_row)
+        self.assertIsNone(night["windows"][4]["reports"]["bram-eu"])
+        self.assertEqual(night["windows"][5]["reports"]["bram-eu"]["report"], 1)
+        self.assertEqual(report_at(c, "bram-eu", window=5)["consumables"][1]["count"], 999902)
         raw = literal(c.lua.globals().RelaxRaidDB)
         self.assertEqual(literal(boot({"RelaxRaidDB": raw}).lua.globals().RelaxRaidDB), raw)
 
@@ -180,17 +388,19 @@ class StoreTests(unittest.TestCase):
         c = boot({"RelaxRaidDB": exact_forty_save()})
         night = c.run("return RelaxRaidDB.prep.nights[1]")
         keys = sorted(night["reports"].keys())
-        newcomer = c.run("local r=RelaxRaid.modules.Prep.build('ready'); r.name='Zora-EU'; return r")
+        newcomer = large_report(c)
+        newcomer["name"] = "Zora-EU"
         body = c.lua.globals().RelaxRaid.modules.Wire.encode(newcomer)
         night["reports"]["zora-eu"] = c.lua.table_from([body])
         rows = night["windows"][80]["reports"]
-        rows[keys[-1]] = None  # Still referenced by the other 79 windows.
+        rows[keys[-1]] = None
+        night["reports"][keys[-1]][80] = None  # Remove its last reference/body.
         rows["zora-eu"] = c.lua.table_from({"receivedAt": c.wall, "report": 1})
         self.assertGreater(night_bytes(night), 4000000)
         reloaded = boot({"RelaxRaidDB": literal(c.lua.globals().RelaxRaidDB)})
         night = reloaded.run("return RelaxRaidDB.prep.nights[1]")
         self.assertLessEqual(night_bytes(night), 4000000)
-        self.assertEqual(night_bytes(night), 4000000 - 1250 + len(body.encode()))
+        self.assertEqual(night_bytes(night), 4000000 - 2 * 1250 + len(body.encode()))
         self.assertEqual(len(night["reports"][keys[0]]), 79)
         self.assertIsNone(night["windows"][1]["reports"][keys[0]])
         self.assertEqual(night["windows"][2]["reports"][keys[0]]["report"], 1)
@@ -281,11 +491,20 @@ class StoreTests(unittest.TestCase):
         size = len(c.lua.globals().RelaxRaid.modules.Wire.encode(r).encode())
         store.MAX_BYTES, store.MAX_NIGHT_BYTES = size * 2, size * 4
         for level in range(51, 61):
+            c.fire("ENCOUNTER_END")
             r["level"] = level
             self.assertTrue(store.put(r["name"], r))
         self.assertEqual(night_bytes(c.run("return RelaxRaidDB.prep.nights[1]")), size * 2)
-        # Player-cap pruning releases Alia's whole body history from accounting.
-        store.MAX_PLAYERS, store.MAX_WINDOWS = 1, 2
+        for name in ("Bram-EU", "Cato-EU", "Dara-EU"):
+            r["name"] = name
+            self.assertTrue(store.put(name, r))
+        self.assertEqual(night_bytes(c.run("return RelaxRaidDB.prep.nights[1]")), size * 4)
+        assert_references(self, c)
+        # Separate cap lifecycle, with no artificial mid-night cap shrink.
+        c = boot()
+        store = c.lua.globals().RelaxRaid.modules.Store
+        store.MAX_PLAYERS, store.MAX_WINDOWS, store.MAX_NIGHT_BYTES = 1, 2, size * 4
+        r = c.run("return RelaxRaid.modules.Prep.build('ready')")
         for name in ("Bram-EU", "Cato-EU", "Dara-EU"):
             r["name"] = name
             self.assertTrue(store.put(name, r))
@@ -498,7 +717,7 @@ class StoreTests(unittest.TestCase):
 
     def test_equality_uses_all_validated_fields(self):
         changes = ("r.addonVersion='other'", "r.name='ALia-Stone-PvP-EU'", "r.class='MAGE'",
-                   "r.level=59", "r.playedLevel=1", "r.reason='ready'",
+                   "r.level=59", "r.reason='ready'",
                    "r.consumables[1].count=1", "r.consumables[1].itemID=901",
                    "r.consumables[1].category='flask'", "r.consumables='unreadable'",
                    "r.gear[1].slot=2", "r.gear[1].wornID=0", "r.gear[1].bagID=901",
@@ -507,6 +726,7 @@ class StoreTests(unittest.TestCase):
             c = boot()
             c.lua.globals().r = large_report(c)
             c.run("assert(RelaxRaid.modules.Store.put(r.name,r))")
+            c.fire("ENCOUNTER_END")
             c.run(change + "; assert(RelaxRaid.modules.Store.put(r.name,r))")
             self.assertEqual(c.run("return #RelaxRaidDB.prep.nights[1].reports['alia-stone-pvp-eu']"), 2, change)
         c = boot()
@@ -688,4 +908,11 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(c.run("local n=0; for _ in pairs(RelaxRaidDB.prep.nights[1].windows[1].reports) do n=n+1 end; return n"), 40)
 
 if __name__ == "__main__":
-    unittest.main()
+    from partition import main
+    main(sys.modules[__name__], {
+        "unit": None,
+        "exact": ("test_night_budget_exact_forty_players_evicts_nothing",),
+        "reload": ("test_night_budget_reload_enforced",),
+        "late": ("test_night_budget_late_substitute_is_kept",),
+        "upper": ("test_night_budget_plus_one_put_and_reload",),
+    })

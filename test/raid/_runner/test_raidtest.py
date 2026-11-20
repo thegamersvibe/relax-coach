@@ -405,4 +405,10 @@ class RulesTests(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "_client"))
+    from partition import main
+    main(sys.modules[__name__], {
+        "unit": None,
+        "go_refusals": ("test_go_kill_and_refusals",),
+        "go_exit": ("test_go_result_line_and_exit_code_must_agree",),
+    })

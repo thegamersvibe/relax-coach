@@ -4,7 +4,7 @@ import sys
 import time
 import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from test_store import boot, literal
+from test_store import boot, literal, assert_references
 
 
 class FillTests(unittest.TestCase):
@@ -16,8 +16,8 @@ class FillTests(unittest.TestCase):
             for day=1,3 do
                 GetServerTime=function() return 9999600000+day*86400 end
                 local latest={}
-                -- Saturate each character's own budget with distinct maximum-field
-                -- bodies in one window, then fill all 80 windows with references.
+                -- Replace maximum-field content within one window, then reuse
+                -- only its final live body across all 80 windows.
                 for i=1,40 do
                     local r=P.build('encounter')
                     r.addonVersion=string.rep(string.char(92),24)
@@ -47,16 +47,19 @@ class FillTests(unittest.TestCase):
                 for _,reports in pairs(n.reports) do
                     local own=0
                     for _,body in ipairs(reports) do own=own+#body; count=count+1 end
-                    assert(own <= 100000 and own+#reports[1] > 100000)
+                    assert(#reports == 1 and own <= 100000)
                     bytes=bytes+own
                 end
             end
             return count,bytes
         """)
+        self.assertEqual(bodies, 120)
+        assert_references(self, c)
         start=time.perf_counter()
         second=boot({"RelaxRaidDB":raw})
         elapsed=time.perf_counter()-start
         self.assertEqual(literal(second.lua.globals().RelaxRaidDB),raw)
+        assert_references(self, second)
         print("STORE_BOUND references=9600 bodies=%d body_bytes=%d bytes=%d reload_seconds=%.3f" %
               (bodies,body_bytes,len(raw.encode()),elapsed))
 

@@ -67,7 +67,7 @@
   },
   {
     "file": "addon/RelaxRaid/Store.lua",
-    "old": "return body:sub(1, start-1) .. body:sub(stop)",
+    "old": "return body:sub(1, played-1) .. body:sub(reason, sent-1) .. body:sub(rest)",
     "new": "return body",
     "killed_by": "test_sent_at_does_not_add_body",
     "id": "S01",
@@ -147,8 +147,8 @@
   },
   {
     "file": "addon/RelaxRaid/Store.lua",
-    "old": "if not live[key] then forgetReports(night, key) end",
-    "new": "if false then forgetReports(night, key) end",
+    "old": "if not live then forgetReports(night, key); return end",
+    "new": "if not live then return end",
     "killed_by": "test_caps_do_not_leave_orphan_character_bodies",
     "id": "S11",
     "note": "body dictionaries cannot retain orphan characters"
@@ -280,5 +280,109 @@
     "killed_by": "test_night_budget_repeats_and_reselects_largest",
     "id": "N12",
     "note": "update holder totals before choosing the next victim"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "id": "R01",
+    "old": "if pruned then pruneNight(night) else pruneNight(night, key) end",
+    "new": "if pruned then pruneNight(night) end",
+    "killed_by": "test_last_reference_replacement_drops_body_before_budget",
+    "note": "drop replaced last reference before budgets"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "id": "R02",
+    "old": "if live[i] then kept[#kept+1] = body; remap[i] = #kept",
+    "new": "if true then kept[#kept+1] = body; remap[i] = #kept",
+    "killed_by": "test_cap_removes_last_reference_to_individual_body",
+    "note": "drop each individual unreferenced body"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "id": "R03",
+    "old": "if row then row.report = remap[row.report] end",
+    "new": "if row then row.report = row.report end",
+    "killed_by": "test_last_reference_replacement_drops_body_before_budget",
+    "note": "dense reference remapping after middle drop"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "id": "R04",
+    "old": "if live[i] then\n            local r = W.decode(source[i])",
+    "new": "if true then\n            local r = W.decode(source[i])",
+    "killed_by": "test_reload_discards_unreferenced_bodies_before_budget",
+    "note": "load only referenced bodies before budget admission"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "id": "R05",
+    "old": "return body:sub(1, played-1) .. body:sub(reason, sent-1) .. body:sub(rest)",
+    "new": "return body:sub(1, sent-1) .. body:sub(rest)",
+    "killed_by": "test_played_eighty_reports_share_one_body_with_latest_time",
+    "note": "exclude playedLevel from equality"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "id": "R06",
+    "old": "if previous.playedLevel ~= r.playedLevel then",
+    "new": "if false then",
+    "killed_by": "test_played_eighty_reports_share_one_body_with_latest_time",
+    "note": "refresh stored played time"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "id": "R07",
+    "old": "bodies[#bodies] = body -- all existing references see latest played time",
+    "new": "bodies[#bodies+1] = body -- wrong: append instead of in-place update",
+    "killed_by": "test_played_eighty_reports_share_one_body_with_latest_time",
+    "note": "update played time in place"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "id": "R08",
+    "old": "local delta = #body - #latest",
+    "new": "local delta = 0",
+    "killed_by": "test_played_refresh_updates_in_place_and_rechecks_budgets",
+    "note": "recheck accounting after played-time growth and shrink"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "id": "R09",
+    "old": "Store.MAX_BYTES = 100000 --",
+    "new": "Store.MAX_BYTES = 100001 --",
+    "killed_by": "test_character_budget_plus_one_put_and_reload",
+    "note": "pin character limit from above; reviewer H02"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "id": "R10",
+    "old": "Store.MAX_NIGHT_BYTES = 4000000 --",
+    "new": "Store.MAX_NIGHT_BYTES = 4000001 --",
+    "killed_by": "test_night_budget_plus_one_put_and_reload",
+    "note": "pin night limit from above; reviewer H03"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "id": "R11",
+    "old": "while bytes > Store.MAX_BYTES do",
+    "new": "while bytes > Store.MAX_BYTES + 1 do",
+    "killed_by": "test_character_budget_plus_one_put_and_reload",
+    "note": "write first invalid character byte"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "id": "R12",
+    "old": "if bytes + #body > Store.MAX_BYTES then break end",
+    "new": "if bytes + #body > Store.MAX_BYTES + 1 then break end",
+    "killed_by": "test_character_budget_plus_one_put_and_reload",
+    "note": "reload first invalid character byte"
+  },
+  {
+    "file": "addon/RelaxRaid/Store.lua",
+    "id": "R13",
+    "old": "while current.bytes > Store.MAX_NIGHT_BYTES do",
+    "new": "while current.bytes > Store.MAX_NIGHT_BYTES + 1 do",
+    "killed_by": "test_night_budget_plus_one_put_and_reload",
+    "note": "first invalid night byte on put and reload"
   }
 ]

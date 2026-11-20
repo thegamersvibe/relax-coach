@@ -19,13 +19,15 @@ function Store.writable()
     return not readOnly and not newer(RelaxRaidCharDB) and type(db) == "table" and db.version == 1
         and type(db.prep) == "table" and db.prep.version == Store.VERSION
 end
--- Both inputs come from Wire.encode after validation. Compare every canonical
--- field except field 8 (sentAt), without decoding the retained body on each put.
+-- Both inputs come from Wire.encode after validation. Equality excludes field 6
+-- (playedLevel, the only played-time field) and field 8 (sentAt).
 local function content(body)
-    local start = 1
-    for _ = 1, 7 do start = body:find("\t", start, true) + 1 end
-    local stop = body:find("\t", start, true)
-    return body:sub(1, start-1) .. body:sub(stop)
+    local played = 1
+    for _ = 1, 5 do played = body:find("\t", played, true) + 1 end
+    local reason = body:find("\t", played, true) + 1
+    local sent = body:find("\t", reason, true) + 1
+    local rest = body:find("\t", sent, true)
+    return body:sub(1, played-1) .. body:sub(reason, sent-1) .. body:sub(rest)
 end
 -- Session-only accounting; never persisted or trusted from a save. Weak keys
 -- release evicted nights. All body-list mutations below update this ledger.
@@ -75,21 +77,42 @@ local function trimReports(night, key)
     end
     return over
 end
+-- Compact only live indices, preserving order and the identity of every row.
+local function compactReports(night, key, live)
+    if not live then forgetReports(night, key); return end
+    local bodies, remap, kept = night.reports[key], {}, {}
+    local current, removed = nightUsage(night), 0
+    for i, body in ipairs(bodies) do
+        if live[i] then kept[#kept+1] = body; remap[i] = #kept
+        else removed = removed + #body end
+    end
+    if removed == 0 then return end
+    night.reports[key] = kept
+    current.bytes, current.held[key] = current.bytes - removed, current.held[key] - removed
+    for _, window in ipairs(night.windows) do
+        local row = window.reports[key]
+        if row then row.report = remap[row.report] end
+    end
+end
 local function pruneNight(night, only)
     local live = {}
     for i = #night.windows, 1, -1 do
         local rows = night.windows[i].reports
         if not next(rows) then table.remove(night.windows, i)
         elseif only then
-            if rows[only] then live[only] = true end
-        else for key in pairs(rows) do live[key] = true end end
+            if rows[only] then
+                live[only] = live[only] or {}; live[only][rows[only].report] = true
+            end
+        else
+            for key, row in pairs(rows) do
+                live[key] = live[key] or {}; live[key][row.report] = true
+            end
+        end
     end
     if only then
-        if not live[only] then forgetReports(night, only) end
+        compactReports(night, only, live[only])
     else
-        for key in pairs(night.reports) do
-            if not live[key] then forgetReports(night, key) end
-        end
+        for key in pairs(night.reports) do compactReports(night, key, live[key]) end
     end
 end
 local function trimNight(night)
@@ -109,20 +132,23 @@ local function trimNight(night)
 end
 -- Bodies use the canonical wire grammar, not expanded Lua field tables.
 -- Re-encoding the validated report also gives deterministic budget bytes on reload.
-local function cleanReports(source, key)
+local function cleanReports(source, key, live)
     local P, W = RR.modules.Prep, RR.modules.Wire
     local bodies, indices, bytes = {}, {}, 0
     if not W or not P.array(source, Store.MAX_BYTES) then return bodies, indices end
-    -- Walk newest-first so even an oversized local save cannot expand all bodies.
+    -- Only admitted window references spend bytes. Walk newest-first, but never
+    -- let an unreferenced suffix evict older live history on reload.
     for i = #source, 1, -1 do
-        local r = W.decode(source[i])
-        if r and P.nameKey(r.name) == key then
-            local body = W.encode(r)
-            if bytes + #body > Store.MAX_BYTES then break end
-            bytes = bytes + #body
-            bodies[#bodies+1] = body
-            indices[i] = #bodies
-        else Store.count("invalidSaved") end
+        if live[i] then
+            local r = W.decode(source[i])
+            if r and P.nameKey(r.name) == key then
+                local body = W.encode(r)
+                if bytes + #body > Store.MAX_BYTES then break end
+                bytes = bytes + #body
+                bodies[#bodies+1] = body
+                indices[i] = #bodies
+            else Store.count("invalidSaved") end
+        end
     end
     local count = #bodies
     for i = 1, math.floor(count/2) do bodies[i], bodies[count-i+1] = bodies[count-i+1], bodies[i] end
@@ -135,7 +161,7 @@ local function cleanNights(source)
     for _, n in ipairs(source) do
         if type(n) == "table" and P.number(n.day, -1, 999999) and not days[n.day]
             and P.array(n.windows, Store.MAX_WINDOWS) and type(n.reports) == "table" then
-            local night, remap = {day=n.day, windows={}, reports={}}, {}
+            local night, live, remap = {day=n.day, windows={}, reports={}}, {}, {}
             days[n.day] = true
             for _, w in ipairs(n.windows) do
                 if type(w) == "table" and P.number(w.openedAt, 0, 9999999999) and type(w.reports) == "table" then
@@ -145,14 +171,21 @@ local function cleanNights(source)
                         if seen > Store.MAX_PLAYERS then break end
                         if P.nameKey(key) == key and type(row) == "table"
                             and P.number(row.receivedAt, 0, 9999999999) and P.number(row.report, 1, 100000) then
-                            if not remap[key] then night.reports[key], remap[key] = cleanReports(n.reports[key], key) end
-                            local index = remap[key][row.report]
-                            if index then
-                                window.reports[key] = {receivedAt=row.receivedAt, report=index}
-                            else Store.count("invalidSaved") end
+                            live[key] = live[key] or {}; live[key][row.report] = true
+                            window.reports[key] = {receivedAt=row.receivedAt, report=row.report}
                         end
                     end
                     if next(window.reports) then night.windows[#night.windows+1] = window end
+                end
+            end
+            for key, indices in pairs(live) do
+                night.reports[key], remap[key] = cleanReports(n.reports[key], key, indices)
+            end
+            for _, window in ipairs(night.windows) do
+                for key, row in pairs(window.reports) do
+                    local index = remap[key][row.report]
+                    if index then row.report = index
+                    else window.reports[key] = nil; Store.count("invalidSaved") end
                 end
             end
             pruneNight(night)
@@ -218,9 +251,20 @@ function Store.put(sender, report)
         bodies[#bodies+1] = body
         current.bytes = current.bytes + #body
         current.held[key] = (current.held[key] or 0) + #body
+    elseif latest ~= body then
+        local previous = W.decode(latest)
+        if previous.playedLevel ~= r.playedLevel then
+            r.sentAt = previous.sentAt -- keep the first content timestamp
+            body = W.encode(r)
+            bodies[#bodies] = body -- all existing references see latest played time
+            local delta = #body - #latest
+            current.bytes, current.held[key] = current.bytes + delta, current.held[key] + delta
+        end
     end
     reports[key] = {receivedAt=now, report=#bodies}
-    if trimReports(night, key) or pruned then pruneNight(night) end
+    -- Replaced/cap-evicted references release their bodies BEFORE budgets run.
+    if pruned then pruneNight(night) else pruneNight(night, key) end
+    if trimReports(night, key) then pruneNight(night, key) end
     trimNight(night)
     return true
 end

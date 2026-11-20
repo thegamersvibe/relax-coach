@@ -249,13 +249,21 @@ App 1.8.0 checks the TOC title, manifest-matching addon Version, save names,
 load files and dependency prohibition, not the inner prep version.
 
 For each character in each night, only the **latest** retained body participates
-in deduplication. Equality covers every `Prep.validate` field except `sentAt`,
-including `reason`, original name spelling and list order. Canonical encoding
-makes that comparison deterministic: omit exactly field 8 for equality, not
-for storage. Unknown extra input keys are not validated fields and are dropped.
-Consecutive equal reports reuse the same index, even across 80 windows. A-B-A
-is three stored entries, not a lookup of the first A. An equal report retains
-the first body's `sentAt`; each receipt still updates its own window timestamp.
+in deduplication. Equality covers every `Prep.validate` field except `sentAt`
+and `playedLevel` (the only played-time field; there is no `playedTotal`). This
+includes `reason`, original name spelling and list order. Canonical encoding
+omits fields 6 and 8 for equality, not storage. Unknown extra input keys are
+not validated fields and are dropped. Consecutive equal reports reuse the same
+index, even across 80 windows. A-B-A in three still-live windows is three stored
+entries, not a lookup of the first A. Bodies whose last reference is replaced
+are removed instead of accumulating historical entries within one window.
+
+If only played time changes, re-encode the latest body **in place**, keeping its
+original `sentAt` and updating `playedLevel` to the latest received value,
+including `unreadable`. All windows sharing that index see the refreshed label
+input. Charge/release the actual encoded byte delta and recheck both budgets;
+no new body is appended. Each receipt still updates only its own window's
+`receivedAt`; played-time refresh does not rewrite older window timestamps.
 
 **Byte accounting:** `Store.put` re-encodes the validated report through
 `Wire.encode` and counts the Lua string length of that canonical body. The
@@ -266,9 +274,9 @@ and orphan cleanup. Weak night keys release evicted nights; reload rebuilds the
 ledger from validated, re-encoded bodies, not saved accounting fields.
 Realm-less names are normalized before encoding, so the stored canonical size
 includes the appended realm, rather than the shorter incoming name spelling.
-Only distinct appended bodies spend bytes; timestamps on reused window rows
-are not charged. Both limits are inclusive and count body bytes, not serialized
-table bytes:
+Only retained canonical body strings spend bytes, including their latest played
+time; timestamps on window rows are not charged. Both limits are inclusive and
+count body bytes, not serialized table bytes:
 
 - **100,000 bytes per character per night**;
 - **4,000,000 bytes per night**, summed over every character's retained bodies.
@@ -285,56 +293,75 @@ exactly 100,000 bytes each totals exactly 4,000,000 and evicts nothing.
 For either budget, remove the selected character from every window referring
 to a dropped body; decrement its higher indices as the dense list shifts.
 Other characters' bodies, indices and receive times do not change unless the
-night loop subsequently selects them. Empty windows are removed. When any
-window/player/budget eviction leaves a character with no window references,
-remove its entire body list and release those bytes too. Older bodies for a
-still-referenced character remain until a byte budget evicts them, even if its
-latest receipt replaced their last individual reference. No sender-guild check
-is added: a non-guild raid member's report is retained by an enabled logger as
-before. The layout is unchanged, so **prep.version remains 2**.
+night loop subsequently selects them. Empty windows are removed. **Bodies live
+only while referenced**: replacing or removing the last window reference drops
+that individual body immediately, even when the character has other live bodies.
+Compact its list and densely remap every surviving reference after each drop.
+An entirely unreferenced character loses its list. Replacement/window/player
+cleanup releases bytes **before** budget eviction, so dead bodies cannot evict
+live history. These invariants hold after every put, eviction, prune and reload.
+No sender-guild check is added: a non-guild raid member's report is retained by
+an enabled logger as before. The layout is unchanged, so **prep.version remains
+2**; this is an unreleased retention/equality policy correction, not a new shape.
 
 `day = floor((receiverServerTime - 43200) / 86400)` is the unchanged UTC-noon
 bucket, not the app's content-derived `nightId`. A window starts on the first
 accepted report or first report after an encounter end. Within a window, the
 last accepted receipt for a character wins regardless of sender time. Reload
 retains the last window. Caps remain **3 nights, 80 windows/night, 40
-characters/window** (at most 9600 references), not a new cap on distinct bodies.
+characters/window**. Every body has a reference: at most **3200 bodies/night**
+and **9600 bodies total**, never more bodies than references.
 Oldest inserted nights/windows are removed. A full window evicts its oldest
 receiver timestamp, with the whole-name lexical tie-break, before inserting a
 new character. These policies are independent of per-character budget eviction.
 
 Load rebuilds only version 2, validates the bounded windows and their numeric
-indices, and decodes/re-encodes referenced characters' body lists. Lists must be
-dense and bounded; malformed bodies/forged identities are dropped with index
-remapping. Budget admission walks newest-first, then restores oldest-first
-list order. Invalid references, empty windows/nights and orphan character lists
-are discarded. After per-character validation/budget admission and orphan
-cleanup, load applies the same largest-holder night budget, remapping indices
-and pruning newly empty windows. No received or saved body is executed.
+indices, then collects the admitted references before decoding/re-encoding their
+bodies. Source lists must be dense and bounded; malformed bodies/forged identities
+are dropped with index remapping. Unreferenced bodies are ignored **before**
+budget admission, so a dead newer suffix cannot evict older live history. Budget
+admission walks newest-first, then restores oldest-first list order. Invalid
+references, empty windows/nights and orphan bodies/lists are discarded. After
+per-character validation/budget admission and cleanup, load applies the same
+largest-holder night budget, remapping indices and pruning newly empty windows.
+No received or saved body is executed.
 
 ### Measured synthetic fills and their scope
 
-The body bound is now **3 nights * 4,000,000 = 12,000,000 bytes**, regardless of
-roster churn, plus at most **9,600 window references** and layout/serialization
-overhead. This is a body-byte bound, not a native SavedVariables file-size or
-Lua-heap claim. The permanent synthetic tests both assert **16 MiB serialized**
-and exact serialization after reload:
+The body bound remains **3 nights * 4,000,000 = 12,000,000 bytes**, regardless
+of roster churn, now with at most **9600 bodies as well as 9600 references**.
+This is a body-byte/count bound, not a native SavedVariables file-size or Lua-heap
+claim. All permanent fills assert **under 16 MiB serialized**, exact reload and
+both directions of the body/reference invariant:
 
-| Fill, three nights | Bodies | Body bytes | Window references | Serialized bytes | Reload seconds |
+| Fill | Bodies | Body bytes | Window references | Serialized bytes | Reload seconds |
 |---|---:|---:|---:|---:|---:|
-| Fixed 40, distinct maximum-field bodies saturating each character budget, then 80 windows | 7,560 | 11,816,280 | 9,600 | 13,528,853 | 4.814 |
-| Rotating 40 maximum-field identities per window, 3,200 attempted identities/night | 7,677 | 11,999,151 | 7,677 | 14,203,586 | 5.634 |
+| Fixed 40, 80 maximum-field replacements/character in one window, then 80 windows, three nights | 120 | 187,560 | 9,600 | 1,579,013 | 0.183 |
+| Rotating 40 maximum-field identities/window, three-night serialization | 7,677 | 11,999,151 | 7,677 | 14,203,586 | 5.747 |
+| Small content changes: 2000/character, 40 characters, one window/night, three nights | 120 | 8,400 | 120 | 22,169 | 0.008 |
+| 60 pulls, 40 characters, ready then encounter per pull, maximum-width bodies, one night | 2,400 | 3,772,800 | 2,400 | 4,222,993 | 1.575 |
 
-The rotating case retains 2,559 one-body characters per night (3,999,717 body
-bytes); whole empty windows disappear as the selected characters are removed.
-Before the night rule, the same probe retained 9,600 bodies/references and
-15,004,800 body bytes, serializing to 17,761,373 bytes, above 16 MiB. That prior
-open sizing-policy question is resolved by the architect's night budget, not a
-new identity cap. `test/raid/store/test_churn.py` is now a permanent test, not
-an optional probe; `test_fill.py` preserves the fixed-40 fill. Both are included
-in `raidtest.py --all --kind lua,py` through their own module descriptors, keeping
-the existing 30-second per-module deadline. See `evidence/R2.md` for actual
-RED/GREEN, mutation and command output.
+The fixed-40 input is unchanged; dead intermediate history is no longer kept.
+The small test varies consumable count, not the now-excluded played time. The
+60-pull encounter bodies are 1572 bytes each: 60 * 1572 = **94,320 per character**
+and **3,772,800 per night**. Both budgets fit, so **all 60 windows and all 2400
+references must remain**, with no budget eviction. Each window resolves to its
+final encounter report, not its replaced ready report.
+
+The rotating case retains 2559 one-body characters/night (3,999,717 body bytes);
+whole empty windows disappear under the authorized largest-holder/tie rule.
+For timing margin its permanent test executes one full 3200-identity night,
+then clones that independent night fixture for the full three-night serialization
+and reload assertions. Three-night real puts remain covered by fixed/small fills.
+A separate unshrunk three-night rotating replay also passed with the identical
+14,203,586 bytes (reload 5.632 s). This is sampling reduction, not a changed cap.
+
+The full-size integrations are discovered through separate module descriptors.
+Focused real-boundary Store cases and the two slow runner self-tests also have
+disjoint partitions; named mutation tests still run their exact target. All
+module deadlines remain 30 seconds. The final three discovery runs kept every
+module at or below 13.1 seconds (44%); no test identity was lost. See
+`evidence/R2.md` for actual RED/GREEN, all per-module timings and command output.
 
 The measurement is not native WoW file formatting, Lua heap size or frame
 latency. Newer-save preservation uses canonical serialization before/after all

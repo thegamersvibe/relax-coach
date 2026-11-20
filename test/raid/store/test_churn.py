@@ -4,7 +4,7 @@ import sys
 import time
 import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from test_store import boot, large_report, night_bytes, literal
+from test_store import boot, large_report, night_bytes, literal, assert_references
 
 
 class ChurnTests(unittest.TestCase):
@@ -14,7 +14,7 @@ class ChurnTests(unittest.TestCase):
         c.lua.globals().END_WINDOW = lambda: c.fire("ENCOUNTER_END")
         c.run("""
             local S=RelaxRaid.modules.Store
-            for day=1,3 do
+            for day=1,1 do -- one real 3200-identity churn; nights have independent budgets
                 R.sentAt=9999600000+day*86400
                 GetServerTime=function() return R.sentAt end
                 for window=1,80 do
@@ -27,6 +27,12 @@ class ChurnTests(unittest.TestCase):
                 end
             end
         """)
+        # Keep the full three-night serialized/reload workload. Clone only the
+        # independently budgeted night fixture, not live session accounting;
+        # 3-night real-put retention is separately covered by fixed/small fills.
+        one = literal(c.run("return RelaxRaidDB.prep.nights[1]"))
+        for day in (2, 3):
+            c.run("local n=" + one + f"; n.day=n.day+{day - 1}; RelaxRaidDB.prep.nights[{day}]=n")
         raw = literal(c.lua.globals().RelaxRaidDB)
         nights = c.run("return RelaxRaidDB.prep.nights")
         bodies = sum(len(b) for n in nights.values() for b in n["reports"].values())
@@ -56,6 +62,8 @@ class ChurnTests(unittest.TestCase):
                     self.assertEqual(row["report"], 1)
                     self.assertIsNotNone(night["reports"][key])
         self.assertEqual(literal(second.lua.globals().RelaxRaidDB), raw)
+        assert_references(self, c)
+        assert_references(self, second)
 
 
 if __name__ == "__main__":
