@@ -20,7 +20,7 @@ Like `rules/rules.json`, `schema` is the reader format and `version` is the
 content revision. `scoring.json` requires schema 2; the other eight files require
 schema 1. Any other schema is refused, including scoring schema 1 (no implicit
 migration or defaults). Schema 2 accounts for the newly required energy GCD,
-provisional coverage, four death-predicate fields and the bounded-aggro duration. Nothing has been released. A newer
+provisional coverage, four death-predicate fields, the bounded-aggro duration and the cast-start cap. Nothing has been released. A newer
 `major.minor.patch` **content** version is accepted without rebuilding, provided
 its schema is supported. Every file requires a source note. Bump content versions
 when tuning data; bump schema for incompatible field changes.
@@ -106,6 +106,13 @@ All file structs embed `Metadata { Schema int; Version, Source string }`.
   cast-only discriminator. R4 therefore keeps spec unknown, not guessed.
 
 ### R7: score
+
+- Scoring 1.5.0 adds `Scoring.ActivityCastCapMs int64` (`activity_cast_cap_ms`):
+  10000 ms, the previous completed-cast cap moved into data by the round-2
+  ruling. Required, strictly positive, non-null; fractional/string values are
+  refused. Snapshot copies this scalar by value. A matching start at the cap
+  is included; one beyond it is not. No compiled-in fallback.
+
 
 - `Scoring.Weights RoleWeights { DPS, Healer, Tank PartWeights }`;
   `PartWeights { Output, Activity, Mechanics, Utility, Preparation float64 }`.

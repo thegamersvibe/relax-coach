@@ -7,8 +7,8 @@ import (
 
 func TestDeathPredicateSeed(t *testing.T) {
 	s := load(t, seedDir).Scoring
-	if s.Version != "1.4.0" {
-		t.Errorf("scoring version = %s, want 1.4.0", s.Version)
+	if s.Version != "1.5.0" {
+		t.Errorf("scoring version = %s, want 1.5.0", s.Version)
 	}
 	got := scoringObject(t, s.Death)
 	for key, want := range deathPredicateValues {

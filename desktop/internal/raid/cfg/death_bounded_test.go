@@ -43,8 +43,8 @@ func TestPulledAggroConfig(t *testing.T) {
 
 func TestPulledAggroSeedAndCopies(t *testing.T) {
 	c := load(t, seedDir)
-	if c.Scoring.Version != "1.4.0" || scoringObject(t, c.Scoring.Death)["pulled_aggro_ms"] != float64(10000) {
-		t.Fatalf("missing scoring 1.4.0 pulled-aggro seed: %+v", c.Scoring.Death)
+	if c.Scoring.Version != "1.5.0" || scoringObject(t, c.Scoring.Death)["pulled_aggro_ms"] != float64(10000) {
+		t.Fatalf("missing scoring 1.5.0 pulled-aggro seed: %+v", c.Scoring.Death)
 	}
 	if !strings.Contains(c.Scoring.Source, "R6: rules 3 and 4 bounded") || !strings.Contains(c.Scoring.Source, "death.pulled_aggro_ms=10000: architect guess") {
 		t.Fatal("bounded aggro value lacks its guess provenance")

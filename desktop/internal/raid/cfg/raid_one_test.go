@@ -154,7 +154,7 @@ func TestRaidOneScoringSeed(t *testing.T) {
 	s := load(t, seedDir).Scoring
 	got := scoringObject(t, s)
 	for key, want := range map[string]any{
-		"schema": float64(2), "version": "1.4.0", "rounding_step": .1, "gcd_ms": float64(1500),
+		"schema": float64(2), "version": "1.5.0", "rounding_step": .1, "gcd_ms": float64(1500),
 		"gcd_energy_ms": float64(1000), "new_at_60_seconds": nil,
 	} {
 		if actual, ok := got[key]; !ok || !reflect.DeepEqual(actual, want) {

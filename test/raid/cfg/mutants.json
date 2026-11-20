@@ -1055,5 +1055,17 @@
     "old": "d.RaidwideWindowMs > d.WindowMs",
     "new": "d.RaidwideWindowMs >= d.WindowMs",
     "killed_by": "TestRaidwideWindowBound"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "s.ActivityCastCapMs <= 0",
+    "new": "s.ActivityCastCapMs < 0",
+    "killed_by": "TestActivityCastCapConfig"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "s.ActivityCastCapMs <= 0",
+    "new": "false",
+    "killed_by": "TestActivityCastCapConfig"
   }
 ]

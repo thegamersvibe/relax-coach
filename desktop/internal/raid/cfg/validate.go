@@ -85,6 +85,7 @@ func (s Scoring) validate() error {
 		fieldCheck{"death.lost_boss_gap_ms", !positiveOptional(d.LostBossGapMs)},
 		fieldCheck{"death.summary_window_ms", !positiveOptional(d.SummaryWindowMs)},
 		fieldCheck{"new_at_60_seconds", !positiveOptional(s.NewAt60Seconds)},
+		fieldCheck{"activity_cast_cap_ms", s.ActivityCastCapMs <= 0},
 		fieldCheck{"gcd_ms", !positiveOptional(s.GCDMs)},
 		fieldCheck{"gcd_energy_ms", !positiveOptional(s.GCDEnergyMs)},
 		fieldCheck{"rounding_step", s.RoundingStep != nil && (*s.RoundingStep <= 0 || !scoreValue(*s.RoundingStep))},

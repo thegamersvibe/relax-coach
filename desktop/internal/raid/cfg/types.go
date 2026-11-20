@@ -38,10 +38,11 @@ type Scoring struct {
 	Assignments     []Assignment `json:"assignments"`
 	// Null means not specified, NOT zero or a compiled-in fallback. Leave the
 	// affected measure unmeasured until a sourced/tuned value is supplied.
-	NewAt60Seconds *int64   `json:"new_at_60_seconds"`
-	GCDMs          *int64   `json:"gcd_ms"`
-	GCDEnergyMs    *int64   `json:"gcd_energy_ms"` // cast PowerType 3; other casts use GCDMs
-	RoundingStep   *float64 `json:"rounding_step"`
+	NewAt60Seconds    *int64   `json:"new_at_60_seconds"`
+	ActivityCastCapMs int64    `json:"activity_cast_cap_ms"` // positive bound for completed cast-start intervals
+	GCDMs             *int64   `json:"gcd_ms"`
+	GCDEnergyMs       *int64   `json:"gcd_energy_ms"` // cast PowerType 3; other casts use GCDMs
+	RoundingStep      *float64 `json:"rounding_step"`
 	// Inner measure ids belong to the score registry, not to cfg. Empty maps
 	// do not authorize guessed equal weights or guessed death charges.
 	MeasureWeights map[string]map[string]float64 `json:"measure_weights"`
