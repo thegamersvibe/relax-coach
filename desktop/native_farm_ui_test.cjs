@@ -69,6 +69,21 @@ test('hot items follow the chosen house; the bank-empty line counts only its own
   assert.match(hot().map(r=>r.textContent).join(' '),/Pick an auction house/);
 });
 
+test('save-named bank rows use known ID quality and unknown rows stay default',async t=>{
+  const {$,dom}=await setup(t,{reportRefresh:()=>report('B#2',true,farm)});
+  $('nav-farm').click();
+  const spans=[...$('farm-sell').querySelectorAll('td:first-child span')];
+  const known=spans.filter(s=>s.textContent==='Sample Up');
+  assert.equal(known.length,2,'the save name wins on both characters');
+  for (const span of known) {
+    assert.equal(span.className,'q2','Coach quality wins over GearQuest for the same ID');
+    assert.equal(dom.window.getComputedStyle(span).color,'rgb(30, 255, 0)');
+  }
+  const unknown=spans.find(s=>s.textContent==='item 999999');
+  assert.ok(unknown);
+  assert.equal(unknown.className,'','unknown quality has no quality class');
+});
+
 for (const [card,direction,colour,change,supply,quality] of [
   ['farm-hot','hot-up','rgb(63, 185, 80)','+250%','20 / 20','q2'],
   ['farm-fallers','hot-down','rgb(248, 81, 73)','-50%','40 / 20','q3']
@@ -79,8 +94,10 @@ for (const [card,direction,colour,change,supply,quality] of [
   const cells=row.querySelectorAll('td');
   assert.equal(cells[2].textContent.trim(),change,'daily change keeps its sign');
   assert.equal(cells[4].textContent.trim(),change,'against usual keeps its sign');
-  assert.equal(cells[5].textContent.trim(),supply,'listed now / usual units');
-  assert.ok(cells[0].querySelector('.'+quality),'name-source quality is independent of direction');
+  const headers=[...$(card).querySelectorAll('tr')].find(r=>r.querySelectorAll('th').length===8).querySelectorAll('th');
+  assert.equal(headers[5].textContent,'listed (scan day) / usual','history peak, not a live count');
+  assert.equal(cells[5].textContent.trim(),supply,'scan-day / usual units');
+  assert.ok(cells[0].querySelector('.'+quality),'item-ID quality is independent of direction');
   for (const el of [cells[2],cells[4],row.querySelector('svg')]) {
     assert.ok(el.classList.contains(direction),'one direction class shared by changes and chart');
     assert.equal(dom.window.getComputedStyle(el).color,colour,'colour comes from page CSS');

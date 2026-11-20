@@ -18,18 +18,27 @@ Private coverage probes and their inputs stay outside the repository.
   version/release decision. The legacy public-bundle test fixes its own 1.4.0
   archive fixture and is not a trigger for a Coach version bump.
 - Name priority is AH Profit save, its bundled files (unchanged), Coach,
-  installed GearQuest generated data, then `item <id>`. Quality comes only from
-  the winning name source, never from a lower-priority name. AH Profit's current
-  name/vendor tables carry no quality; GearQuest facts/audit rows can carry it.
-- Hot and bank/sell rows are the only numeric item-label fallbacks. Auction
-  statistics already have names, not item IDs; listing totals have no item rows.
-  Their data does not provide quality. No name-to-ID guessing was added.
+  installed GearQuest generated data, then `item <id>`. Quality is independently
+  selected by item ID: Coach first, then GearQuest. Zero is known quality;
+  missing/invalid quality uses the default colour. A valid quality can survive
+  absent/invalid name text for that ID. AH Profit's current name/vendor tables
+  carry no quality. A read-only format check of installed GearQuest generated
+  data confirmed `GQ.Data.foreverAudit[id] = {name = ..., quality = ...}` with
+  numeric quality; no private source was executed, copied or committed.
+- Risers, fallers and bank/sell rows share that ID-based quality lookup.
+  Auction statistics have names but no item IDs; gathering kinds use name
+  hashes, not item IDs; listing totals have no item rows. These keep default
+  colour rather than guessing an ID or quality from name text.
 - GearQuest input is parsed as bounded Lua literals, never executed: 4 MiB/file,
   32 MiB total, 64 files, 250,000 parsed values/table, 50,000 retained items,
   at most 16 assignments/file; plain directories/files only. No dependencies.
-- No hot ranking/filter changes. No Journey/guide content changes.
+- The original name-cache commit `1e9da83` did not change hot ranking/filters.
+  Follow-up `4f51415` added the supply-aware riser filter and mirrored fallers.
+  Round-one corrections keep those rules, including scan-day peak units (not
+  a live-count gate), and label both columns `listed (scan day) / usual`.
+  No Journey/guide content changes.
 
-## Red then green
+## Original name-cache red then green (`1e9da83`)
 
 The initial Lua login test failed before implementation. Expanding it to async
 loading/throttling failed before the queue implementation. Separate tests caught
@@ -55,7 +64,7 @@ changing clone files:
   the unmodified symlink regression passed.
 - Restored implementation: `test/item_names_test.py`: `Ran 11 tests`, `OK`.
 
-## Green commands observed
+## Original name-cache green commands (`1e9da83`)
 
 `PY` below is Python 3.14 with `.github/requirements-ci.txt` in an isolated uv
 invocation; Go uses the toolchain required by `desktop/go.mod`.
@@ -78,3 +87,147 @@ These are offline checks, not native Windows/WoW acceptance. In-game validation
 still needs a real cold-cache load, combat pause/resume, auction close, save via
 reload/logout, and app refresh. Coach-cache coverage can only be measured there.
 The full desktop suite and release packaging are left to the parent CI run.
+
+## Round-one corrections on `4f51415`
+
+One follow-up commit; no version, TOC, SavedVariables global, dependency, addon
+runtime, hot-ranking, or guide changes. README edits are confined to the two
+Farming feature bullets, not release notes/version sections.
+
+### Behavior RED -> GREEN
+
+- **F1:** `TestHotThinSupply` failed in both modes for the missing new header;
+  jsdom's `hot-up` and `hot-down` cases failed with `Listed now / usual` versus
+  `listed (scan day) / usual` (7 pass, 2 fail). Both headers and the feature
+  bullet now describe scan-day peak units. The same runs then passed (9/9 UI).
+  `TestHotSupplyIsScanDayPeakNotLive` also pins that live quantity 2 does not
+  replace the qualifying history peak of 100 in either direction.
+- **F2:** all 16 `TestFarmGearNamesIgnoreCommentsAndStrings` cases failed by
+  admitting the obsolete synthetic row, then passed. The finder masks Lua
+  comments and strings before discovering assignments and parses from the
+  discovered live offset, not an earlier textual occurrence. Block comments
+  and long strings use exact long-bracket delimiters at any level (tested at
+  0, 1, 2 and 12); comment-only/string-only files supply nothing. Quoted names
+  containing `--[[` remain data, not comments. No Lua is executed; existing
+  file, assignment, parse-value and retained-item budgets remain in force.
+- **D1:** `TestFarmNameQualityByID` failed on six known-quality cases for both
+  riser/sell and faller/sell rendering, then passed: save text with Coach
+  quality (ahead of GearQuest), save text with only GearQuest quality, unknown
+  Coach quality falling back to GearQuest, quality zero, and quality-only rows
+  from either provider. The no-quality/default case remained green.
+  `TestFarmNameCoachValidationAndCap` separately went red then green for
+  retaining a valid ID quality when its name text is rejected.
+  `TestFarmGearNamesFillFieldsIndependently` then caught quality-only rows
+  hiding later names (and names hiding later quality) across GearQuest tables:
+  both orders failed before the per-field first-known merge, then passed. Existing
+  name-source priority tests remain; only their obsolete source-bound colour
+  assertion was migrated. The generated jsdom fixture now combines save text
+  with Coach/GearQuest quality and checks actual CSS colour on bank rows, plus
+  uncoloured unknown rows. Auction/name-hash rows cannot borrow quality without
+  IDs. No name-to-ID matching was added.
+- **First fill:** `TestFarmNameFillProgress` failed for the absent, partial and
+  quality-only caches, then passed; complete coverage and empty history hide
+  the line. Account-switch regression also checks that coverage does not leak.
+
+### First-fill definition
+
+The single line is exactly `Names are filling in from the game: X of Y.`
+Y is the number of distinct valid canonical positive item IDs (at most
+10,000,000) whose AH Profit history value is a packed string, across all houses
+of the selected account. Duplicate IDs across houses count once; malformed IDs
+and non-string values are excluded. Packed values need not decode to contribute:
+Coach also requests names from history keys, not from decoded prices.
+X is how many of those IDs have a nonempty name after the existing save/bundled/
+Coach/GearQuest precedence. A quality without a name does not contribute to X.
+The line appears only when X < Y, which necessarily means the Coach names for
+those IDs are absent or incomplete too; it is hidden for Y = 0 or full coverage
+from any combination of sources. It is **saved coverage**, not a live timer,
+queue estimate or claim that every ID is resolvable. It can stay incomplete for
+unresolvable items or a full cache. The game must save via reload/logout before
+new names reach the desktop. This definition deliberately does not guess which
+history items the client can resolve.
+
+### Survivor registration and assertion REDs
+
+This area has no `mutants.json` registry (the repository's JSON registries are
+for Raid); these overlay definitions/results are recorded here and in the
+commit message. The reviewer's exact mutation strings were loaded as AST data,
+never run as a script. Lua mutations override only the test loader's Core text;
+Go uses `go test -overlay`. Production files stay unchanged. These are coverage
+additions: they passed the unchanged implementation, failed each indicated
+mutant by assertion (not syntax/build/setup errors), then passed again without
+the overlay. No runtime change was needed to kill the survivors.
+
+The survivor log actually enumerates 16 Lua survivors, despite its prose count;
+all 16 were replayed, plus two individual combat-API removals: **18/18 killed**.
+Test names below are in `ItemNamesTests` (`test/item_names_test.py`).
+
+| Overlay | Mutation | Failing test |
+| --- | --- | --- |
+| Lua M00 | remove tick combat gate | `test_combat_gate_rechecked_when_timer_fires` |
+| Lua M01 | remove schedule combat gate | `test_combat_gate_before_scheduling` |
+| Lua M02 | allow nil/secret/nonboolean/error combat state | `test_combat_unreadable_or_error_fails_closed` |
+| Lua M03 | allow both combat APIs absent | `test_combat_apis_absent_fails_closed` |
+| Lua M04 | accept load results for non-waiting IDs | `test_load_result_requires_waiting_id` |
+| Lua M05 | accept success other than readable true | `test_load_result_requires_readable_true` |
+| Lua M08 | interval 0.1 -> 0.05 | `test_throttle_interval_is_one_tenth_second` |
+| Lua M09 | house cap 8 -> 9 | `test_scan_visits_at_most_eight_houses` |
+| Lua M10 | admit numeric fractional IDs | `test_numeric_fractional_history_id_is_rejected` |
+| Lua M14 | remove saved-cache initialization cap | `test_saved_cache_is_capped_during_initialization` |
+| Lua M15 | remove newer-schema guard | `test_newer_schema_cache_is_untouched` |
+| Lua M16 | retain waiting state after request error | `test_failed_request_releases_waiting_state` |
+| Lua M20 | remove cache logout stop | `test_logout_stops_cache_without_core_flag` |
+| Lua M21 | remove scan/work cap | `test_scan_work_is_bounded_without_resolved_names` |
+| Lua M22 | admit numeric placeholder names | `test_numeric_placeholder_is_rejected` |
+| Lua M25 | count saved aliases twice | `test_saved_aliases_count_once_toward_cap` |
+| Lua API-lockdown | omit InCombatLockdown | `test_combat_gate_before_scheduling`, `test_combat_gate_rechecked_when_timer_fires` |
+| Lua API-unit | omit UnitAffectingCombat | `test_combat_gate_before_scheduling`, `test_combat_gate_rechecked_when_timer_fires` |
+
+Both combat APIs are tested alone while the other is false; each is also made
+nil-returning, secret-returning, nonboolean and throwing. Scheduling and timer
+execution are separate boundaries. The logout probe calls the actual cache
+frame before Core can set its independent logout flag. The schema probe sets
+the future schema after legacy Core initialization to isolate the cache guard.
+
+All seven Go survivors were killed: **7/7**, with no build failures.
+
+| Overlay | Mutation | Failing test |
+| --- | --- | --- |
+| Go M00 | allow item ID zero | `TestFarmNameIDZero` |
+| Go M10 | per-table cap +1 | `TestFarmGearNamesPerTableBudget` |
+| Go M11 | overwrite the first table's entry | `TestFarmGearNamesFirstWinsAcrossTables` |
+| Go M24 | omit mtime from cache key | `TestFarmGearNamesMtimeInvalidatesSameSize` |
+| Go M26 | omit folder-change cache reset | `TestFarmGearNamesGameReset` |
+| Go M31 | remove per-directory enumeration cap | `TestFarmGearNamesDirectoryBudget` |
+| Go M33 | pre-read file byte cap +1 | `TestFarmGearNamesOversizeFileDoesNotSpendTotalBudget` |
+
+The table-cap fixture contains an invalid extra row so the retained-item cap
+cannot mask it. Directory enumeration includes non-generated files. The
+pre-read byte fixture puts a one-byte-oversize file before a valid file and
+proves it cannot spend the valid file's total-byte budget; the post-read byte
+cap alone previously hid this survivor. Mtime invalidation uses equal lengths
+and explicit timestamps; folder reset uses equal lengths and equal timestamps.
+
+### Final commands observed
+
+- Python 3.14 / pinned CI requirements, `-I -B`:
+  - `test/harness.py` (SV_OUT unset): `ALL OK`, exit 0.
+  - `test/reactions_test.py`: `Ran 136 tests`, `OK`, exit 0.
+  - `test/item_names_test.py`: `Ran 27 tests`, `OK`, exit 0.
+  - `test/gear_test.py`: `ALL PASS`, exit 0.
+- `gofmt -l .`: empty; `go vet .`: exit 0.
+- `go test -count=1 -run 'Farm|Hot|AHP|Name|Gear|TestNativeShellIsSelfContainedAndLockedDown' .`:
+  `ok github.com/thegamersvibe/relax-coach/desktop 3.380s`.
+- `npm ci --prefix .github --ignore-scripts`: exit 0, 0 vulnerabilities;
+  the existing locked `whatwg-encoding` dependency emitted a deprecation warning.
+- With CI's `NODE_PATH`, `NATIVE_HTML_OUT`, `FARM_HTML_OUT` and freshly generated
+  Go fixtures, `node --test desktop/*_ui_test.cjs`: `tests 145`, `pass 145`,
+  `fail 0`, `skipped 0`.
+
+One intermediate UI invocation lacked the exported fixture/dependency variables
+because this runner did not retain shell exports across calls; it failed setup
+(`Cannot find module 'jsdom'`), not a regression. It was rerun with the explicit
+environment and freshly generated fixtures. The RED/GREEN logs and mutation
+payloads are retained outside Git; no private data or absolute host paths are
+committed. These are focused offline checks, not full desktop CI, race tests,
+release packaging, or native Windows/WoW acceptance (not run).

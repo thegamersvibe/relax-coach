@@ -74,6 +74,7 @@ type FarmView struct {
 	Error        string // could not be read or parsed (Present stays true)
 	Warning      string // shown with the last good data
 	Note         string // e.g. written by a newer AH Profit
+	NamesFilling string // named / distinct history item IDs, only while incomplete
 	Newer        bool   // the save's version is newer than this app knows
 	SaveTime     time.Time
 	Cut          int
@@ -261,8 +262,8 @@ func buildFarmDB(db map[string]any, chars []CharView, now time.Time, ref farmRef
 	now = now.Truncate(time.Second) // whole seconds, like the game's GetServerTime
 	fv := FarmView{Present: true, Cut: 5}
 	// Names: AH Profit save, its bundled files (unchanged priority), Coach,
-	// GearQuest, then "item <id>". Quality follows the winning name source;
-	// the new sources never supply vendor prices or gatherability.
+	// GearQuest, then "item <id>". Quality is independent: Coach then GearQuest
+	// by item ID. The new sources never supply vendor prices or gatherability.
 	items := map[int]farmItemRef{}
 	for id, it := range ref.Items {
 		items[id] = it
@@ -275,6 +276,7 @@ func buildFarmDB(db map[string]any, chars []CharView, now time.Time, ref farmRef
 	for _, names := range fallbackNames {
 		fillFarmNames(items, names)
 	}
+	fv.NamesFilling = farmNameProgress(db, items)
 	if c, ok := ahpInt(db["cut"], 100); ok && (c == 5 || c == 15) {
 		fv.Cut = c
 	}
@@ -409,8 +411,9 @@ func buildFarmDB(db map[string]any, chars []CharView, now time.Time, ref farmRef
 			}
 			r := FarmSellRow{House: house, Char: char, ID: id, Name: "item " + strconv.Itoa(id), Count: n, Bound: bound, BankSeen: seen, AllBound: bound == n}
 			if it, ok := items[id]; ok {
+				r.QualityClass = it.QualityClass
 				if it.Name != "" {
-					r.Name, r.QualityClass = it.Name, it.QualityClass
+					r.Name = it.Name
 				}
 				r.Vendor, r.VendorKnown = it.Vendor, it.VendorKnown
 			}

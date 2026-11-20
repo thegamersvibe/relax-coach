@@ -48,6 +48,19 @@ def client(setup=''):
             lua.execute('return function(...) ' + (ADDON / entry.strip()).read_text() + '\nend')('ForeverCoach', ns)
     g = lua.globals()
     g.FIRE('ADDON_LOADED', 'ForeverCoach')
+    # Dispatch just the real cache frame to prove its independent guards;
+    # Core's own logout flag/timers must not conceal a missing cache guard.
+    lua.execute('''
+        local frame
+        for _, f in ipairs(FRAMES) do
+            if f.events.AUCTION_HOUSE_CLOSED and f.events.ITEM_DATA_LOAD_RESULT then
+                assert(not frame, "ambiguous item-name frame")
+                frame = f
+            end
+        end
+        assert(frame, "missing item-name frame")
+        function NAME_EVENT(event, ...) frame.scripts.OnEvent(frame, event, ...) end
+    ''')
     return lua, g
 
 
@@ -174,6 +187,144 @@ class ItemNamesTests(unittest.TestCase):
         lua.execute('AHProfitDB.hist.house["91"]="x"; NAMES[91]="After logout"')
         g.FIRE('AUCTION_HOUSE_CLOSED'); g.FIRE('PLAYER_LOGOUT'); g.STEP(1)
         self.assertIsNone(g.ForeverCoachDB.itemNames[91])
+
+
+    def test_combat_gate_before_scheduling(self):
+        for combat in ('combat', 'lockdown'):
+            with self.subTest(combat=combat):
+                lua, g = client('AHProfitDB={hist={house={["91"]="x"}}}')
+                lua.execute('STATE.'+combat+'=true; TIMERS={}')
+                g.NAME_EVENT('PLAYER_LOGIN')
+                self.assertEqual(len(g.TIMERS), 0, 'combat must not schedule a cache timer')
+                lua.execute('STATE.'+combat+'=false')
+                g.NAME_EVENT('PLAYER_REGEN_ENABLED'); g.STEP(0.11)
+                self.assertEqual(list(g.REQUESTS.values()), [91])
+
+    def test_combat_gate_rechecked_when_timer_fires(self):
+        for combat in ('combat', 'lockdown'):
+            with self.subTest(combat=combat):
+                lua, g = client('AHProfitDB={hist={house={["91"]="x"}}}')
+                g.NAME_EVENT('PLAYER_LOGIN')
+                self.assertGreater(len(g.TIMERS), 0, 'timer must actually be pending')
+                lua.execute('STATE.'+combat+'=true')
+                g.STEP(0.11)
+                self.assertEqual(len(g.LOOKUPS), 0, 'combat began after scheduling')
+                lua.execute('STATE.'+combat+'=false')
+                g.NAME_EVENT('PLAYER_REGEN_ENABLED'); g.STEP(0.11)
+                self.assertEqual(list(g.REQUESTS.values()), [91])
+
+    def test_combat_unreadable_or_error_fails_closed(self):
+        for api in ('InCombatLockdown', 'UnitAffectingCombat'):
+            for result in ('return nil', 'return SECRET', 'return 0', 'error("unreadable")'):
+                with self.subTest(api=api, result=result):
+                    lua, g = client('AHProfitDB={hist={house={["91"]="x"}}}')
+                    lua.execute(api+'=function() '+result+' end; TIMERS={}')
+                    g.NAME_EVENT('PLAYER_LOGIN'); g.STEP(0.11)
+                    self.assertEqual(len(g.LOOKUPS), 0, 'unreadable combat must block')
+                    self.assertEqual(len(g.TIMERS), 0)
+                    lua.execute(api+'=function() return false end')
+                    g.NAME_EVENT('PLAYER_REGEN_ENABLED'); g.STEP(0.11)
+                    self.assertEqual(list(g.REQUESTS.values()), [91])
+
+    def test_combat_apis_absent_fails_closed(self):
+        lua, g = client('AHProfitDB={hist={house={["91"]="x"}}}')
+        lua.execute('InCombatLockdown=nil; UnitAffectingCombat=nil; TIMERS={}')
+        g.NAME_EVENT('PLAYER_LOGIN'); g.STEP(0.11)
+        self.assertEqual(len(g.LOOKUPS), 0)
+        self.assertEqual(len(g.TIMERS), 0)
+        lua.execute('UnitAffectingCombat=function() return false end')
+        g.NAME_EVENT('PLAYER_REGEN_ENABLED'); g.STEP(0.11)
+        self.assertEqual(list(g.REQUESTS.values()), [91], 'one readable API suffices')
+
+    def test_throttle_interval_is_one_tenth_second(self):
+        lua, g = client('AHProfitDB={hist={house={["91"]="x",["92"]="x"}}}')
+        g.NAME_EVENT('PLAYER_LOGIN'); g.STEP(0.099)
+        self.assertEqual(len(g.LOOKUPS), 0, 'first lookup must wait 0.1s')
+        g.STEP(0.002)
+        self.assertEqual(len(g.LOOKUPS), 1)
+        first = g.LOOKUPS[1].id
+        lua.execute('NAMES['+str(first)+']="Late synthetic"')
+        g.NAME_EVENT('ITEM_DATA_LOAD_RESULT', first, True)
+        g.STEP(0.098)
+        self.assertEqual(len(g.LOOKUPS), 1, 'completion cannot bypass the interval')
+        g.STEP(0.202)
+        self.assertEqual(len(g.LOOKUPS), 3)
+        stamps = [r.at for r in g.LOOKUPS.values()]
+        for a, b in zip(stamps, stamps[1:]):
+            self.assertGreaterEqual(b-a, 0.1-1e-9)
+
+    def test_scan_visits_at_most_eight_houses(self):
+        lua, g = client('AHProfitDB={hist={}}; for i=1,9 do AHProfitDB.hist["house"..i]={[tostring(i)]="x"} end')
+        g.NAME_EVENT('PLAYER_LOGIN'); g.STEP(1)
+        self.assertEqual(len(g.REQUESTS), 8)
+        self.assertEqual(len(set(g.REQUESTS.values())), 8)
+
+    def test_newer_schema_cache_is_untouched(self):
+        lua, g = client('AHProfitDB={hist={house={["91"]="x"}}}; NAMES[91]="Fresh synthetic"')
+        # Set after ADDON_LOADED: Core's legacy Char initialization sets schema.
+        lua.execute('ForeverCoachDB.schema=ForeverCoach.SCHEMA+1; OLD={future=true}; ForeverCoachDB.itemNames=OLD')
+        g.NAME_EVENT('PLAYER_LOGIN'); g.STEP(1)
+        self.assertEqual(len(g.LOOKUPS), 0)
+        self.assertTrue(lua.eval('ForeverCoachDB.itemNames==OLD and OLD.future==true'))
+
+    def test_logout_stops_cache_without_core_flag(self):
+        lua, g = client('AHProfitDB={hist={house={["91"]="x"}}}; NAMES[91]="After logout"')
+        g.NAME_EVENT('PLAYER_LOGIN')
+        g.NAME_EVENT('PLAYER_LOGOUT')
+        self.assertFalse(bool(g.ForeverCoach._loggingOut), 'exercise cache stop independently')
+        g.STEP(1)
+        g.NAME_EVENT('PLAYER_REGEN_ENABLED'); g.NAME_EVENT('AUCTION_HOUSE_CLOSED'); g.STEP(1)
+        self.assertEqual(len(g.LOOKUPS), 0, 'pending and new work must remain stopped')
+
+    def test_load_result_requires_waiting_id(self):
+        lua, g = client('AHProfitDB={hist={house={["91"]="x"}}}; NAMES[92]="Unrequested synthetic"')
+        g.NAME_EVENT('PLAYER_LOGIN'); g.STEP(0.11)
+        g.NAME_EVENT('ITEM_DATA_LOAD_RESULT', 92, True); g.STEP(0.11)
+        self.assertEqual([r.id for r in g.LOOKUPS.values()], [91])
+        self.assertIsNone(g.ForeverCoachDB.itemNames[92])
+
+    def test_load_result_requires_readable_true(self):
+        for result in (None, 1, 'true'):
+            with self.subTest(result=result):
+                lua, g = client('AHProfitDB={hist={house={["91"]="x"}}}')
+                g.NAME_EVENT('PLAYER_LOGIN'); g.STEP(0.11)
+                lua.execute('NAMES[91]="Not a successful result"')
+                g.NAME_EVENT('ITEM_DATA_LOAD_RESULT', 91, result); g.STEP(0.11)
+                self.assertEqual(len(g.LOOKUPS), 1)
+                self.assertIsNone(g.ForeverCoachDB.itemNames[91])
+
+    def test_numeric_fractional_history_id_is_rejected(self):
+        lua, g = client('AHProfitDB={hist={house={[1.5]="x"}}}; NAMES[1.5]="Fractional synthetic"')
+        g.NAME_EVENT('PLAYER_LOGIN'); g.STEP(1)
+        self.assertEqual(len(g.LOOKUPS), 0)
+
+    def test_saved_cache_is_capped_during_initialization(self):
+        lua, g = client('ForeverCoachDB={itemNames={}}; for i=1,10001 do ForeverCoachDB.itemNames[i]={n="Saved synthetic"} end')
+        g.NAME_EVENT('PLAYER_LOGIN'); g.STEP(0.11)
+        self.assertEqual(len(list(g.ForeverCoachDB.itemNames.items())), 10000)
+
+    def test_failed_request_releases_waiting_state(self):
+        lua, g = client('AHProfitDB={hist={house={["91"]="x"}}}; C_Item.RequestLoadItemDataByID=function(id) REQUESTS[#REQUESTS+1]=id; error("failed request") end')
+        g.NAME_EVENT('PLAYER_LOGIN'); g.STEP(0.11)
+        g.NAME_EVENT('AUCTION_HOUSE_CLOSED'); g.STEP(0.11)
+        self.assertEqual(list(g.REQUESTS.values()), [91, 91], 'failed call must allow a later retry')
+
+    def test_scan_work_is_bounded_without_resolved_names(self):
+        lua, g = client('AHProfitDB={hist={house={}}}; for i=1,10001 do AHProfitDB.hist.house[tostring(i)]="x" end')
+        g.NAME_EVENT('PLAYER_LOGIN'); g.STEP(1002)
+        self.assertEqual(len(g.REQUESTS), 10000, 'waiting names still consume the work budget')
+
+    def test_numeric_placeholder_is_rejected(self):
+        lua, g = client('AHProfitDB={hist={house={["91"]="x"}}}; NAMES[91]="91"')
+        g.NAME_EVENT('PLAYER_LOGIN'); g.STEP(0.11)
+        self.assertIsNone(g.ForeverCoachDB.itemNames[91])
+
+    def test_saved_aliases_count_once_toward_cap(self):
+        lua, g = client('ForeverCoachDB={itemNames={}}; for i=1,9999 do ForeverCoachDB.itemNames[i]={n="Saved synthetic"} end; ForeverCoachDB.itemNames["1"]={n="Alias synthetic"}; AHProfitDB={hist={house={["10000"]="x"}}}; NAMES[10000]="Last synthetic"')
+        g.NAME_EVENT('PLAYER_LOGIN'); g.STEP(0.11)
+        self.assertEqual(len(g.LOOKUPS), 1, 'numeric and string keys for one ID use one slot')
+        self.assertEqual(len(list(g.ForeverCoachDB.itemNames.items())), 10000)
+        self.assertEqual(g.ForeverCoachDB.itemNames[10000].n, 'Last synthetic')
 
 
 if __name__ == '__main__':

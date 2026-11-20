@@ -49,7 +49,7 @@ func TestHotThinSupply(t *testing.T) {
 				t.Errorf("49%% excluded, 50%% kept; counts and mode: %+v", hh)
 			}
 			html := hotHTML(t, h)
-			for _, want := range []string{"4 items checked, 2 left out by the filters, 1 for thin supply", "Listed now / usual", ">50 / 100</td>"} {
+			for _, want := range []string{"4 items checked, 2 left out by the filters, 1 for thin supply", "listed (scan day) / usual", ">50 / 100</td>"} {
 				if !strings.Contains(html, want) {
 					t.Errorf("source/supply lacks %q", want)
 				}

@@ -68,8 +68,12 @@ func coachItemNames(db map[string]any) map[int]farmItemRef {
 		id, ok := farmNameID(k)
 		r := M(raw)
 		name, _ := r["n"].(string)
-		if ok && validFarmName(name) {
-			out[id] = farmItemRef{Name: name, QualityClass: farmQualityClass(r["q"])}
+		if !validFarmName(name) {
+			name = ""
+		}
+		quality := farmQualityClass(r["q"])
+		if ok && (name != "" || quality != "") {
+			out[id] = farmItemRef{Name: name, QualityClass: quality}
 		}
 	}
 	return out
@@ -78,10 +82,38 @@ func fillFarmNames(into, names map[int]farmItemRef) {
 	for id, src := range names {
 		dst := into[id]
 		if dst.Name == "" && src.Name != "" {
-			dst.Name, dst.QualityClass = src.Name, src.QualityClass
-			into[id] = dst
+			dst.Name = src.Name
+		}
+		// Quality is an ID fact, independent of the selected name text.
+		if dst.QualityClass == "" {
+			dst.QualityClass = src.QualityClass
+		}
+		into[id] = dst
+	}
+}
+
+// farmNameProgress measures saved name coverage, not the client's queue or
+// resolvability. A missing merged name implies Coach is absent/incomplete too.
+func farmNameProgress(db map[string]any, items map[int]farmItemRef) string {
+	seen := map[int]bool{}
+	named := 0
+	for _, raw := range M(db["hist"]) {
+		for key, value := range M(raw) {
+			id, ok := farmNameID(key)
+			_, packed := value.(string)
+			if !ok || !packed || seen[id] {
+				continue
+			}
+			seen[id] = true
+			if items[id].Name != "" {
+				named++
+			}
 		}
 	}
+	if named < len(seen) {
+		return fmt.Sprintf("Names are filling in from the game: %d of %d.", named, len(seen))
+	}
+	return ""
 }
 
 // readGearFiles visits only the known addon roots and their _generated folder.
@@ -187,6 +219,75 @@ func readGearFiles(game string) (sources []string, key string) {
 	return sources, filepath.Clean(game) + "\x00" + strings.Join(keys, "|")
 }
 
+// gearNameSource masks comments for the literal parser, and strings as well
+// for assignment discovery. Keep offsets/newlines identical; parse only from
+// the discovered assignment, never a preceding copy inside inert text.
+func gearNameSource(src string) (string, string) {
+	data, code := []byte(src), []byte(src)
+	mask := func(b []byte, start, end int) {
+		for i := start; i < end; i++ {
+			if b[i] != '\n' && b[i] != '\r' {
+				b[i] = ' '
+			}
+		}
+	}
+	longEnd := func(start int) (int, bool) {
+		if start >= len(src) || src[start] != '[' {
+			return start, false
+		}
+		j := start + 1
+		for j < len(src) && src[j] == '=' {
+			j++
+		}
+		if j >= len(src) || src[j] != '[' {
+			return start, false
+		}
+		close := "]" + src[start+1:j] + "]"
+		if end := strings.Index(src[j+1:], close); end >= 0 {
+			return j + 1 + end + len(close), true
+		}
+		return len(src), true // unterminated inert text cannot expose code
+	}
+	for i := 0; i < len(src); {
+		start := i
+		switch {
+		case strings.HasPrefix(src[i:], "--"):
+			var long bool
+			i, long = longEnd(i + 2)
+			if !long {
+				for i < len(src) && src[i] != '\n' && src[i] != '\r' {
+					i++
+				}
+			}
+			mask(data, start, i)
+		case src[i] == '\'' || src[i] == '"':
+			quote := src[i]
+			i++
+			for i < len(src) {
+				c := src[i]
+				i++
+				if c == '\\' && i < len(src) {
+					i++
+				} else if c == quote {
+					break
+				}
+			}
+		case src[i] == '[':
+			end, long := longEnd(i)
+			if !long {
+				i++
+				continue
+			}
+			i = end
+		default:
+			i++
+			continue
+		}
+		mask(code, start, i)
+	}
+	return string(data), string(code)
+}
+
 func loadGearNames(game string, cache *gearNameCache) map[int]farmItemRef {
 	if game == "" {
 		return nil
@@ -197,17 +298,19 @@ func loadGearNames(game string, cache *gearNameCache) map[int]farmItemRef {
 	}
 	out := map[int]farmItemRef{}
 	for _, src := range sources {
-		matches := gearNameAssignment.FindAllStringSubmatch(src, 17)
+		data, code := gearNameSource(src)
+		matches := gearNameAssignment.FindAllStringSubmatchIndex(code, 17)
 		if len(matches) > 16 {
 			continue
 		} // a generated file normally has one name table
 		seen := map[string]bool{}
 		for _, match := range matches {
-			if seen[match[1]] {
+			name := code[match[2]:match[3]]
+			if seen[name] {
 				continue
 			}
-			seen[match[1]] = true
-			d, err := parseLuaAssignedTableLimited(src, match[1], gearNameMaxValues)
+			seen[name] = true
+			d, err := parseLuaAssignedTableLimited(data[match[0]:], name, gearNameMaxValues)
 			if err != nil {
 				continue
 			}
@@ -218,14 +321,29 @@ func loadGearNames(game string, cache *gearNameCache) map[int]farmItemRef {
 				id, ok := farmNameID(k)
 				r := M(raw)
 				name, _ := r["name"].(string)
-				if !ok || !validFarmName(name) {
+				if !validFarmName(name) {
+					name = ""
+				}
+				quality := farmQualityClass(r["quality"])
+				if !ok || (name == "" && quality == "") {
 					continue
 				}
 				if _, have := out[id]; !have {
 					if len(out) >= gearNameMaxItems {
 						return nil
 					} // reject, never a random partial map
-					out[id] = farmItemRef{Name: name, QualityClass: farmQualityClass(r["quality"])}
+					out[id] = farmItemRef{Name: name, QualityClass: quality}
+				} else {
+					// First known value wins per field, as across providers:
+					// a quality-only row must not hide a later usable name.
+					item := out[id]
+					if item.Name == "" {
+						item.Name = name
+					}
+					if item.QualityClass == "" {
+						item.QualityClass = quality
+					}
+					out[id] = item
 				}
 			}
 		}

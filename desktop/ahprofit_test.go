@@ -326,13 +326,18 @@ func TestFarmRenderForUITests(t *testing.T) {
 	["hist"] = { ["Stormrage|Alliance"] = { [2772] = %q, [8001] = %q } },`, day, farmNow-4000, farmNow-400,
 		ahpHistEncode(series(day, 20, 2000, 2000, 2000, 2000, 2000, 2000, 7000)),
 		ahpHistEncode(append(series(day-1, 20, 2000, 2000, 2000, 2000, 2000), ahpHistRow{Day: day, High: 1000, Listed: 40}))), 1)
-	fv, err := buildFarm([]byte(sv), chars, time.Unix(farmNow, 0), farmRef{Items: map[int]farmItemRef{
-		2772: {Name: "Sample Up", QualityClass: "q2"},
-		8001: {Name: "Sample Down", QualityClass: "q3"},
-	}})
+	db, err := parseFarm([]byte(sv))
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Save text wins; quality comes independently from Coach, then GearQuest.
+	db["items"] = map[string]any{
+		"2772": map[string]any{"1": "Sample Up"},
+		"8001": map[string]any{"1": "Sample Down"},
+	}
+	fv := buildFarmDB(db, chars, time.Unix(farmNow, 0), farmRef{},
+		map[int]farmItemRef{2772: {Name: "Coach synthetic", QualityClass: "q2"}},
+		map[int]farmItemRef{2772: {Name: "Gear synthetic", QualityClass: "q4"}, 8001: {Name: "Gear synthetic", QualityClass: "q3"}})
 	html, err := renderFarmBody(View{Farm: fv})
 	if err != nil || !strings.Contains(html, `id="farm-house"`) || !strings.Contains(html, `data-house="Stormrage|Horde"`) || !fv.HasLedger || len(fv.Sessions) != 1 {
 		t.Fatalf("render: %v", err)
