@@ -457,7 +457,7 @@ async function refresh(manual = false) {
     acknowledgeRenderedShell();
     if (manual && !raidLocked(result)) message('Report refreshed. The game must save before new data appears.', true);
   }
-  catch (err) { if (generation === reportGeneration) message(raidLocked(lastReport) || 'Could not refresh the report: '+err.message); }
+  catch (err) { if (generation === reportGeneration) message(raidLocked(lastReport || renderedReport) || 'Could not refresh the report: '+err.message); }
   finally { refreshing = false; updateButtons(); }
 }
 $('nav-setup').addEventListener('click',()=>{ userNavigated = true; show('setup'); maybeAutoCheck(); });

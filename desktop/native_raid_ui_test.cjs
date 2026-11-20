@@ -115,6 +115,17 @@ for (const refreshFirst of [false,true]) test('route lock wins over refresh repl
  assert.match($('global-status').textContent,/Raids locked: current reading invalid/);
  assert.equal(calls.filter(r=>r.method==='raidPage').length,1);
 });
+test('first refresh failure preserves the initial-context route lock message',async t=>{
+ let rejectRefresh;
+ const {$,dom}=await setup(t,{reportRefresh:()=>new Promise((_,reject)=>rejectRefresh=reject),raidPage:()=>{throw Error('Raids locked: initial reading invalid')}});
+ // An initially admitted native shell can be used while its first RPC waits.
+ $('nav-update').insertAdjacentHTML('beforebegin','<button id="nav-raids">Raids</button>');
+ $('update-view').insertAdjacentHTML('beforebegin',raid);
+ $('nav-raids').click();await settle();
+ rejectRefresh(Error('offline'));await settle();
+ assert.equal($('nav-raids'),null);assert.equal($('raids-view'),null);
+ assert.match($('global-status').textContent,/Raids locked: initial reading invalid/);
+});
 test('a later refresh cannot unlock without a new guarded route verdict',async t=>{
  let locked=true;
  const {$,calls}=await setup(t,{reportRefresh:()=>report(true),raidPage:()=>{if(locked)throw Error('Raids locked: stale');return raid}});
