@@ -529,3 +529,174 @@ f:SetScript("OnEvent", function(_, event, arg1)
     local ok, err = pcall(onEvent, event, arg1)
     if not ok then FC:Char().lastError = { where = event, err = tostring(err), time = time(), version = FC.VERSION } end
 end)
+
+-- Keep this self-contained module in Core: the updater deliberately has an
+-- exact file allowlist. Adding a TOC file would break existing 1.8.x installers.
+do
+-- Farming item labels. AHProfitDB is read-only; only our own save is written.
+-- Forever API evidence: Gethe/wow-ui-source eac30af597e5aaa43a60f6675ef5fdcea100375f,
+-- Interface/AddOns/Blizzard_APIDocumentationGenerated/:
+-- SystemDocumentation.lua:136,153 (PLAYER_ENTERING_WORLD, PLAYER_LOGIN);
+-- AuctionHouseDocumentation.lua:1159 (AUCTION_HOUSE_CLOSED);
+-- UnitDocumentation.lua:3893 (PLAYER_REGEN_ENABLED);
+-- ItemDocumentation.lua:626-640 (GetItemInfo: name, link, quality),
+-- :906-917 (GetItemQualityByID), :1710-1717 (RequestLoadItemDataByID),
+-- :1857-1863 (ITEM_DATA_LOAD_RESULT: itemID, success).
+-- APIs are optional and called under pcall, as in Core's inventory reader.
+local _, FC = ...
+local safe, plain = FC.safe, FC.plain
+local MAX, INTERVAL = 10000, 0.1
+local cache, count
+local queue, head, tail, states, work = {}, 1, 0, {}, 0
+local dirty, scheduled, stopped = false, false, false
+
+local function tbl(v)
+    v = plain(v)
+    if type(v) == "table" then return v end
+end
+local function idOf(v)
+    v = plain(v)
+    if type(v) == "string" then
+        if not v:match("^[1-9]%d*$") or #v > 8 then return nil end
+        v = tonumber(v)
+    end
+    if type(v) == "number" and v > 0 and v <= 10000000 and v % 1 == 0 then return v end
+end
+local function nameOf(v)
+    v = plain(v)
+    -- Preserve localized UTF-8; reject controls, formatting/link escapes and blank names.
+    if type(v) == "string" and #v > 0 and #v <= 128
+        and not v:find("[%c|]") and v:find("%S")
+        and not v:lower():match("^item #?%d+$") and not v:match("^%d+$") then return v end
+end
+local function qualityOf(v)
+    v = plain(v)
+    if type(v) == "number" and v >= 0 and v <= 8 and v % 1 == 0 then return v end
+end
+local function blocked()
+    -- Unreadable combat state fails closed; old clients may have only one API.
+    local have = false
+    for _, fn in ipairs({ InCombatLockdown or false, UnitAffectingCombat or false }) do
+        if type(fn) == "function" then
+            have = true
+            local ok, v = pcall(fn, "player")
+            if not ok or plain(v) ~= false then return true end
+        end
+    end
+    return not have
+end
+local function init()
+    if cache then return true end
+    local db = tbl(ForeverCoachDB)
+    if not db then return false end
+    local schema = plain(rawget(db, "schema"))
+    if type(schema) == "number" and schema > FC.SCHEMA then return false end
+    local old = tbl(rawget(db, "itemNames"))
+    cache, count = {}, 0
+    if old then
+        for key, row in pairs(old) do
+            if count >= MAX then break end
+            local id, r = idOf(key), tbl(row)
+            local name = nameOf(r and rawget(r, "n") or row)
+            if id and name and not cache[id] then
+                cache[id] = { n = name, q = r and qualityOf(rawget(r, "q")) or nil }
+                count = count + 1
+            end
+        end
+    end
+    db.itemNames = cache
+    return true
+end
+local function enqueue(id, ready)
+    tail = tail + 1
+    queue[tail], states[id] = id, ready and "ready" or "queued"
+end
+local function scan()
+    dirty = false
+    local db = tbl(AHProfitDB)
+    local hist = db and tbl(rawget(db, "hist"))
+    if not hist or count >= MAX then return end
+    -- AH Profit keeps at most 8 houses and 10,000 history items per house.
+    -- Read keys/packed strings only, never decode or modify any donor table.
+    local houses = 0
+    for key, raw in pairs(hist) do
+        houses = houses + 1
+        if houses > 8 then break end
+        local house = tbl(raw)
+        if type(plain(key)) == "string" and house then
+            local seen = 0
+            for k, value in pairs(house) do
+                seen = seen + 1
+                if seen > MAX or work >= MAX then break end
+                local id = idOf(k)
+                if id and type(plain(value)) == "string" and not cache[id] and not states[id] then
+                    work = work + 1
+                    enqueue(id)
+                end
+            end
+        end
+    end
+end
+local schedule
+local function tick()
+    scheduled = false
+    if stopped or FC._loggingOut or blocked() or not init() then return end
+    if dirty then scan() end
+    if count >= MAX then
+        -- Full means no new entries, no eviction and no further item lookups.
+        queue, head, tail, states, work = {}, 1, 0, {}, 0
+        return
+    end
+    if head <= tail then
+        local id = queue[head]
+        queue[head], head = nil, head + 1
+        local ready = states[id] == "ready"
+        states[id], work = nil, work - 1
+        if not cache[id] then
+            local api = tbl(C_Item)
+            local info = api and plain(rawget(api, "GetItemInfo"))
+            if type(info) ~= "function" then info = GetItemInfo end
+            local name, _, quality = safe(info, id)
+            name = nameOf(name)
+            if name then
+                quality = qualityOf(quality)
+                if quality == nil and api then quality = qualityOf(safe(rawget(api, "GetItemQualityByID"), id)) end
+                cache[id] = { n = name, q = quality }
+                count = count + 1
+            elseif not ready and api and type(plain(rawget(api, "RequestLoadItemDataByID"))) == "function" then
+                -- Mark waiting before calling: the result event may be synchronous.
+                states[id], work = "waiting", work + 1
+                local ok = pcall(rawget(api, "RequestLoadItemDataByID"), id)
+                if not ok and states[id] == "waiting" then states[id], work = nil, work - 1 end
+            end
+        end
+    end
+    if head > tail then queue, head, tail = {}, 1, 0 end
+    if head <= tail or dirty then schedule() end
+end
+schedule = function()
+    if scheduled or stopped or FC._loggingOut or blocked() then return end
+    -- One item every 0.1s, including load completions. No catch-up bursts:
+    -- at most 10 name lookups and 10 optional quality/load calls per second.
+    if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return end
+    scheduled = true
+    if not pcall(C_Timer.After, INTERVAL, function() pcall(tick) end) then scheduled = false end
+end
+local f = CreateFrame("Frame")
+for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "AUCTION_HOUSE_CLOSED",
+    "ITEM_DATA_LOAD_RESULT", "PLAYER_REGEN_ENABLED", "PLAYER_LOGOUT" }) do
+    pcall(f.RegisterEvent, f, event)
+end
+f:SetScript("OnEvent", function(_, event, id, success)
+    if event == "PLAYER_LOGOUT" then stopped = true; return end
+    if event == "PLAYER_LOGIN" or event == "PLAYER_ENTERING_WORLD" or event == "AUCTION_HOUSE_CLOSED" then
+        dirty = true
+    elseif event == "ITEM_DATA_LOAD_RESULT" then
+        id = idOf(id)
+        if not id or states[id] ~= "waiting" then return end
+        if plain(success) == true then enqueue(id, true)
+        else states[id], work = nil, work - 1 end
+    end
+    schedule()
+end)
+end
