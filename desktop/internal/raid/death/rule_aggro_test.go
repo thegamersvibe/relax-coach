@@ -31,8 +31,9 @@ func TestPulledAggroBeforeTank(t *testing.T) {
 }
 func TestPulledAggroNoLivingTank(t *testing.T) {
 	f := meleeDeath()
-	f.Events = append(f.Events, died(8000, tank))
-	wantDeath(t, forVictim(t, f, config()), "pulled aggro", "high", "player", "", victim.Name)
+	f.Events = append(f.Events, swing(7000, boss, tank, 1), died(8000, tank))
+	// The bounded-rule ruling removed the no-living-tank puller shortcut.
+	wantDeath(t, forVictim(t, f, config()), "unresolved", "low", "undecided", "")
 	f.Events[len(f.Events)-1] = modeltest.At(8000).Dst(tank).Died(1).Build()
 	wantDeath(t, forVictim(t, f, config()), "tank lost the boss", "high", "player", "", tank.Name)
 }
@@ -44,6 +45,7 @@ func TestLostBossGapAndOwner(t *testing.T) {
 		f := meleeDeath()
 		f.Events[0].TimeMs = tc.at
 		f.Events[1].TimeMs = 6000
+		f.Events = append(f.Events, swing(8000, boss, tank, 1)) // observed holder
 		d := forVictim(t, f, config())
 		if tc.cause == "unresolved" {
 			wantDeath(t, d, tc.cause, "low", "undecided", "")
@@ -52,7 +54,7 @@ func TestLostBossGapAndOwner(t *testing.T) {
 		}
 	}
 	f := meleeDeath()
-	f.Events = append(f.Events, hit(9500, tank, boss, 91, 1)) // a hit after the turn cannot repair the earlier gap
+	f.Events = append(f.Events, swing(8000, boss, tank, 1), hit(9500, tank, boss, 91, 1)) // a hit after the turn cannot repair the earlier gap
 	wantDeath(t, forVictim(t, f, config()), "tank lost the boss", "high", "player", "", tank.Name)
 	c := config()
 	c.Scoring.Death.LostBossGapMs = nil
@@ -61,10 +63,12 @@ func TestLostBossGapAndOwner(t *testing.T) {
 	f = meleeDeath()
 	f.Events[0].Src = pet
 	f.Owners = map[string]string{pet.ID: tank.ID}
+	f.Events = append(f.Events, swing(8000, boss, tank, 1))
 	wantDeath(t, forVictim(t, f, config()), "tank lost the boss", "high", "player", "", tank.Name)
 }
 func TestAmbiguousAggroHasNoSuggestionAndBossSwingEvidence(t *testing.T) {
 	tankVictim := meleeDeath()
+	tankVictim.Events = append(tankVictim.Events, swing(8000, boss, tank, 1)) // otherwise proves lost-boss
 	tankVictim.Roles[victim.ID] = "tank"
 	wantDeath(t, forVictim(t, tankVictim, config()), "unresolved", "low", "undecided", "")
 	f := meleeDeath()

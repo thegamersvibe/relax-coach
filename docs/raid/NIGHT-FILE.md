@@ -226,7 +226,15 @@ roles, owners and boss units. No events means no judgment, not zero observed
 deaths. Feign lines and pet deaths never become player deaths. Pet damage is
 credited through `Fight.Owners` for the puller/tank predicates, never by name.
 The caller is responsible for selecting detail and omitting wipe summaries
-from dungeon files.
+from dungeon files. Deaths outside the final run span must not be reviewed or
+scored, but `model.Fight` does not carry that span and `death.Review` receives no
+run argument. `Fight.EndMs` is an encounter boundary, **not** a run boundary:
+valid post-end tail deaths can exceed it. Final `EndMs` exists only on
+`fights.Run` in this revision, not on `model.RaidNight`/`model.DungeonRun`.
+Run-scope filtering therefore needs approved caller wiring or a shared-input
+contract change; R6 cannot infer it. `TestRunEndClockSpikePendingContract`
+reproduces identical Fight inputs requiring different reviewed-death counts
+under two final run ends. This gap is not claimed fixed.
 
 The model uses descriptive cause values; the result writer maps them without
 inventing another cause:
@@ -245,15 +253,24 @@ The classifier follows DESIGN section 8 order, with the architect's phase-1
 predicates. One confident match is `high`; multiple confident rules retain the
 first cause with `medium`. No confident match is `unresolved` / `low` /
 `undecided`. A sparse unhealed match suggests `unhealed over time` but charges
-nobody; otherwise the suggestion is empty. Wipe-call decisions are terminal.
+nobody; otherwise the suggestion is empty. Wipe-call decisions keep priority,
+but a second actual match (for example avoidable) makes confidence `medium`.
+An unresolved aggro fallback does not count as a second rule match.
 Environmental deaths are terminal `unavoidable or one-shot`, or `unresolved`
 when an enabled mechanic covers the environmental killing hit; they never
-charge the healing team.
+charge the healing team. An absent source alone is **unknown**, not environmental.
+The environmental model shape from `logfmt` is no source, no spell id, no swing
+stream and an environmental type in `SpellName` (falling, drowning, fatigue,
+fire, lava or slime). Unknown types remain unresolved.
 
-- The review window is inclusive from death minus `death.window_ms` through
-  death. A health sample belongs to the victim only when `InfoUnit` is the
-  victim and present `HPMax` is positive; unrelated destination/source health
-  is not substituted. Samples may occur on any event family.
+- The review window begins at death minus `death.window_ms` (inclusive), or
+  just after the victim's previous real `UNIT_DIED` line, whichever is later.
+  It ends at **this particular death line**, not the end of its millisecond.
+  Later same-ms damage, healing, health and survival transitions cannot change
+  that death. A resurrection is not the life boundary; feigns are not deaths.
+  A health sample belongs to the victim only when `InfoUnit` is the victim and
+  present `HPMax` is positive; unrelated destination/source health is not
+  substituted. Samples may occur on any event family.
 - Unhealed starts at the first victim damage **after** the latest sample at or
   above `full_health_fraction`, otherwise the first victim damage in the
   window. Equal timestamps retain event order. The span must reach
@@ -280,20 +297,41 @@ charge the healing team.
   share must reach `raidwide_share`. A simultaneous unhealed match makes this
   `medium`. One-shot damage must reach the victim's sampled maximum health
   inside `one_shot_window_ms` before death.
-- Pulled aggro needs a non-tank killed by a boss landed swing and either the
-  victim's first damage preceding every tank hit or no living tank. Otherwise
-  the lost-boss predicate compares the most recent living tank's damage to
-  the first observed swing onto the victim in the review window, strictly
-  beyond `lost_boss_gap_ms`. Tied tank evidence is not assigned arbitrarily.
-  Ambiguous boss-melee deaths are `unresolved`, `undecided`, with **empty**
-  suggestion and boss-swing evidence. R8 may label them "aggro: puller or
-  tank"; that label is not a new model/file enumeration.
+- Both aggro rules require a **known** non-tank role (`dps` or `healer`) and
+  killing damage that is a landed swing by one of `BossUnits`. Missing or
+  uncomputed roles do not prove non-tank status. The killing run starts at
+  that boss unit's first landed/missed/dodged/parried swing on the victim
+  inside the life-scoped window; source-side swing duplicates do not count.
+- Pulled aggro requires the victim's first damage to that unit **in the fight**
+  to precede every tank's first damage to it. The run must start at or after
+  that damage and within `death.pulled_aggro_ms` (inclusive). The range check
+  is isolated in `pulledAggroInRange`; no hardcoded lookback is supplied.
+  A passive victim cannot be blamed. The no-living-tank alternative is removed;
+  all tanks dead belongs to the configured wipe rule. A tank's earlier damage
+  is not erased because that tank subsequently died.
+- Lost boss requires an observed holder: the destination of this boss unit's
+  last swing **before** the run in stable log order, including missed swings
+  and an earlier same-ms line. That swing must be no older than `window_ms`
+  before the run. Its destination must be a tank alive at run start, not at
+  the killing hit. Only that tank can own the death. His last damage on that
+  boss must precede the run by **more than** `lost_boss_gap_ms`; no damage counts
+  as more. A damage event at the turn millisecond counts (unless after this
+  death line). A tank's missed attacks do not refresh this damage-only clock;
+  the architect's damage-event definition supersedes the earlier threat idea.
+  Two tanks' hit times cannot choose the holder; a prior non-tank target or no
+  recent target gives no match. Ambiguous boss-melee deaths remain `unresolved`,
+  `undecided`, with **empty** suggestion and boss-swing evidence. R8 may label
+  them "aggro: puller or tank"; this is not a new model/file enumeration.
 
 `Death.TimeMs` and its `Evidence` times are absolute model milliseconds. The
 writer subtracts `Fight.StartMs` for file times. Recap evidence retains the
 last ten victim damage/heal/absorb times in the window; aggro evidence keeps
 boss swings on the victim. These are references into the selected events,
 not raw events in this file. Equal timestamps can refer to multiple lines.
+Whether the special boss-swing evidence must also be capped at ten is pending
+an architect ruling: it currently retains all landed boss swings in the window
+(`TestZZRecapBossCapPendingRuling` pins twelve). The ordinary recap cap remains
+ten. [Round-1 evidence](R6-REVIEW-EVIDENCE.md) records the fixes and limitations.
 R8/result rendering and officer override/tagging remain separate lanes.
 
 ## Wipe summary (`wipes[]`)

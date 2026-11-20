@@ -29,7 +29,7 @@ func ptr(v int64) *int64 { return &v }
 func config() cfg.Config {
 	return cfg.Config{Scoring: cfg.Scoring{Death: cfg.Death{
 		FullHealthFraction: .9, MinHealthSamples: 2, RaidwideShare: .6, RaidwideWindowMs: 2000,
-		WindowMs: 10000, WipeDeadShare: 1, OneShotWindowMs: 1500, UnhealedMinMs: 4000,
+		WindowMs: 10000, PulledAggroMs: 10000, WipeDeadShare: 1, OneShotWindowMs: 1500, UnhealedMinMs: 4000,
 		LostBossGapMs: ptr(4000), SummaryWindowMs: ptr(10000),
 	}}}
 }

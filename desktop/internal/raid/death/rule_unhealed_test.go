@@ -99,7 +99,8 @@ func TestEffectiveHealingAndAbsorbs(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := slowDeath(6000)
-			f.Events = append(f.Events, tc.e)
+			// The inclusive timestamp control precedes this UNIT_DIED line.
+			f.Events = append(f.Events[:len(f.Events)-1], tc.e, f.Events[len(f.Events)-1])
 			d := forVictim(t, f, config())
 			if tc.blocks {
 				wantDeath(t, d, "unresolved", "low", "undecided", "")
@@ -116,7 +117,8 @@ func TestHealerAliveWholeSpan(t *testing.T) {
 	for _, at := range []int64{5999, 6000, 8000, 10000} {
 		f := slowDeath(6000)
 		delete(f.Roles, healer2.ID)
-		f.Events = append(f.Events, died(at, healer))
+		// At-death transitions count only when logged before the victim's death.
+		f.Events = append(f.Events[:len(f.Events)-1], died(at, healer), f.Events[len(f.Events)-1])
 		wantDeath(t, forVictim(t, f, config()), "unresolved", "low", "undecided", "")
 	}
 	f := slowDeath(6000)

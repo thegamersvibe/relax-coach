@@ -13,40 +13,43 @@ func lostBoss(c *context) verdict {
 	if killing == nil || pulledAggro(c).cause != "" {
 		return verdict{}
 	}
-	// First swing onto the victim in this review window is the observed turn.
-	turn := killing.TimeMs
 	evidence := []int64{}
 	for _, e := range c.window {
 		if damage(e) && e.Stream == model.SwingLanded && slices.Contains(c.view.f.BossUnits, e.Src.ID) && e.Dst.ID == c.victim.ID {
-			if e.Src.ID == killing.Src.ID && e.TimeMs < turn {
-				turn = e.TimeMs
-			}
 			evidence = append(evidence, e.TimeMs)
 		}
 	}
-	var last model.Opt
-	owner := ""
-	tied := false
-	for _, e := range c.view.events {
-		if e.TimeMs >= turn {
+	// An unresolved aggro recap is a terminal fallback, not proof of a cause.
+	unknown := verdict{cause: Unresolved, owner: "undecided", evidence: evidence, terminal: true}
+	turn := killingRun(c, killing.Src.ID)
+	at := c.view.events[turn].TimeMs
+	holder := ""
+	for i := turn - 1; i >= 0; i-- {
+		e := c.view.events[i]
+		if at-e.TimeMs > c.params.WindowMs {
 			break
 		}
-		id := c.view.owner(e.Src.ID)
-		if !damage(e) || effective(e) == 0 || e.Dst.ID != killing.Src.ID || c.view.f.Roles[id] != "tank" || !c.view.alive(id, killing.TimeMs) {
-			continue
+		if melee(e) && e.Src.ID == killing.Src.ID {
+			holder = e.Dst.ID
+			break
 		}
-		if !last.Present || e.TimeMs > last.V {
+	}
+	if c.params.LostBossGapMs == nil || c.view.f.Roles[holder] != "tank" || !c.view.aliveBefore(holder, turn) {
+		return unknown
+	}
+	var last model.Opt
+	for _, e := range c.view.events[:c.end+1] {
+		// The holder's damage at the turn millisecond counts as engagement;
+		// no later timestamp (or line after this death) repairs the gap.
+		if e.TimeMs > at {
+			break
+		}
+		if damage(e) && e.Dst.ID == killing.Src.ID && c.view.owner(e.Src.ID) == holder {
 			last = model.Some(e.TimeMs)
-			owner = id
-			tied = false
-		} else if id != owner {
-			tied = true
 		}
 	}
-	if c.params.LostBossGapMs != nil && last.Present && !tied && turn-last.V > *c.params.LostBossGapMs {
-		return verdict{cause: TankLostBoss, owner: "player", owners: []string{c.view.players[owner].Name}, evidence: evidence}
+	if !last.Present || at-last.V > *c.params.LostBossGapMs {
+		return verdict{cause: TankLostBoss, owner: "player", owners: []string{c.view.players[holder].Name}, evidence: evidence}
 	}
-	// No threat table: do not invent a model cause or a healer charge. R8 can
-	// label this evidence "aggro: puller or tank" without a seventh suggestion.
-	return verdict{cause: Unresolved, owner: "undecided", evidence: evidence, terminal: true}
+	return unknown
 }

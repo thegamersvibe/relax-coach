@@ -15,6 +15,9 @@ func unavoidable(c *context) verdict {
 		return verdict{}
 	}
 	if killing.Src.ID == "" {
+		if !environmental(*killing) {
+			return verdict{cause: Unresolved, owner: "undecided", terminal: true}
+		}
 		// Environmental deaths with a registry entry need officer review; even
 		// a slow fall/fire death must never be charged to the healing team.
 		for _, m := range c.mechanics {
@@ -33,6 +36,13 @@ func unavoidable(c *context) verdict {
 		}
 	}
 	return verdict{}
+}
+
+// logfmt clears the source and places ENVIRONMENTAL_DAMAGE's type in
+// SpellName, with no spell ID or swing stream. A missing actor alone is unknown.
+func environmental(e model.Event) bool {
+	return e.SpellID == 0 && e.Stream == model.StreamNone &&
+		slices.Contains([]string{"FALLING", "DROWNING", "FATIGUE", "FIRE", "LAVA", "SLIME"}, e.SpellName)
 }
 
 func oneShot(c *context) bool {

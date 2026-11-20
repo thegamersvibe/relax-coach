@@ -8,7 +8,8 @@ import (
 func init() { Register(1, afterWipe) }
 func afterWipe(c *context) verdict {
 	if c.wipeCall.Present && c.at > c.wipeCall.V {
-		return verdict{cause: AfterWipeCall, owner: "nobody", terminal: true}
+		// Keep priority, but still count other actual matches for confidence.
+		return verdict{cause: AfterWipeCall, owner: "nobody"}
 	}
 	return verdict{}
 }

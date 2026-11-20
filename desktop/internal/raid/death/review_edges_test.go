@@ -25,6 +25,7 @@ func TestEnvironmentalKillingHitCannotChargeEarlierMechanic(t *testing.T) {
 	f.Events[1].Amount = model.Some(500)
 	f.Events[3].Src = model.Actor{}
 	f.Events[3].SpellID = 0
+	f.Events[3].SpellName = "FALLING" // logfmt environmental type, not merely an absent actor
 	c := config()
 	mechanic(&c, 81)
 	wantDeath(t, forVictim(t, f, c), "unavoidable or one-shot", "high", "nobody", "")

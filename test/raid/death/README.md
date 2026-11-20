@@ -2,7 +2,7 @@
 
 The runner discovers `module.json` automatically; production imports remain
 `model` and `cfg` only. `fights` and `logfmt` are external-test dependencies.
-All committed events are synthetic `modeltest` values. Nothing is tested in
+Committed events are synthetic `modeltest` values or synthetic parser controls. Nothing is tested in
 the game, and no real line, actor name, id or path is recorded here.
 
 ## Gates
@@ -22,9 +22,12 @@ suggestions, full-health resets, whole-span healer survival, healing/absorb
 0/1, strict majority with overkill removed, role-specific/empty mechanic roles,
 raid-wide shares 0.59/0.6, two versus three targets, source/swing/mechanic
 exclusions, alive-at-start denominator, pet attribution, lost-boss gap,
-wipe call time and summary boundaries. `mutants.json` has 60 behavioral
-mutants; all must be killed by their named test, not by compiler errors.
-The observed race-enabled module run was 2.3 seconds against the unchanged
+wipe call time and summary boundaries. Round-1 regressions add bounded
+fight-wide openers, proven roles, observed holders, missed swings, log-order
+survival, exact death-line/life cutoffs, environmental provenance, confidence
+counting and unowned guardians. `mutants.json` has 104 behavioral mutants;
+all must be killed by their named test, not by compiler errors.
+The observed final race-enabled module run was 2.6 seconds against the unchanged
 30-second runner deadline. The all-Go runner passed 8/8 modules and the
 Lua/Python runner passed 7/7.
 
@@ -34,6 +37,16 @@ mutations. The tests were strengthened and the mutations made compilable;
 no mutant was removed. The next pass killed 60/60. Self-review also caught
 foreign-target recap evidence, an environmental/earlier-mechanic precedence
 case, and incomplete multi-boss swing evidence, each verified RED→GREEN.
+
+Round-1 is recorded separately in [R6-REVIEW-EVIDENCE.md](../../../docs/raid/R6-REVIEW-EVIDENCE.md),
+including actual RED→GREEN output, authorized fixture/expectation migrations,
+all surviving reviewer-hand-mutant guards, the pending evidence-cap ruling
+and the reproduced run-end input gap (`TestRunEndClockSpikePendingContract`).
+The latter is not fixed: `Fight.EndMs` cannot substitute for `fights.Run.EndMs`.
+The first death mutation run killed 90/91; adding a prior alternate holder
+made the remaining last-target mutant observable. The final pack killed
+104/104, including 44 additions to the 60 inherited entries. Obsolete anchors
+were migrated to the replacement predicates, never counted as compiler kills.
 
 ## Private integration, opt-in only
 

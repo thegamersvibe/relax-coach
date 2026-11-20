@@ -38,11 +38,24 @@ func newView(f model.Fight) *fightView {
 	}
 	return v
 }
-func (v *fightView) window(id string, from, to int64) []model.Event {
-	es := v.timelines[id]
-	start := sort.Search(len(es), func(i int) bool { return es[i].TimeMs >= from })
-	end := sort.Search(len(es), func(i int) bool { return es[i].TimeMs > to })
-	return es[start:end]
+
+// deathWindow is bounded by event identity, not just its millisecond. A
+// preceding real death cuts the life even when no resurrection was logged.
+func (v *fightView) deathWindow(id string, from int64, end int) (int, []model.Event) {
+	start := sort.Search(end+1, func(i int) bool { return v.events[i].TimeMs >= from })
+	for i := end - 1; i >= start; i-- {
+		if v.events[i].Dst.ID == id && v.events[i].IsDeath() {
+			start = i + 1
+			break
+		}
+	}
+	var window []model.Event
+	for _, e := range v.events[start : end+1] {
+		if e.Dst.ID == id || e.InfoUnit == id {
+			window = append(window, e)
+		}
+	}
+	return start, window
 }
 func (v *fightView) alive(id string, at int64) bool {
 	alive := true
@@ -62,12 +75,33 @@ func (v *fightView) alive(id string, at int64) bool {
 	}
 	return alive
 }
-func (v *fightView) aliveThroughout(id string, from, to int64) bool {
-	if !v.alive(id, from) {
+
+// aliveBefore observes transitions only before a particular log line.
+func (v *fightView) aliveBefore(id string, before int) bool {
+	alive := true
+	for _, e := range v.events[:before] {
+		if e.Dst.ID != id {
+			continue
+		}
+		if e.IsDeath() {
+			alive = false
+		}
+		if e.Kind == model.Resurrect {
+			alive = true
+		}
+	}
+	return alive
+}
+func (c *context) alive(id string, at int64) bool {
+	end := sort.Search(c.end+1, func(i int) bool { return c.view.events[i].TimeMs > at })
+	return c.view.aliveBefore(id, end)
+}
+func (c *context) aliveThroughout(id string, from, to int64) bool {
+	if !c.alive(id, from) {
 		return false
 	}
-	for _, e := range v.window(id, from, to) {
-		if e.Dst.ID == id && e.IsDeath() {
+	for _, e := range c.view.events[:c.end+1] {
+		if e.TimeMs >= from && e.TimeMs <= to && e.Dst.ID == id && e.IsDeath() {
 			return false
 		}
 	}

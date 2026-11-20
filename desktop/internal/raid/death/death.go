@@ -46,13 +46,14 @@ func Register(order int, apply func(*context) verdict) {
 }
 
 type context struct {
-	view      *fightView
-	params    cfg.Death
-	mechanics []cfg.Mechanic
-	victim    model.Actor
-	at        int64
-	window    []model.Event
-	wipeCall  model.Opt
+	view       *fightView
+	params     cfg.Death
+	mechanics  []cfg.Mechanic
+	victim     model.Actor
+	at         int64
+	start, end int // absolute event indices; end identifies this UNIT_DIED line
+	window     []model.Event
+	wipeCall   model.Opt
 }
 
 // Review returns deaths in stable time order and summaries of wiped boss fights.
@@ -68,13 +69,13 @@ func Review(f model.Fight, config cfg.Config) ([]model.Death, []model.Wipe) {
 	encounter, _ := snapshot.Encounter(f.EncounterID)
 	call := wipeCall(v, snapshot.Scoring.Death)
 	var deaths []model.Death
-	for _, e := range v.events {
+	for i, e := range v.events {
 		p, ok := v.players[e.Dst.ID]
 		if !e.IsDeath() || !ok {
 			continue
 		}
-		c := context{view: v, params: snapshot.Scoring.Death, victim: p, at: e.TimeMs, mechanics: encounter.Mechanics, wipeCall: call}
-		c.window = v.window(p.ID, c.at-c.params.WindowMs, c.at)
+		c := context{view: v, params: snapshot.Scoring.Death, victim: p, at: e.TimeMs, end: i, mechanics: encounter.Mechanics, wipeCall: call}
+		c.start, c.window = v.deathWindow(p.ID, c.at-c.params.WindowMs, i)
 		deaths = append(deaths, classify(&c))
 	}
 	return deaths, summaries(v, deaths, snapshot.Scoring.Death)
@@ -96,7 +97,9 @@ func classify(c *context) model.Death {
 			}
 			continue
 		}
-		matches++
+		if m.cause != Unresolved {
+			matches++
+		}
 		if best.cause == "" {
 			best = m
 		}

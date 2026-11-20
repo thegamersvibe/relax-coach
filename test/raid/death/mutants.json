@@ -49,14 +49,14 @@
   },
   {
     "file": "desktop/internal/raid/death/view.go",
-    "old": "es[i].TimeMs >= from",
-    "new": "es[i].TimeMs > from",
+    "old": "v.events[i].TimeMs >= from",
+    "new": "v.events[i].TimeMs > from",
     "killed_by": "TestSparseSamplesAndWindow"
   },
   {
     "file": "desktop/internal/raid/death/view.go",
-    "old": "es[i].TimeMs > to",
-    "new": "es[i].TimeMs >= to",
+    "old": "for _, e := range v.events[start : end+1] {",
+    "new": "for _, e := range v.events[start : end+1] { if e.TimeMs >= v.events[end].TimeMs { continue }",
     "killed_by": "TestEffectiveHealingAndAbsorbs"
   },
   {
@@ -115,8 +115,8 @@
   },
   {
     "file": "desktop/internal/raid/death/rule_wipe.go",
-    "old": "owner: \"nobody\", terminal: true",
-    "new": "owner: \"player\", owners: []string{c.victim.Name}, terminal: true",
+    "old": "owner: \"nobody\"}",
+    "new": "owner: \"player\", owners: []string{c.victim.Name}}",
     "killed_by": "TestWipePriorityAndSummary"
   },
   {
@@ -181,9 +181,9 @@
   },
   {
     "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
-    "old": "!tankAlive || firstVictim.Present",
-    "new": "!tankAlive && firstVictim.Present",
-    "killed_by": "TestPulledAggroNoLivingTank"
+    "old": "if firstVictim.Present &&",
+    "new": "if true &&",
+    "killed_by": "TestZZFalseBlame"
   },
   {
     "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
@@ -193,19 +193,19 @@
   },
   {
     "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
-    "old": "c.view.f.Roles[c.victim.ID] == \"tank\"",
-    "new": "false",
+    "old": "(role != \"dps\" && role != \"healer\")",
+    "new": "(false && role != \"dps\" && role != \"healer\")",
     "killed_by": "TestAmbiguousAggroHasNoSuggestionAndBossSwingEvidence"
   },
   {
     "file": "desktop/internal/raid/death/rule_lost_boss.go",
-    "old": "turn-last.V > *c.params.LostBossGapMs",
-    "new": "turn-last.V >= *c.params.LostBossGapMs",
+    "old": "at-last.V > *c.params.LostBossGapMs",
+    "new": "at-last.V >= *c.params.LostBossGapMs",
     "killed_by": "TestLostBossGapAndOwner"
   },
   {
     "file": "desktop/internal/raid/death/rule_lost_boss.go",
-    "old": "c.view.players[owner].Name",
+    "old": "c.view.players[holder].Name",
     "new": "c.victim.Name",
     "killed_by": "TestLostBossGapAndOwner"
   },
@@ -343,8 +343,8 @@
   },
   {
     "file": "desktop/internal/raid/death/rule_unhealed.go",
-    "old": "c.view.aliveThroughout(id, from, c.at)",
-    "new": "c.view.alive(id, c.at)",
+    "old": "c.aliveThroughout(id, from, c.at)",
+    "new": "c.alive(id, c.at)",
     "killed_by": "TestHealerAliveWholeSpan"
   },
   {
@@ -358,5 +358,269 @@
     "old": "owners: owners, low:",
     "new": "owners: owners[:1], low:",
     "killed_by": "TestUnhealedThresholds"
+  },
+  {
+    "file": "desktop/internal/raid/death/death.go",
+    "old": "if m.cause != Unresolved {",
+    "new": "if true {",
+    "killed_by": "TestZZConfidenceRuling"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_wipe.go",
+    "old": "return verdict{cause: AfterWipeCall, owner: \"nobody\"}",
+    "new": "return verdict{cause: AfterWipeCall, owner: \"nobody\", terminal: true}",
+    "killed_by": "TestZZConfidenceRuling"
+  },
+  {
+    "file": "desktop/internal/raid/death/view.go",
+    "old": "v.events[i].Dst.ID == id && v.events[i].IsDeath()",
+    "new": "false && v.events[i].Dst.ID == id && v.events[i].IsDeath()",
+    "killed_by": "TestZZLifetimeEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/death/view.go",
+    "old": "v.events[i].IsDeath()",
+    "new": "v.events[i].Kind == model.Resurrect",
+    "killed_by": "TestDeathWindowUsesPreviousDeathNotResurrection"
+  },
+  {
+    "file": "desktop/internal/raid/death/view.go",
+    "old": "v.events[i].IsDeath()",
+    "new": "v.events[i].Kind == model.UnitDied",
+    "killed_by": "TestDeathWindowUsesPreviousDeathNotResurrection"
+  },
+  {
+    "file": "desktop/internal/raid/death/view.go",
+    "old": "for _, e := range v.events[start : end+1] {",
+    "new": "for _, e := range v.events[start:] {",
+    "killed_by": "TestZZSameTimestampPostDeath"
+  },
+  {
+    "file": "desktop/internal/raid/death/view.go",
+    "old": "end := sort.Search(c.end+1,",
+    "new": "end := sort.Search(len(c.view.events),",
+    "killed_by": "TestDeathLineCutsHealthAndHealerState"
+  },
+  {
+    "file": "desktop/internal/raid/death/view.go",
+    "old": "for _, e := range c.view.events[:c.end+1] {",
+    "new": "for _, e := range c.view.events {",
+    "killed_by": "TestDeathLineCutsHealthAndHealerState"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
+    "old": "(role != \"dps\" && role != \"healer\")",
+    "new": "(role == \"tank\")",
+    "killed_by": "TestAggroUnknownVictimRole"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
+    "old": "turn-first <= c.params.PulledAggroMs",
+    "new": "true",
+    "killed_by": "TestPulledAggroBound"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
+    "old": "turn-first <= c.params.PulledAggroMs",
+    "new": "turn-first < c.params.PulledAggroMs",
+    "killed_by": "TestPulledAggroBound"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
+    "old": "turn >= first &&",
+    "new": "true &&",
+    "killed_by": "TestPulledAggroKillingRun"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
+    "old": "e.TimeMs < c.view.f.StartMs ||",
+    "new": "false ||",
+    "killed_by": "TestPulledAggroDamageOnlyAndFightReach"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
+    "old": "!damage(e) || e.Dst.ID != killing.Src.ID",
+    "new": "(!damage(e) && e.Kind != model.Missed) || e.Dst.ID != killing.Src.ID",
+    "killed_by": "TestPulledAggroDamageOnlyAndFightReach"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
+    "old": "for _, e := range c.view.events[:c.end+1] {",
+    "new": "for _, e := range c.view.events[c.start:c.end+1] {",
+    "killed_by": "TestPulledAggroDamageOnlyAndFightReach"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
+    "old": "|| e.Kind == model.Missed &&",
+    "new": "|| false && e.Kind == model.Missed &&",
+    "killed_by": "TestLostBossMissedSwingsAndNoHit"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": "c.view.f.Roles[holder] != \"tank\"",
+    "new": "false",
+    "killed_by": "TestLostBossObservedHolder"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": "!c.view.aliveBefore(holder, turn)",
+    "new": "false && !c.view.aliveBefore(holder, turn)",
+    "killed_by": "TestLostBossHolderAliveAtTurn"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": "c.view.aliveBefore(holder, turn)",
+    "new": "c.view.aliveBefore(holder, c.end)",
+    "killed_by": "TestLostBossHolderAliveAtTurn"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": "holder := \"\"",
+    "new": "holder := c.view.owner(c.view.events[0].Src.ID)",
+    "killed_by": "TestLostBossTiedAttacksDoNotChooseHolder"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": "at-e.TimeMs > c.params.WindowMs",
+    "new": "false",
+    "killed_by": "TestLostBossHolderWindow"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": "at-e.TimeMs > c.params.WindowMs",
+    "new": "at-e.TimeMs >= c.params.WindowMs",
+    "killed_by": "TestLostBossHolderWindow"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": "for i := turn - 1; i >= 0; i-- {",
+    "new": "for i := turn; i >= 0; i-- {",
+    "killed_by": "TestLostBossSameTimestampOrder"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": "holder = e.Dst.ID\n\t\t\tbreak",
+    "new": "holder = e.Dst.ID",
+    "killed_by": "TestLostBossObservedHolder"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": "if e.TimeMs > at {",
+    "new": "if e.TimeMs >= at {",
+    "killed_by": "TestLostBossSameTimestampOrder"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": "!last.Present || at-last.V",
+    "new": "last.Present && at-last.V",
+    "killed_by": "TestLostBossMissedSwingsAndNoHit"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unavoidable.go",
+    "old": "!environmental(*killing)",
+    "new": "false && !environmental(*killing)",
+    "killed_by": "TestNilSourceIsNotEnvironmental"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unavoidable.go",
+    "old": "e.SpellID == 0 && e.Stream == model.StreamNone",
+    "new": "e.Stream == model.StreamNone",
+    "killed_by": "TestNilSourceIsNotEnvironmental"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unavoidable.go",
+    "old": "e.SpellID == 0 && e.Stream == model.StreamNone",
+    "new": "e.SpellID == 0",
+    "killed_by": "TestNilSourceIsNotEnvironmental"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unavoidable.go",
+    "old": "slices.Contains([]string{\"FALLING\", \"DROWNING\", \"FATIGUE\", \"FIRE\", \"LAVA\", \"SLIME\"}, e.SpellName)",
+    "new": "e.SpellName != \"\"",
+    "killed_by": "TestNilSourceIsNotEnvironmental"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unavoidable.go",
+    "old": "!slices.Contains(v.f.Unowned, a.ID)",
+    "new": "(slices.Contains(v.f.Unowned, a.ID) || true)",
+    "killed_by": "TestUnownedGuardianExclusion"
+  },
+  {
+    "file": "desktop/internal/raid/death/view.go",
+    "old": "start = i + 1",
+    "new": "start = i",
+    "killed_by": "TestPreviousDeathLineExcluded"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
+    "old": "for _, e := range c.view.events[:c.end+1] {",
+    "new": "for _, e := range c.view.events {",
+    "killed_by": "TestAggroActionsAfterDeathExcluded"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": "for _, e := range c.view.events[:c.end+1] {",
+    "new": "for _, e := range c.view.events {",
+    "killed_by": "TestAggroActionsAfterDeathExcluded"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
+    "old": "c.view.f.Roles[owner] == \"tank\" &&",
+    "new": "c.view.f.Roles[owner] == \"tank\" && c.view.aliveBefore(owner, c.end) &&",
+    "killed_by": "TestDeadTankOpenerStillCounts"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
+    "old": "e.SpellID == 0 && e.SpellName == \"\"",
+    "new": "e.SpellName == \"\"",
+    "killed_by": "TestAggroSpecificBossAndDamage"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
+    "old": "e.SpellID == 0 && e.SpellName == \"\"",
+    "new": "e.SpellID == 0",
+    "killed_by": "TestAggroSpecificBossAndDamage"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
+    "old": "damage(e) && e.Stream == model.SwingLanded",
+    "new": "damage(e)",
+    "killed_by": "TestAggroSpecificBossAndDamage"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
+    "old": "!damage(e) || e.Dst.ID != killing.Src.ID",
+    "new": "!damage(e) || effective(e) == 0 || e.Dst.ID != killing.Src.ID",
+    "killed_by": "TestAggroSpecificBossAndDamage"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": "melee(e) && e.Src.ID == killing.Src.ID",
+    "new": "melee(e)",
+    "killed_by": "TestAggroSpecificBossAndDamage"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": "damage(e) && e.Dst.ID == killing.Src.ID",
+    "new": "(damage(e) || e.Kind == model.Missed) && e.Dst.ID == killing.Src.ID",
+    "killed_by": "TestAggroSpecificBossAndDamage"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": "damage(e) && e.Dst.ID == killing.Src.ID",
+    "new": "damage(e) && effective(e) > 0 && e.Dst.ID == killing.Src.ID",
+    "killed_by": "TestAggroSpecificBossAndDamage"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": "damage(e) && e.Dst.ID == killing.Src.ID",
+    "new": "damage(e)",
+    "killed_by": "TestAggroSpecificBossAndDamage"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
+    "old": "for i := c.start; i <= c.end; i++ {",
+    "new": "for i := 0; i <= c.end; i++ {",
+    "killed_by": "TestKillingRunLifeWindow"
   }
 ]

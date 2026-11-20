@@ -43,10 +43,10 @@ func unhealed(c *context) verdict {
 		if c.view.f.Roles[id] != "healer" {
 			continue
 		}
-		if c.view.aliveThroughout(id, from, c.at) {
+		if c.aliveThroughout(id, from, c.at) {
 			whole = true
 		}
-		if c.view.alive(id, c.at) {
+		if c.alive(id, c.at) {
 			owners = append(owners, c.view.players[id].Name)
 		}
 	}

@@ -83,7 +83,8 @@ func TestWipePriorityAndSummary(t *testing.T) {
 	f.Events = append(f.Events, died(0, tank), died(1, other), died(10001, healer))
 	mechanic(&c, 81)
 	ds, ws := death.Review(f, c)
-	wantDeath(t, forVictim(t, f, c), "after the wipe call", "high", "nobody", "")
+	// Wipe priority still wins; the explicit two-rule confidence is medium.
+	wantDeath(t, forVictim(t, f, c), "after the wipe call", "medium", "nobody", "")
 	if !reflect.DeepEqual(ws, []model.Wipe{modeltest.Wipe(f.ID, 0, 1, 2)}) {
 		t.Fatalf("wipes=%v deaths=%d", ws, len(ds))
 	}
