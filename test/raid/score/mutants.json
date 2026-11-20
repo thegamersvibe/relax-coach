@@ -365,10 +365,10 @@
   },
   {
     "file": "desktop/internal/raid/score/measure_preparation.go",
-    "old": "if r.Stamped < chosen.Stamped ||",
-    "new": "if r.Stamped > chosen.Stamped ||",
-    "killed_by": "TestPrepSelectionAndMeasures",
-    "rule": "earliest fallback"
+    "old": "if !found {\n\t\treturn makePart(\"preparation\", measures, c.Scoring.MeasureWeights[\"preparation\"], counts, c)\n\t}",
+    "new": "if !found {\n\t\tchosen = reports[0]\n\t\tfor _, r := range reports {\n\t\t\tif r.Stamped < chosen.Stamped || r.Stamped == chosen.Stamped && prepTieAfter(r, chosen) {\n\t\t\t\tchosen = r\n\t\t\t}\n\t\t}\n\t}",
+    "killed_by": "TestPrepOnlyAfterEndIsUnmeasured",
+    "rule": "restoring earliest fallback must not use future gear"
   },
   {
     "file": "desktop/internal/raid/score/measure_preparation.go",
@@ -954,5 +954,47 @@
     "old": "roles[fs.Role] = add(roles[fs.Role], w)",
     "new": "roles[fs.Role] = w",
     "killed_by": "TestNightRolePartsSumAndPurity"
+  },
+  {
+    "file": "desktop/internal/raid/score/night_parts.go",
+    "old": "if w.Sign() <= 0 {",
+    "new": "if false && w.Sign() <= 0 {",
+    "killed_by": "TestNightRolePartsZeroWeightIsNoData",
+    "rule": "only positive summed role weights can lead or tie"
+  },
+  {
+    "file": "desktop/internal/raid/score/night.go",
+    "old": "sub(integer(1), decimal(c.Scoring.Night.MinBossShare))",
+    "new": "decimal(1 - c.Scoring.Night.MinBossShare)",
+    "killed_by": "TestNightExactDecimalTrashCap",
+    "rule": "accepted .2/.2/.8 correction reaches exact coverage 15"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "if !found {",
+    "new": "if false && !found {",
+    "killed_by": "TestPrepOnlyAfterEndIsUnmeasured",
+    "rule": "no eligible prep emits no selected clocks or measured evidence"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "r.Stamped <= endUTC && (",
+    "new": "true && (",
+    "killed_by": "TestPrepOnlyAfterEndIsUnmeasured",
+    "rule": "future gear cannot create a credit or charge"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "if r.Stamped > endUTC {",
+    "new": "if false && r.Stamped > endUTC {",
+    "killed_by": "TestPrepFutureStockCannotCreditEarlierFight",
+    "rule": "future stock cannot add points or coverage"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "if r.Stamped > endUTC {",
+    "new": "if r.Stamped >= endUTC {",
+    "killed_by": "TestPrepCutoffInclusiveAndLatest",
+    "rule": "stock at the true UTC end remains eligible"
   }
 ]

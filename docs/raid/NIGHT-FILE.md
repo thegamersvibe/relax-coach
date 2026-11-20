@@ -232,6 +232,18 @@ empty baseline. An empty counts object and zero evidence times are valid. `score
 `Score` calls it before returning. The future app/writer boundary must retain
 this check; the `result` package's model-only import boundary is unchanged.
 
+### Exact night shares
+
+The trash share is the minimum of `trash_share`, `max_trash_share` and
+`1 - min_boss_share`, computed as authored decimal rationals, including the
+complement. This is an accepted numeric correction, **not** output-preserving
+for every valid configuration. With shares `.2/.2/.8`, tank mechanics weight
+100, measured death coverage 75 and only one trash fight (offset zero, no prep),
+night coverage is exactly 15: a provisional score of 100.0 is present, without a
+rank. The former float complement produced coverage 14 and no score. The exact
+cap is shared with the transient night-part summary; it must not be reverted
+to binary-float subtraction for compatibility.
+
 ### Phase-one measures
 
 Only same-role-in-this-fight baselines are available, never spec or history.
@@ -283,17 +295,23 @@ no new flag is added to the closed format-version-1 flag list.
 
 Preparation uses `MatchPrep(reports, names)`: full logged name first, then ASCII
 lowercase only. Ambiguous folded names and unmatched reports score nobody and
-are returned to the page. For gear, choose the latest report stamped at or
-before fight **end**, or the earliest report of the night if none is eligible.
+are returned to the page. A report stamped after the fight's **true UTC end**
+is never used for that fight, for either gear or stock. Convert the log's wall
+end using the first event's east-of-UTC `OffsetH`; receipt stamps are not shifted.
+For gear, choose the latest report stamped at or before that end (inclusive).
 A same-stamp tie chooses the larger sender clock, then the bytewise greatest
-full-report JSON as a stable key; this applies to the earliest fallback too.
-Both chosen clocks are retained. Stock (30) gives 50 points each for any readable
-report of potion/food stock in the night, not necessarily the chosen gear report.
-Flasks and elixirs are evidence only. Bag gear (30) starts at 100 and loses the
+full-report JSON as a stable key. Both chosen clocks are retained. There is no
+earliest-of-night fallback: without an eligible report preparation is wholly
+unmeasured, with no selected receipt clocks and no stock credit or gear charge.
+This deliberately prefers a missed observation over a false claim about a raider.
+Stock (30) gives 50 points each for any readable report of potion/food stock
+stamped at or before that end, not necessarily the chosen gear report. Flasks
+and elixirs are evidence only. Bag gear (30) starts at 100 and loses the
 configured 25 per distinct better-item slot, skipping `NotScored` slots. Unchecked
-or unreadable gear is unmeasured; unreadable stock is unmeasured. Empty readable
-bags are a measured zero stock, not missing data. Used consumables (40) are
-unmeasurable. No report leaves preparation wholly unmeasured.
+or unreadable gear is unmeasured; stock without an eligible readable report is
+unmeasured. Empty eligible readable bags are a measured zero stock, not missing
+data. Used consumables (40) are unmeasurable. No eligible report lowers coverage
+in the same way as no report; it does not invent a zero preparation score.
 
 The fixture-night coverage table (with / without readable stock and checked gear):
 DPS 0.80 / 0.74; two or more healers 0.70 / 0.64; lone healer 0.32 / 0.26;
@@ -349,7 +367,7 @@ not zero. Reserved part metadata is **not** hidden in these maps.
 | `interrupts`, `dispels` | Counts including actions credited through the fight's owner map; not scored. |
 | `prep_stamped_s`, `prep_sender_clock_s` | Server receipt stamp and sender clock of the chosen gear report, in seconds. |
 | `fight_end_utc_s` | Fight end used to select that report, in Unix seconds: subtract the first event's east-of-UTC `OffsetH` from the log's wall time before converting to seconds. Receipt stamps are never shifted. Present beside the two prep clocks when a report is selected. |
-| `potion_count`, `food_count`, `flask_count`, `elixir_count` | Maximum summed bag count per category across readable reports, not a sum of repeated reports. Only potion and food presence score. |
+| `potion_count`, `food_count`, `flask_count`, `elixir_count` | Maximum summed bag count per category across readable reports stamped at/before this fight's true UTC end, not a sum of repeated reports. Only potion and food presence score. |
 | `better_gear_slots`, `not_scored_slots` | Distinct penalized slots and distinct explicitly skipped slots in the chosen report. |
 
 Per-measure `points_tenths` values are rounded for display only. Raw, clamped

@@ -44,6 +44,54 @@ func TestNightRolePartsWeightAndSplit(t *testing.T) {
 	}
 }
 
+func TestNightRolePartsZeroWeightIsNoData(t *testing.T) {
+	// Load accepted JSON rather than mutating a detached public cfg view.
+	c := tunedScoring(t, func(m map[string]any) {
+		m["night"].(map[string]any)["wipe_weight"] = 0
+	})
+	for _, tc := range []struct {
+		name       string
+		roles      []string
+		healerKill bool
+		wantRole   string
+	}{
+		{name: "single_wipe_role", roles: []string{"tank"}},
+		{name: "two_wipe_roles", roles: []string{"tank", "healer"}},
+		{name: "positive_role_ignores_zero", roles: []string{"tank", "healer"}, healerKill: true, wantRole: "healer"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var fights []model.Fight
+			for _, role := range tc.roles {
+				f := fixture(role)
+				f.ID, f.Success = role, model.Some(0)
+				if role == "healer" && tc.healerKill {
+					f.Success = model.Some(1)
+				}
+				fights = append(fights, f)
+			}
+			nights := score.Score(fights, nil, nil, c)
+			if len(nights) != 1 || len(nights[0].Fights) != len(fights) {
+				t.Fatal("need the same player in every scored fight")
+			}
+			for _, fs := range nights[0].Fights {
+				if !fs.Tenths.Present {
+					t.Fatal("zero weight must not be confused with an unscored fight")
+				}
+			}
+			got, err := score.NightRoleParts(fights, nights[0], c)
+			if err != nil || got.Role != tc.wantRole || got.Split {
+				t.Fatalf("zero-weight roles are not leaders: role=%q split=%v error=%v", got.Role, got.Split, err)
+			}
+			if tc.wantRole == "" && len(got.Parts) != 0 {
+				t.Fatalf("no positive role weight must have no parts: %+v", got.Parts)
+			}
+			if tc.wantRole != "" && len(got.Parts) == 0 {
+				t.Fatal("positive role lost its measured parts")
+			}
+		})
+	}
+}
+
 func TestNightRolePartsGroups(t *testing.T) {
 	c := config(t)
 	c.Scoring.Night.KillWeight = 2

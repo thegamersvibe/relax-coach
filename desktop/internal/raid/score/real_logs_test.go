@@ -65,6 +65,7 @@ func TestRealLogsR7(t *testing.T) {
 		nightCounts := [3]int{}
 		bosses, classified, excluded := 0, 0, 0
 		clockSelected, clockAfter := 0, 0
+		var prepCoverage [3]realPrepCoverage
 		byRole := map[string]map[string]int{}
 		coverage := map[string][]int{}
 		fightCoverage := map[string][]int{}
@@ -77,9 +78,15 @@ func TestRealLogsR7(t *testing.T) {
 			}
 			var deaths []model.Death
 			for _, f := range run.Fights {
-				selected, after := realClockCounts(t, f, c)
+				selected, after, cov := realClockCounts(t, f, c)
 				clockSelected += selected
 				clockAfter += after
+				for i := range cov {
+					prepCoverage[i].rows += cov[i].rows
+					prepCoverage[i].measured += cov[i].measured
+					prepCoverage[i].prepCoverage += cov[i].prepCoverage
+					prepCoverage[i].fightCoverage += cov[i].fightCoverage
+				}
 				ds, _, outside, err := death.Review(f, run.EndMs, c)
 				if err != nil {
 					t.Fatal("private death review failed")
@@ -148,6 +155,16 @@ func TestRealLogsR7(t *testing.T) {
 		t.Logf("log %d prep clock replay (synthetic receipts, real offset=3): selected=%d after_true_end=%d", logs, clockSelected, clockAfter)
 		if clockSelected == 0 || clockAfter != 0 {
 			t.Errorf("log %d prep clock replay failed", logs)
+		}
+		for i, mode := range []string{"no_reports", "future_only", "at_end_and_future"} {
+			cov := prepCoverage[i]
+			t.Logf("log %d prep replay %s: rows=%d measured=%d prep_coverage_sum=%d fight_coverage_sum=%d", logs, mode, cov.rows, cov.measured, cov.prepCoverage, cov.fightCoverage)
+		}
+		if prepCoverage[0].measured != 0 || prepCoverage[1] != prepCoverage[0] {
+			t.Errorf("log %d future-only prep differs from no reports", logs)
+		}
+		if prepCoverage[2].rows != prepCoverage[0].rows || prepCoverage[2].measured != clockSelected || prepCoverage[2].prepCoverage != clockSelected*60 {
+			t.Errorf("log %d inclusive-end prep coverage differs from the measured control", logs)
 		}
 		_, unmatched := score.MatchPrep(nil, names)
 		t.Logf("log %d: runs=%d bosses=%d prep_reports=0 prep_unmatched=%d classified_deaths=%d excluded_past_run=%d", logs, len(result.Runs), bosses, len(unmatched), classified, excluded)

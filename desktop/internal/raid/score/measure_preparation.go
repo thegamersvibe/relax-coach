@@ -22,13 +22,7 @@ func preparation(f model.Fight, reports []model.PrepReport, c cfg.Config) partRe
 	if len(reports) == 0 {
 		return makePart("preparation", measures, c.Scoring.MeasureWeights["preparation"], counts, c)
 	}
-	chosen := reports[0]
-	// First find the earliest, then replace it with the latest eligible report.
-	for _, r := range reports {
-		if r.Stamped < chosen.Stamped || r.Stamped == chosen.Stamped && prepTieAfter(r, chosen) {
-			chosen = r
-		}
-	}
+	var chosen model.PrepReport
 	found := false
 	for _, r := range reports {
 		if r.Stamped <= endUTC && (!found || r.Stamped > chosen.Stamped || r.Stamped == chosen.Stamped && prepTieAfter(r, chosen)) {
@@ -36,10 +30,16 @@ func preparation(f model.Fight, reports []model.PrepReport, c cfg.Config) partRe
 			found = true
 		}
 	}
+	if !found {
+		return makePart("preparation", measures, c.Scoring.MeasureWeights["preparation"], counts, c)
+	}
 	counts["fight_end_utc_s"] = endUTC
 	counts["prep_stamped_s"], counts["prep_sender_clock_s"] = chosen.Stamped, chosen.SenderClock
 	readable := false
 	for _, r := range reports {
+		if r.Stamped > endUTC {
+			continue
+		}
 		if r.ConsumablesUnreadable {
 			continue
 		}

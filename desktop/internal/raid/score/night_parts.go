@@ -10,7 +10,7 @@ import (
 
 // NightSummary is a transient comparison input, not a new stored score. Parts
 // are exact points (not tenths), owned by the caller; absent means unmeasured.
-// Split distinguishes an equal leading role weight from no scored fights.
+// Split means equal positive leading role weights; no positive weight is no data.
 type NightSummary struct {
 	Role  string
 	Split bool
@@ -41,6 +41,9 @@ func NightRoleParts(fights []model.Fight, night model.NightScore, c cfg.Config) 
 	}
 	best := integer(0)
 	for role, w := range roles {
+		if w.Sign() <= 0 {
+			continue
+		}
 		switch w.Cmp(best) {
 		case 1:
 			out.Role, out.Split, best = role, false, w
