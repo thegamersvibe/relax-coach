@@ -17,14 +17,14 @@ func TestCatalogueFieldErrors(t *testing.T) {
 		{"instances.json", "instances", "id", 0}, {"instances.json", "instances", "name", ""}, {"instances.json", "instances", "kind", "guess"}, {"instances.json", "instances", "source", ""},
 	} {
 		t.Run(tc.file+"/"+tc.key, func(t *testing.T) {
-			dir := copyData(t)
+			dir := copyValidationData(t)
 			change(t, dir, tc.file, func(d map[string]any) { d[tc.array].([]any)[0].(map[string]any)[tc.key] = tc.value })
 			refusedField(t, dir, tc.file, tc.array+"[0]."+tc.key)
 		})
 	}
 	for _, key := range []string{"id", "affected_players", "valid_response", "roles", "evidence_source"} {
 		t.Run("mechanic/"+key, func(t *testing.T) {
-			dir := copyData(t)
+			dir := copyValidationData(t)
 			change(t, dir, "encounters-enabled.json", func(d map[string]any) {
 				r := syntheticRule()
 				m := r["mechanics"].([]any)[0].(map[string]any)
@@ -43,7 +43,7 @@ func TestCatalogueFieldErrors(t *testing.T) {
 	}
 	for _, key := range []string{"id", "source"} {
 		t.Run("selector/"+key, func(t *testing.T) {
-			dir := copyData(t)
+			dir := copyValidationData(t)
 			change(t, dir, "encounters-enabled.json", func(d map[string]any) {
 				u := d["encounters"].([]any)[0].(map[string]any)["boss_units"].([]any)[0].(map[string]any)
 				if key == "id" {
@@ -57,7 +57,7 @@ func TestCatalogueFieldErrors(t *testing.T) {
 	}
 	for _, key := range []string{"name", "id", "source"} {
 		t.Run("spell/"+key, func(t *testing.T) {
-			dir := copyData(t)
+			dir := copyValidationData(t)
 			change(t, dir, "support.json", func(d map[string]any) {
 				s := sourcedSpell("synthetic", 77)
 				switch key {
@@ -85,7 +85,7 @@ func TestNestedDecodeFieldErrors(t *testing.T) {
 		}},
 		{"$.profiles[0].roles", func(d map[string]any) { d["profiles"].([]any)[0].(map[string]any)["roles"] = true }},
 	} {
-		dir := copyData(t)
+		dir := copyValidationData(t)
 		change(t, dir, "specs.json", tc.edit)
 		refusedField(t, dir, "specs.json", tc.field)
 	}
