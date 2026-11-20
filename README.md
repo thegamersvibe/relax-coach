@@ -5,16 +5,18 @@ Four **separate WoW Forever addons**, plus a native Windows report app:
 - **Relax Coach** — leveling, equipment, talent, dungeon and session advice. Works without Journey.
 - **Relax Journey** — the rebranded Journey guide UI and the included guide-content pack. Can be enabled independently of Coach.
 - **Relax Quest Planner** (from v1.5.0) — dungeon quest chains, quest prerequisites and a guide picker (`/rqp`). Works without Coach; Journey is optional.
-- **Relax Raid** (from v1.8.0) — the guild raid logger: turns on the game's combat log in raids (`/rraid`). Works without the other addons.
+- **Relax Raid** (from v1.8.0) — the guild raid logger: turns on the game's combat log in raids (`/rraid`) and, from v1.8.1, sends a short preparation report to the raid. Works without the other addons.
 - **RelaxCoach.exe** — a real Windows app window with account selection, saved-character reports and explicit app and addon/content updates.
 
 ## Download
 
-**[Download release v1.8.0](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.8.0)**:
+**[Download release v1.8.1](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.8.1)**:
 
-- `RelaxCoach-RaidBundle-1.8.0.zip` — the four independent addons (Coach, Journey, Relax Quest Planner 0.4.0, Relax Raid 0.1.0), Journey guide content **4.00.12**, the Windows app and optional installer/restore scripts. From v1.8.0 the combined download is named `RelaxCoach-RaidBundle-<version>.zip` because it adds the Relax Raid folder; v1.5.0 to v1.7.2 used `RelaxCoach-Bundle-<version>.zip`, and earlier releases `RelaxCoach-Guild-<version>.zip`.
+- `RelaxCoach-RaidBundle-1.8.1.zip` — the four independent addons (Coach, Journey, Relax Quest Planner 0.4.0, Relax Raid 0.2.0), Journey guide content **4.00.12**, the Windows app and optional installer/restore scripts. From v1.8.0 the combined download is named `RelaxCoach-RaidBundle-<version>.zip` because it adds the Relax Raid folder; v1.5.0 to v1.7.2 used `RelaxCoach-Bundle-<version>.zip`, and earlier releases `RelaxCoach-Guild-<version>.zip`.
 - `RelaxCoach.exe` — app-only download, for updating the application separately.
 - `SHA256SUMS.txt` — checksums for these release assets.
+
+**On app 1.8.0?** Use **Updates → Update everything**, or **Check App Update → Update App** first and then **Updates → Check → Update**. Because this release includes a new app, app 1.8.0 updates itself before it installs the newer addons. Relax Raid gets new files, so exit WoW completely and start it again after the update (`/reload` is not enough).
 
 **On app 1.7.x?** Run **Check App Update → Update App** first, then **Updates → Check → Update** (or use **Updates → Update everything**). Apps before 1.8.0 do not know the new Relax Raid folder: they report this release as app-only and do not install it until the app has updated itself. After the addon update, exit WoW completely and start it again, because Relax Raid is a new addon folder.
 
@@ -24,7 +26,19 @@ Four **separate WoW Forever addons**, plus a native Windows report app:
 
 **On app 1.4.x?** Use **Check App Update → Update App** first, then close WoW and use **Check for updates → Update Addon**. Apps before 1.5.0 cannot install the bundle (from 1.5.0) and report it as an app-only release until the app is updated. App 1.4.0 needs one manual EXE replacement with Relax Coach closed before it can update itself.
 
-There is deliberately no Coach-only `RelaxCoach-1.8.0.zip`: older apps must not report a completed addon update while leaving the guide content behind. The previous app-only v1.4.1 release remains unchanged.
+There is deliberately no Coach-only `RelaxCoach-1.8.1.zip`: older apps must not report a completed addon update while leaving the guide content behind. The previous app-only v1.4.1 release remains unchanged.
+
+## What's new in v1.8.1
+
+- **Relax Raid 0.2.0 — raid preparation reports.** In a raid group, your Relax Raid sends a short report about your own character to the raid: class and level, the consumables in your bags (by type and count), better gear you already own (from Relax Coach's equipment advice when Coach is installed, otherwise "not checked"), and your time played at your level (at level 60 only; below 60 it is sent as unreadable). It is sent when you join the raid, at a ready check and after each boss fight; never in combat, during a boss fight, or in battlegrounds and arenas. It goes over the hidden addon channel to your raid only and never posts in chat. To read your time played, Relax Raid asks the game when you join a raid, and again after a login or `/reload` while in one, so the game's time-played lines may appear in your chat then. It goes to everyone in your raid running Relax Raid; guild members' copies are kept (every guild member logs raids by default) and the officers' tools read them. It is information, not a score. There is no switch to stop sending it.
+- **Kept copies have fixed limits:** the last 3 raid nights, 80 report windows and 40 players per window, at most 100,000 bytes per character per night and 4,000,000 bytes per night in total. A report that has not changed is not stored twice. Reports saved by a newer Relax Raid are left untouched.
+- **Hot items: names, colours, supply and fallers (app, Farming page).**
+  - Items show their **names and quality colours** instead of item numbers. Relax Coach now notes the names of the items in AH Profit's price history (at login and after you close the auction house, paused in combat, up to 10,000 items). If you see **(update Relax Coach and visit the auction house to name more)**, update Relax Coach, open and close the auction house in game, then `/reload` and press **Refresh** in the app.
+  - A new **Down since yesterday** list sits next to **Up since yesterday**: up to 10 items each, rises in green and falls in red. **dump** marks a fall with at least twice the usual number listed.
+  - Both lists now need at least 10 units listed on the scan day and show **listed / usual**; a rise on a collapsed supply is left out.
+- Coach and the Windows app move to **1.8.1**; Relax Raid moves to **0.2.0**. Relax Journey (`4.00.04`), guide content (`4.00.12`) and Relax Quest Planner (`0.4.0`) are unchanged.
+- **Update:** on app 1.8.0 use **Updates → Update everything**, or **Check App Update → Update App** first and then **Updates → Check → Update**; then restart WoW once (new Relax Raid files). Apps before 1.8.0 update the app first, as for 1.8.0.
+- **Not tested in game: alpha, owner's decision.** Offline tests do not validate native Forever behavior or the Windows update flow.
 
 ## What's new in v1.8.0
 
@@ -208,7 +222,7 @@ Use the included `Restore-RelaxCoach.ps1 -Backup <backup-folder>` with WoW close
 ## Coverage and known limits
 
 - Optional installed providers: GearQuest Forever for comparable item scores, ForeverDungeonJournal for dungeon information. Unknown or incomparable gear is shown as unscored, not assigned an invented score.
-- Included Journey code: `4.00.04`; Relax package/Coach version: `1.8.0`; guide-content version: `4.00.12`. The original signed catalog and guide bytes are retained. The content's existing validity date is **18 December 2026**; this release does not remove expiry checks.
+- Included Journey code: `4.00.04`; Relax package/Coach version: `1.8.1`; guide-content version: `4.00.12`. The original signed catalog and guide bytes are retained. The content's existing validity date is **18 December 2026**; this release does not remove expiry checks.
 - This is not a claim of complete coverage for every custom Forever class/spec/item or every leveling route. Some route entries are stubs.
 - An intermittent blank native window occurred during development. The final local candidate passed ten restart/Refresh cycles and a more-than-three-minute minimize/restore test, but the earlier root cause was not conclusively identified. If the window is blank, close and reopen it and report the issue.
 

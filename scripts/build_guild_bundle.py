@@ -65,7 +65,7 @@ def check_raid_toc(names):
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument('--exe',type=Path,required=True)
-    ap.add_argument('--version',default='1.8.0')
+    ap.add_argument('--version',default='1.8.1')
     a=ap.parse_args()
     if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+',a.version):raise SystemExit('Invalid version')
     if not a.exe.is_file() or a.exe.read_bytes()[:2]!=b'MZ':raise SystemExit('Provide the verified Windows EXE')
