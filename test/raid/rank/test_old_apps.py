@@ -22,12 +22,13 @@ class OldAppRankTests(unittest.TestCase):
             source = subprocess.check_output(["git", "show", tag + ":desktop/luasv.go"], cwd=ROOT)
             (work / "luasv.go").write_bytes(source)
             shutil.copyfile(HERE / "saved_reader_probe_test.go", work / "rank_probe_test.go")
-            result = subprocess.run(["go", "test", "-count=1", "-v", "luasv.go", "rank_probe_test.go"],
-                                    cwd=work, env=dict(os.environ, RANK_SAVE=str(HERE / "save.lua")),
-                                    text=True, capture_output=True, timeout=300)
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertIn("--- PASS: TestRankSaveAccepted ", result.stdout)
-            print(tag + " save reader:\n" + result.stdout, end="")
+            for filename, omitted in (("save.lua", "0"), ("save-omitted-guild.lua", "1")):
+                result = subprocess.run(["go", "test", "-count=1", "-v", "luasv.go", "rank_probe_test.go"],
+                                        cwd=work, env=dict(os.environ, RANK_SAVE=str(HERE / filename), RANK_OMITTED=omitted),
+                                        text=True, capture_output=True, timeout=300)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn("--- PASS: TestRankSaveAccepted ", result.stdout)
+                print(tag + " save reader " + filename + ":\n" + result.stdout, end="")
 
     def bundle_accepted(self, tag):
         toc = (ROOT / "addon/ForeverCoach/ForeverCoach.toc").read_text()

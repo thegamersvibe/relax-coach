@@ -29,10 +29,24 @@ func TestRankSaveAccepted(t *testing.T) {
 			t.Fatalf("%s: wrong rank reading", name)
 		}
 	}
+	omitted := os.Getenv("RANK_OMITTED") == "1"
+	var guild any = "Invented Guild"
+	if omitted {
+		guild = nil
+	}
 	if len(ranks) != 4 || M(ranks["Alia-Stone-PvP-EU"])["readAt"] != float64(1800000000) ||
-		M(ranks["Alia-Stone-PvP-EU"])["guild"] != "Invented Guild" ||
+		M(ranks["Alia-Stone-PvP-EU"])["guild"] != guild ||
 		M(ranks["Cato-PvP-EU"])["guild"] != nil {
 		t.Fatal("rank table, time or guild lost")
+	}
+	for i, name := range []string{"Bram-Oak-PvP-EU", "Cato-PvP-EU", "Dara-Fern-PvP-EU"} {
+		var at any = float64(1800000001 + i)
+		if omitted {
+			at = nil
+		}
+		if M(ranks[name])["readAt"] != at {
+			t.Fatal("negative reading timestamp changed")
+		}
 	}
 	prep := M(db["prep"])
 	night := M(M(prep["nights"])["1"])

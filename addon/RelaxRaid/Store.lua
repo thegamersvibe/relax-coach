@@ -5,6 +5,7 @@ local Store = RR.module("Store")
 Store.VERSION, Store.MAX_NIGHTS, Store.MAX_WINDOWS, Store.MAX_PLAYERS = 2, 3, 80, 40
 Store.MAX_BYTES = 100000 -- canonical wire-body bytes per character, per night
 Store.MAX_NIGHT_BYTES = 4000000 -- sum of all characters' retained body bytes
+Store.MAX_RANKS = 50 -- latest account-local character readings, not a history
 Store.stats = {}
 local newWindow = false
 function Store.count(key)
@@ -195,6 +196,40 @@ local function cleanNights(source)
     end
     return out
 end
+local rankResults = {officer=true, member=true, noguild=true, unreadable=true}
+local function rankGuild(guild)
+    return type(guild) == "string" and #guild <= 96 and not guild:find("%c")
+end
+local function validRank(P, name, row)
+    if not P.nameKey(name) or not P.plain(row) or type(row) ~= "table"
+        or not P.plain(row.result) or type(row.result) ~= "string" or not rankResults[row.result] then return false end
+    if not P.plain(row.readAt) or (row.readAt ~= nil and not P.number(row.readAt, 0, 9999999999)) then return false end
+    if not P.plain(row.guild) or (row.guild ~= nil and not rankGuild(row.guild)) then return false end
+    for key in pairs(row) do
+        if not P.plain(key) or (key ~= "result" and key ~= "readAt" and key ~= "guild") then return false end
+    end
+    return true
+end
+-- Validate saved rows before consulting their timestamps. Preserve the table
+-- identity and valid rows; sort only on overflow, missing times first.
+local function cleanRanks(ranks)
+    local P = RR.modules.Prep
+    if not P then return ranks end
+    if not P.plain(ranks) or type(ranks) ~= "table" then return nil end
+    local names = {}
+    for name, row in pairs(ranks) do
+        if validRank(P, name, row) then names[#names+1] = name
+        else ranks[name] = nil end
+    end
+    if #names <= Store.MAX_RANKS then return ranks end
+    table.sort(names, function(a, b)
+        local at, bt = ranks[a].readAt or -1, ranks[b].readAt or -1
+        if at == bt then return a < b end
+        return at < bt
+    end)
+    for i = 1, #names - Store.MAX_RANKS do ranks[names[i]] = nil end
+    return ranks
+end
 function Store.Init()
     local db = RelaxRaidDB
     if newer(db) or (type(db) == "table" and newer(db.prep, Store.VERSION)) or newer(RelaxRaidCharDB) then
@@ -205,6 +240,7 @@ function Store.Init()
     db.version = 1
     local nights = type(db.prep) == "table" and db.prep.version == Store.VERSION and db.prep.nights
     db.prep = {version=Store.VERSION, nights=cleanNights(nights)}
+    db.ranks = cleanRanks(db.ranks)
     Store.saveRank()
 end
 -- Account-local convenience-lock evidence; not a security credential.
@@ -217,13 +253,18 @@ function Store.saveRank()
     local result = P.read(L.readRank) or "unreadable"
     if result == "pending" then return end -- retain the earlier entry, including its time
     local name, now = P.identity(), P.read(GetServerTime)
-    if name == "unreadable" or not P.number(now, 0, 9999999999) then return end
+    if name == "unreadable" then return end
+    if not P.number(now, 0, 9999999999) then
+        if result == "officer" then return end -- never refresh positive evidence without a clock
+        now = nil -- a settled negative must revoke the earlier officer, without inventing a time
+    end
     local guild = P.read(GetGuildInfo, "player")
     local row = {result=result, readAt=now}
-    if type(guild) == "string" then row.guild = guild end
+    if rankGuild(guild) then row.guild = guild end
     local db = RelaxRaidDB
     if type(db.ranks) ~= "table" then db.ranks = {} end
     db.ranks[name] = row
+    db.ranks = cleanRanks(db.ranks)
 end
 local function rankEvent(_, unit)
     local P = RR.modules.Prep
