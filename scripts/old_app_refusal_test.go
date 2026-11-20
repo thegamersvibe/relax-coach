@@ -22,12 +22,15 @@ import (
 // installer. The expected messages are reviewed literals, not derived from
 // whichever error the installer happens to return.
 const oldAppVersion = "1.8.0"
-const oldAppUnknownFile = "archive path is outside the fixed guild allowlist: Interface/AddOns/RelaxRaid/Core.lua"
+const oldAppUnknownFile = "archive path is outside the fixed guild allowlist: Interface/AddOns/RelaxRaid/AvoidableSpells.lua"
 
 // Reviewed against the real addon/RelaxRaid tree. Do not derive the expected
 // set from the archive: that could silently approve a second unknown root.
 var oldAppRaidFiles = []string{
+	"Interface/AddOns/RelaxRaid/AvoidableSpells.lua",
 	"Interface/AddOns/RelaxRaid/Core.lua",
+	"Interface/AddOns/RelaxRaid/DeathRecap.lua",
+	"Interface/AddOns/RelaxRaid/DeathRecapUI.lua",
 	"Interface/AddOns/RelaxRaid/Log.lua",
 	"Interface/AddOns/RelaxRaid/Prep.lua",
 	"Interface/AddOns/RelaxRaid/RelaxRaid.toc",
@@ -145,7 +148,7 @@ func TestOldAppRefusalAssertions(t *testing.T) {
 			case "message-suffix":
 				err, wantReason = errors.New(oldAppFallbackError+"; second unknown path"), "message"
 			case "message-other-path":
-				err, wantReason = errors.New(strings.ReplaceAll(oldAppFallbackError, "RelaxRaid/Core.lua", "Other/Core.lua")), "message"
+				err, wantReason = errors.New(strings.ReplaceAll(oldAppFallbackError, "RelaxRaid/AvoidableSpells.lua", "Other/AvoidableSpells.lua")), "message"
 			case "empty-backup":
 				if err := os.Mkdir(filepath.Join(game, "RelaxCoachBackups"), 0700); err != nil {
 					t.Fatal(err)
