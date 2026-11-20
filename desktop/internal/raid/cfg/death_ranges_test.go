@@ -23,7 +23,13 @@ func TestDeathPredicateRanges(t *testing.T) {
 		for _, e := range edges {
 			t.Run(key+"/"+nameValue(e.v), func(t *testing.T) {
 				dir := copyValidationData(t)
-				change(t, dir, "scoring.json", func(d map[string]any) { setScoringValue(d, "death."+key, e.v) })
+				change(t, dir, "scoring.json", func(d map[string]any) {
+					// Keep the duration representation edge independent of its new cross-field bound.
+					if key == "raidwide_window_ms" {
+						setScoringValue(d, "death.window_ms", int64(math.MaxInt64))
+					}
+					setScoringValue(d, "death."+key, e.v)
+				})
 				if !e.ok {
 					refusedField(t, dir, "scoring.json", "death."+key)
 					return

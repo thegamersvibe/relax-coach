@@ -232,5 +232,71 @@
     "old": "\tBaseline    string // \"own\", \"guild\", \"role\" or \"\" when not set\n}",
     "new": "\tBaseline    string // \"own\", \"guild\", \"role\" or \"\" when not set\n\tUnexpected int\n}",
     "killed_by": "TestPartFieldsPinned"
+  },
+  {
+    "file": "desktop/internal/raid/model/death_values.go",
+    "old": "\"avoidable ability\"",
+    "new": "\"avoidable ability changed\"",
+    "killed_by": "TestDeathValues"
+  },
+  {
+    "file": "desktop/internal/raid/model/death_values.go",
+    "old": "\"unavoidable or one-shot\"",
+    "new": "\"unavoidable or one-shot changed\"",
+    "killed_by": "TestDeathValues"
+  },
+  {
+    "file": "desktop/internal/raid/model/death_values.go",
+    "old": "\"unhealed over time\"",
+    "new": "\"unhealed over time changed\"",
+    "killed_by": "TestDeathValues"
+  },
+  {
+    "file": "desktop/internal/raid/model/death_values.go",
+    "old": "\"pulled aggro\"",
+    "new": "\"pulled aggro changed\"",
+    "killed_by": "TestDeathValues"
+  },
+  {
+    "file": "desktop/internal/raid/model/death_values.go",
+    "old": "\"tank lost the boss\"",
+    "new": "\"tank lost the boss changed\"",
+    "killed_by": "TestDeathValues"
+  },
+  {
+    "file": "desktop/internal/raid/model/death_values.go",
+    "old": "\"after the wipe call\"",
+    "new": "\"after the wipe call changed\"",
+    "killed_by": "TestDeathValues"
+  },
+  {
+    "file": "desktop/internal/raid/model/death_values.go",
+    "old": "\"unresolved\"",
+    "new": "\"unresolved changed\"",
+    "killed_by": "TestDeathValues"
+  },
+  {
+    "file": "desktop/internal/raid/model/death_values.go",
+    "old": "\"player\"",
+    "new": "\"player changed\"",
+    "killed_by": "TestDeathValues"
+  },
+  {
+    "file": "desktop/internal/raid/model/death_values.go",
+    "old": "\"healers\"",
+    "new": "\"healers changed\"",
+    "killed_by": "TestDeathValues"
+  },
+  {
+    "file": "desktop/internal/raid/model/death_values.go",
+    "old": "\"nobody\"",
+    "new": "\"nobody changed\"",
+    "killed_by": "TestDeathValues"
+  },
+  {
+    "file": "desktop/internal/raid/model/death_values.go",
+    "old": "\"undecided\"",
+    "new": "\"undecided changed\"",
+    "killed_by": "TestDeathValues"
   }
 ]

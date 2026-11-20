@@ -1,5 +1,6 @@
 {
   "kind": "go",
+  "limit": 60,
   "source": "desktop/internal/raid/cfg/",
   "inputs": ["rules/raid/"],
   "test": ["go", "-C", "desktop", "test", "-race", "-count=1", "./internal/raid/cfg/..."],

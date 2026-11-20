@@ -1,0 +1,7 @@
+{
+  "kind": "go",
+  "source": "desktop/internal/raid/death/",
+  "test": ["go", "-C", "desktop", "test", "-race", "-count=1", "./internal/raid/death/..."],
+  "depends": ["model", "cfg", "fights", "logfmt"],
+  "inputs": ["rules/raid/"]
+}
