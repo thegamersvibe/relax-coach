@@ -32,7 +32,11 @@ func TestSeedFiles(t *testing.T) {
 			if err := json.Unmarshal(b, &file); err != nil {
 				t.Fatal(err)
 			}
-			if file.Schema != 1 || file.Version == "" || file.Source == "" {
+			schema := 1
+			if name == "scoring.json" {
+				schema = 2
+			}
+			if file.Schema != schema || file.Version == "" || file.Source == "" {
 				t.Fatalf("missing version/provenance: %+v", file)
 			}
 		})

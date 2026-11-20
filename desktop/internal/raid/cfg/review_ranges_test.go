@@ -2,6 +2,7 @@ package cfg_test
 
 import (
 	"fmt"
+	"math"
 	"testing"
 )
 
@@ -24,6 +25,9 @@ func TestReviewRanges(t *testing.T) {
 	}{
 		{"fights", "tail_ms", 10001},
 		{"night", "kill_weight", 1.01}, {"night", "kill_weight", 1e300},
+		// An adjacent float exceeds the component ceiling without tripping the
+		// total comparison tolerance, so that new guard cannot mask this one.
+		{"measure_weights", "output", map[string]any{"damage": math.Nextafter(100, 101)}},
 		{"measure_weights", "output", map[string]any{"damage": 100.01}},
 		{"measure_weights", "output", map[string]any{"damage": 1e300}},
 	} {
@@ -78,7 +82,7 @@ func TestReviewSurvivorCases(t *testing.T) {
 		edit              func(map[string]any)
 	}{
 		{"assignment", "scoring.json", "assignments", func(d map[string]any) { a := d["assignments"].([]any); d["assignments"] = append(a, a[0]) }},
-		{"measure_part", "scoring.json", "measure_weights", func(d map[string]any) { d["measure_weights"] = map[string]any{"invented": map[string]any{"a": 1}} }},
+		{"measure_part", "scoring.json", "measure_weights", func(d map[string]any) { d["measure_weights"] = map[string]any{"invented": map[string]any{"a": 100}} }},
 		{"zero_weights", "scoring.json", "measure_weights", func(d map[string]any) { d["measure_weights"] = map[string]any{"output": map[string]any{"a": 0}} }},
 		{"ratio_scores", "scoring.json", "ratio_points", func(d map[string]any) { d["ratio_points"].([]any)[2].(map[string]any)["score"] = 60 }},
 		{"ratio_equal", "scoring.json", "ratio_points", func(d map[string]any) { d["ratio_points"].([]any)[1].(map[string]any)["ratio"] = .5 }},

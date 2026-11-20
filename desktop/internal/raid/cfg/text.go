@@ -19,7 +19,11 @@ func rawKeyPath(raw []byte, path string) string {
 		case '\\':
 			i++ // An escaped quote is not the key terminator.
 		case '"':
-			return path + "[" + strconv.Quote(string(raw[1:i])) + "]"
+			key := string(raw[1:i])
+			if len(key) > 64 {
+				key = key[:64] + "..."
+			}
+			return path + "[" + strconv.Quote(key) + "]"
 		}
 	}
 	return path
