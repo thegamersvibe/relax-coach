@@ -146,6 +146,9 @@ All file structs embed `Metadata { Schema int; Version, Source string }`.
   Short-fight weights, shares and fractions stay in `[0, 1]` (positive where
   already required); role scores, penalties and point transfers stay in `[0, 100]`.
 - Ratio points have strictly increasing ratios and nondecreasing scores.
+- A configured `rounding_step` is in `(0, 100]` score points: 100 is the entire
+  score scale, so a larger quantum exceeds that scale rather than expressing
+  useful score precision. Null stays unconfigured; this bound chooses no default.
 
 These bounds preserve the existing fractional-versus-point distinction in
 `scoring.json` and its DESIGN 7/9 source; no weight defaults were added.
@@ -183,7 +186,10 @@ Personal effects never earn
 support credit. Furious Howl has conflicting party versus party/raid scope in
 the two study reports: its scope is `unknown` and credit is disabled pending
 source resolution. A phase-2 consumer must not assume additive credit from null
-stacking. Consumables are categories only; requirements and item mappings need
+stacking. Loading also refuses `credit=true` with `stacks=null`: both explicit
+`false` (non-stacking) and `true` are stack rules, but null is not. Unknown and
+personal scope remain ineligible even with `verified=true` and known stacking.
+Consumables are categories only; requirements and item mappings need
 separate evidence.
 
 The brief does not provide inner-measure weights, per-death penalties, the
