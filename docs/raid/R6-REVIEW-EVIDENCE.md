@@ -155,7 +155,7 @@ Counts are unchanged; these logs do not prove any positive cause or wipe rule.
 No real lines, names or private paths are committed. Native Windows, game,
 rendering, result serialization and officer overrides remain untested.
 
-### Run-end clock spike: reproduced contract gap, not fixed
+### Run-end exclusion and aggro recap cap: lead rulings implemented
 
 The run-end exclusion and aggro evidence bound now have explicit lead rulings.
 
