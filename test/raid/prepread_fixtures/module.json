@@ -1,0 +1,7 @@
+{
+  "kind": "py",
+  "source": "test/raid/prepread_fixtures/",
+  "test": ["python", "-I", "-B", "test/raid/prepread_fixtures/generate.py"],
+  "depends": ["prep", "wire", "store"],
+  "inputs": ["desktop/internal/raid/prepread/testdata/"]
+}

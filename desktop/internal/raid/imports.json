@@ -9,6 +9,7 @@
   "death": ["model", "cfg"],
   "score": ["model", "cfg"],
   "prep": ["model"],
+  "prepread": ["model"],
   "result": ["model"],
   "sr": ["model", "cfg"],
   "upload": ["result"]

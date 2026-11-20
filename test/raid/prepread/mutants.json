@@ -1,0 +1,404 @@
+[
+  {
+    "file": "desktop/internal/raid/prepread/literal.go",
+    "old": "len(data) > limits.MaxFileBytes",
+    "new": "false && len(data) > limits.MaxFileBytes",
+    "killed_by": "TestLiteralBudgets"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/literal.go",
+    "old": "depth > limits.MaxDepth",
+    "new": "false && depth > limits.MaxDepth",
+    "killed_by": "TestLiteralBudgets"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/literal.go",
+    "old": "p.entries > limits.MaxEntries",
+    "new": "false && p.entries > limits.MaxEntries",
+    "killed_by": "TestLiteralBudgets"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/literal.go",
+    "old": "out.Len() >= limits.MaxStringBytes",
+    "new": "false && out.Len() >= limits.MaxStringBytes",
+    "killed_by": "TestLiteralBudgets"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/literal.go",
+    "old": "if _, duplicate := out[key]; duplicate {",
+    "new": "if _, duplicate := out[key]; duplicate && false {",
+    "killed_by": "TestLiteralRefusals"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/literal.go",
+    "old": "if n > 255 {",
+    "new": "if n > 255 && false {",
+    "killed_by": "TestLiteralRefusals"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/literal.go",
+    "old": "if !digit(c) {",
+    "new": "if !digit(c) && false {",
+    "killed_by": "TestPrimitiveAndProtocolBounds"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/literal.go",
+    "old": "if p.pos-start > 64 {",
+    "new": "if p.pos-start > 64 && false {",
+    "killed_by": "TestPrimitiveAndProtocolBounds"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/literal.go",
+    "old": "if equals > 64 {",
+    "new": "if equals > 64 && false {",
+    "killed_by": "TestPrimitiveAndProtocolBounds"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/literal.go",
+    "old": "if p.pos != len(p.s) {",
+    "new": "if p.pos != len(p.s) && false {",
+    "killed_by": "TestLiteralRefusals"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/literal.go",
+    "old": "if err != nil || math.IsInf(v, 0) || math.IsNaN(v) {",
+    "new": "if false && (err != nil || math.IsInf(v, 0) || math.IsNaN(v)) {",
+    "killed_by": "TestLiteralRefusals"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/literal.go",
+    "old": "p.ident() != \"RelaxRaidDB\"",
+    "new": "p.ident() == \"\"",
+    "killed_by": "TestPrimitiveAndProtocolBounds"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/literal.go",
+    "old": "if end < 0 {\n\t\t\t\tp.fail(\"literal syntax\")\n\t\t\t\treturn",
+    "new": "if end < 0 {\n\t\t\t\tp.pos = len(p.s)\n\t\t\t\treturn",
+    "killed_by": "TestLiteralRefusals"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/store.go",
+    "old": "!ok || len(t) > cap",
+    "new": "!ok || false && len(t) > cap",
+    "killed_by": "TestPrimitiveAndProtocolBounds"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/store.go",
+    "old": "f > float64(high)",
+    "new": "false && f > float64(high)",
+    "killed_by": "TestPrimitiveAndProtocolBounds"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/store.go",
+    "old": "f < float64(low)",
+    "new": "false && f < float64(low)",
+    "killed_by": "TestPrimitiveAndProtocolBounds"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/store.go",
+    "old": "f != math.Trunc(f)",
+    "new": "false && f != math.Trunc(f)",
+    "killed_by": "TestPrimitiveAndProtocolBounds"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/store.go",
+    "old": "ok && v > 1",
+    "new": "ok && v > 2",
+    "killed_by": "TestNewerVersionsAreNeverInterpreted"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/store.go",
+    "old": "ok && v > 2",
+    "new": "ok && v > 3",
+    "killed_by": "TestNewerVersionsAreNeverInterpreted"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/store.go",
+    "old": "version, ok := integer(prep[\"version\"], 2, 2)\n\tif !ok || version != 2 {",
+    "new": "version, ok := integer(prep[\"version\"], 1, 2)\n\tif !ok || (version != 2 && version != 1) {",
+    "killed_by": "TestVersionPolicy"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/store.go",
+    "old": "array(prep[\"nights\"], maxNights)",
+    "new": "array(prep[\"nights\"], maxNights+1)",
+    "killed_by": "TestStoreStructureGuards"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/store.go",
+    "old": "array(n[\"windows\"], maxWindows)",
+    "new": "array(n[\"windows\"], maxWindows+1)",
+    "killed_by": "TestStoreStructureGuards"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/store.go",
+    "old": "len(rows) > maxPlayers",
+    "new": "len(rows) > maxPlayers+1",
+    "killed_by": "TestStoreStructureGuards"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/store.go",
+    "old": "len(reports) > maxWindows*maxPlayers",
+    "new": "len(reports) >= maxWindows*maxPlayers",
+    "killed_by": "TestThreeNightsFullRotatingRoster"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/store.go",
+    "old": "array(reports[key], maxWindows)",
+    "new": "array(reports[key], maxWindows-1)",
+    "killed_by": "TestCharacterByteBudget"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/store.go",
+    "old": "if own > limits.MaxCharacterBytes {",
+    "new": "if own > limits.MaxCharacterBytes && false {",
+    "killed_by": "TestCharacterByteBudget"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/store.go",
+    "old": "if own > limits.MaxCharacterBytes {",
+    "new": "if own >= limits.MaxCharacterBytes {",
+    "killed_by": "TestCharacterByteBudget"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/store.go",
+    "old": "if total > limits.MaxNightBytes {",
+    "new": "if total > limits.MaxNightBytes && false {",
+    "killed_by": "TestNightByteBudget"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/store.go",
+    "old": "if total > limits.MaxNightBytes {",
+    "new": "if total >= limits.MaxNightBytes {",
+    "killed_by": "TestNightByteBudget"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/store.go",
+    "old": "|| days[day]",
+    "new": "|| false && days[day]",
+    "killed_by": "TestStoreStructureGuards"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/store.go",
+    "old": "nameKey(s) != s",
+    "new": "false && nameKey(s) != s",
+    "killed_by": "TestStoreStructureGuards"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/store.go",
+    "old": "return nil, \"unreferenced body\"",
+    "new": "continue",
+    "killed_by": "TestStoreStructureGuards"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/store.go",
+    "old": "integer(row[\"report\"], 1, int64(len(byName[key])))",
+    "new": "integer(row[\"report\"], 1, int64(len(byName[key]))-1)",
+    "killed_by": "TestRealNormalReport"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/read.go",
+    "old": "nameKey(r.Name) != b.key",
+    "new": "false && nameKey(r.Name) != b.key",
+    "killed_by": "TestInvalidBodiesCountOnceAndDoNotBlankValidOnes"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/read.go",
+    "old": "at >= firstFightStartS-limits.LookbackSeconds",
+    "new": "at > firstFightStartS-limits.LookbackSeconds",
+    "killed_by": "TestNightBoundsAndEarliestReference"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/read.go",
+    "old": "at <= lastFightEndS",
+    "new": "at < lastFightEndS",
+    "killed_by": "TestNightBoundsAndEarliestReference"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/read.go",
+    "old": "if at < r.Stamped {",
+    "new": "if at > r.Stamped {",
+    "killed_by": "TestDedupAndPlayedRefresh"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/read.go",
+    "old": "r.Stamped = b.receipts[0]",
+    "new": "r.Stamped = r.SenderClock",
+    "killed_by": "TestRealEvictionsAndChanges"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/read.go",
+    "old": "return out[i].Stamped < out[j].Stamped",
+    "new": "return out[i].Stamped > out[j].Stamped",
+    "killed_by": "TestSortByReceiptThenExactName"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/read.go",
+    "old": "return out[i].Name < out[j].Name",
+    "new": "return out[i].Name > out[j].Name",
+    "killed_by": "TestSortByReceiptThenExactName"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "len(body) > limits.MaxBodyBytes",
+    "new": "false && len(body) > limits.MaxBodyBytes",
+    "killed_by": "TestWireGuards"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "len(f) != 11",
+    "new": "len(f) < 11",
+    "killed_by": "TestWireGuards"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "f[0] != \"1\"",
+    "new": "f[0] == \"\"",
+    "killed_by": "TestWireGuards"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "len(s) > 1 && s[0] == '0'",
+    "new": "false && len(s) > 1 && s[0] == '0'",
+    "killed_by": "TestWireGuards"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "len(s) > 10",
+    "new": "len(s) > 9",
+    "killed_by": "TestWireBoundariesAndMarkerRows"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "text(f[1], 24)",
+    "new": "text(f[1], 25)",
+    "killed_by": "TestWireGuards"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "!class(f[3])",
+    "new": "false && !class(f[3])",
+    "killed_by": "TestWireGuards"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "decimal(f[4], 1, 60)",
+    "new": "decimal(f[4], 0, 61)",
+    "killed_by": "TestWireGuards"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "r.PlayedAtLevelS = model.Some(v)",
+    "new": "r.PlayedAtLevelS = model.Opt{V:v}",
+    "killed_by": "TestWireBoundariesAndMarkerRows"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "r.ConsumablesUnreadable = true",
+    "new": "r.ConsumablesUnreadable = false",
+    "killed_by": "TestAllMarkerMappings"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "r.GearChecked, r.GearUnreadable = true, true",
+    "new": "r.GearChecked, r.GearUnreadable = true, false",
+    "killed_by": "TestAllMarkerMappings"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "if f[10] != \"n\" {",
+    "new": "if f[10] != \"n\" && false {",
+    "killed_by": "TestWireGuards"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "if f[10] != \"u\" {",
+    "new": "if f[10] != \"u\" && false {",
+    "killed_by": "TestWireGuards"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "len(rows) > 32",
+    "new": "len(rows) > 31",
+    "killed_by": "TestWideRealReportsFieldByField"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "len(rows) > 19",
+    "new": "len(rows) > 20",
+    "killed_by": "TestWireGuards"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "len(slots) > 19",
+    "new": "len(slots) > 18",
+    "killed_by": "TestWideRealReportsFieldByField"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "|| seen[id]",
+    "new": "|| false && seen[id]",
+    "killed_by": "TestWireGuards"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "if !ok || seen[slot] {",
+    "new": "if !ok || false && seen[slot] {",
+    "killed_by": "TestWireGuards"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "r.NotScored = append(r.NotScored, slot)",
+    "new": "r.NotScored = append(r.NotScored, 1)",
+    "killed_by": "TestWideRealReportsFieldByField"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "return string(b)",
+    "new": "return strings.ToLower(string(b))",
+    "killed_by": "TestWireBoundariesAndMarkerRows"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "!category(fields[0])",
+    "new": "false && !category(fields[0])",
+    "killed_by": "TestWireGuards"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "r.Reason != \"join\" && r.Reason != \"ready\" && r.Reason != \"encounter\"",
+    "new": "r.Reason == \"\"",
+    "killed_by": "TestWireGuards"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "len(s) > cap",
+    "new": "len(s) > cap+1",
+    "killed_by": "TestWireGuards"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "c == '-' || c >= 128",
+    "new": "c == '-' || c == '_' || c >= 128",
+    "killed_by": "TestWireGuards"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/read.go",
+    "old": "if at < r.Stamped {",
+    "new": "if false && at < r.Stamped {",
+    "killed_by": "TestEarliestUnorderedReceipts"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "if f[4] != \"u\" {",
+    "new": "if f[4] != \"u\" && f[4] != \"-\" {",
+    "killed_by": "TestLevelAndPlayedDashIsNotUnreadable"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "if f[5] != \"u\" {",
+    "new": "if f[5] != \"u\" && f[5] != \"-\" {",
+    "killed_by": "TestLevelAndPlayedDashIsNotUnreadable"
+  }
+]

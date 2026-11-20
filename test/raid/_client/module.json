@@ -1,6 +1,6 @@
 {
   "kind": "py",
-  "source": "test/raid/_client/client.py",
+  "source": "test/raid/_client/",
   "test": [
     "python3",
     "-I",

@@ -1,0 +1,26 @@
+[
+  {
+    "file": "test/raid/_client/serialize.py",
+    "old": "return '\"' + value.translate(_STRING_ESCAPES) + '\"'",
+    "new": "return __import__(\"json\").dumps(value, ensure_ascii=True)",
+    "killed_by": "test_accented_name_survives_saved_file_lua51_reload"
+  },
+  {
+    "file": "test/raid/_client/serialize.py",
+    "old": "f\"\\\\{n:03d}\"",
+    "new": "f\"\\\\{n:d}\"",
+    "killed_by": "test_saved_strings_use_lua51_escapes"
+  },
+  {
+    "file": "test/raid/_client/serialize.py",
+    "old": "127: r\"\\127\", ",
+    "new": "",
+    "killed_by": "test_saved_strings_use_lua51_escapes"
+  },
+  {
+    "file": "test/raid/_client/serialize.py",
+    "old": "ord(\"\\\\\"): r\"\\\\\", ",
+    "new": "",
+    "killed_by": "test_saved_strings_use_lua51_escapes"
+  }
+]
