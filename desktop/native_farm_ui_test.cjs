@@ -25,7 +25,49 @@ async function setup(t,handlers){
   return {$,dom,shown:()=>[...$('farm-sell').querySelectorAll('tr[data-house]')].filter(r=>!r.hidden).map(r=>r.dataset.house)};
 }
 
-test('no AH Profit save: no Farming entry',async t=>{
+test('item names link to Forever through the external browser bridge',async t=>{
+  const opened=[];
+  const {$,dom}=await setup(t,{reportRefresh:()=>report('B#2',true,farm),openExternal:url=>opened.push(url)});
+  $('nav-farm').click();
+  for (const [card,id] of [['farm-sell',2772],['farm-hot',2772],['farm-fallers',8001]]) {
+    const link=$(card).querySelector('td:first-child a');
+    assert.ok(link,card+' has an item-name link');
+    const url='https://www.wowhead.com/forever/item='+id;
+    assert.equal(link.getAttribute('href'),url);
+    assert.ok(link.textContent.trim(),'the name itself is clickable');
+    const click=new dom.window.MouseEvent('click',{bubbles:true,cancelable:true,button:0});
+    assert.equal(link.dispatchEvent(click),false,'native navigation prevented');
+    await settle();
+    assert.equal(opened.at(-1),url,'uses openExternal');
+  }
+  assert.equal(dom.window.document.querySelectorAll('script[src],link[rel="stylesheet"]').length,0,'no remote JS or CSS');
+});
+
+test('Wowhead setting defaults on and saves the off choice through native settings',async t=>{
+  const saved=[];
+  const state={...report('B#2',true,farm),WowheadNames:true};
+  const {$}=await setup(t,{reportRefresh:()=>state,setWowheadNames:enabled=>{saved.push(enabled);state.WowheadNames=enabled==='true';return state}});
+  $('nav-settings').click();
+  const toggle=$('wowhead-names');
+  assert.ok(toggle,'online-name preference in Settings');
+  assert.match(toggle.closest('label').textContent,/Look up missing item names online \(Wowhead\)/);
+  assert.equal(toggle.checked,true);
+  toggle.checked=false;fire(toggle);await settle();await settle();
+  assert.deepEqual(saved,['false']);assert.equal(toggle.checked,false);assert.equal(toggle.disabled,false);
+  $('refresh').click();await settle();await settle();
+  assert.equal(toggle.checked,false,'report refresh preserves persisted opt-out');
+});
+
+test('Wowhead opt-out is loaded on startup and a failed write restores it',async t=>{
+  const {$}=await setup(t,{reportRefresh:()=>({...report('B#2',true,farm),WowheadNames:false}),setWowheadNames:()=>{throw new Error('Test settings failure')}});
+  const toggle=$('wowhead-names');assert.ok(toggle);
+  assert.equal(toggle.checked,false);
+  toggle.checked=true;fire(toggle);await settle();await settle();
+  assert.equal(toggle.checked,false);assert.equal(toggle.disabled,false);
+  assert.match($('wowhead-names-status').textContent,/Test settings failure/);
+});
+
+test('no AH Profit save: no Farming entry' ,async t=>{
   const {$}=await setup(t,{reportRefresh:()=>report('A#1',false)});
   assert.equal($('nav-farm').hidden,true);
   assert.equal($('farm-view').hidden,true);

@@ -24,6 +24,7 @@ const rc = Object.freeze({
   refresh: () => call('reportRefresh'),
   setGame: path => call('setGame',path),
   selectAccount: id => call('selectAccount',id),
+  setWowheadNames: enabled => call('setWowheadNames',String(enabled)),
   chooseGame: () => call('chooseGame'),
   checkAddon: () => call('checkAddon'),
   applyAddon: version => call('applyAddon',version),
@@ -50,6 +51,7 @@ const clickThen = install => ' Click '+verb(install)+'. WoW can stay open.';
 const progressText = 'Downloading, verifying and installing… Do not force-close the application.';
 const failText = (install,err) => verb(install)+' failed: '+err.message+' Check again before retrying.';
 let offer = null, appOffer = null, busy = false, refreshing = false, restarting = false;
+let wowheadSaving = false;
 // Reads asked for while busy run once the UI is free again (see updateButtons).
 let startupCheckPending = false, extrasPending = false;
 let healthPending = false, healthSent = false;
@@ -114,6 +116,7 @@ function updateButtons() {
   if (!busy && (startupCheckPending || extrasPending)) queueMicrotask(runDeferred);
   const disabled = document.body.dataset.updatesDisabled === 'true';
   $('refresh').disabled = refreshing || switchingFolder || switchingAccount;
+  $('wowhead-names').disabled = busy || wowheadSaving || !lastReport;
   $('account-select').disabled = busy || !lastReport || !(lastReport.Accounts || []).length;
   $('check-app-update').disabled = busy || disabled;
   $('apply-app-update').disabled = busy || disabled || !appOffer || !appOffer.Available;
@@ -279,9 +282,25 @@ function displayFarm(result) {
   }
   filterFarmHouse();
 }
+$('wowhead-names').addEventListener('change',async()=>{
+  if (wowheadSaving || busy) return;
+  const previous = lastReport && typeof lastReport.WowheadNames === 'boolean' ? lastReport.WowheadNames : true;
+  wowheadSaving = true; updateButtons();
+  $('wowhead-names-status').textContent = 'Saving…';
+  try {
+    const result = await rc.setWowheadNames($('wowhead-names').checked);
+    wowheadSaving = false;
+    displayReport(result);
+    $('wowhead-names-status').textContent = result.WowheadNames ? 'Online lookup enabled.' : 'Online lookup off. Cached names can still display.';
+  } catch (err) {
+    $('wowhead-names').checked = previous;
+    $('wowhead-names-status').textContent = 'Could not save preference: '+err.message;
+  } finally { wowheadSaving = false; updateButtons(); }
+});
 $('farm-body').addEventListener('change',event=>{ if (event.target && event.target.id === 'farm-house') filterFarmHouse(); });
 function displayReport(result,folderChanged = false) {
   lastReport = result;
+  if (!wowheadSaving && typeof result.WowheadNames === 'boolean') $('wowhead-names').checked = result.WowheadNames;
   if (result.AppVersion) $('installed-app-version').textContent = result.AppVersion;
   if (typeof result.AppUpdateStatus === 'string') $('app-last-result').textContent = result.AppUpdateStatus;
   displayAccount(result);
