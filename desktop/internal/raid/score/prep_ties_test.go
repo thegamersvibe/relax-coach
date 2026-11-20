@@ -9,7 +9,7 @@ import (
 )
 
 func TestPrepSameStampUsesSenderThenStableKey(t *testing.T) {
-	for _, stamp := range []int64{90, 161} { // eligible and earliest-night fallback
+	for _, stamp := range []int64{90, 160} { // before end and inclusive end
 		f := fixture("tank")
 		a := stock(f.Players[0])
 		a.Stamped, a.SenderClock = stamp, 10
