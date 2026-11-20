@@ -52,6 +52,18 @@ function ExtendFrame(f, kind, name, parent, template)
     function f:CreateTexture(name,layer) return ExtendFrame({},'Texture',name,self) end
     return f
 end
+-- Resolve the recorded anchors for geometry assertions (left,bottom,right,top).
+function UIBounds(f)
+    if f==UIParent then return 0,0,f.width,f.height end
+    if not f.point then return f.left,f.top-f.height,f.left+f.width,f.top end
+    local point,relative,other,x,y=unpack(f.point)
+    local anchors={TOPLEFT={0,1},TOPRIGHT={1,1},BOTTOMLEFT={0,0},CENTER={0.5,0.5}}
+    local a,b=assert(anchors[point]),assert(anchors[other])
+    local l,bottom,r,t=UIBounds(relative)
+    l=l+(r-l)*b[1]+x-f.width*a[1]
+    bottom=bottom+(t-bottom)*b[2]+y-f.height*a[2]
+    return l,bottom,l+f.width,bottom+f.height
+end
 UIParent=ExtendFrame({},'Frame','UIParent'); UIParent:SetSize(1080,800)
 GameTooltip=ExtendFrame({},'GameTooltip')
 function GameTooltip:SetText(line,r,g,b,a,wrap)

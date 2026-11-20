@@ -88,7 +88,127 @@ class RecapUITests(unittest.TestCase):
         self.assertFalse(c.run('return RelaxDeathRecap.frame:IsShown()'))
         c.run("EventRegistry:TriggerEvent('SetItemRef','addon:RelaxDeathRecap:1')")
         self.assertTrue(c.run('return RelaxDeathRecap.frame:IsShown()'))
-        self.assertEqual(c.run('return RelaxDeathRecap.empty.text'),'the game recorded no recap for this death')
+        self.assertEqual(c.run('return RelaxDeathRecap.empty.text'),'no recap data for this death')
+
+    def test_stale_previous_rows_are_not_a_new_death(self):
+        # Reviewer P2/P3: the API still exposes death 1 on every death 2 retry.
+        c=self.client(); c.hit(); c.fire('PLAYER_DEAD'); c.advance(3)
+        c.fire('PLAYER_ALIVE'); c.fire('PLAYER_UNGHOST'); c.fire('PLAYER_DEAD')
+        self.assertEqual(c.run('return #RelaxDeathRecap.history[1].rows'),0)
+        self.assertEqual(c.run('return RelaxDeathRecap.empty.text'),'no recap data for this death')
+        self.assertTrue(c.run('return RelaxDeathRecap.empty:IsShown()'))
+        # Corrections to amounts/names do not make the same timestamps/IDs fresh.
+        c.run('events[1].amount=400; events[1].sourceName="Renamed Enemy"')
+        c.advance(3)
+        self.assertEqual(c.run('return #RelaxDeathRecap.history[1].rows,RelaxDeathRecap.history[1].killer'),(0,'Unknown'))
+        self.assertEqual(c.run('return RelaxDeathRecap.history[2].rows[1].amount'),350)
+        # A stale/empty death must not erase the last accepted identity.
+        c.fire('PLAYER_ALIVE'); c.fire('PLAYER_DEAD'); c.advance(3)
+        self.assertEqual(c.run('return #RelaxDeathRecap.history[1].rows'),0)
+        # Same source/spell, new timestamp: fresh, not an eternal source ban.
+        c.fire('PLAYER_ALIVE'); c.hit(',timestamp=50'); c.fire('PLAYER_DEAD')
+        self.assertEqual(c.run('return RelaxDeathRecap.history[1].rows[1].timestamp'),50)
+
+    def test_fresh_rows_after_quick_release_attach_without_reopening(self):
+        # Reviewer P12: fresh rows appear at 0.5s, after release at 0.1s.
+        for release in ('PLAYER_ALIVE','PLAYER_UNGHOST'):
+            c=self.client(); c.hit(); c.fire('PLAYER_DEAD'); c.advance(3); c.fire('PLAYER_ALIVE')
+            c.run('calls=0; RelaxDeathRecap.register("Other",{onRecap=function(r) calls=calls+1; notified=r end})')
+            c.fire('PLAYER_DEAD'); c.advance(0.1); c.fire(release); c.advance(0.4)
+            c.hit(',timestamp=50,sourceName="New Enemy"'); c.advance(1.5)
+            self.assertEqual(c.run('return RelaxDeathRecap.history[1].killer,#RelaxDeathRecap.history[1].rows'),('New Enemy',1))
+            self.assertEqual(c.run('return calls,notified.id,notified.rows[1].timestamp'),(1,2,50))
+            self.assertFalse(c.run('return RelaxDeathRecap.frame:IsShown()'))
+            self.assertEqual(c.run('return RelaxDeathRecap.history[2].killer'),'Enemy One')
+            # Nothing arriving beyond the 2s window can replace this recap.
+            c.hit(',timestamp=80'); c.advance(3)
+            self.assertEqual(c.run('return RelaxDeathRecap.history[1].rows[1].timestamp,calls'),(50,1))
+
+    def test_unreadable_whole_rows_mark_partial_and_blank_shares(self):
+        # Reviewer P5: inaccessible middle/first rows must not end a complete prefix.
+        for position in (1,2):
+            for mode in ('secret()', '"wrong type"', 'false', 'throw'):
+                c=self.client()
+                c.run('''for i=1,3 do events[i]={timestamp=11-i,amount=300,overkill=0,
+                    sourceName='Enemy '..i,sourceGUID='Player-'..i,sourceFlags=1344,hideCaster=false} end''')
+                if mode == 'throw':
+                    c.run(f'events[{position}]=nil; setmetatable(events,{{__index=function(_,k) if k=={position} then error("denied") end end}})')
+                else:
+                    c.run(f'events[{position}]={mode}')
+                c.fire('PLAYER_DEAD'); c.advance(2)
+                self.assertTrue(c.run('return RelaxDeathRecap.history[1].incomplete'), (position,mode))
+                self.assertEqual(c.run('return #RelaxDeathRecap.history[1].rows'),2)
+                self.assertEqual(c.run('local n=0; for _,a in ipairs(RelaxDeathRecap.history[1].attackers) do if a.share then n=n+1 end end; return n'),0)
+                self.assertEqual(c.run('return RelaxDeathRecap.attackerFrames[1].share.text'),'')
+                self.assertIn('some hits unreadable',c.run('return RelaxDeathRecap.footer.text'))
+                self.assertEqual(c.run('return RelaxDeathRecap.history[1].killer'),'Unknown')
+                self.assertIsNone(c.run('return RelaxDeathRecap.history[1].rows[1].seconds'))
+
+    def test_incomplete_recaps_stay_incomplete_after_saved_roundtrip(self):
+        c=self.client(); c.hit(); c.run('events[2]=secret()')
+        c.run('settings={version=1,keep=true}; RelaxDeathRecap.register("RelaxRaid",{settings=settings})')
+        c.fire('PLAYER_DEAD'); c.advance(2)
+        c.run('RelaxDeathRecap.history={}; RelaxDeathRecap.configure(settings); RelaxDeathRecap.open(1)')
+        self.assertTrue(c.run('return RelaxDeathRecap.history[1].incomplete'))
+        self.assertIsNone(c.run('return RelaxDeathRecap.history[1].attackers[1].share'))
+        self.assertIn('some hits unreadable',c.run('return RelaxDeathRecap.footer.text'))
+
+    def assert_invalid_amount_rejected(self, value):
+        c=self.client(); c.hit()
+        c.run(f'''events[2]={{timestamp=11,amount={value},overkill=0,sourceName='Bad Amount',
+            sourceGUID='Player-2',sourceFlags=1344,hideCaster=false}}''')
+        c.fire('PLAYER_DEAD'); c.advance(2)
+        self.assertEqual(c.run('return #RelaxDeathRecap.history[1].rows'),1,value)
+        self.assertEqual(c.run('return RelaxDeathRecap.history[1].rows[1].sourceName'),'Enemy One')
+        self.assertTrue(c.run('return RelaxDeathRecap.history[1].incomplete'))
+        self.assertIsNone(c.run('return RelaxDeathRecap.history[1].attackers[1].share'))
+        self.assertEqual(c.run('return RelaxDeathRecap.attackerFrames[1].share.text'),'')
+        self.assertIn('some hits unreadable',c.run('return RelaxDeathRecap.footer.text'))
+        self.assertNotIn('--',c.run('return RelaxDeathRecap.rowFrames[1].amount.text'))
+
+    def test_negative_amount_row_is_unreadable_not_zero_damage(self):
+        self.assert_invalid_amount_rejected('-500')
+        c=self.client(); c.hit(',amount=0,overkill=-1'); c.fire('PLAYER_DEAD')
+        self.assertEqual(c.run('return RelaxDeathRecap.history[1].rows[1].effective'),0)
+        self.assertFalse(c.run('return RelaxDeathRecap.history[1].incomplete'))
+
+    def test_nonfinite_amount_row_is_unreadable(self):
+        for value in ('0/0','math.huge','-math.huge','1e300'):
+            self.assert_invalid_amount_rejected(value)
+
+    def test_freshness_compares_identity_multisets_not_order_or_amount(self):
+        c=self.client(); c.hit()
+        c.run('events[2]={timestamp=10,amount=50,overkill=0,spellId=456,event="SPELL_DAMAGE",sourceGUID="Player-2",hideCaster=false}')
+        c.fire('PLAYER_DEAD'); c.advance(2); c.fire('PLAYER_ALIVE')
+        c.run('events[1],events[2]=events[2],events[1]; events[1].amount=99')
+        c.fire('PLAYER_DEAD'); c.advance(0.3)
+        self.assertEqual(c.run('return #RelaxDeathRecap.history[1].rows'),0)
+        c.run('events[1].spellId=789'); c.advance(0.7)
+        self.assertEqual(c.run('return #RelaxDeathRecap.history[1].rows'),2)
+        # An old snapshot returning later must not replace the newly accepted one.
+        c.run('events[1].spellId=456'); c.advance(1)
+        self.assertEqual(c.run('local n=0; for _,r in ipairs(RelaxDeathRecap.history[1].rows) do if r.spellId==789 then n=n+1 end end; return n'),1)
+
+    def test_saved_previous_identity_blocks_stale_data_after_reload(self):
+        c=self.client(); c.hit()
+        c.run('settings={version=1,keep=true}; RelaxDeathRecap.register("RelaxRaid",{settings=settings})')
+        c.fire('PLAYER_DEAD'); c.advance(2)
+        c.run('RelaxDeathRecap.history={}; RelaxDeathRecap.lastRows=nil; RelaxDeathRecap.configure(settings)')
+        c.fire('PLAYER_ALIVE'); c.fire('PLAYER_DEAD'); c.advance(2)
+        self.assertEqual(c.run('return #RelaxDeathRecap.history[1].rows'),0)
+
+    def test_only_unreadable_rows_still_report_incomplete(self):
+        c=self.client(); c.run('events={secret()}'); c.fire('PLAYER_DEAD'); c.advance(2)
+        self.assertEqual(c.run('return #RelaxDeathRecap.history[1].rows'),0)
+        self.assertTrue(c.run('return RelaxDeathRecap.history[1].incomplete'))
+        self.assertIn('some hits unreadable',c.run('return RelaxDeathRecap.footer.text'))
+
+    def test_unreadable_amount_and_overkill_warn_without_inventing_shares(self):
+        for key in ('amount','overkill'):
+            c=self.client(); c.hit(); c.run(f'events[1].{key}=secret()'); c.fire('PLAYER_DEAD'); c.advance(2)
+            self.assertTrue(c.run('return RelaxDeathRecap.history[1].incomplete'))
+            self.assertIsNone(c.run('return RelaxDeathRecap.history[1].attackers[1].share'))
+            self.assertIn('some hits unreadable',c.run('return RelaxDeathRecap.footer.text'))
 
     def test_rows_show_health_time_extras_crit_only_if_readable(self):
         c=self.client(); c.hit(',blocked=96,absorbed=4,resisted=2'); c.fire('PLAYER_DEAD')
@@ -106,8 +226,8 @@ class RecapUITests(unittest.TestCase):
 
     def test_tabs_labels_and_twelve_row_scroll(self):
         c=self.client()
-        for fields,label in [('', 'Enemy One'),(',sourceFlags=2048,sourceName="Boss"','Boss'),(',event="ENVIRONMENTAL_DAMAGE",environmentalType="LAVA",sourceName=nil','Lava'),(',sourceName=secret()','Unknown')]:
-            c.hit(fields); c.fire('PLAYER_DEAD'); c.advance(2)
+        for i,(fields,label) in enumerate([('', 'Enemy One'),(',sourceFlags=2048,sourceName="Boss"','Boss'),(',event="ENVIRONMENTAL_DAMAGE",environmentalType="LAVA",sourceName=nil','Lava'),(',sourceName=secret()','Unknown')]):
+            c.hit(fields+f',timestamp={20+i}'); c.fire('PLAYER_DEAD'); c.advance(2)
             self.assertIn(label,c.run('return RelaxDeathRecap.tabs[1].label.text'))
             c.fire('PLAYER_ALIVE')
         c.slash('/recap 2'); self.assertEqual(c.run('return RelaxDeathRecap.selected'),2)
@@ -159,6 +279,41 @@ class RecapUITests(unittest.TestCase):
         self.assertLessEqual(c.run('return RelaxDeathRecap.frame:GetHeight()+38'),c.run('return UIParent:GetHeight()'))
         self.assertEqual(c.run('return #RelaxDeathRecap.history[1].attackers'),12)
         self.assertEqual(c.run('return RelaxDeathRecap.rowFrames[1].height'),32)
+
+    def test_maximum_player_block_fits_600px_screen_and_caps_attackers(self):
+        # Reviewer height probe; include tabs, content, controls and late growth.
+        for late in (False,True):
+            c=self.client(); c.run('UIParent:SetSize(1080,600)')
+            if late: c.fire('PLAYER_DEAD'); c.advance(0.1)
+            c.run('''for i=1,12 do events[i]={timestamp=100-i,amount=10,overkill=0,sourceGUID='Player-'..i,
+                sourceName='Enemy '..i,sourceFlags=1344,hideCaster=false} end''')
+            if late: c.advance(0.2)
+            else: c.fire('PLAYER_DEAD')
+            self.assertLessEqual(c.run('return RelaxDeathRecap.frame:GetHeight()+38'),600)
+            self.assertGreaterEqual(c.run('return RelaxDeathRecap.frame:GetBottom()'),0)
+            self.assertLessEqual(c.run('return RelaxDeathRecap.frame:GetTop()+38'),600)
+            self.assertEqual(c.run('return #RelaxDeathRecap.history[1].attackers'),12)
+            self.assertEqual(c.run('local n=0; for _,a in ipairs(RelaxDeathRecap.attackerFrames) do if a:IsShown() then n=n+1 end end; return n'),3)
+            self.assertEqual(c.run('return RelaxDeathRecap.moreAttackers.text'),'+9 more')
+            self.assertTrue(c.run('return RelaxDeathRecap.moreAttackers:IsShown()'))
+            c.run('''local R=RelaxDeathRecap
+                local _, frameBottom, _, frameTop=UIBounds(R.frame)
+                local _, moreBottom, _, moreTop=UIBounds(R.moreAttackers)
+                local _, _, _, firstTop=UIBounds(R.rowFrames[1])
+                local _, rowBottom=UIBounds(R.rowFrames[5])
+                local _, footerBottom, _, footerTop=UIBounds(R.footer)
+                local _, closeBottom, _, closeTop=UIBounds(R.closeButton)
+                assert(moreBottom>=firstTop, 'attacker overflow overlaps hits')
+                assert(rowBottom>=footerTop and footerBottom>=closeTop, 'footer/control overlap')
+                assert(closeBottom>=frameBottom and moreTop<=frameTop, 'content outside frame')
+                for _,tab in ipairs(R.tabs) do
+                    if tab:IsShown() then local _,_,_,top=UIBounds(tab); assert(top<=UIParent:GetHeight()) end
+                end''')
+            c.run('for i=1,20 do RelaxDeathRecap.scroll(1) end')
+            self.assertEqual(c.run('return RelaxDeathRecap.rowFrames[5].row.timestamp'),88)
+            # A smaller later recap hides +X rather than leaving stale text visible.
+            c.fire('PLAYER_ALIVE'); c.hit(',timestamp=200'); c.fire('PLAYER_DEAD')
+            self.assertFalse(c.run('return RelaxDeathRecap.moreAttackers:IsShown()'))
 
     def test_two_ui_copies_and_popup_manager_absent(self):
         c=self.client(); c.load_shared('Other'); c.load_ui()
@@ -363,6 +518,30 @@ class RecapTests(unittest.TestCase):
         self.assertEqual(c.run('return opened'),1)
         c.run("RelaxDeathRecap.link('addon:RelaxDeathRecap:9')")
         self.assertTrue(any('no longer kept' in s for s in c.chat))
+
+    def test_saved_ids_are_bounded_integers_and_new_links_work(self):
+        for bad in ('1e12','1.5','0','-1','math.huge','0/0','"1"','secret()'):
+            c=self.client()
+            c.run(f'''settings={{version=1,keep=true,history={{{{id={bad},clock='21:14',zone='Test',rows={{}}}}}}}};
+                RelaxDeathRecap.register('RelaxRaid',{{settings=settings}})''')
+            self.assertEqual(c.run('return #RelaxDeathRecap.history'),0,bad)
+            self.assertEqual(c.run('return #settings.history'),0,bad)
+            c.hit(); c.fire('PLAYER_DEAD')
+            self.assertEqual(c.run('return RelaxDeathRecap.history[1].id'),1)
+            c.run('opened=0; RelaxDeathRecap.open=function(i) opened=i end; RelaxDeathRecap.link("addon:RelaxDeathRecap:1")')
+            self.assertEqual(c.run('return opened'),1)
+
+    def test_largest_valid_id_never_emits_an_unusable_or_reused_link(self):
+        c=self.client()
+        c.run('''settings={version=1,keep=true,history={{id=999999999998,clock='21:14',zone='Test',rows={}}}};
+            RelaxDeathRecap.register('RelaxRaid',{settings=settings})''')
+        c.hit(); c.fire('PLAYER_DEAD'); c.advance(2); c.fire('PLAYER_ALIVE')
+        self.assertEqual(c.run('return settings.history[1].id'),999999999999)
+        c.run('opened=0; RelaxDeathRecap.open=function(i) opened=i end; RelaxDeathRecap.link("addon:RelaxDeathRecap:999999999999")')
+        self.assertEqual(c.run('return opened'),1)
+        c.hit(',timestamp=50'); c.fire('PLAYER_DEAD')
+        self.assertEqual(c.run('return RelaxDeathRecap.serial,#RelaxDeathRecap.history'),(999999999999,2))
+        self.assertIn('Recap ID limit reached',c.chat[-1])
 
     def test_saved_roundtrip_corrupt_drop_caps_and_owner_only(self):
         c = self.client()

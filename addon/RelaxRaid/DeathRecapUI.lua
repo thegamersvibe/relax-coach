@@ -135,7 +135,11 @@ function R.render()
             a.full = name .. "\n" .. identity(person) .. (person.ownerGUID and ("\nOwner: "..person.ownerGUID) or "")
         end
     end
-    local top = 100 + (#attackers > 0 and 28 + #attackers*24 or 0)
+    local visible = math.min(#attackers, R.maxVisibleAttackers)
+    local more = #attackers - visible
+    R.moreAttackers:SetShown(more > 0)
+    R.moreAttackers:SetText("+" .. more .. " more")
+    local top = 100 + (visible > 0 and 28 + visible*24 or 0) + (more > 0 and 16 or 0)
     for i, frame in ipairs(R.rowFrames) do
         local row = rows[i+(R.offset or 0)]
         frame:SetShown(row ~= nil)
@@ -156,8 +160,9 @@ function R.render()
         end
     end
     R.empty:SetShown(#rows == 0)
-    R.empty:SetText("the game recorded no recap for this death")
-    R.footer:SetText("Shows the last " .. #rows .. " hits the game recorded,\nnot a full 10 seconds. No heals.")
+    R.empty:SetText("no recap data for this death")
+    R.footer:SetText((recap and recap.incomplete and ("Showing " .. #rows .. " hits; some hits unreadable") or
+        ("Shows the last " .. #rows .. " hits the game recorded,")) .. "\nnot a full 10 seconds. No heals.")
     local bottom = top + 160
     R.frame:SetHeight(bottom+96)
     R.footer:ClearAllPoints(); R.footer:SetPoint("TOPLEFT",R.frame,"TOPLEFT",16,-bottom-6)
@@ -165,6 +170,7 @@ function R.render()
     R.previous:ClearAllPoints(); R.previous:SetPoint("TOPLEFT",R.frame,"TOPLEFT",16,-bottom-60)
     R.next:ClearAllPoints(); R.next:SetPoint("TOPLEFT",R.frame,"TOPLEFT",100,-bottom-60)
     R.previous:SetShown(#rows > 5); R.next:SetShown(#rows > 5)
+    R.resetPosition() -- late data can grow the window after its initial placement
 end
 function R.popupOpened(dialog)
     if R.field(dialog,"which","string") ~= "DEATH" then
@@ -222,7 +228,8 @@ function R.buildUI()
     R.headerAvoid=texture(frame,380,-38,16,16); R.headerAvoid:SetAtlas("damagemeters-avoidabledamage-icon")
     R.pvpTitle=text(frame,"GameFontNormal",16,-82,378,32)
     R.pvpTitle:SetText("WHO KILLED YOU\n(share of the damage shown below)")
-    for i=1,12 do
+    R.moreAttackers=text(frame,"GameFontHighlightSmall",16,-116-R.maxVisibleAttackers*24,378,16)
+    for i=1,R.maxVisibleAttackers do
         local a=CreateFrame("Frame",nil,frame); a:SetSize(378,24); a:SetPoint("TOPLEFT",frame,"TOPLEFT",16,-116-(i-1)*24)
         a.name=text(a,"GameFontHighlightSmall",0,0,235,12)
         a.details=text(a,"GameFontHighlightSmall",0,-12,378,12)

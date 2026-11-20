@@ -13,7 +13,9 @@ run. Offline tests use synthetic data only; no donor addon code is loaded.
 later LayerEnemies port. One `RelaxDeathRecap` global owns the window and its
 plain event frame. The higher module version owns it; the first equal version
 wins. Other copies only register named hooks. Both hooks receive the settled
-recap once, after the final retry (or release/revive). This lane changes no
+recap once, after the final retry (or before a subsequent death replaces it).
+Release/revive closes the UI but does not cancel the two-second read window.
+Retries never reopen the window. This lane changes no
 LayerEnemies code, tracking, scoring, wire format or updater.
 
 The API supplies damage, not heals or a fixed time window. About five hits is
@@ -27,16 +29,29 @@ Missing, inaccessible, secret or throwing fields are absent, not formatted as
 zero. `critical`, `sourceGUID` and `sourceFlags` are optional observed inputs,
 **not a guaranteed native schema**. A hidden/unreadable caster is not attributed.
 Effective damage subtracts positive overkill; negative native overkill means
-none. An unreadable amount or overkill makes shares unknown. Shares use damage
+none. An unreadable whole row is skipped without stopping reads of later rows;
+the snapshot is incomplete, with no killer/relative-time inference or shares.
+Negative, non-finite or out-of-bound amounts reject the whole row the same way;
+zero damage and the negative overkill sentinel remain valid. An unreadable amount
+or overkill also makes shares unknown. The footer says `some hits unreadable`,
+and the incomplete marker survives opt-in saving. Shares use damage
 from **all** copied rows, so displayed hostile-player shares need not sum to
 100 when creatures or other sources also damaged the player. Pets stay separate,
 including when a readable owner GUID exists; owner resolution never guesses a
 name or merges their damage into a player. No hostile player means no PvP block.
 
-The API has no documented freshness/ready contract. This is a display of the
-client's current recap snapshot, not proof that every delayed native row belongs
-to a new death; no tracking or other external action is based on it in this lane.
-The future LE integration still needs its own attribution/tracking safeguards.
+At each death, rows matching the previous accepted snapshot's timestamps and IDs
+are rejected: the window says `no recap data for this death` until different rows
+arrive during the 0.3/1/2-second retries, including after a quick release. Identity
+comparison is order-independent and uses timestamp, source GUID, spell ID, event
+and environmental type, not mutable amounts, health or display names. A rejected
+empty/stale death does not reset the last accepted snapshot; restored history also
+seeds this comparison. Old timers cannot write another death or notify twice.
+
+This is a duplicate-snapshot guard, not a native freshness guarantee: different
+rows are not proof of a client death ID or ownership of every delayed row. No
+tracking or other external action is based on it in this lane. The future LE
+integration still needs its own attribution/tracking safeguards.
 
 ## Hook and save interface
 
@@ -54,14 +69,23 @@ Relax Raid stores `deathRecap` inside `RelaxRaidCharDB`; no new SavedVariables.
 Settings schema 1: `auto=true`, `autoclose=true`, `keep=false`, optional position
 `{x,y}`. A newer root or settings version is untouched. History is session-only
 unless keep is on: three recaps, twelve rows each, strings at most 160 bytes,
-finite numbers bounded to 1e12. Persist only whitelisted raw fields plus ID,
-zone, clock and max health; computed UI state and foreign tables never persist.
+finite numbers bounded to 1e12. IDs must be integers from 1 to 999999999999
+(the link's twelve-digit limit); corrupt IDs such as 1e12 drop the saved recap.
+At ID exhaustion, no overflowing or reused link is emitted; a local message asks
+to clear saved recaps and reload. Persist only whitelisted raw fields plus ID,
+zone, clock, max health and completeness; computed UI state and foreign tables
+never persist.
 Wrong-type fields or oversized/sparse saved arrays reject the recap. Turning
 keep off deletes the saved history, not the current session tabs. Data contains
 player names and remains local. A replacement owner clears the previous owner's
 schema-1 saved history and alone writes subsequent history.
 
 The window is a plain frame on UIParent, MEDIUM strata, with stock textures.
+The attacker block shows at most three sources, matching the mockup, and `+X more`
+when capped. All sources still count toward shares and all copied hit rows remain
+scrollable. The maximum frame plus tabs fits a 600-unit-tall UIParent; placement
+is clamped again when late data grows the frame. Offline geometry checks cover
+content, tabs, footer/controls and late growth, not native rendering or DPI.
 X, Close and Escape hide it; release/revive auto-close is optional and on by
 default. Auto-pop defaults on. Position is character-specific, restored with
 screen clamping; `/recap reset` removes the position. A separate button uses
@@ -149,6 +173,9 @@ third-retry data, all fields secret/missing/throwing, zero max health, no events
 environmental/single-row recaps, shares/pets, hook failures and load order,
 retention/persistence corruption, native-popup isolation, options, combat and
 all instance types, tabs/scrolling/position, link validation and generated rules.
-They do not execute another addon, certify native rendering, or certify the
+Review regressions add stale/reordered previous snapshots, late data after quick
+release, whole-row failures, numeric amount rejection, saved-ID limits and 600-unit
+geometry. Mutation guards remain confined to DeathRecap.lua, including the shared
+three-attacker presentation cap. They do not execute another addon, certify native rendering, or certify the
 future LE tracking lane. The existing core frame-count assertion now separately
 requires exactly one Core dispatcher and one portable recap dispatcher.

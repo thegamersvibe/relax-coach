@@ -3,24 +3,26 @@
 -- No live combat recorder, network, unit-health sampling or external media.
 local addonName = ...
 local VERSION = 1
+local MAX_ID = 999999999999 -- largest exact integer accepted by the 12-digit link
 if RelaxDeathRecap and RelaxDeathRecap.v >= VERSION then return end
 local R = RelaxDeathRecap or {hooks = {}, history = {}, serial = 0}
 RelaxDeathRecap = R
 R.v, R.owner = VERSION, addonName
+R.maxVisibleAttackers = 3 -- mockup-sized block; UI shows +X more, all shares stay intact
 
 -- Check permission before type tests, comparisons, indexing or formatting.
 -- Both the access check and the operation can throw; neither reveals a value.
 function R.clean(value, kind)
-    local ok, result = pcall(function()
+    local ok, result, invalidNumber = pcall(function()
         if issecretvalue and issecretvalue(value) then return nil end
         if canaccessvalue and not canaccessvalue(value) then return nil end
         if type(value) ~= kind then return nil end
         if kind == "table" and canaccesstable and not canaccesstable(value) then return nil end
-        if kind == "number" and (value ~= value or math.abs(value) > 1e12) then return nil end
+        if kind == "number" and (value ~= value or math.abs(value) > 1e12) then return nil, true end
         if kind == "string" and (#value > 160 or value:find("[%c|]")) then return nil end
         return value
     end)
-    if ok then return result end
+    if ok then return result, invalidNumber end
 end
 function R.field(t, key, kind)
     if not R.clean(t, "table") then return nil end
@@ -47,7 +49,12 @@ end
 local function copyRow(raw)
     if not R.clean(raw, "table") then return nil end
     local row = {}
-    for key, kind in pairs(fields) do row[key] = R.field(raw, key, kind) end
+    for key, kind in pairs(fields) do
+        local value, invalidNumber = R.field(raw, key, kind)
+        if key == "amount" and invalidNumber then return nil end
+        row[key] = value
+    end
+    if row.amount and row.amount < 0 then return nil end
     if row.hideCaster ~= false then row.sourceName, row.sourceGUID, row.sourceFlags = nil, nil, nil end
     return row
 end
@@ -72,7 +79,7 @@ local function flag(flags, mask)
     return flags and flags >= 0 and flags == math.floor(flags) and flags % (mask * 2) >= mask
 end
 function R.attackers(recap)
-    local groups, list, total, complete, player = {}, {}, 0, true, false
+    local groups, list, total, complete, player = {}, {}, 0, not recap.incomplete, false
     for _, row in ipairs(recap.rows) do
         row.guildAvoidable = false
         for _, hook in pairs(R.hooks) do
@@ -105,14 +112,16 @@ function R.attackers(recap)
     recap.attackers = player and list or {}
 end
 function R.describe(recap)
-    local rows, latest, completeTime = recap.rows, nil, true
+    local rows, latest, completeTime = recap.rows, nil, not recap.incomplete
     for _, row in ipairs(rows) do
         if not row.timestamp then completeTime = false
         elseif not latest or row.timestamp > latest then latest = row.timestamp end
     end
     table.sort(rows, function(a, b) return (a.timestamp or -1) > (b.timestamp or -1) end)
     for _, row in ipairs(rows) do
+        row.effective, row.seconds = nil, nil
         if row.amount and row.overkill then row.effective = math.max(0, row.amount - math.max(0, row.overkill)) end
+        if not row.effective then recap.incomplete = true end
         if completeTime and latest then row.seconds = latest - row.timestamp end
         if row.currentHP and recap.maxHealth and recap.maxHealth > 0 then
             row.healthPercent = math.max(0, math.min(100, row.currentHP / recap.maxHealth * 100))
@@ -131,11 +140,17 @@ function R.read()
     if R.clean(R.call(function() return C_DeathRecap.HasRecapEvents() end), "boolean") ~= true then return R.describe(recap) end
     local events = R.call(function() return C_DeathRecap.GetRecapEvents() end)
     recap.maxHealth = R.clean(R.call(function() return C_DeathRecap.GetRecapMaxHealth() end), "number")
+    if not R.clean(events, "table") then recap.incomplete = true; return R.describe(recap) end
     for i = 1, 12 do
-        local raw = R.field(events, i, "table")
-        if not raw then break end
-        local row = copyRow(raw)
-        if row then recap.rows[#recap.rows+1] = row end
+        local ok, row, ended = pcall(function()
+            local raw = events[i]
+            if issecretvalue and issecretvalue(raw) then return nil end
+            if canaccessvalue and not canaccessvalue(raw) then return nil end
+            return copyRow(raw), raw == nil
+        end)
+        if ok and ended then break end
+        if ok and row then recap.rows[#recap.rows+1] = row
+        else recap.incomplete = true end
     end
     return R.describe(recap)
 end
@@ -164,8 +179,8 @@ function R.validate(raw)
     local rows = R.field(raw, "rows", "table")
     local count = array(rows, 12)
     local id = R.field(raw, "id", "number")
-    if not count or not id or id < 1 or id ~= math.floor(id) then return nil end
-    local recap = {id=id, rows={}}
+    if not count or not id or id < 1 or id > MAX_ID or id ~= math.floor(id) then return nil end
+    local recap = {id=id, rows={}, incomplete=R.field(raw, "incomplete", "boolean")}
     for _, key in ipairs({"clock", "zone"}) do
         recap[key] = R.field(raw, key, "string")
         if not recap[key] then return nil end
@@ -173,6 +188,7 @@ function R.validate(raw)
     recap.maxHealth = R.field(raw, "maxHealth", "number")
     local ok = pcall(function()
         if raw.maxHealth ~= nil and not recap.maxHealth then error("invalid max health") end
+        if raw.incomplete ~= nil and recap.incomplete == nil then error("invalid completeness") end
         for i=1,count do
             local row = copyRow(rows[i])
             if not row then error("invalid row") end
@@ -256,24 +272,50 @@ function R.finish(recap)
     for _, hook in pairs(R.hooks) do R.call(hook.onRecap, recap) end
     R.persist()
 end
+-- Compare row identities, never mutable damage/health or display names.
+-- Match as a multiset so equal-timestamp ordering cannot make old rows fresh.
+local function sameRows(rows, previous)
+    if not previous or #rows ~= #previous then return false end
+    local used = {}
+    for _, row in ipairs(rows) do
+        local found
+        for i, old in ipairs(previous) do
+            if not used[i] and row.timestamp == old.timestamp and row.sourceGUID == old.sourceGUID
+                and row.spellId == old.spellId and row.event == old.event
+                and row.environmentalType == old.environmentalType then
+                used[i], found = true, true
+                break
+            end
+        end
+        if not found then return false end
+    end
+    return true
+end
 function R.refresh(recap, final)
     if R.pending ~= recap then return end
     local read = R.read()
-    -- A temporary unavailable read must not erase an already copied snapshot.
-    if #read.rows > 0 then
-        recap.rows, recap.maxHealth = read.rows, read.maxHealth
+    -- Unavailable/previous-death rows cannot erase or replace fresh data.
+    if #read.rows > 0 and not sameRows(read.rows, recap.previousRows) then
+        recap.rows, recap.maxHealth, recap.incomplete = read.rows, read.maxHealth, read.incomplete
+        R.lastRows = read.rows
+        R.describe(recap)
+    elseif read.incomplete then
+        recap.incomplete = true
         R.describe(recap)
     end
-    if final then R.finish(recap) end
+    if final then R.finish(recap); R.pending = nil end
     R.call(R.render)
 end
 function R.event(event)
     if event == "PLAYER_DEAD" then
         if R.dead then return end
+        if R.serial >= MAX_ID then R.say("Recap ID limit reached; clear saved recaps and reload."); return end
+        if R.pending then R.finish(R.pending) end
         R.dead, R.serial = true, R.serial + 1
         local ok, hour, minute = pcall(GetGameTime)
         hour, minute = R.clean(hour, "number"), R.clean(minute, "number")
         local recap = {id=R.serial, rows={}, killer="Unknown", attackers={},
+            previousRows=R.lastRows or (R.history[1] and R.history[1].rows),
             clock=ok and hour and minute and string.format("%02d:%02d",hour,minute) or "--:--",
             zone=R.clean(R.call(GetZoneText), "string") or "Unknown zone"}
         table.insert(R.history, 1, recap)
@@ -286,8 +328,8 @@ function R.event(event)
             pcall(function() C_Timer.After(delay, function() pcall(R.refresh, recap, delay == 2) end) end)
         end
     elseif event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
-        if R.pending then R.finish(R.pending) end
-        R.dead, R.pending = false, nil
+        -- Release closes the UI, not the current death's bounded read window.
+        R.dead = false
         if R.settings.autoclose then R.call(R.close) end
     end
 end

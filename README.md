@@ -32,6 +32,12 @@ If another addon carries this shared module, the highest version owns one window
 and the saved history; both addons can register hooks. This change includes only
 the Relax Raid hook, not LayerEnemies tracking. If the game supplies no data, the
 window says so; missing popup callbacks leave `/recap` and the chat link working.
+Rows identical to the previous recap are not assigned to a new death: it shows
+**no recap data for this death** until different rows arrive within two seconds,
+even after a quick release (without reopening the window). Unreadable hits or
+invalid damage blank the shares and show **some hits unreadable**. The attacker
+block shows three sources plus **+X more** so the window fits a 600-pixel-tall
+screen; all retained hits remain scrollable and all readable damage counts.
 See [API evidence and offline validation](docs/raid/DEATH-RECAP.md).
 
 ## Download

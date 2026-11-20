@@ -1,8 +1,8 @@
 [
   {
     "file": "addon/RelaxRaid/DeathRecap.lua",
-    "old": "for key, kind in pairs(fields) do row[key] = R.field(raw, key, kind) end",
-    "new": "for key, kind in pairs(fields) do row[key] = raw[key] end",
+    "old": "local value, invalidNumber = R.field(raw, key, kind)",
+    "new": "local value, invalidNumber = raw[key], nil",
     "killed_by": "test_inaccessible_amount_is_not_used"
   },
   {
@@ -118,5 +118,101 @@
     "old": "if R.pending ~= recap then return end",
     "new": "if false then return end",
     "killed_by": "test_four_deaths_keep_three_and_cancel_old_timers"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": " and not sameRows(read.rows, recap.previousRows)",
+    "new": "",
+    "killed_by": "test_stale_previous_rows_are_not_a_new_death"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "R.lastRows = read.rows",
+    "new": "R.lastRows = nil",
+    "killed_by": "test_stale_previous_rows_are_not_a_new_death"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": " or (R.history[1] and R.history[1].rows)",
+    "new": "",
+    "killed_by": "test_saved_previous_identity_blocks_stale_data_after_reload"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "        R.dead = false\n        if R.settings.autoclose",
+    "new": "        R.dead, R.pending = false, nil\n        if R.settings.autoclose",
+    "killed_by": "test_fresh_rows_after_quick_release_attach_without_reopening"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": " and row.spellId == old.spellId",
+    "new": "",
+    "killed_by": "test_freshness_compares_identity_multisets_not_order_or_amount"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "else recap.incomplete = true end",
+    "new": "else recap.incomplete = false end",
+    "killed_by": "test_unreadable_whole_rows_mark_partial_and_blank_shares"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "local groups, list, total, complete, player = {}, {}, 0, not recap.incomplete, false",
+    "new": "local groups, list, total, complete, player = {}, {}, 0, true, false",
+    "killed_by": "test_unreadable_whole_rows_mark_partial_and_blank_shares"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "local rows, latest, completeTime = recap.rows, nil, not recap.incomplete",
+    "new": "local rows, latest, completeTime = recap.rows, nil, true",
+    "killed_by": "test_unreadable_whole_rows_mark_partial_and_blank_shares"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "incomplete=R.field(raw, \"incomplete\", \"boolean\")",
+    "new": "incomplete=false",
+    "killed_by": "test_incomplete_recaps_stay_incomplete_after_saved_roundtrip"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "    elseif read.incomplete then\n        recap.incomplete = true",
+    "new": "    elseif read.incomplete then\n        recap.incomplete = false",
+    "killed_by": "test_only_unreadable_rows_still_report_incomplete"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if not row.effective then recap.incomplete = true end",
+    "new": "if not row.effective then recap.incomplete = false end",
+    "killed_by": "test_unreadable_amount_and_overkill_warn_without_inventing_shares"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if row.amount and row.amount < 0 then return nil end",
+    "new": "",
+    "killed_by": "test_negative_amount_row_is_unreadable_not_zero_damage"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if key == \"amount\" and invalidNumber then return nil end",
+    "new": "",
+    "killed_by": "test_nonfinite_amount_row_is_unreadable"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": " or id > MAX_ID",
+    "new": "",
+    "killed_by": "test_saved_ids_are_bounded_integers_and_new_links_work"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if R.serial >= MAX_ID then",
+    "new": "if false then",
+    "killed_by": "test_largest_valid_id_never_emits_an_unusable_or_reused_link"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "R.maxVisibleAttackers = 3",
+    "new": "R.maxVisibleAttackers = 12",
+    "killed_by": "test_maximum_player_block_fits_600px_screen_and_caps_attackers"
   }
 ]
