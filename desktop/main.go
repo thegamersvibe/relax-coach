@@ -102,6 +102,7 @@ type View struct {
 	Loaded                      time.Time
 	Farm                        FarmView            // AH Profit, same account; zero when it has no save
 	itemNames                   map[int]farmItemRef // same selected Coach save; never serialized
+	hasItemNames                bool                // cache table exists, even when empty or capped
 }
 
 type App struct {
@@ -257,6 +258,7 @@ func (a *App) reloadLocked() {
 			a.modTime = st.ModTime()
 			v.Chars = buildChars(db)
 			v.itemNames = coachItemNames(db)
+			v.hasItemNames = M(db["itemNames"]) != nil
 		}
 	}
 	// AH Profit is optional and read for the same account only; its result
@@ -265,8 +267,9 @@ func (a *App) reloadLocked() {
 	if v.Error != "" && prev.Game == v.Game && prev.Account == v.Account {
 		chars = prev.Chars
 		v.itemNames = prev.itemNames
+		v.hasItemNames = prev.hasItemNames
 	}
-	farmFor := View{Game: v.Game, Account: v.Account, Chars: chars, itemNames: v.itemNames}
+	farmFor := View{Game: v.Game, Account: v.Account, Chars: chars, itemNames: v.itemNames, hasItemNames: v.hasItemNames}
 	a.loadFarmLocked(&farmFor, prev)
 	v.Farm = farmFor.Farm
 	if v.Error != "" && prev.SVPath != "" && prev.Error == "" && prev.Game == v.Game && prev.Account == v.Account {

@@ -211,6 +211,9 @@ func (a *App) loadFarmLocked(v *View, prev View) {
 		v.Farm = FarmView{Present: true, Error: err.Error()}
 		return
 	}
+	if fv.NamesFilling != "" && !v.hasItemNames {
+		fv.NamesFilling += " (update Relax Coach and visit the auction house to name more)"
+	}
 	fv.SaveTime = mod
 	v.Farm = fv
 }

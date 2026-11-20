@@ -6,6 +6,7 @@ const {readFileSync}=require('node:fs');
 const {JSDOM}=require('jsdom');
 const html=readFileSync(process.env.NATIVE_HTML_OUT,'utf8');
 const farm=readFileSync(process.env.FARM_HTML_OUT,'utf8');
+const nameCoverage=JSON.parse(readFileSync(process.env.FARM_HTML_OUT+'.names.json','utf8'));
 const settle=()=>new Promise(r=>setTimeout(r,30));
 const fire=el=>{const E=el.ownerDocument.defaultView.Event;el.dispatchEvent(new E('change',{bubbles:true}));};
 const installed={state:'installed',install:false,present:['ForeverCoach','Journey','Journey-Content','RelaxQuestPlanner'],missing:[]};
@@ -53,6 +54,40 @@ test('AH Profit save: Farming entry, page, and the current house first',async t=
   assert.ok(goldRows.length>4 && goldRows.every(r=>!r.hidden),'Gold and Sessions are for the whole account, whatever the house');
   assert.equal($('farm-body').querySelector('.farm-empty-house').hidden,false,'says so when a house has no bank items');
   assert.ok(!$('farm-body').innerHTML.includes('<b>Linen</b>'),'save text stays escaped');
+});
+
+for (const [fixture,want] of [
+  ['absent','2 of 4 item names known (update Relax Coach and visit the auction house to name more)'],
+  ['empty','2 of 4 item names known'],
+  ['partial','3 of 4 item names known'],
+  ['quality only','2 of 4 item names known'],
+  ['capped','2 of 4 item names known'],
+  ['all sources',null],
+  ['complete Coach',null],
+  ['absent but covered',null],
+  ['no history',null]
+]) test('item-name coverage: '+fixture,async t=>{
+  assert.equal(typeof nameCoverage[fixture],'string','Go-rendered fixture exists');
+  const {$}=await setup(t,{reportRefresh:()=>report('B#2',true,nameCoverage[fixture])});
+  $('nav-farm').click();
+  assert.equal($('farm-view').hidden,false);
+  const notes=$('farm-body').querySelectorAll('#farm-names-filling');
+  assert.equal(notes.length,want===null?0:1,'one note only while coverage is incomplete');
+  if (want!==null) assert.equal(notes[0].textContent,want);
+});
+
+test('coverage is replaced on account switch, not borrowed from the old account',async t=>{
+  let release;
+  const {$}=await setup(t,{
+    reportRefresh:()=>report('B#2',true,nameCoverage.capped),
+    selectAccount:()=>new Promise(r=>{release=()=>r(report('A#1',true,nameCoverage.absent))})
+  });
+  $('nav-farm').click();
+  assert.equal($('farm-names-filling').textContent,'2 of 4 item names known');
+  $('account-select').value='A#1';fire($('account-select'));await settle();
+  assert.equal($('farm-names-filling'),null,'old coverage is cleared while switching');
+  release();await settle();await settle();
+  assert.equal($('farm-names-filling').textContent,'2 of 4 item names known (update Relax Coach and visit the auction house to name more)');
 });
 
 test('hot items follow the chosen house; the bank-empty line counts only its own card',async t=>{

@@ -111,7 +111,7 @@ func farmNameProgress(db map[string]any, items map[int]farmItemRef) string {
 		}
 	}
 	if named < len(seen) {
-		return fmt.Sprintf("Names are filling in from the game: %d of %d.", named, len(seen))
+		return fmt.Sprintf("%d of %d item names known", named, len(seen))
 	}
 	return ""
 }

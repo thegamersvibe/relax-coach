@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -336,16 +337,27 @@ func TestFarmNameCoachValidationAndCap(t *testing.T) {
 }
 
 func TestFarmNameFillProgress(t *testing.T) {
-	for _, tt := range []struct{ name, coach, gear, want string }{
-		{"absent", "", "", "Names are filling in from the game: 2 of 4."},
-		{"partial", `[900003]={n="Coach progress"}`, "", "Names are filling in from the game: 3 of 4."},
-		{"quality only", `[900003]={q=4}`, "", "Names are filling in from the game: 2 of 4."},
-		{"all sources", `[900003]={n="Coach progress"}`, `[900004]={name="Gear progress"}`, ""},
-		{"complete Coach", `[900003]={n="Coach progress"},[900004]={n="Other progress"}`, "", ""},
+	var capped strings.Builder
+	for id := 1; id <= coachNameMaxItems; id++ {
+		fmt.Fprintf(&capped, `[%d]={n="Unrelated synthetic"},`, id)
+	}
+	fragments := map[string]string{}
+	for _, tt := range []struct {
+		name, coach, gear, want string
+		missing                 bool
+	}{
+		{"absent", "", "", "2 of 4 item names known (update Relax Coach and visit the auction house to name more)", true},
+		{"empty", "", "", "2 of 4 item names known", false},
+		{"partial", `[900003]={n="Coach progress"}`, "", "3 of 4 item names known", false},
+		{"quality only", `[900003]={q=4}`, "", "2 of 4 item names known", false},
+		{"capped", capped.String(), "", "2 of 4 item names known", false},
+		{"all sources", `[900003]={n="Coach progress"}`, `[900004]={name="Gear progress"}`, "", false},
+		{"complete Coach", `[900003]={n="Coach progress"},[900004]={n="Other progress"}`, "", "", false},
+		{"absent but covered", "", `[900003]={name="Gear progress"},[900004]={name="Other progress"}`, "", true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			a, game := nameGame(t, "", tt.coach, "GQ.Data.foreverAudit = {"+tt.gear+"}")
-			if tt.name == "absent" {
+			if tt.missing {
 				path := filepath.Join(game, "WTF", "Account", "A#1", "SavedVariables", "ForeverCoach.lua")
 				if err := os.WriteFile(path, []byte(`ForeverCoachDB={schema=1,chars={}}`), 0644); err != nil {
 					t.Fatal(err)
@@ -356,22 +368,59 @@ func TestFarmNameFillProgress(t *testing.T) {
 				["Realm|Alliance"]={[900001]="packed",[900002]="packed",[900003]="packed",[900004]="packed"},
 				["Other|Horde"]={[900001]="duplicate",[900003]="duplicate",[0]="bad",["0900005"]="bad",[900006]={}}}}`)
 			a.refresh()
-			html, err := renderFarmBody(View{Farm: a.snapshot().Farm})
+			fv := a.snapshot().Farm
+			html, err := renderFarmBody(View{Farm: fv})
 			if err != nil {
 				t.Fatal(err)
 			}
+			fragments[tt.name] = html
+			if fv.NamesFilling != tt.want {
+				t.Errorf("coverage = %q, want %q", fv.NamesFilling, tt.want)
+			}
 			if tt.want == "" {
-				if strings.Contains(html, "Names are filling") {
-					t.Fatal("complete coverage must hide the line")
+				if strings.Contains(html, `id="farm-names-filling"`) {
+					t.Error("complete coverage must hide the line")
 				}
-			} else if strings.Count(html, tt.want) != 1 {
-				t.Fatalf("want exactly one progress line %q", tt.want)
+			} else if strings.Count(html, `<p class="subtle" id="farm-names-filling">`+tt.want+`</p>`) != 1 {
+				t.Errorf("want exactly one coverage line %q", tt.want)
 			}
 			farmWrite(t, game, "A#1", `AHProfitDB={v=3,hist={}}`)
 			a.refresh()
 			html, err = renderFarmBody(View{Farm: a.snapshot().Farm})
-			if err != nil || strings.Contains(html, "Names are filling") {
+			if err != nil || strings.Contains(html, `id="farm-names-filling"`) {
 				t.Fatal("no history must hide the line", err)
+			}
+			fragments["no history"] = html
+		})
+	}
+	// Real account renders for jsdom, alongside CI's existing Farming fixture.
+	if out := os.Getenv("FARM_HTML_OUT"); out != "" {
+		data, err := json.Marshal(fragments)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(out+".names.json", data, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestFarmNameCoverageCachePresenceRefresh(t *testing.T) {
+	a, game := nameGame(t, "", "", "")
+	path := filepath.Join(game, "WTF", "Account", "A#1", "SavedVariables", "ForeverCoach.lua")
+	for _, tt := range []struct{ name, save, want string }{
+		{"empty cache", `ForeverCoachDB={schema=1,itemNames={},chars={}}`, "0 of 1 item names known"},
+		{"missing cache", `ForeverCoachDB={schema=1,chars={}}`, "0 of 1 item names known (update Relax Coach and visit the auction house to name more)"},
+		{"empty cache again", `ForeverCoachDB={schema=1,itemNames={},chars={}}`, "0 of 1 item names known"},
+		{"last good cache", `ForeverCoachDB={`, "0 of 1 item names known"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := os.WriteFile(path, []byte(tt.save), 0644); err != nil {
+				t.Fatal(err)
+			}
+			a.refresh()
+			if got := a.snapshot().Farm.NamesFilling; got != tt.want {
+				t.Errorf("coverage = %q, want %q", got, tt.want)
 			}
 		})
 	}
@@ -379,7 +428,7 @@ func TestFarmNameFillProgress(t *testing.T) {
 
 func TestFarmNameCoachAccountIsolationAndLastGood(t *testing.T) {
 	a, game := nameGame(t, "", `[900001]={n="Account A"}`, "")
-	if html := assertFarmName(t, a, "Account A"); strings.Contains(html, "Names are filling") {
+	if html := assertFarmName(t, a, "Account A"); strings.Contains(html, `id="farm-names-filling"`) {
 		t.Fatal("account A has complete name coverage")
 	}
 	p := filepath.Join(game, "WTF", "Account", "A#1", "SavedVariables", "ForeverCoach.lua")
@@ -400,8 +449,8 @@ func TestFarmNameCoachAccountIsolationAndLastGood(t *testing.T) {
 	if _, err := bridge.Call("selectAccount", nativeArgs("B#2")); err != nil {
 		t.Fatal(err)
 	}
-	if html := assertFarmName(t, a, "item 900001"); !strings.Contains(html, "Names are filling in from the game: 0 of 1.") {
-		t.Fatal("account B progress must not borrow account A's cache")
+	if html := assertFarmName(t, a, "item 900001"); !strings.Contains(html, `id="farm-names-filling">0 of 1 item names known (update Relax Coach and visit the auction house to name more)</p>`) {
+		t.Fatal("account B coverage must not borrow account A's cache")
 	}
 	if _, err := bridge.Call("selectAccount", nativeArgs("A#1")); err != nil {
 		t.Fatal(err)

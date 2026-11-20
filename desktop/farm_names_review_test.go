@@ -129,6 +129,57 @@ func TestFarmGearNamesOversizeFileDoesNotSpendTotalBudget(t *testing.T) {
 	}
 }
 
+// Round-two lexer survivors: exercise discovery and the parser copy separately.
+func TestFarmGearNamesUnterminatedBlockComment(t *testing.T) {
+	game := t.TempDir()
+	nameAddonFile(t, game, "GearQuestForever", "Data.Facts.generated.lua", `--[=[
+GQ.Data.foreverAudit = {[900001]={name="Inert synthetic",quality=4}}`)
+	if got := loadGearNames(game, nil); len(got) != 0 {
+		t.Fatalf("unterminated block comment exposed an assignment: %+v", got)
+	}
+}
+
+func TestFarmGearNamesLineCommentEndsAtCR(t *testing.T) {
+	game := t.TempDir()
+	// No LF: the CR inside an already discovered table must end this comment.
+	nameAddonFile(t, game, "GearQuestForever", "Data.Facts.generated.lua",
+		"GQ.Data.foreverAudit = {-- ignored synthetic\r"+`[900001]={name="After CR synthetic",quality=2}}`)
+	got := loadGearNames(game, nil)
+	if len(got) != 1 || got[900001].Name != "After CR synthetic" || got[900001].QualityClass != "q2" {
+		t.Fatalf("CR-only comment terminator swallowed a live row: %+v", got)
+	}
+}
+
+func TestFarmGearNamesQuotedBackslashEscape(t *testing.T) {
+	for _, tt := range []struct{ name, quoted string }{
+		{"double quote", `"escaped \" --[["`},
+		{"single quote", `'escaped \' --[['`},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			game := t.TempDir()
+			nameAddonFile(t, game, "GearQuestForever", "Data.Facts.generated.lua",
+				"local text = "+tt.quoted+"\n"+`GQ.Data.foreverAudit = {[900001]={name="After string synthetic",quality=2}}`)
+			got := loadGearNames(game, nil)
+			if len(got) != 1 || got[900001].Name != "After string synthetic" || got[900001].QualityClass != "q2" {
+				t.Fatalf("escaped quote exposed a string's comment marker: %+v", got)
+			}
+		})
+	}
+}
+
+func TestFarmGearNamesParserCopyMasksComments(t *testing.T) {
+	game := t.TempDir()
+	// The literal parser's own comment skipper does not handle [=[ delimiters.
+	// Discovery alone is not enough: its data copy must mask this comment too.
+	nameAddonFile(t, game, "GearQuestForever", "Data.Facts.generated.lua", `GQ.Data.foreverAudit = {
+--[=[ [900002]={name="Inert synthetic",quality=4}, ]=] [900001]={name="After block synthetic",quality=2}
+}`)
+	got := loadGearNames(game, nil)
+	if len(got) != 1 || got[900001].Name != "After block synthetic" || got[900001].QualityClass != "q2" {
+		t.Fatalf("parser copy must mask comments without hiding live data: %+v", got)
+	}
+}
+
 func TestHotSupplyIsScanDayPeakNotLive(t *testing.T) {
 	hist := map[int][]ahpHistRow{
 		1: series(hotToday, 100, 1000, 1000, 1000, 1000, 1000, 1000, 1500),

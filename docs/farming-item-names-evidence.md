@@ -129,9 +129,12 @@ Farming feature bullets, not release notes/version sections.
   quality-only caches, then passed; complete coverage and empty history hide
   the line. Account-switch regression also checks that coverage does not leak.
 
-### First-fill definition
+### Coverage definition (wording updated by the follow-up below)
 
-The single line is exactly `Names are filling in from the game: X of Y.`
+The single line is exactly `X of Y item names known`. Only when the selected
+account has no `ForeverCoachDB.itemNames` cache, append
+` (update Relax Coach and visit the auction house to name more)`. An existing
+cache has no suffix, including an empty table or a full 10,000-entry cache.
 Y is the number of distinct valid canonical positive item IDs (at most
 10,000,000) whose AH Profit history value is a packed string, across all houses
 of the selected account. Duplicate IDs across houses count once; malformed IDs
@@ -231,3 +234,84 @@ environment and freshly generated fixtures. The RED/GREEN logs and mutation
 payloads are retained outside Git; no private data or absolute host paths are
 committed. These are focused offline checks, not full desktop CI, race tests,
 release packaging, or native Windows/WoW acceptance (not run).
+
+## Coverage wording and lexer-survivor follow-up on `c825ce0`
+
+The note now reports coverage, not activity. The X/Y definition above is
+unchanged. The selected Coach save carries cache-table presence separately from
+its usable names, so empty and capped caches do not get upgrade advice. That
+presence follows the same account isolation and last-good handling as the names.
+README changes touch only the Farming feature bullet. No addon, dependency,
+version, ranking, lexer or literal-parser behavior changed.
+
+### Note RED -> GREEN
+
+Tests were changed before production code. The focused command was:
+
+```sh
+go test -count=1 -v -run '^TestFarmName(FillProgress|CoachAccountIsolationAndLastGood|CoverageCachePresenceRefresh)$|^TestFarmRenderForUITests$|^TestNativeShellIsSelfContainedAndLockedDown$' .
+```
+
+- RED, exit 1: `TestFarmNameFillProgress` failed for absent, empty, partial,
+  quality-only and capped caches; `TestFarmNameCoverageCachePresenceRefresh`
+  failed all four presence/last-good cases; the account-isolation test failed
+  its missing-cache note assertion. The failures were the old activity wording,
+  not setup/build failures. Complete coverage, including without a Coach cache,
+  and empty history still hid the line.
+- jsdom RED, exit 1: `node --test desktop/native_farm_ui_test.cjs` reported
+  `tests 20`, `pass 14`, `fail 6`, `skipped 0`: the five incomplete-coverage
+  variants and the account-switch note assertion failed.
+- GREEN after the note change: the same focused Go command returned
+  `ok github.com/thegamersvibe/relax-coach/desktop 0.516s`, exit 0; the same UI
+  command returned `tests 20`, `pass 20`, `fail 0`, `skipped 0`, exit 0.
+
+`TestFarmNameFillProgress` writes actual account-rendered coverage fragments to
+`FARM_HTML_OUT.names.json` beside the existing CI fixture (the environment
+variable's value plus `.names.json`). jsdom reads these, not handwritten note
+HTML. Coverage cases include a real 10,000-entry cache with unrelated IDs,
+missing versus empty caches, all name sources, quality-only rows, complete and
+empty coverage, refresh, and clearing/replacing coverage during account switch.
+The existing duplicate/invalid-history-ID checks remain.
+
+### Four exact lexer overlays
+
+The reviewer's `mut9.py` constants were read as AST data, never executed. Each
+surviving replacement was applied once to a scratch copy of `farm_names.go`
+using `go test -overlay <overlay.json> -count=1 -v -run '^<test>$' .`. Production
+source and reviewer files stayed unchanged. Every mutant failed a named
+assertion (exit 1), not compilation/setup; the four tests passed without an
+overlay both before (`0.021s`) and after (`0.017s`). **4/4 assertion kills.**
+
+| Overlay | Exact mutation | Test | Observed assertion failure |
+| --- | --- | --- | --- |
+| M07 | `return len(src), true // unterminated` -> `return start, false // unterminated` | `TestFarmGearNamesUnterminatedBlockComment` | exposed inert ID 900001 with name/quality; `FAIL ... 0.031s` |
+| M08 | `for i < len(src) && src[i] != '\n' && src[i] != '\r' {` -> `for i < len(src) && src[i] != '\n' {` | `TestFarmGearNamesLineCommentEndsAtCR` | swallowed the live row, `map[]`; `FAIL ... 0.010s` |
+| M09 | `if c == '\\' && i < len(src) {` -> `if false {` | `TestFarmGearNamesQuotedBackslashEscape` | both single/double-quote cases lost the live row, `map[]`; `FAIL ... 0.016s` |
+| M11 | `mask(data, start, i)` -> `_ = data` | `TestFarmGearNamesParserCopyMasksComments` | parser copy hid the live row, `map[]`; `FAIL ... 0.013s` |
+
+The CR fixture uses a CR-only comment terminator inside a discovered table;
+it does not require changing the assignment finder's LF-anchored behavior.
+The parser-copy fixture puts a live row after a `[=[` block comment on the same
+line, so the literal parser's own simpler comment skipper cannot mask a missing
+lexer data-copy mask. No lexer implementation edits were needed.
+
+### Final commands observed for this follow-up
+
+All jobs ran sequentially, with the CI-required Go toolchain and Python 3.14
+via uv using `.github/requirements-ci.txt`; the UI used the locked npm install.
+
+- In `desktop`, `gofmt -l .`: no output; `go vet .`: exit 0.
+- `go test -count=1 -run 'Farm|Hot|AHP|Name|Gear|TestNativeShellIsSelfContainedAndLockedDown' .`:
+  `ok github.com/thegamersvibe/relax-coach/desktop 3.840s`, exit 0.
+- `$PY -I -B test/item_names_test.py`: `Ran 27 tests in 0.556s`, `OK`, exit 0.
+- `npm ci --prefix .github --ignore-scripts`: exit 0, `found 0 vulnerabilities`;
+  only the existing `whatwg-encoding@3.1.1` deprecation warning.
+- Fresh Go fixtures with CI's `NODE_PATH`, `NATIVE_HTML_OUT`, `FARM_HTML_OUT`,
+  then `node --test desktop/*_ui_test.cjs`: `tests 155`, `pass 155`, `fail 0`,
+  `cancelled 0`, `skipped 0`, exit 0.
+- `git diff --check`: no output, exit 0. The obsolete activity phrase has no
+  remaining working-tree matches.
+
+Logs, overlays and generated fixtures stay outside Git. The full desktop
+`go test ./...`, race tests, packaging and native Windows/WoW acceptance were
+not run. No push, PR, tag, addon install or publication operation was performed.
