@@ -19,8 +19,10 @@ type Decoder func(io.Reader, func(model.Event)) error
 // only the active fight (including its configured tail). Closed index-only fights
 // discard events; selected details intentionally retain events in the result.
 // Run metadata, ownership facts, combatants and per-file repeat keys grow with
-// fights/actors, not the number of discarded event lines. There is no fixed byte
-// cap on one fight or on requested output; this is not a constant-memory API.
+// fights/actors, not the number of discarded event lines. Death-scope diagnostics
+// additionally hold one timestamp and membership bit per real player death until
+// EOF, then release them. There is no fixed byte cap on one fight or on requested
+// output; this is not a constant-memory API.
 // Errors return no result: a truncated hash must never name a complete source.
 func Read(raw io.Reader, decode Decoder, p Params) (Result, error) {
 	if raw == nil || decode == nil {

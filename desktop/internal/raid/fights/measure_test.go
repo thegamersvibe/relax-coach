@@ -71,6 +71,10 @@ func TestRealLogsR4Measurements(t *testing.T) {
 			if err != nil {
 				t.Fatal("private decode failed")
 			}
+			t.Logf("log=%d mode=%s playerDeathsOutsideRuns=%d playerDeathsInRunsWithoutFight=%d", logNo, mode, res.PlayerDeathsOutsideRuns, res.PlayerDeathsInRunsWithoutFight)
+			if res.PlayerDeathsOutsideRuns != int64(logNo-1) || res.PlayerDeathsInRunsWithoutFight != 0 {
+				t.Fatal("private death-scope counts changed")
+			}
 			for _, run := range res.Runs {
 				for i, fight := range run.Fights {
 					if run.Details[i].RolesComputed != (mode == "all") {
