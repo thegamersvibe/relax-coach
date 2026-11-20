@@ -20,7 +20,7 @@ Like `rules/rules.json`, `schema` is the reader format and `version` is the
 content revision. `scoring.json` requires schema 2; the other eight files require
 schema 1. Any other schema is refused, including scoring schema 1 (no implicit
 migration or defaults). Schema 2 accounts for the newly required energy GCD,
-provisional coverage and four death-predicate fields. Nothing has been released. A newer
+provisional coverage, four death-predicate fields and the bounded-aggro duration. Nothing has been released. A newer
 `major.minor.patch` **content** version is accepted without rebuilding, provided
 its schema is supported. Every file requires a source note. Bump content versions
 when tuning data; bump schema for incompatible field changes.
@@ -197,7 +197,7 @@ after raid 1, not log-calibrated values:
 | `full_health_fraction` | `FullHealthFraction float64` | 0.9 | `(0,1]` |
 | `min_health_samples` | `MinHealthSamples int` | 2 | integer >= 1, bounded by Go int |
 | `raidwide_share` | `RaidwideShare float64` | 0.6 | `(0,1]` |
-| `raidwide_window_ms` | `RaidwideWindowMs int64` | 2000 | integer > 0, bounded by int64 |
+| `raidwide_window_ms` | `RaidwideWindowMs int64` | 2000 | `0 < raidwide_window_ms <= window_ms` |
 
 Existing reflection decoding enforces exact keys, types, required values and
 file/field errors. `Snapshot()` and Load views copy these scalar fields by value.
@@ -210,6 +210,16 @@ Version 1.3.0 also follows **R7: three gaps found by the builder** and PLAN 4A
 row 15: `confidence.provisional_min_coverage` is 0.15. A lone
 tank's measurable coverage can now qualify without inventing a peer baseline.
 The validation rule stays `0 < provisional_min_coverage < min_coverage`.
+
+### R6 bounded aggro (scoring 1.4.0)
+
+PHASE1-BRIEF **R6: rules 3 and 4 bounded** adds required, non-null
+`death.pulled_aggro_ms` (`PulledAggroMs int64`), starting at 10000. This is an
+architect guess to tune after raid 1, not a measured threshold. It must be
+positive; the typed decoder rejects fractions and int64 overflow. `Snapshot()`
+copies the scalar by value. Rule 3 bounds the time from the victim's first
+damage on the boss to the start of its killing run with this value, rather
+than blaming an early opener for a later unrelated death.
 
 ### Validation bounds
 

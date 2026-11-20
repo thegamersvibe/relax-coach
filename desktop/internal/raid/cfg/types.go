@@ -107,6 +107,7 @@ type Death struct {
 	RaidwideShare      float64 `json:"raidwide_share"`
 	RaidwideWindowMs   int64   `json:"raidwide_window_ms"`
 	WindowMs           int64   `json:"window_ms"`
+	PulledAggroMs      int64   `json:"pulled_aggro_ms"`
 	WipeDeadShare      float64 `json:"wipe_dead_share"`
 	WipeAllTanksDead   bool    `json:"wipe_all_tanks_dead"`
 	WipeAllHealersDead bool    `json:"wipe_all_healers_dead"`

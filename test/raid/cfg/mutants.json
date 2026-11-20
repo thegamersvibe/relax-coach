@@ -1019,5 +1019,41 @@
     "old": "if !oneOf(v, \"dps\", \"healer\", \"tank\") {",
     "new": "if false && !oneOf(v, \"dps\", \"healer\", \"tank\") {",
     "killed_by": "TestDataRound2MechanicRoles"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.PulledAggroMs <= 0",
+    "new": "d.PulledAggroMs < 0",
+    "killed_by": "TestPulledAggroConfig"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.PulledAggroMs <= 0",
+    "new": "d.PulledAggroMs <= 1",
+    "killed_by": "TestPulledAggroConfig"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/types.go",
+    "old": "`json:\"pulled_aggro_ms\"`",
+    "new": "`json:\"pulled_aggro_ms,omitempty\"`",
+    "killed_by": "TestPulledAggroConfig"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "return c.snapshot",
+    "new": "return c",
+    "killed_by": "TestPulledAggroSeedAndCopies"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.RaidwideWindowMs > d.WindowMs",
+    "new": "false",
+    "killed_by": "TestRaidwideWindowBound"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.RaidwideWindowMs > d.WindowMs",
+    "new": "d.RaidwideWindowMs >= d.WindowMs",
+    "killed_by": "TestRaidwideWindowBound"
   }
 ]
