@@ -126,6 +126,32 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(rc, 0, out)
         self.assertEqual(out.split(), ["a", "b"])
 
+    def test_data_inputs_select_owner_and_dependents(self):
+        three_modules(self.t)
+        path = os.path.join(self.t.root, "test/raid/a/module.json")
+        with open(path, encoding="utf-8") as f:
+            spec = json.load(f)
+        spec["inputs"] = ["rules/raid/"]
+        self.t.write("test/raid/a/module.json", json.dumps(spec))
+        self.t.write("rules/raid/scoring.json", '{"value":1}')
+        self.t.git("init", "-q")
+        self.t.git("add", "-A")
+        self.t.git("commit", "-qm", "base")
+        self.t.write("rules/raid/scoring.json", '{"value":2}')
+        rc, out = self.t.run("--changed", "HEAD", "--list")
+        self.assertEqual(rc, 0, out)
+        self.assertEqual(out.split(), ["a", "b"])
+
+    def test_unclaimed_raid_data_selects_all(self):
+        three_modules(self.t)
+        self.t.git("init", "-q")
+        self.t.git("add", "-A")
+        self.t.git("commit", "-qm", "base")
+        self.t.write("rules/raid/new-file.json", "{}")
+        rc, out = self.t.run("--changed", "HEAD", "--list")
+        self.assertEqual(rc, 0, out)
+        self.assertEqual(out.split(), ["a", "b", "c"])
+
     def test_unplaced_file_selects_all(self):
         three_modules(self.t)
         self.t.git("init", "-q")
