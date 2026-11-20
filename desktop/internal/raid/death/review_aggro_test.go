@@ -133,6 +133,6 @@ func TestPulledAggroDamageOnlyAndFightReach(t *testing.T) {
 	wantDeath(t, forVictim(t, f, config()), death.Unresolved, "low", model.OwnerUndecided, "")
 	// A new life does not reset rule 3's explicitly fight-wide first damage.
 	f = fight(hit(1000, victim, boss, 91, 1), died(2000, victim), res(59000, victim), hit(59500, victim, boss, 91, 1), hit(59501, tank, boss, 92, 1), swing(60000, boss, victim, 1), died(60001, victim))
-	ds, _ := death.Review(f, config())
+	ds, _, _ := death.Review(f, 100000, config())
 	wantDeath(t, ds[len(ds)-1], death.Unresolved, "low", model.OwnerUndecided, "")
 }

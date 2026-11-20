@@ -17,6 +17,9 @@ func lostBoss(c *context) verdict {
 	for _, e := range c.window {
 		if damage(e) && e.Stream == model.SwingLanded && slices.Contains(c.view.f.BossUnits, e.Src.ID) && e.Dst.ID == c.victim.ID {
 			evidence = append(evidence, e.TimeMs)
+			if len(evidence) > 10 {
+				evidence = evidence[1:]
+			}
 		}
 	}
 	// An unresolved aggro recap is a terminal fallback, not proof of a cause.

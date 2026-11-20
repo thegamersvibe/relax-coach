@@ -220,21 +220,19 @@ not a new file field or a change to `formatVersion`.
 
 ## R6 engine contract (phase 1)
 
-`death.Review(fight, config)` returns `[]model.Death` and `[]model.Wipe`; it
-writes nothing. It reads only selected `Fight.Events` plus the fight's roster,
-roles, owners and boss units. No events means no judgment, not zero observed
-deaths. Feign lines and pet deaths never become player deaths. Pet damage is
-credited through `Fight.Owners` for the puller/tank predicates, never by name.
-The caller is responsible for selecting detail and omitting wipe summaries
-from dungeon files. Deaths outside the final run span must not be reviewed or
-scored, but `model.Fight` does not carry that span and `death.Review` receives no
-run argument. `Fight.EndMs` is an encounter boundary, **not** a run boundary:
-valid post-end tail deaths can exceed it. Final `EndMs` exists only on
-`fights.Run` in this revision, not on `model.RaidNight`/`model.DungeonRun`.
-Run-scope filtering therefore needs approved caller wiring or a shared-input
-contract change; R6 cannot infer it. `TestRunEndClockSpikePendingContract`
-reproduces identical Fight inputs requiring different reviewed-death counts
-under two final run ends. This gap is not claimed fixed.
+`death.Review(fight, runEndMs, config)` returns `[]model.Death`, `[]model.Wipe`
+and an integer count of excluded real player deaths stamped **after** the final
+run end; it writes nothing. Callers pass `fights.Run.EndMs`, not `Fight.EndMs`.
+The latter is an encounter boundary: valid post-end tail deaths can exceed it.
+A death at the run end is included. Excluded deaths are never silently dropped;
+callers expose the count alongside their diagnostics. No model struct changes.
+It reads selected `Fight.Events` plus the roster, roles, owners and boss units.
+No events means no judgment, not zero observed deaths. Feign lines and pet deaths
+never become player deaths or excluded-player counts. Pet damage is credited
+through `Fight.Owners`, never by name. Callers select detail and omit wipe
+summaries from dungeon files. `TestRunEndClockSpike` proves that identical Fight
+inputs with final run ends 2100 and 60000 yield one and two reviewed deaths;
+the first also reports one exclusion, without dropping the valid tail at 2050.
 
 The model uses descriptive cause values; the result writer maps them without
 inventing another cause:
@@ -326,12 +324,10 @@ fire, lava or slime). Unknown types remain unresolved.
 `Death.TimeMs` and its `Evidence` times are absolute model milliseconds. The
 writer subtracts `Fight.StartMs` for file times. Recap evidence retains the
 last ten victim damage/heal/absorb times in the window; aggro evidence keeps
-boss swings on the victim. These are references into the selected events,
-not raw events in this file. Equal timestamps can refer to multiple lines.
-Whether the special boss-swing evidence must also be capped at ten is pending
-an architect ruling: it currently retains all landed boss swings in the window
-(`TestZZRecapBossCapPendingRuling` pins twelve). The ordinary recap cap remains
-ten. [Round-1 evidence](R6-REVIEW-EVIDENCE.md) records the fixes and limitations.
+only the **most recent ten** landed boss swings on the victim. These references
+point into selected events, not raw events in this file. Equal timestamps can
+refer to multiple lines. `TestRecapBossKeepsRecentTen` pins twelve swings to the
+last ten. [R6 evidence](R6-REVIEW-EVIDENCE.md) records the checks.
 R8/result rendering and officer override/tagging remain separate lanes.
 
 ## Wipe summary (`wipes[]`)

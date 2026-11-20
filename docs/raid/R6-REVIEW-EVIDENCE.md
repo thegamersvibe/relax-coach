@@ -157,42 +157,28 @@ rendering, result serialization and officer overrides remain untested.
 
 ### Run-end clock spike: reproduced contract gap, not fixed
 
-The late lead request was tested before changing any behavior. The actual
-`fights.Build` path retained a far-ahead death at 50000 in a boss whose end was
-2000 and whose run ended at 2100. It also retained a legitimate tail death at
-2050. The requested exclusion test failed:
+The run-end exclusion and aggro evidence bound now have explicit lead rulings.
 
-```text
---- FAIL: TestRunEndClockSpikeExclusion
-run end=2100 fight end=2000: reviewed 2 deaths; want only the in-run tail death at 2050
-```
+- `Review(fight, runEndMs, config)` keeps the existing tuple result pattern,
+  adding an integer excluded-player-death count. All callers pass a run end;
+  private integration passes the real `run.EndMs` and independently checks counts.
+- `TestRunEndClockSpike` first failed with `short deaths=2 long deaths=2`.
+  It now reviews the valid tail at 2050 for run end 2100 (fight end 2000),
+  excludes/counts the death at 50000, and reviews both with run end 60000.
+  The tail test also pins inclusive run-end equality.
+- `TestRecapBossKeepsRecentTen` first returned all twelve swings (6000..8200).
+  It now requires exactly the last ten (6400..8200), including their order.
+- Five additive mutants remove the run filter, change its equality, drop its
+  counter, remove the evidence cap, or retain the oldest rather than latest ten.
+- No model struct, fights, logfmt, cfg or rules changes were needed.
 
-`model.Fight` (`model.go:159-182`) has no run start/end field. Its `EndMs`
-is the fight bound, and the documented post-end tail belongs to its events.
-`fights.Run.EndMs` (`fights.go:46-63`, finalized by `flush`) is not passed to
-`death.Review`; even the two model run types currently omit a final end.
-The referenced NIGHT-FILE line 120 on this base is `encounterId`, not the
-outside-run clause; the brief's "deaths outside fights" ruling supplies that
-policy. The contract note now records it and the missing input explicitly.
+Verification after these changes: raid-tree gofmt clean, go vet and uncached Go
+suite pass; raidtest Go modules 8/8, Lua/Python modules 7/7, death mutants
+109/109 killed (no refusals/survivors). Gated R6 real-log test passes: each log
+has one unresolved/low death, 15 feigns, zero wipes and zero past-run exclusions.
+The synthetic clock-spike test supplies positive exclusion coverage absent from
+these logs. The constants commit separately killed 42/42 model mutants.
 
-Following the lead's instruction not to guess when information is unavailable,
-no `TimeMs > Fight.EndMs` filter was added. It would drop the valid tail too.
-`TestRunEndClockSpikePendingContract` now documents the gap: real segmentation
-at run ends 2100 and 60000 produces **identical Fight inputs**, but the desired
-scoped counts differ (1 versus 2). Both calls to the current fight-only Review
-return 2, as pinned. `TestFightEndDoesNotExcludeValidTailDeath` protects the
-legitimate tail. The pending-contract test passing is **not** an exclusion fix.
-An approved run-aware caller or shared-input/API change is required outside
-this lane's permitted model/fights scope. No model, fights or logfmt edit was
-made. The full raid Go suite and all 8 Go modules passed after these tests.
-
-### Pending ruling
-
-Should special ambiguous-aggro boss-swing evidence also be capped at ten?
-The brief explicitly assigns boss swings as that evidence, while M22's recap
-uses the last ten. Current special evidence remains twelve in the reviewer's
-case, pinned by `TestZZRecapBossCapPendingRuling`; ordinary recap remains capped
-at ten. No behavior was guessed for this question. Lifetime scope is no longer
-pending. `TestZZAggroAtAttackTime` intentionally remains unresolved because the
-architect removed the no-living-tank alternative, not because its old expected
-puller charge was implemented.
+The older pending-contract and pending-cap assertions are replaced, not reported
+as fixes merely because their old observational tests passed. The removed
+no-living-tank puller alternative remains removed per the earlier ruling.

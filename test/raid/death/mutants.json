@@ -622,5 +622,35 @@
     "old": "for i := c.start; i <= c.end; i++ {",
     "new": "for i := 0; i <= c.end; i++ {",
     "killed_by": "TestKillingRunLifeWindow"
+  },
+  {
+    "file": "desktop/internal/raid/death/death.go",
+    "old": "e.TimeMs > runEndMs",
+    "new": "false && e.TimeMs > runEndMs",
+    "killed_by": "TestRunEndClockSpike"
+  },
+  {
+    "file": "desktop/internal/raid/death/death.go",
+    "old": "e.TimeMs > runEndMs",
+    "new": "e.TimeMs >= runEndMs",
+    "killed_by": "TestFightEndDoesNotExcludeValidTailDeath"
+  },
+  {
+    "file": "desktop/internal/raid/death/death.go",
+    "old": "excluded++",
+    "new": "excluded += 0",
+    "killed_by": "TestRunEndClockSpike"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": "if len(evidence) > 10 {",
+    "new": "if false && len(evidence) > 10 {",
+    "killed_by": "TestRecapBossKeepsRecentTen"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": "evidence = evidence[1:]",
+    "new": "evidence = evidence[:10]",
+    "killed_by": "TestRecapBossKeepsRecentTen"
   }
 ]

@@ -30,11 +30,8 @@ func TestZZConfidenceRuling(t *testing.T) {
 	})
 }
 
-func TestZZRecapBossCapPendingRuling(t *testing.T) {
-	// The brief explicitly gives ambiguous aggro the boss swings as Evidence;
-	// M22 gives the ordinary recap its last ten. Whether to cap this special
-	// evidence too is not explicit. Preserve the existing twelve, pending a
-	// ruling rather than silently changing the page's evidence contract.
+func TestRecapBossKeepsRecentTen(t *testing.T) {
+	// Ambiguous aggro uses the same most-recent-ten bound as ordinary recaps.
 	f := reviewFight(hit(5000, tank, boss, 91, 1), hit(5001, victim, boss, 92, 1))
 	want := []int64{}
 	for i := int64(0); i < 12; i++ {
@@ -45,7 +42,8 @@ func TestZZRecapBossCapPendingRuling(t *testing.T) {
 	f.Events = append(f.Events, died(10000, victim))
 	d := forVictim(t, f, config())
 	wantDeath(t, d, death.Unresolved, "low", model.OwnerUndecided, "")
+	want = want[2:]
 	if !reflect.DeepEqual(d.Evidence, want) {
-		t.Fatalf("pending ruling: evidence=%v want=%v", d.Evidence, want)
+		t.Fatalf("evidence=%v want most recent ten=%v", d.Evidence, want)
 	}
 }

@@ -17,7 +17,7 @@ func TestWipeShareFirstMomentAndStrictAfter(t *testing.T) {
 	c := config()
 	c.Scoring.Death.WipeDeadShare = .4
 	f := fight(died(1000, other), died(2000, tank), died(2000, healer), died(2001, victim))
-	ds, _ := death.Review(f, c)
+	ds, _, _ := death.Review(f, 100000, c)
 	for i := 0; i < 3; i++ {
 		wantDeath(t, ds[i], model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	}
@@ -82,36 +82,36 @@ func TestWipePriorityAndSummary(t *testing.T) {
 	f.Success = model.Some(0)
 	f.Events = append(f.Events, died(0, tank), died(1, other), died(10001, healer))
 	mechanic(&c, 81)
-	ds, ws := death.Review(f, c)
+	ds, ws, _ := death.Review(f, 100000, c)
 	// Wipe priority still wins; the explicit two-rule confidence is medium.
 	wantDeath(t, forVictim(t, f, c), model.CauseAfterWipe, "medium", model.OwnerNobody, "")
 	if !reflect.DeepEqual(ws, []model.Wipe{modeltest.Wipe(f.ID, 0, 1, 2)}) {
 		t.Fatalf("wipes=%v deaths=%d", ws, len(ds))
 	}
 	c.Scoring.Death.SummaryWindowMs = ptr(10001)
-	_, ws = death.Review(f, c)
+	_, ws, _ = death.Review(f, 100000, c)
 	if !reflect.DeepEqual(ws, []model.Wipe{modeltest.Wipe(f.ID, 0, 1, 2, 3)}) {
 		t.Fatalf("wipes=%v", ws)
 	}
 	c.Scoring.Death.SummaryWindowMs = nil
-	_, ws = death.Review(f, c)
+	_, ws, _ = death.Review(f, 100000, c)
 	if len(ws) != 0 {
 		t.Fatal("unconfigured summary window guessed")
 	}
 	c = config()
 	f.Success = model.Some(1)
-	_, ws = death.Review(f, c)
+	_, ws, _ = death.Review(f, 100000, c)
 	if len(ws) != 0 {
 		t.Fatal("kill has wipe summary")
 	}
 	f.Success = model.Opt{}
-	_, ws = death.Review(f, c)
+	_, ws, _ = death.Review(f, 100000, c)
 	if len(ws) != 0 {
 		t.Fatal("unknown outcome has wipe summary")
 	}
 	f.Success = model.Some(0)
 	f.Boss = false
-	_, ws = death.Review(f, c)
+	_, ws, _ = death.Review(f, 100000, c)
 	if len(ws) != 0 {
 		t.Fatal("trash has wipe summary")
 	}
@@ -124,7 +124,7 @@ func TestWipeSummaryNoDeathBeforeEnd(t *testing.T) {
 		if tail {
 			f.Events = append(f.Events, died(5001, victim))
 		}
-		_, ws := death.Review(f, config())
+		_, ws, _ := death.Review(f, 100000, config())
 		if len(ws) != 1 || ws[0].FirstDeath != -1 || len(ws[0].Following) != 0 {
 			t.Fatalf("empty wipe=%v", ws)
 		}

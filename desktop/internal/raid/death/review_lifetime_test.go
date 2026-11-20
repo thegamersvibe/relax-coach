@@ -18,7 +18,7 @@ func TestZZSameTimestampPostDeath(t *testing.T) {
 		f.Events = append(f.Events, model.Event{TimeMs: 10000, Kind: model.Resurrect, Dst: victim}, hit(10000, boss, victim, 81, 100), died(secondDeath, victim))
 		c := config()
 		mechanic(&c, 81)
-		ds, _ := death.Review(f, c)
+		ds, _, _ := death.Review(f, 100000, c)
 		if len(ds) != 2 {
 			t.Fatalf("deaths=%d", len(ds))
 		}
@@ -34,7 +34,7 @@ func TestZZLifetimeEvidence(t *testing.T) {
 	f := fight(sample(1000, 300, 1000), hit(2000, boss, victim, 81, 600), died(2001, victim), model.Event{TimeMs: 6000, Kind: model.Resurrect, Dst: victim}, sample(6001, 200, 1000), hit(9999, boss, victim, 82, 20), died(10000, victim))
 	c := config()
 	mechanic(&c, 81)
-	ds, _ := death.Review(f, c)
+	ds, _, _ := death.Review(f, 100000, c)
 	if len(ds) != 2 {
 		t.Fatalf("deaths=%d", len(ds))
 	}
@@ -53,7 +53,7 @@ func TestDeathWindowUsesPreviousDeathNotResurrection(t *testing.T) {
 		if res {
 			f.Events = append(f.Events, model.Event{TimeMs: 7000, Kind: model.Resurrect, Dst: victim})
 		}
-		ds, _ := death.Review(f, config())
+		ds, _, _ := death.Review(f, 100000, config())
 		if len(ds) != 2 {
 			t.Fatalf("deaths=%d", len(ds))
 		}

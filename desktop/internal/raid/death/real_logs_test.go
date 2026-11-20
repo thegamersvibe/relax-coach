@@ -58,7 +58,7 @@ func TestRealLogsR6(t *testing.T) {
 		if err != nil {
 			t.Fatal("cannot open private fixture")
 		}
-		feignsAll, feignsInFights, expected, total, wipes := 0, 0, 0, 0, 0
+		feignsAll, feignsInFights, expected, total, wipes, excludedTotal := 0, 0, 0, 0, 0, 0
 		decode := func(r io.Reader, emit func(model.Event)) error {
 			var report logfmt.ParseReport
 			for e := range logfmt.Decode(r, &report) {
@@ -93,11 +93,16 @@ func TestRealLogsR6(t *testing.T) {
 					at int64
 				}
 				want := map[key]int{}
+				wantExcluded := 0
 				for _, e := range f.Events {
 					if !players[e.Dst.ID] {
 						continue
 					}
 					if e.IsDeath() {
+						if e.TimeMs > run.EndMs {
+							wantExcluded++
+							continue
+						}
 						expected++
 						want[key{e.Dst.ID, e.TimeMs}]++
 					}
@@ -105,8 +110,12 @@ func TestRealLogsR6(t *testing.T) {
 						feignsInFights++
 					}
 				}
-				ds, ws := death.Review(f, c)
-				again, againW := death.Review(f, c)
+				ds, ws, excluded := death.Review(f, run.EndMs, c)
+				again, againW, excludedAgain := death.Review(f, run.EndMs, c)
+				if excluded != wantExcluded || excludedAgain != excluded {
+					t.Fatalf("outside run deaths=%d want=%d repeat=%d", excluded, wantExcluded, excludedAgain)
+				}
+				excludedTotal += excluded
 				a, e1 := json.Marshal(struct {
 					D []model.Death
 					W []model.Wipe
@@ -168,9 +177,9 @@ func TestRealLogsR6(t *testing.T) {
 			t.Fatalf("feigns=%d, want 15", feignsAll)
 		}
 		line, _ := json.Marshal(struct {
-			Log, Deaths, FeignsExcluded, FeignsAll, Wipes int
-			Causes, SuggestedCauses, Confidence           map[string]int
-		}{logs, total, feignsInFights, feignsAll, wipes, causes, suggestions, confidence})
+			Log, Deaths, FeignsExcluded, FeignsAll, Wipes, ExcludedPastRun int
+			Causes, SuggestedCauses, Confidence                            map[string]int
+		}{logs, total, feignsInFights, feignsAll, wipes, excludedTotal, causes, suggestions, confidence})
 		t.Log(string(line))
 	}
 	if logs != 2 {

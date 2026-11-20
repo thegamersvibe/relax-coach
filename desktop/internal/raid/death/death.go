@@ -56,29 +56,36 @@ type context struct {
 	wipeCall   model.Opt
 }
 
-// Review returns deaths in stable time order and summaries of wiped boss fights.
+// Review returns deaths in stable time order, summaries of wiped boss fights,
+// and the count of real player deaths stamped after the final runEndMs.
+// Callers pass the final run end, never the encounter end (valid tails can exceed it).
 // An index-only fight (no Events) is not judged. Config should be a validated
 // cfg snapshot; no tuning values are supplied by this package. Inputs are not
 // modified. Evidence holds absolute event times, as modeltest.DeathOf expects.
-func Review(f model.Fight, config cfg.Config) ([]model.Death, []model.Wipe) {
+func Review(f model.Fight, runEndMs int64, config cfg.Config) ([]model.Death, []model.Wipe, int) {
 	if len(f.Events) == 0 {
-		return nil, nil
+		return nil, nil, 0
 	}
 	snapshot := config.Snapshot()
 	v := newView(f)
 	encounter, _ := snapshot.Encounter(f.EncounterID)
 	call := wipeCall(v, snapshot.Scoring.Death)
 	var deaths []model.Death
+	excluded := 0
 	for i, e := range v.events {
 		p, ok := v.players[e.Dst.ID]
 		if !e.IsDeath() || !ok {
+			continue
+		}
+		if e.TimeMs > runEndMs {
+			excluded++
 			continue
 		}
 		c := context{view: v, params: snapshot.Scoring.Death, victim: p, at: e.TimeMs, end: i, mechanics: encounter.Mechanics, wipeCall: call}
 		c.start, c.window = v.deathWindow(p.ID, c.at-c.params.WindowMs, i)
 		deaths = append(deaths, classify(&c))
 	}
-	return deaths, summaries(v, deaths, snapshot.Scoring.Death)
+	return deaths, summaries(v, deaths, snapshot.Scoring.Death), excluded
 }
 
 func classify(c *context) model.Death {

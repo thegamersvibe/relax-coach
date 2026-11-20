@@ -42,38 +42,22 @@ func clockSpikeRun(t *testing.T, runEnd int64) fights.Run {
 	return run
 }
 
-func TestRunEndClockSpikePendingContract(t *testing.T) {
-	// The requested exclusion was first run RED: it returned both deaths,
-	// not only the valid tail at 2050. Do not silently substitute Fight.EndMs:
-	// that is 2000 and would wrongly drop the valid tail too.
+func TestRunEndClockSpike(t *testing.T) {
 	short, long := clockSpikeRun(t, 2100), clockSpikeRun(t, 60000)
 	if !reflect.DeepEqual(short.Fights[0], long.Fights[0]) {
-		t.Fatal("the same Fight input must demonstrate the missing run-boundary information")
+		t.Fatal("same fight must distinguish the two run boundaries")
 	}
-	ds, _ := death.Review(short.Fights[0], config())
-	again, _ := death.Review(long.Fights[0], config())
-	if !reflect.DeepEqual(ds, again) || len(ds) != 2 || ds[0].TimeMs != 2050 || ds[1].TimeMs != 50000 {
-		t.Fatal("pending contract: current fight-only behavior changed")
+	ds, _, excluded := death.Review(short.Fights[0], short.EndMs, config())
+	again, _, longExcluded := death.Review(long.Fights[0], long.EndMs, config())
+	if excluded != 1 || longExcluded != 0 || len(ds) != 1 || ds[0].TimeMs != 2050 || len(again) != 2 || again[1].TimeMs != 50000 {
+		t.Fatalf("short deaths=%d long deaths=%d; want valid tail only for short run", len(ds), len(again))
 	}
-	inside := func(run fights.Run) int {
-		n := 0
-		for _, d := range ds {
-			if d.TimeMs >= run.StartMs && d.TimeMs <= run.EndMs {
-				n++
-			}
-		}
-		return n
-	}
-	if inside(short) != 1 || inside(long) != 2 {
-		t.Fatal("run-scope oracle did not distinguish the two boundaries")
-	}
-	t.Log("pending contract: identical Fight inputs require 1 versus 2 reviewed deaths; only fights.Run carries final EndMs")
 }
 
 func TestFightEndDoesNotExcludeValidTailDeath(t *testing.T) {
 	f := fight(hit(1999, boss, victim, 81, 1), died(2050, victim))
 	f.EndMs = 2000
-	ds, _ := death.Review(f, config())
+	ds, _, _ := death.Review(f, 2050, config())
 	if len(ds) != 1 || ds[0].TimeMs != 2050 {
 		t.Fatal("valid post-encounter tail death was dropped")
 	}

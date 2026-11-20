@@ -52,7 +52,7 @@ func sample(at, hp, hpMax int64) model.Event {
 func died(at int64, who model.Actor) model.Event { return modeltest.At(at).Dst(who).Died(0).Build() }
 func forVictim(t *testing.T, f model.Fight, c cfg.Config) model.Death {
 	t.Helper()
-	ds, _ := death.Review(f, c)
+	ds, _, _ := death.Review(f, 100000, c)
 	for _, d := range ds {
 		if d.Player.ID == victim.ID {
 			return d
@@ -89,7 +89,7 @@ func TestDeathsOnlyFromSelectedPlayerEvents(t *testing.T) {
 	events = append(events, model.Event{TimeMs: 11000, Kind: model.UnitDied, Dst: other}) // absent is not zero
 	f := fight(events...)
 	f.Owners = map[string]string{pet.ID: victim.ID}
-	ds, wipes := death.Review(f, config())
+	ds, wipes, _ := death.Review(f, 100000, config())
 	if len(ds) != 1 || len(wipes) != 0 {
 		t.Fatalf("deaths=%d wipes=%d", len(ds), len(wipes))
 	}
@@ -98,7 +98,7 @@ func TestDeathsOnlyFromSelectedPlayerEvents(t *testing.T) {
 		t.Fatal("death identity lost")
 	}
 	f.Events = nil
-	ds, wipes = death.Review(f, config())
+	ds, wipes, _ = death.Review(f, 100000, config())
 	if len(ds) != 0 || len(wipes) != 0 {
 		t.Fatal("index-only fight was judged")
 	}
@@ -107,8 +107,8 @@ func TestDeathsOnlyFromSelectedPlayerEvents(t *testing.T) {
 func TestReviewDeterministicAndDoesNotMutate(t *testing.T) {
 	f := fight(died(12000, other), died(10000, victim))
 	before := append([]model.Event(nil), f.Events...)
-	a, aw := death.Review(f, config())
-	b, bw := death.Review(f, config())
+	a, aw, _ := death.Review(f, 100000, config())
+	b, bw, _ := death.Review(f, 100000, config())
 	if !reflect.DeepEqual(a, b) || !reflect.DeepEqual(aw, bw) || !reflect.DeepEqual(before, f.Events) {
 		t.Fatal("review mutated input or is not deterministic")
 	}
