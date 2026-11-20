@@ -218,6 +218,84 @@ not a new file field or a change to `formatVersion`.
 | `owners` | array of strings | yes | Names as logged: the one player for `player`; every healer charged for `healers`; empty for `nobody` and `undecided`. A name and a keyword never share a field. |
 | `evidence` | evidence | yes | Why this cause. |
 
+## R6 engine contract (phase 1)
+
+`death.Review(fight, config)` returns `[]model.Death` and `[]model.Wipe`; it
+writes nothing. It reads only selected `Fight.Events` plus the fight's roster,
+roles, owners and boss units. No events means no judgment, not zero observed
+deaths. Feign lines and pet deaths never become player deaths. Pet damage is
+credited through `Fight.Owners` for the puller/tank predicates, never by name.
+The caller is responsible for selecting detail and omitting wipe summaries
+from dungeon files.
+
+The model uses descriptive cause values; the result writer maps them without
+inventing another cause:
+
+| `model.Death.Cause` / nonempty suggestion | File value |
+|---|---|
+| `avoidable ability` | `avoidable` |
+| `unhealed over time` | `unhealed` |
+| `pulled aggro` | `pulledAggro` |
+| `tank lost the boss` | `tankLostBoss` |
+| `unavoidable or one-shot` | `unavoidable` |
+| `after the wipe call` | `afterWipeCall` |
+| `unresolved` (cause only) | `unresolved` |
+
+The classifier follows DESIGN section 8 order, with the architect's phase-1
+predicates. One confident match is `high`; multiple confident rules retain the
+first cause with `medium`. No confident match is `unresolved` / `low` /
+`undecided`. A sparse unhealed match suggests `unhealed over time` but charges
+nobody; otherwise the suggestion is empty. Wipe-call decisions are terminal.
+Environmental deaths are terminal `unavoidable or one-shot`, or `unresolved`
+when an enabled mechanic covers the environmental killing hit; they never
+charge the healing team.
+
+- The review window is inclusive from death minus `death.window_ms` through
+  death. A health sample belongs to the victim only when `InfoUnit` is the
+  victim and present `HPMax` is positive; unrelated destination/source health
+  is not substituted. Samples may occur on any event family.
+- Unhealed starts at the first victim damage **after** the latest sample at or
+  above `full_health_fraction`, otherwise the first victim damage in the
+  window. Equal timestamps retain event order. The span must reach
+  `unhealed_min_ms`, have zero effective healing and consumed absorbs, and
+  have a healer alive throughout. Fewer than `min_health_samples` gives only
+  a suggestion. A match names the entire healing team alive at death, not
+  one selected healer. Death/resurrection transitions determine survival;
+  feign death does not.
+- Killing damage is the last landed damage to the victim. A majority spell
+  contributes **more than half** of window damage after removing nonnegative
+  overkill; `-1` overkill does not add damage. Source-side swings are excluded
+  from totals. Self-source debuffs remain eligible mechanic evidence, and
+  death-time aura removal cannot erase a spell/role match.
+- An avoidable match needs an enabled mechanic for this encounter, the
+  killing or majority spell id, `avoidable`, and the victim's role. Empty
+  `Roles` means all roles; `AffectedPlayers` and `ValidResponse` are display
+  text only. Candidate/research entries cannot assign blame.
+- Raid-wide candidates are non-swing damage from hostile creatures, not pets
+  or guardians; an enabled avoidable mechanic excludes the spell regardless
+  of its role list. Count distinct player targets of that spell from any
+  creature inside the inclusive `raidwide_window_ms` interval on either side
+  of the killing hit. Divide by players alive at interval start (victim
+  included), never group size or pets. At least three must be hit and the
+  share must reach `raidwide_share`. A simultaneous unhealed match makes this
+  `medium`. One-shot damage must reach the victim's sampled maximum health
+  inside `one_shot_window_ms` before death.
+- Pulled aggro needs a non-tank killed by a boss landed swing and either the
+  victim's first damage preceding every tank hit or no living tank. Otherwise
+  the lost-boss predicate compares the most recent living tank's damage to
+  the first observed swing onto the victim in the review window, strictly
+  beyond `lost_boss_gap_ms`. Tied tank evidence is not assigned arbitrarily.
+  Ambiguous boss-melee deaths are `unresolved`, `undecided`, with **empty**
+  suggestion and boss-swing evidence. R8 may label them "aggro: puller or
+  tank"; that label is not a new model/file enumeration.
+
+`Death.TimeMs` and its `Evidence` times are absolute model milliseconds. The
+writer subtracts `Fight.StartMs` for file times. Recap evidence retains the
+last ten victim damage/heal/absorb times in the window; aggro evidence keeps
+boss swings on the victim. These are references into the selected events,
+not raw events in this file. Equal timestamps can refer to multiple lines.
+R8/result rendering and officer override/tagging remain separate lanes.
+
 ## Wipe summary (`wipes[]`)
 
 | Field | Type | Required | Meaning |
@@ -225,6 +303,18 @@ not a new file field or a change to `formatVersion`.
 | `fightId` | string | yes | The wiped boss fight. |
 | `firstDeath` | object or null | yes | `{"player": name as logged, "atMs": integer, "cause": cause}`; `null` if nobody died before the end line. |
 | `following` | array of objects | yes | Deaths inside the configured window after the first, same shape, in time order (REQ-DTH-06). |
+
+The default wipe call is the first observed moment the configured dead share
+is reached, or all members of a nonempty tank/healer role are dead when that
+role toggle is enabled. Deaths strictly later than the call have no owner;
+deaths at the call time are still reviewed normally. Resurrections before
+that first moment affect the count; they do not retract an established call.
+A summary is returned only for a boss with explicit failure (`Success = 0`),
+not a kill, unknown outcome or trash. `model.Wipe.FirstDeath` is a zero-based
+index into that fight's returned deaths; `-1` means no death before/on the
+encounter end. `Following` excludes the first death and includes deaths at
+the inclusive `summary_window_ms` edge. A null configured summary window is
+not replaced by a guessed default.
 
 ## Assignment (`assignments[]`)
 

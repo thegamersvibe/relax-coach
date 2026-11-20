@@ -40,14 +40,14 @@
 | IMP-029 | REQ-SCO-12 | forever | R7 | R0 | unassigned | `desktop/internal/raid/score` | planned | V-029 |
 | IMP-030 | REQ-SCO-13 | forever | R7 | R0 | unassigned | `desktop/internal/raid/score` | planned | V-030 |
 | IMP-031 | REQ-SCO-14 | forever | R7 | R0 | unassigned | `desktop/internal/raid/score` | planned | V-031 |
-| IMP-032 | REQ-DTH-01 | forever | R6 | R0 | unassigned | `desktop/internal/raid/death` | planned | V-032 |
-| IMP-033 | REQ-DTH-02 | forever | R6 | R0 | unassigned | `desktop/internal/raid/death` | planned | V-033 |
+| IMP-032 | REQ-DTH-01 | forever | R6 | model addendum 2, R5 | R6 builder | `desktop/internal/raid/death` | verified (engine; no UI) | V-032 |
+| IMP-033 | REQ-DTH-02 | forever | R6 | model addendum 2, R5 | R6 builder | `desktop/internal/raid/death` | verified (engine; no UI) | V-033 |
 | IMP-034 | REQ-DTH-03 | forever | R12 | R8 | unassigned | `desktop/internal/raid/score`, officer page | planned | V-034 |
-| IMP-035 | REQ-DTH-03 | forever | R6 | R0 | unassigned | `desktop/internal/raid/death` | planned | V-035 |
-| IMP-036 | REQ-DTH-04 | forever | R6 | R0 | unassigned | `desktop/internal/raid/death` | planned | V-036 |
+| IMP-035 | REQ-DTH-03 | forever | R6 | model addendum 2, R5 | R6 builder | `desktop/internal/raid/death` | verified (engine; no UI) | V-035 |
+| IMP-036 | REQ-DTH-04 | forever | R6 | model addendum 2, R5 | R6 builder | `desktop/internal/raid/death` | verified (engine; no UI) | V-036 |
 | IMP-037 | REQ-DTH-05 | forever | R12 | R8 | unassigned | `desktop/internal/raid/score`, officer page | planned | V-037 |
-| IMP-038 | REQ-DTH-05 | forever | R6 | R0 | unassigned | `desktop/internal/raid/death` | planned | V-038 |
-| IMP-039 | REQ-DTH-06 | forever | R6 | R0 | unassigned | `desktop/internal/raid/death` | planned | V-039 |
+| IMP-038 | REQ-DTH-05 | forever | R6 | model addendum 2, R5 | R6 builder | `desktop/internal/raid/death` | verified (engine; no UI) | V-038 |
+| IMP-039 | REQ-DTH-06 | forever | R6 | model addendum 2, R5 | R6 builder | `desktop/internal/raid/death` | verified (engine; no UI) | V-039 |
 | IMP-040 | REQ-SPC-01 | forever | R5 | R0 | unassigned | `desktop/internal/raid/cfg`, `rules/raid/` | planned | V-040 |
 | IMP-041 | REQ-SPC-02 | forever | R5 | R0 | unassigned | `desktop/internal/raid/cfg`, `rules/raid/` | planned | V-041 |
 | IMP-042 | REQ-SPC-03 | forever | R5 | R0 | unassigned | `desktop/internal/raid/cfg`, `rules/raid/` | planned | V-042 |
@@ -129,14 +129,14 @@ Statuses: `planned`, `in progress`, `implemented`, `verified`, `blocked`, `defer
 | V-029 | REQ-SCO-12 / R7 | forever; build unknown | unit | none yet | Acceptance column of REQ-SCO-12 | not run | not run |
 | V-030 | REQ-SCO-13 / R7 | forever; build unknown | unit | none yet | Acceptance column of REQ-SCO-13 | not run | not run |
 | V-031 | REQ-SCO-14 / R7 | forever; build unknown | unit | none yet | Acceptance column of REQ-SCO-14 | not run | not run |
-| V-032 | REQ-DTH-01 / R6 | forever; build unknown | unit | none yet | Acceptance column of REQ-DTH-01 | not run | not run |
-| V-033 | REQ-DTH-02 / R6 | forever; build unknown | unit | none yet | Acceptance column of REQ-DTH-02 | not run | not run |
+| V-032 | REQ-DTH-01 / R6 | forever; model values and private logs | unit/integration | `feat/raid-death` | All seven causes, feigns/pets, killing/majority damage, environmental and aggro ambiguity; [module evidence](../../test/raid/death/README.md) | Synthetic tests and mutation controls pass; gated two-log check passes; counts only; native not run | engine pass |
+| V-033 | REQ-DTH-02 / R6 | forever; model values and private logs | unit/integration | `feat/raid-death` | Victim/tank ownership, whole living healer team, no owner for unavoidable/wipe/unresolved; [module evidence](../../test/raid/death/README.md) | Synthetic tests and mutation controls pass; gated two-log check passes; counts only; native not run | engine pass |
 | V-034 | REQ-DTH-03 / R12 | forever; build unknown | unit | none yet | Acceptance column of REQ-DTH-03 | not run | not run |
-| V-035 | REQ-DTH-03 / R6 | forever; build unknown | unit | none yet | Acceptance column of REQ-DTH-03 | not run | not run |
-| V-036 | REQ-DTH-04 / R6 | forever; build unknown | unit | none yet | Acceptance column of REQ-DTH-04 | not run | not run |
+| V-035 | REQ-DTH-03 / R6 | forever; model values and private logs | unit/integration | `feat/raid-death` | Sparse-sample suggestion, empty aggro suggestion, deterministic re-review, high/medium/low confidence; [module evidence](../../test/raid/death/README.md) | Synthetic tests and mutation controls pass; gated two-log check passes; counts only; native not run | engine pass |
+| V-036 | REQ-DTH-04 / R6 | forever; model values and private logs | unit/integration | `feat/raid-death` | Sample/full-health/span boundaries, effective heal and absorb 0/1, healer death/resurrection; [module evidence](../../test/raid/death/README.md) | Synthetic tests and mutation controls pass; gated two-log check passes; counts only; native not run | engine pass |
 | V-037 | REQ-DTH-05 / R12 | forever; build unknown | unit | none yet | Acceptance column of REQ-DTH-05 | not run | not run |
-| V-038 | REQ-DTH-05 / R6 | forever; build unknown | unit | none yet | Acceptance column of REQ-DTH-05 | not run | not run |
-| V-039 | REQ-DTH-06 / R6 | forever; build unknown | unit | none yet | Acceptance column of REQ-DTH-06 | not run | not run |
+| V-038 | REQ-DTH-05 / R6 | forever; model values and private logs | unit/integration | `feat/raid-death` | First wipe moment, strict-after, dead-share and role toggles, nonempty roles, feigns/pets; [module evidence](../../test/raid/death/README.md) | Synthetic tests and mutation controls pass; private logs have no wipes, so summaries are fixture-proven; native not run | engine pass |
+| V-039 | REQ-DTH-06 / R6 | forever; model values and private logs | unit/integration | `feat/raid-death` | Failed-boss-only summary, first-death index/absence, inclusive configurable following window; [module evidence](../../test/raid/death/README.md) | Synthetic tests and mutation controls pass; private logs have no wipes, so summaries are fixture-proven; native not run | engine pass |
 | V-040 | REQ-SPC-01 / R5 | forever; build unknown | static | none yet | Acceptance column of REQ-SPC-01 | not run | not run |
 | V-041 | REQ-SPC-02 / R5 | forever; build unknown | static | none yet | Acceptance column of REQ-SPC-02 | not run | not run |
 | V-042 | REQ-SPC-03 / R5 | forever; build unknown | static | none yet | Acceptance column of REQ-SPC-03 | not run | not run |

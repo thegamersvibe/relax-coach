@@ -1,0 +1,362 @@
+[
+  {
+    "file": "desktop/internal/raid/death/death.go",
+    "old": "if !e.IsDeath() || !ok {",
+    "new": "if e.Kind != model.UnitDied || !ok {",
+    "killed_by": "TestDeathsOnlyFromSelectedPlayerEvents"
+  },
+  {
+    "file": "desktop/internal/raid/death/death.go",
+    "old": "d.Confidence = \"medium\"",
+    "new": "d.Confidence = \"high\"",
+    "killed_by": "TestRaidwideMajorityAndMediumConfidence"
+  },
+  {
+    "file": "desktop/internal/raid/death/death.go",
+    "old": "d.SuggestedCause = m.cause",
+    "new": "d.SuggestedCause = \"\"",
+    "killed_by": "TestSparseSamplesAndWindow"
+  },
+  {
+    "file": "desktop/internal/raid/death/death.go",
+    "old": "Cause: Unresolved, Confidence: \"low\", OwnerKind: \"undecided\"",
+    "new": "Cause: Unavoidable, Confidence: \"high\", OwnerKind: \"nobody\"",
+    "killed_by": "TestDeathsOnlyFromSelectedPlayerEvents"
+  },
+  {
+    "file": "desktop/internal/raid/death/death.go",
+    "old": "len(times) > 10",
+    "new": "len(times) > 11",
+    "killed_by": "TestRecapLastTenAndNegativeOverkill"
+  },
+  {
+    "file": "desktop/internal/raid/death/death.go",
+    "old": "e.Dst.ID == victimID && (damage(e)",
+    "new": "(damage(e)",
+    "killed_by": "TestHealthSampleDoesNotAddOtherTargetsToRecap"
+  },
+  {
+    "file": "desktop/internal/raid/death/view.go",
+    "old": "!strings.HasPrefix(p.ID, \"Player-\")",
+    "new": "!strings.HasPrefix(p.ID, \"\")",
+    "killed_by": "TestRaidwideExclusions"
+  },
+  {
+    "file": "desktop/internal/raid/death/view.go",
+    "old": "e.Stream != model.SwingSource",
+    "new": "true",
+    "killed_by": "TestAvoidableKillingHitOrMajority"
+  },
+  {
+    "file": "desktop/internal/raid/death/view.go",
+    "old": "es[i].TimeMs >= from",
+    "new": "es[i].TimeMs > from",
+    "killed_by": "TestSparseSamplesAndWindow"
+  },
+  {
+    "file": "desktop/internal/raid/death/view.go",
+    "old": "es[i].TimeMs > to",
+    "new": "es[i].TimeMs >= to",
+    "killed_by": "TestEffectiveHealingAndAbsorbs"
+  },
+  {
+    "file": "desktop/internal/raid/death/view.go",
+    "old": "nonnegative(e.Amount)-nonnegative(over)",
+    "new": "nonnegative(e.Amount)-0*nonnegative(over)",
+    "killed_by": "TestAvoidableKillingHitOrMajority"
+  },
+  {
+    "file": "desktop/internal/raid/death/view.go",
+    "old": "return max(int64(0), o.V)",
+    "new": "return o.V",
+    "killed_by": "TestAvoidableKillingHitOrMajority"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_wipe.go",
+    "old": "c.at > c.wipeCall.V",
+    "new": "c.at >= c.wipeCall.V",
+    "killed_by": "TestWipeShareFirstMomentAndStrictAfter"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_wipe.go",
+    "old": "float64(len(dead))/float64(len(v.ids)) >= p.WipeDeadShare",
+    "new": "float64(len(dead))/float64(len(v.ids)) > p.WipeDeadShare",
+    "killed_by": "TestWipeShareFirstMomentAndStrictAfter"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_wipe.go",
+    "old": "p.WipeAllTanksDead && allRoleDead(\"tank\")",
+    "new": "false && allRoleDead(\"tank\")",
+    "killed_by": "TestWipeRoleTogglesAndNoVacuousRoles"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_wipe.go",
+    "old": "p.WipeAllHealersDead && allRoleDead(\"healer\")",
+    "new": "false && allRoleDead(\"healer\")",
+    "killed_by": "TestWipeRoleTogglesAndNoVacuousRoles"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_wipe.go",
+    "old": "return count > 0",
+    "new": "return count >= 0",
+    "killed_by": "TestWipeRoleTogglesAndNoVacuousRoles"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_wipe.go",
+    "old": "delete(dead, e.Dst.ID)",
+    "new": "dead[e.Dst.ID] = true",
+    "killed_by": "TestWipePetsFeignsDuplicatesAndResurrection"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_wipe.go",
+    "old": "if !e.IsDeath() {",
+    "new": "if e.Kind != model.UnitDied {",
+    "killed_by": "TestWipePetsFeignsDuplicatesAndResurrection"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_wipe.go",
+    "old": "owner: \"nobody\", terminal: true",
+    "new": "owner: \"player\", owners: []string{c.victim.Name}, terminal: true",
+    "killed_by": "TestWipePriorityAndSummary"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_wipe.go",
+    "old": "deaths[i].TimeMs-deaths[0].TimeMs > *p.SummaryWindowMs",
+    "new": "deaths[i].TimeMs-deaths[0].TimeMs >= *p.SummaryWindowMs",
+    "killed_by": "TestWipePriorityAndSummary"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_wipe.go",
+    "old": "v.f.Success != model.Some(0)",
+    "new": "v.f.Success == model.Some(0)",
+    "killed_by": "TestWipePriorityAndSummary"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_wipe.go",
+    "old": "deaths[0].TimeMs <= end",
+    "new": "deaths[0].TimeMs >= end",
+    "killed_by": "TestWipeSummaryNoDeathBeforeEnd"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_avoidable.go",
+    "old": "amounts[e.SpellID] > total-amounts[e.SpellID]",
+    "new": "amounts[e.SpellID] >= total-amounts[e.SpellID]",
+    "killed_by": "TestAvoidableKillingHitOrMajority"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_avoidable.go",
+    "old": "killing = &c.window[i]",
+    "new": "if killing == nil { killing = &c.window[i] }",
+    "killed_by": "TestAvoidableKillingHitOrMajority"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_avoidable.go",
+    "old": "len(m.Roles) == 0 || slices.Contains",
+    "new": "len(m.Roles) != 0 && slices.Contains",
+    "killed_by": "TestAvoidableMechanicRoles"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_avoidable.go",
+    "old": "slices.Contains(m.Roles, c.view.f.Roles[c.victim.ID])",
+    "new": "(slices.Contains(m.Roles, c.view.f.Roles[c.victim.ID]) || len(m.Roles) > 0)",
+    "killed_by": "TestAvoidableMechanicRoles"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_avoidable.go",
+    "old": "m.Avoidable &&",
+    "new": "true &&",
+    "killed_by": "TestAvoidableEnabledOnlyAndTextIsNotPredicate"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_avoidable.go",
+    "old": "killing == nil || killing.Src.ID == \"\"",
+    "new": "killing == nil",
+    "killed_by": "TestEnvironmentalKillingHitCannotChargeEarlierMechanic"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
+    "old": "firstVictim.V < firstTank.V",
+    "new": "firstVictim.V <= firstTank.V",
+    "killed_by": "TestPulledAggroBeforeTank"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
+    "old": "!tankAlive || firstVictim.Present",
+    "new": "!tankAlive && firstVictim.Present",
+    "killed_by": "TestPulledAggroNoLivingTank"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
+    "old": "return o",
+    "new": "return id",
+    "killed_by": "TestPulledAggroBeforeTank"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_pulled_aggro.go",
+    "old": "c.view.f.Roles[c.victim.ID] == \"tank\"",
+    "new": "false",
+    "killed_by": "TestAmbiguousAggroHasNoSuggestionAndBossSwingEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": "turn-last.V > *c.params.LostBossGapMs",
+    "new": "turn-last.V >= *c.params.LostBossGapMs",
+    "killed_by": "TestLostBossGapAndOwner"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": "c.view.players[owner].Name",
+    "new": "c.victim.Name",
+    "killed_by": "TestLostBossGapAndOwner"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": "cause: Unresolved, owner: \"undecided\", evidence: evidence, terminal: true",
+    "new": "cause: TankLostBoss, owner: \"player\", evidence: evidence, terminal: true",
+    "killed_by": "TestAmbiguousAggroHasNoSuggestionAndBossSwingEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_lost_boss.go",
+    "old": "slices.Contains(c.view.f.BossUnits, e.Src.ID)",
+    "new": "(slices.Contains(c.view.f.BossUnits, e.Src.ID) && e.Src.ID == killing.Src.ID)",
+    "killed_by": "TestAggroEvidenceIncludesEveryBossUnit"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unavoidable.go",
+    "old": "amount >= hpMax",
+    "new": "amount > hpMax",
+    "killed_by": "TestOneShotThresholdsAndWindow"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unavoidable.go",
+    "old": "e.TimeMs >= c.at-c.params.OneShotWindowMs",
+    "new": "e.TimeMs > c.at-c.params.OneShotWindowMs",
+    "killed_by": "TestOneShotThresholdsAndWindow"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unavoidable.go",
+    "old": "spell.Stream != model.StreamNone ||",
+    "new": "false ||",
+    "killed_by": "TestRaidwideExclusions"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unavoidable.go",
+    "old": "spell.Src.Flags&0x40 == 0",
+    "new": "false",
+    "killed_by": "TestRaidwideExclusions"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unavoidable.go",
+    "old": "if m.Spell.ID == spell.SpellID && m.Avoidable {",
+    "new": "if m.Spell.ID == spell.SpellID && m.Avoidable && false {",
+    "killed_by": "TestRaidwideExclusions"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unavoidable.go",
+    "old": "v.f.Owners[a.ID] == \"\" &&",
+    "new": "true &&",
+    "killed_by": "TestRaidwideExclusions"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unavoidable.go",
+    "old": "e.Stream != model.StreamNone || e.SpellID",
+    "new": "false || e.SpellID",
+    "killed_by": "TestRaidwideExclusions"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unavoidable.go",
+    "old": "if e.TimeMs < from {",
+    "new": "if e.TimeMs <= from {",
+    "killed_by": "TestRaidwideWindowEdgesAndSources"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unavoidable.go",
+    "old": "if e.TimeMs > to {",
+    "new": "if e.TimeMs >= to {",
+    "killed_by": "TestRaidwideWindowEdgesAndSources"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unavoidable.go",
+    "old": "c.view.alive(id, from)",
+    "new": "c.view.alive(id, c.at)",
+    "killed_by": "TestRaidwideAliveDenominatorAndVictim"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unavoidable.go",
+    "old": "len(hit) >= 3",
+    "new": "len(hit) >= 2",
+    "killed_by": "TestRaidwideShareAndMinimum"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unavoidable.go",
+    "old": "float64(len(hit))/float64(alive) >= c.params.RaidwideShare",
+    "new": "float64(len(hit))/float64(alive) > c.params.RaidwideShare",
+    "killed_by": "TestRaidwideShareAndMinimum"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unavoidable.go",
+    "old": "if killing.Src.ID == \"\" {",
+    "new": "if false {",
+    "killed_by": "TestEnvironmentalNeverChargesHealers"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unhealed.go",
+    "old": "e.InfoUnit == id &&",
+    "new": "true &&",
+    "killed_by": "TestSparseSamplesAndWindow"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unhealed.go",
+    "old": "e.HPMax.V > 0",
+    "new": "e.HPMax.V >= 0",
+    "killed_by": "TestSparseSamplesAndWindow"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unhealed.go",
+    "old": "float64(e.HP.V) >= float64(e.HPMax.V)",
+    "new": "float64(e.HP.V) > float64(e.HPMax.V)",
+    "killed_by": "TestFullHealthResetsSpan"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unhealed.go",
+    "old": "i > latestFull &&",
+    "new": "i >= latestFull &&",
+    "killed_by": "TestSameTimestampFullSampleUsesEventOrder"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unhealed.go",
+    "old": "c.at-c.window[start].TimeMs < c.params.UnhealedMinMs",
+    "new": "c.at-c.window[start].TimeMs <= c.params.UnhealedMinMs",
+    "killed_by": "TestUnhealedThresholds"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unhealed.go",
+    "old": "e.Kind == model.Heal && effective(e) > 0",
+    "new": "e.Kind == model.Heal && effective(e) > 1",
+    "killed_by": "TestEffectiveHealingAndAbsorbs"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unhealed.go",
+    "old": "e.Kind == model.Absorb && nonnegative(e.Amount) > 0",
+    "new": "e.Kind == model.Absorb && nonnegative(e.Amount) > 1",
+    "killed_by": "TestEffectiveHealingAndAbsorbs"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unhealed.go",
+    "old": "c.view.aliveThroughout(id, from, c.at)",
+    "new": "c.view.alive(id, c.at)",
+    "killed_by": "TestHealerAliveWholeSpan"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unhealed.go",
+    "old": "samples < c.params.MinHealthSamples",
+    "new": "samples <= c.params.MinHealthSamples",
+    "killed_by": "TestSparseSamplesAndWindow"
+  },
+  {
+    "file": "desktop/internal/raid/death/rule_unhealed.go",
+    "old": "owners: owners, low:",
+    "new": "owners: owners[:1], low:",
+    "killed_by": "TestUnhealedThresholds"
+  }
+]
