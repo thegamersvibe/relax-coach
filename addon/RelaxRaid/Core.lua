@@ -66,6 +66,46 @@ function RR.module(name)
     return m
 end
 
+-- The shared module is optional when Core is tested alone. Initialize after Log's
+-- existing settings category and after SavedVariables, without coupling the reader
+-- to this namespace. Source pin/API details: docs/raid/DEATH-RECAP.md.
+local function initRecap()
+    local recap = RelaxDeathRecap
+    if not recap then return end
+    local settings
+    if recap.owner == RR.name then
+        local db = RelaxRaidCharDB
+        if type(db) == "table" and type(db.version) == "number" and db.version > 1 then
+            settings = {version=99} -- read-only session defaults; leave the newer save alone
+        else
+            settings = type(db) == "table" and type(db.deathRecap) == "table" and db.deathRecap or {version=1}
+        end
+    end
+    recap.register(RR.name, {settings=settings, saveSettings=function(value)
+        if recap.owner ~= RR.name then return end
+        local db = RelaxRaidCharDB
+        if type(db) == "table" and type(db.version) == "number" and db.version > 1 then return end
+        if type(db) ~= "table" then db = {version=1}; RelaxRaidCharDB = db end
+        db.deathRecap = value
+    end, avoidable=function(id)
+        return RR.avoidableSpells and RR.avoidableSpells[id] == true
+    end})
+    local category = RR.modules.Log and RR.modules.Log.category
+    if not category or not Settings then return end
+    for _, option in ipairs({
+        {"auto", "Open the recap when I die", true},
+        {"autoclose", "Close the recap when I release or revive", true},
+        {"keep", "Keep my last 3 recaps after logout", false},
+    }) do
+        local key = option[1]
+        local setting = Settings.RegisterProxySetting(category, "RELAXRAID_RECAP_" .. string.upper(key),
+            Settings.VarType.Boolean, option[2], option[3],
+            function() return recap.settings[key] == true end,
+            function(value) pcall(recap.option, key, value) end)
+        Settings.CreateCheckbox(category, setting, "Local only. Recaps may contain other players' names. Nothing is sent.")
+    end
+end
+
 RR.on("ADDON_LOADED", "Core", function(_, loaded)
     if loaded ~= RR.name or RR.loaded then return end
     RR.loaded = true
@@ -73,6 +113,7 @@ RR.on("ADDON_LOADED", "Core", function(_, loaded)
         local m = RR.modules[i]
         if m.Init then RR.safe(m.name .. ".Init", m.Init, RR) end
     end
+    RR.safe("DeathRecap.Init", initRecap)
 end)
 
 _G.RelaxRaid = RR

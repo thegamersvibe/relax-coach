@@ -87,7 +87,13 @@ class CoreTests(unittest.TestCase):
     def test_one_frame_for_all_events(self):
         c = Client()
         c.load_addon(ADDON)
-        self.assertEqual(len(c.frames), 1)
+        # Core's dispatcher remains single; the portable recap owns its separate lifecycle.
+        core_frames = [f for f in c.frames if 'ADDON_LOADED' in f['events']]
+        recap_frames = [f for f in c.frames if 'PLAYER_DEAD' in f['events']]
+        self.assertEqual(len(core_frames), 1)
+        self.assertEqual(len(recap_frames), 1)
+        self.assertEqual(len(c.frames), 2)
+        self.assertEqual(recap_frames[0]['events'], {'PLAYER_DEAD', 'PLAYER_ALIVE', 'PLAYER_UNGHOST'})
 
     def test_not_bundled_before_the_app_knows_it(self):
         # R9b replaces the R1 no-bundling placeholder with the app-owned gate.

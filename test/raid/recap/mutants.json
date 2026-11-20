@@ -1,0 +1,122 @@
+[
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "for key, kind in pairs(fields) do row[key] = R.field(raw, key, kind) end",
+    "new": "for key, kind in pairs(fields) do row[key] = raw[key] end",
+    "killed_by": "test_inaccessible_amount_is_not_used"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "row.amount - math.max(0, row.overkill)",
+    "new": "row.amount + math.max(0, row.overkill)",
+    "killed_by": "test_read_copies_sorts_and_calculates"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "row.timestamp > latest",
+    "new": "row.timestamp < latest",
+    "killed_by": "test_read_copies_sorts_and_calculates"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "row.currentHP / recap.maxHealth * 100",
+    "new": "row.currentHP / recap.maxHealth * 10",
+    "killed_by": "test_read_copies_sorts_and_calculates"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "for i = 1, 12 do",
+    "new": "for i = 1, 13 do",
+    "killed_by": "test_tabs_labels_and_twelve_row_scroll"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "total = total + row.effective",
+    "new": "total = total + row.effective * 2",
+    "killed_by": "test_pvp_shares_use_all_damage_and_pets_stay_separate"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if flag(row.sourceFlags, 64) and kind and row.sourceGUID then",
+    "new": "if kind and row.sourceGUID then",
+    "killed_by": "test_pvp_hidden_for_environment_creatures_or_unreadable_flags"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "recap.attackers = player and list or {}",
+    "new": "recap.attackers = list",
+    "killed_by": "test_pvp_hidden_for_environment_creatures_or_unreadable_flags"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "== true then row.guildAvoidable = true end",
+    "new": "== true then row.guildAvoidable = false end",
+    "killed_by": "test_avoidable_hooks_and_identity_are_guarded"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "R.hooks[name] = hooks",
+    "new": "if name == R.owner then R.hooks[name] = hooks end",
+    "killed_by": "test_both_load_orders_and_higher_version_keep_one_dispatch"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "^addon:RelaxDeathRecap:(%d+)$",
+    "new": "^addon:%a+:(%d+)$",
+    "killed_by": "test_links_reject_foreign_and_expired_ids"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if #R.history > 3 then",
+    "new": "if #R.history > 4 then",
+    "killed_by": "test_four_deaths_keep_three_and_cancel_old_timers"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if R.dead then return end",
+    "new": "if false then return end",
+    "killed_by": "test_late_third_retry_and_one_notification"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "ipairs({0.3, 1, 2})",
+    "new": "ipairs({0.3, 1})",
+    "killed_by": "test_late_third_retry_and_one_notification"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if R.settings.auto then",
+    "new": "if true then",
+    "killed_by": "test_auto_off_and_link_route_and_no_data"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if R.settings.autoclose then",
+    "new": "if false then",
+    "killed_by": "test_open_in_combat_everywhere_close_escape_and_autoclose"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if R.settings.keep then",
+    "new": "if true then",
+    "killed_by": "test_saved_roundtrip_corrupt_drop_caps_and_owner_only"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "array(rows, 12)",
+    "new": "array(rows, 13)",
+    "killed_by": "test_saved_roundtrip_corrupt_drop_caps_and_owner_only"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "recap.killer, recap.killingBlow = \"Unknown\", nil",
+    "new": "recap.killer = \"Unknown\"",
+    "killed_by": "test_retry_clears_unreadable_killing_blow"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if R.pending ~= recap then return end",
+    "new": "if false then return end",
+    "killed_by": "test_four_deaths_keep_three_and_cancel_old_timers"
+  }
+]
