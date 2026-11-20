@@ -84,6 +84,7 @@ jobs:
         with:
           node-version: '26'
           package-manager-cache: false
+      # Includes TestRaidEmbeddedBytes: do not regenerate the copy before testing.
       - name: Existing Go tests with race detection
         env:
           NATIVE_HTML_OUT: ${{ runner.temp }}/relax-coach-native.html
@@ -100,6 +101,10 @@ jobs:
           python3 -I -B tools/raidtest.py --mutants model
           python3 -I -B tools/raidtest.py --mutants logfmt
           python3 -I -B tools/raidtest.py --mutants fixture
+      - name: Relax Raid configuration and embedded-copy guards
+        run: |
+          python3 -I -B tools/raidtest.py --mutants cfg
+          python3 -I -B tools/raidtest.py --mutants cfgembed
       - name: Relax Raid fights mutants
         run: python3 -I -B tools/raidtest.py --mutants fights
       - name: Relax Raid log discovery glue

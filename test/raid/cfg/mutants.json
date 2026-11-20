@@ -97,26 +97,26 @@
   },
   {
     "file": "desktop/internal/raid/cfg/load.go",
-    "old": "func Load(dir string) (*Config, error) {\n\tc := new(Config)",
-    "new": "var cached *Config\n\nfunc Load(dir string) (*Config, error) {\n\tif cached != nil { return cached, nil }; c := new(Config); cached = c",
+    "old": "func LoadFS(fsys fs.FS) (*Config, error) {\n\tc := new(Config)",
+    "new": "var cached *Config\n\nfunc LoadFS(fsys fs.FS) (*Config, error) {\n\tif cached != nil { return cached, nil }; c := new(Config); cached = c",
     "killed_by": "TestReloadWeight"
   },
   {
     "file": "desktop/internal/raid/cfg/load.go",
-    "old": "func Load(dir string) (*Config, error) {\n\tc := new(Config)",
-    "new": "var cached *Config\n\nfunc Load(dir string) (*Config, error) {\n\tif cached != nil { return cached, nil }; c := new(Config); cached = c",
+    "old": "func LoadFS(fsys fs.FS) (*Config, error) {\n\tc := new(Config)",
+    "new": "var cached *Config\n\nfunc LoadFS(fsys fs.FS) (*Config, error) {\n\tif cached != nil { return cached, nil }; c := new(Config); cached = c",
     "killed_by": "TestReloadThreshold"
   },
   {
     "file": "desktop/internal/raid/cfg/load.go",
-    "old": "func Load(dir string) (*Config, error) {\n\tc := new(Config)",
-    "new": "var cached *Config\n\nfunc Load(dir string) (*Config, error) {\n\tif cached != nil { return cached, nil }; c := new(Config); cached = c",
+    "old": "func LoadFS(fsys fs.FS) (*Config, error) {\n\tc := new(Config)",
+    "new": "var cached *Config\n\nfunc LoadFS(fsys fs.FS) (*Config, error) {\n\tif cached != nil { return cached, nil }; c := new(Config); cached = c",
     "killed_by": "TestReloadProfile"
   },
   {
     "file": "desktop/internal/raid/cfg/load.go",
-    "old": "func Load(dir string) (*Config, error) {\n\tc := new(Config)",
-    "new": "var cached *Config\n\nfunc Load(dir string) (*Config, error) {\n\tif cached != nil { return cached, nil }; c := new(Config); cached = c",
+    "old": "func LoadFS(fsys fs.FS) (*Config, error) {\n\tc := new(Config)",
+    "new": "var cached *Config\n\nfunc LoadFS(fsys fs.FS) (*Config, error) {\n\tif cached != nil { return cached, nil }; c := new(Config); cached = c",
     "killed_by": "TestReloadEncounter"
   },
   {
@@ -1067,5 +1067,29 @@
     "old": "s.ActivityCastCapMs <= 0",
     "new": "false",
     "killed_by": "TestActivityCastCapConfig"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/load.go",
+    "old": "if err != nil {\n\t\t\treturn nil, fmt.Errorf(\"%s: %w\", f.name, err)\n\t\t}",
+    "new": "if err != nil {\n\t\t\treturn c, fmt.Errorf(\"%s: %w\", f.name, err)\n\t\t}",
+    "killed_by": "TestLoadFSReadError"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/load.go",
+    "old": "if err := decode(b, f.value); err != nil {",
+    "new": "if err := decode(b, f.value); false && err != nil {",
+    "killed_by": "TestLoadFSDecodeAndValidation"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/load.go",
+    "old": "if err := c.validate(); err != nil {",
+    "new": "if err := c.validate(); false && err != nil {",
+    "killed_by": "TestLoadFSDecodeAndValidation"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/load.go",
+    "old": "func LoadFS(fsys fs.FS) (*Config, error) {\n\tc := new(Config)",
+    "new": "var fsCached *Config\nfunc LoadFS(fsys fs.FS) (*Config, error) {\n\tif fsCached != nil { return fsCached, nil }; c := new(Config); fsCached = c",
+    "killed_by": "TestLoadFSReloadAndOwnership"
   }
 ]

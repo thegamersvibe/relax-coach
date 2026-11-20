@@ -1,0 +1,8 @@
+{
+  "kind": "go",
+  "limit": 60,
+  "source": "desktop/",
+  "inputs": ["rules/raid/", "scripts/gen_raid_rules.py"],
+  "test": ["go", "-C", "desktop", "test", "-race", "-count=1", "-run", "^TestRaid(Embedded|Config)", "."],
+  "depends": ["cfg"]
+}
