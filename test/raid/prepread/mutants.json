@@ -388,5 +388,17 @@
     "old": "if at < r.Stamped {",
     "new": "if false && at < r.Stamped {",
     "killed_by": "TestEarliestUnorderedReceipts"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "if f[4] != \"u\" {",
+    "new": "if f[4] != \"u\" && f[4] != \"-\" {",
+    "killed_by": "TestLevelAndPlayedDashIsNotUnreadable"
+  },
+  {
+    "file": "desktop/internal/raid/prepread/wire.go",
+    "old": "if f[5] != \"u\" {",
+    "new": "if f[5] != \"u\" && f[5] != \"-\" {",
+    "killed_by": "TestLevelAndPlayedDashIsNotUnreadable"
   }
 ]
