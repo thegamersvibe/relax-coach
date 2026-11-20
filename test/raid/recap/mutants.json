@@ -304,5 +304,59 @@
     "old": "math.abs(value) > 1e12",
     "new": "false",
     "killed_by": "test_invalid_saved_timestamp_is_ignored_on_load"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if newestTs and (not savedTs or newestTs > savedTs) then savedTs = newestTs end",
+    "new": "",
+    "killed_by": "test_history_without_saved_timestamp_seeds_cutoff"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "row.timestamp > newestTs",
+    "new": "row.timestamp < newestTs",
+    "killed_by": "test_history_without_saved_timestamp_seeds_cutoff"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "for _, recap in ipairs(R.history) do",
+    "new": "for _, recap in ipairs({R.history[1]}) do",
+    "killed_by": "test_history_without_saved_timestamp_seeds_cutoff"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if not referenceTs or savedTs > referenceTs + MAX_SAVED_TS_AHEAD_SECONDS then savedTs = nil end",
+    "new": "if not referenceTs then savedTs = nil end",
+    "killed_by": "test_implausible_saved_timestamp_falls_back_to_history"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "local referenceTs = newestTs or R.clean(R.call(GetServerTime), \"number\")",
+    "new": "local referenceTs = R.clean(R.call(GetServerTime), \"number\")",
+    "killed_by": "test_implausible_saved_timestamp_falls_back_to_history"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "savedTs > referenceTs + MAX_SAVED_TS_AHEAD_SECONDS",
+    "new": "savedTs >= referenceTs + MAX_SAVED_TS_AHEAD_SECONDS",
+    "killed_by": "test_valid_saved_timestamp_above_history_is_preserved"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "local referenceTs = newestTs or R.clean(R.call(GetServerTime), \"number\")",
+    "new": "local referenceTs = newestTs or savedTs",
+    "killed_by": "test_implausible_saved_timestamp_without_history_is_dropped"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if newestTs and (not savedTs or newestTs > savedTs) then savedTs = newestTs end",
+    "new": "if newestTs then savedTs = newestTs end",
+    "killed_by": "test_valid_saved_timestamp_above_history_is_preserved"
+  },
+  {
+    "file": "addon/RelaxRaid/DeathRecap.lua",
+    "old": "if not referenceTs or savedTs > referenceTs + MAX_SAVED_TS_AHEAD_SECONDS then savedTs = nil end",
+    "new": "if referenceTs and savedTs > referenceTs + MAX_SAVED_TS_AHEAD_SECONDS then savedTs = nil end",
+    "killed_by": "test_unreadable_server_clock_cannot_validate_saved_timestamp"
   }
 ]

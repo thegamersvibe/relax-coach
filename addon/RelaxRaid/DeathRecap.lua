@@ -4,6 +4,7 @@
 local addonName = ...
 local VERSION = 1
 local MAX_ID = 999999999999 -- largest exact integer accepted by the 12-digit link
+local MAX_SAVED_TS_AHEAD_SECONDS = 24 * 60 * 60 -- one day of load-time tolerance
 if RelaxDeathRecap and RelaxDeathRecap.v >= VERSION then return end
 local R = RelaxDeathRecap or {hooks = {}, history = {}, serial = 0}
 RelaxDeathRecap = R
@@ -205,8 +206,6 @@ function R.configure(settings)
     R.writable = R.clean(settings, "table") ~= nil and (R.field(settings, "version", "number") or 1) <= 1
     if not R.writable then R.settings = {version=1, auto=true, autoclose=true, keep=false}; return end
     R.settings = settings
-    local savedTs = R.field(settings, "lastRecapTs", "number")
-    if savedTs and (not R.lastRecapTs or savedTs > R.lastRecapTs) then R.lastRecapTs = savedTs end
     settings.version = 1
     for key, default in pairs(defaults) do
         if type(settings[key]) ~= "boolean" then settings[key] = default end
@@ -222,6 +221,21 @@ function R.configure(settings)
             end
         end
     end
+    -- Older/corrupt saves may lack the scalar; every restored row still counts.
+    local newestTs
+    for _, recap in ipairs(R.history) do
+        for _, row in ipairs(recap.rows) do
+            if row.timestamp and (not newestTs or row.timestamp > newestTs) then newestTs = row.timestamp end
+        end
+    end
+    local savedTs = R.field(settings, "lastRecapTs", "number")
+    if savedTs then
+        -- Only load validation uses server time, and only without a history clock.
+        local referenceTs = newestTs or R.clean(R.call(GetServerTime), "number")
+        if not referenceTs or savedTs > referenceTs + MAX_SAVED_TS_AHEAD_SECONDS then savedTs = nil end
+    end
+    if newestTs and (not savedTs or newestTs > savedTs) then savedTs = newestTs end
+    if savedTs and (not R.lastRecapTs or savedTs > R.lastRecapTs) then R.lastRecapTs = savedTs end
     R.persist()
     R.call(R.resetPosition)
 end

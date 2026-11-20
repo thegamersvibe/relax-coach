@@ -55,7 +55,16 @@ are withdrawn or a death is empty. The current death's cutoff stays fixed across
 0.3/1/2-second retries, including after quick release. Persist advances immediately
 (even before the final retry), independently of history retention, so reloads and
 newest-empty saved recaps cannot lose the cutoff. Old timers cannot write another
-death or notify twice. Compare only native row timestamps, never wall/game clocks.
+death or notify twice. Live freshness comparisons use only native row timestamps.
+On load, seed the cutoff from the greater of the valid saved scalar and the newest
+row timestamp across restored history, even when the latest recap is empty. Never
+lower an existing session cutoff. Drop a loaded scalar more than one day beyond
+that newest history timestamp; if no history timestamp exists, use readable
+`GetServerTime()` plus one day as its validation ceiling instead. An unavailable
+server clock cannot validate a history-free scalar, so drop it. This load-only
+sanity check never supplies a new cutoff: missing, corrupt or implausible scalars
+fall back to history, and an implausibly high scalar is discarded, not saturated
+at the ceiling.
 
 This is a timestamp freshness rule, not proof of a native death ID or ownership
 of a previously unreadable delayed row with a newer timestamp. Unknown timestamp
@@ -78,8 +87,9 @@ a copied snapshot. Callbacks are guarded independently. No hook is required.
 Relax Raid stores `deathRecap` inside `RelaxRaidCharDB`; no new SavedVariables.
 Settings schema 1: `auto=true`, `autoclose=true`, `keep=false`, optional position
 `{x,y}`, optional `lastRecapTs` (one finite number in [-1e12, 1e12], absent until
-a readable row timestamp is known; invalid saved values are ignored). The number
-is always saved, even with keep off. A newer root or settings version is untouched.
+a readable row timestamp is known; invalid or implausibly future saved values are
+ignored under the load rule above). The number is always saved, even with keep off.
+A newer root or settings version is untouched.
 History is session-only
 unless keep is on: three recaps, twelve rows each, strings at most 160 bytes,
 finite numbers bounded to 1e12. IDs must be integers from 1 to 999999999999
@@ -132,7 +142,7 @@ its bytes unchanged.
 | Access guards | `Blizzard_APIDocumentationGenerated/FrameScriptDocumentation.lua:47-80,286-302` | `canaccesstable`, `canaccessvalue`, `issecretvalue`; check before indexing/operations, failures return nil |
 | Death lifecycle | `Blizzard_APIDocumentationGenerated/DeathInfoDocumentation.lua:122-148` | PLAYER_DEAD, PLAYER_ALIVE, PLAYER_UNGHOST, no payload needed |
 | Retry timer | `Blizzard_APIDocumentationGenerated/UITimerDocumentation.lua:10-20` | `C_Timer.After(seconds, callback)` |
-| Clock/zone | `Blizzard_APIDocumentationGenerated/SystemTimeDocumentation.lua:9-18`; `ZoneScriptDocumentation.lua:51-59` | `GetGameTime()` hour/minute, `GetZoneText()` string |
+| Clock/zone | `Blizzard_APIDocumentationGenerated/SystemTimeDocumentation.lua` (`GetGameTime`, `GetServerTime`); `ZoneScriptDocumentation.lua:51-59` | `GetGameTime()` hour/minute, `GetZoneText()` string; `GetServerTime()` number only for load-time saved-scalar validation without a history clock |
 | Player class | `Blizzard_APIDocumentationGenerated/PlayerScriptDocumentation.lua:836-858` | `GetPlayerInfoByGUID(guid)` first return localized class; may return nothing |
 | Optional pet owner | `Blizzard_APIDocumentationGenerated/UnitDocumentation.lua:2584-2599,3295-3310` | `UnitTokenFromGUID(guid)` then `UnitOwnerGUID(unitToken)`; each output checked, identity may be secret |
 | Hostile/player flags | `Blizzard_APIDocumentationGenerated/CombatLogConstantsDocumentation.lua:18-27` | ReactionHostile=64, ControlPlayer=256, TypePlayer=1024; arithmetic mask on readable integers only; no combat-reader API |

@@ -467,6 +467,70 @@ class IntegrationTests(unittest.TestCase):
         c.hit(',timestamp=20'); c.advance(0.3)
         self.assertEqual(c.run('return RelaxRaidCharDB.deathRecap.lastRecapTs'), 20)
 
+    def load_history_with_timestamp(self, timestamp):
+        # Real writer, serialized save, fresh VM: no runtime high-water mark leaks.
+        c = self.loaded_client(); c.slash('/recap keep on')
+        c.hit(); c.run('events[2]={timestamp=9,amount=100,overkill=0}')
+        c.fire('PLAYER_DEAD'); c.advance(2); c.fire('PLAYER_ALIVE')
+        c.run('events={}'); c.fire('PLAYER_DEAD'); c.advance(2)
+        saved = saved_literal(c.run('return RelaxRaidCharDB'))
+        d = self.loaded_client({'RelaxRaidCharDB':f'''(function()
+            local db={saved}; db.deathRecap.lastRecapTs={timestamp}; return db end)()'''})
+        self.assertEqual(d.run('return #RelaxDeathRecap.history[1].rows,RelaxDeathRecap.history[2].rows[1].timestamp'), (0,10))
+        self.assertEqual(d.run('return #RelaxRaid.errors'), 0)
+        return d
+
+    def assert_loaded_timestamp_cutoff(self, c, cutoff):
+        self.assertEqual(c.run('return RelaxDeathRecap.lastRecapTs,RelaxRaidCharDB.deathRecap.lastRecapTs'), (cutoff,cutoff))
+        c.hit(f',timestamp={cutoff!r}'); c.fire('PLAYER_DEAD')
+        for delay in (0,0.3,0.7,1):
+            c.advance(delay)
+            self.assertEqual(c.run('local r=RelaxDeathRecap.history[1]; return #r.rows,r.killer,#r.attackers'), (0,'Unknown',0))
+            self.assertTrue(c.run('return RelaxDeathRecap.empty:IsShown()'))
+        c.fire('PLAYER_ALIVE'); c.hit(f',timestamp={cutoff+1!r}'); c.fire('PLAYER_DEAD'); c.advance(2)
+        self.assertEqual(c.run('return RelaxDeathRecap.history[1].rows[1].timestamp,RelaxRaidCharDB.deathRecap.lastRecapTs'), (cutoff+1,cutoff+1))
+
+    def test_history_without_saved_timestamp_seeds_cutoff(self):
+        self.assert_loaded_timestamp_cutoff(self.load_history_with_timestamp('nil'), 10)
+
+    def test_corrupt_saved_timestamp_falls_back_to_history(self):
+        for bad in ('"10"','true','{}','secret()','0/0','math.huge','-math.huge'):
+            self.assert_loaded_timestamp_cutoff(self.load_history_with_timestamp(bad), 10)
+
+    def test_nan_saved_timestamp_falls_back_to_history(self):
+        self.assert_loaded_timestamp_cutoff(self.load_history_with_timestamp('0/0'), 10)
+
+    def test_implausible_saved_timestamp_falls_back_to_history(self):
+        # The history clock wins over the much later server clock in this fixture.
+        for bad in ('1e12','10+24*60*60+1'):
+            self.assert_loaded_timestamp_cutoff(self.load_history_with_timestamp(bad), 10)
+
+    def test_history_cutoff_advances_older_saved_timestamp(self):
+        self.assert_loaded_timestamp_cutoff(self.load_history_with_timestamp('5'), 10)
+
+    def test_valid_saved_timestamp_above_history_is_preserved(self):
+        for stamp in (10,10.5,11,10+24*60*60):
+            self.assert_loaded_timestamp_cutoff(self.load_history_with_timestamp(repr(stamp)), stamp)
+
+    def test_implausible_saved_timestamp_without_history_is_dropped(self):
+        for history in ('keep=false', 'keep=true,history={{id=1,clock="21:14",zone="Test",rows={}}}'):
+            for bad in ('1e12','GetServerTime()+24*60*60+1'):
+                c = self.loaded_client({'RelaxRaidCharDB':f'{{version=1,deathRecap={{version=1,{history},lastRecapTs={bad}}}}}'})
+                self.assertIsNone(c.run('return RelaxDeathRecap.lastRecapTs'), (history,bad))
+                self.assertIsNone(c.run('return RelaxRaidCharDB.deathRecap.lastRecapTs'), (history,bad))
+                c.hit(); c.fire('PLAYER_DEAD'); c.advance(2)
+                self.assertEqual(c.run('return RelaxDeathRecap.history[1].rows[1].timestamp'), 10)
+
+    def test_unreadable_server_clock_cannot_validate_saved_timestamp(self):
+        for clock in ('nil', 'function() error("unavailable") end', 'function() return secret() end', 'function() return 0/0 end'):
+            c = UIClient(); c.run(f'GetServerTime={clock}')
+            c.load_addon(str(ADDON), saved={'RelaxRaidCharDB':'{version=1,deathRecap={version=1,lastRecapTs=1e12}}'})
+            self.assertEqual(c.run('return #RelaxRaid.errors'), 0)
+            self.assertIsNone(c.run('return RelaxDeathRecap.lastRecapTs'))
+            self.assertIsNone(c.run('return RelaxRaidCharDB.deathRecap.lastRecapTs'))
+            c.hit(); c.fire('PLAYER_DEAD'); c.advance(2)
+            self.assertEqual(c.run('return RelaxDeathRecap.history[1].rows[1].timestamp'), 10)
+
     def test_invalid_saved_timestamp_is_ignored_on_load(self):
         for bad in ('"10"','true','{}','secret()','0/0','math.huge','-math.huge','1e12+1','-1e12-1'):
             c = self.loaded_client({'RelaxRaidCharDB':f'{{version=1,deathRecap={{version=1,lastRecapTs={bad}}}}}'})
@@ -485,15 +549,19 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(c.run('return rawget(RelaxRaidCharDB.deathRecap,"lastRecapTs")'), 10)
 
     def test_valid_saved_timestamp_bounds_and_fraction_are_used(self):
-        for stamp in (-1e12,0,10.5,1e12):
-            c = self.loaded_client({'RelaxRaidCharDB':f'{{version=1,deathRecap={{version=1,lastRecapTs={stamp!r}}}}}'})
-            self.assertEqual(c.run('return RelaxDeathRecap.lastRecapTs'), stamp)
-            c.hit(f',timestamp={stamp!r}'); c.fire('PLAYER_DEAD'); c.advance(2)
+        # Positive numeric range alone is not validity: the load-time day cap applies.
+        for stamp in ('-1e12','0','10.5','GetServerTime()+24*60*60'):
+            c = UIClient(); value = c.run(f'return {stamp}')
+            c.load_addon(str(ADDON), saved={'RelaxRaidCharDB':f'{{version=1,deathRecap={{version=1,lastRecapTs={stamp}}}}}'})
+            self.assertEqual(c.run('return RelaxDeathRecap.lastRecapTs'), value)
+            c.hit(f',timestamp={value!r}'); c.fire('PLAYER_DEAD'); c.advance(2)
             self.assertEqual(c.run('return #RelaxDeathRecap.history[1].rows'), 0)
-            self.assertEqual(c.run('return RelaxRaidCharDB.deathRecap.lastRecapTs'), stamp)
+            self.assertEqual(c.run('return RelaxRaidCharDB.deathRecap.lastRecapTs'), value)
 
     def test_reconfigure_cannot_lower_the_session_timestamp(self):
-        c = self.loaded_client(); c.hit(',timestamp=30'); c.fire('PLAYER_DEAD'); c.advance(2)
+        c = self.loaded_client(); c.hit(',timestamp=30'); c.fire('PLAYER_DEAD')
+        c.hit(',timestamp=20'); c.advance(2)
+        self.assertEqual(c.run('return RelaxDeathRecap.history[1].rows[1].timestamp,RelaxDeathRecap.lastRecapTs'), (20,30))
         c.run('RelaxDeathRecap.configure({version=1,lastRecapTs=10})')
         self.assertEqual(c.run('return RelaxRaidCharDB and RelaxRaidCharDB.deathRecap.lastRecapTs'), 30)
         c.fire('PLAYER_ALIVE'); c.hit(',timestamp=20'); c.fire('PLAYER_DEAD'); c.advance(2)
