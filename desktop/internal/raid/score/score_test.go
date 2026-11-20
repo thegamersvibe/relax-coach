@@ -99,8 +99,11 @@ func TestPrepSelectionAndMeasures(t *testing.T) {
 	f.StartMs = 0
 	f.EndMs = 100000
 	got = part(t, score.Score([]model.Fight{f}, nil, reports, c)[0], "preparation")
-	if got.Evidence.Counts["prep_stamped_s"] != 101 {
-		t.Fatalf("earliest fallback %+v", got)
+	if got.Tenths.Present || got.Coverage != 0 || got.Evidence.Counts["measured.stock"] != 0 || got.Evidence.Counts["measured.bag_gear"] != 0 {
+		t.Fatalf("only reports after end must be unmeasured: %+v", got)
+	}
+	if _, ok := got.Evidence.Counts["prep_stamped_s"]; ok {
+		t.Fatal("no eligible report must not publish a selected receipt")
 	}
 }
 func TestPrepMarkersAndFlask(t *testing.T) {

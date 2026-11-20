@@ -115,8 +115,8 @@ function Log.readRank()
     elseif guildName == nil and index == nil and rankName == nil then
         return "pending"
     end
-    local indexOk = index ~= nil and not isSecret(index) and type(index) == "number"
-    local nameOk = rankName ~= nil and not isSecret(rankName) and type(rankName) == "string"
+    local indexOk = not isSecret(index) and index ~= nil and type(index) == "number"
+    local nameOk = not isSecret(rankName) and rankName ~= nil and type(rankName) == "string"
     -- a listed name decides alone; otherwise the index must be readable to say "member"
     local okM, result = pcall(function()
         if nameOk then
