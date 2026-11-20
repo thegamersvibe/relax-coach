@@ -1,0 +1,874 @@
+[
+  {
+    "file": "desktop/internal/raid/score/score.go",
+    "old": "len(f.Events) == 0 || kind == model.RunUnknown",
+    "new": "kind == model.RunUnknown",
+    "killed_by": "TestGatesPurityAndDungeon",
+    "rule": "index-only fights"
+  },
+  {
+    "file": "desktop/internal/raid/score/score.go",
+    "old": "len(f.Events) == 0 || kind == model.RunUnknown",
+    "new": "len(f.Events) == 0",
+    "killed_by": "TestGatesPurityAndDungeon",
+    "rule": "unknown runs"
+  },
+  {
+    "file": "desktop/internal/raid/score/score.go",
+    "old": "v == nil || (v.role != \"tank\" && v.role != \"healer\" && v.role != \"dps\")",
+    "new": "v == nil",
+    "killed_by": "TestGatesPurityAndDungeon",
+    "rule": "missing role"
+  },
+  {
+    "file": "desktop/internal/raid/score/score.go",
+    "old": "!f.Partial && d.Present && d.V > 0",
+    "new": "d.Present && d.V > 0",
+    "killed_by": "TestGatesPurityAndDungeon",
+    "rule": "partial fights"
+  },
+  {
+    "file": "desktop/internal/raid/score/score.go",
+    "old": "if kind == model.RunRaid {",
+    "new": "if kind != model.RunUnknown {",
+    "killed_by": "TestGatesPurityAndDungeon",
+    "rule": "dungeon no rank"
+  },
+  {
+    "file": "desktop/internal/raid/score/score.go",
+    "old": "if err := Validate(out); err != nil {",
+    "new": "if err := Validate(out); false && err != nil {",
+    "killed_by": "TestScoreOutputGuard",
+    "rule": "output guard invoked"
+  },
+  {
+    "file": "desktop/internal/raid/score/score.go",
+    "old": "matched[v.actor.Name]",
+    "new": "matched[\"\"]",
+    "killed_by": "TestLoneTankCoverage",
+    "rule": "matched reports reach scoring"
+  },
+  {
+    "file": "desktop/internal/raid/score/view.go",
+    "old": "return f.DurationMs",
+    "new": "return model.Some(f.EndMs-f.StartMs)",
+    "killed_by": "TestNightWeightsAndConfidence",
+    "rule": "server duration"
+  },
+  {
+    "file": "desktop/internal/raid/score/view.go",
+    "old": "e.IsDeath() && live",
+    "new": "e.Kind == model.UnitDied && live",
+    "killed_by": "TestOutputAliveAndStreams",
+    "rule": "feign excluded"
+  },
+  {
+    "file": "desktop/internal/raid/score/view.go",
+    "old": "e.Kind == model.Resurrect && !live",
+    "new": "false && e.Kind == model.Resurrect && !live",
+    "killed_by": "TestOutputAliveAndStreams",
+    "rule": "resurrection time alive"
+  },
+  {
+    "file": "desktop/internal/raid/score/view.go",
+    "old": "e.Kind != model.Damage || e.Stream == model.SwingSource",
+    "new": "e.Kind != model.Damage",
+    "killed_by": "TestOutputRoleMedian",
+    "rule": "landed stream once"
+  },
+  {
+    "file": "desktop/internal/raid/score/view.go",
+    "old": "v.damage += effective(e.Amount, e.Overkill)",
+    "new": "v.damage += effective(e.Amount, model.Opt{})",
+    "killed_by": "TestOutputRoleMedian",
+    "rule": "effective damage overkill"
+  },
+  {
+    "file": "desktop/internal/raid/score/view.go",
+    "old": "target := bosses[e.Dst.ID]",
+    "new": "target := true || bosses[e.Dst.ID]",
+    "killed_by": "TestOutputRoleMedian",
+    "rule": "boss only damage"
+  },
+  {
+    "file": "desktop/internal/raid/score/view.go",
+    "old": "out[owner(f, e.Src.ID)]",
+    "new": "out[e.Src.ID]",
+    "killed_by": "TestOutputRoleMedian",
+    "rule": "pet owner damage"
+  },
+  {
+    "file": "desktop/internal/raid/score/view.go",
+    "old": "&& e.Dst.Flags&0x10 == 0",
+    "new": "&& true",
+    "killed_by": "TestTrashHostileOnly",
+    "rule": "trash hostile creatures"
+  },
+  {
+    "file": "desktop/internal/raid/score/view.go",
+    "old": "&& f.Owners[e.Dst.ID] == \"\"",
+    "new": "&& true",
+    "killed_by": "TestTrashHostileOnly",
+    "rule": "trash excludes owned creatures"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_output.go",
+    "old": "return div(add(values[n/2-1], values[n/2]), integer(2))",
+    "new": "return values[n/2]",
+    "killed_by": "TestOutputRoleMedian",
+    "rule": "even median"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_output.go",
+    "old": "p.role == v.role && p.aliveMs > 0",
+    "new": "p.aliveMs > 0",
+    "killed_by": "TestOutputRoleMedian",
+    "rule": "role not total raid or spec"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_output.go",
+    "old": "n < c.Scoring.Confidence.MinMeasurablePlayers",
+    "new": "n < 1",
+    "killed_by": "TestLoneTankCoverage",
+    "rule": "no lone baseline"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_output.go",
+    "old": "p.Provisional = n < c.Scoring.Confidence.MinBaselinePlayers",
+    "new": "p.Provisional = false",
+    "killed_by": "TestOutputRoleMedian",
+    "rule": "two tanks provisional part"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_output.go",
+    "old": "return add(decimal(lo.Score), mul(fraction, sub(decimal(hi.Score), decimal(lo.Score))))",
+    "new": "return add(decimal(lo.Score), mul(fraction,integer(0)))",
+    "killed_by": "TestOutputRoleMedian",
+    "rule": "ratio interpolation"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_activity.go",
+    "old": "start = s",
+    "new": "start = s + (e.TimeMs-s)",
+    "killed_by": "TestActiveIntervals",
+    "rule": "completed cast interval"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_activity.go",
+    "old": "interval{start, e.TimeMs + gcd}",
+    "new": "interval{start, e.TimeMs + 0*gcd}",
+    "killed_by": "TestEnergyAndFailedCasts",
+    "rule": "cooldown after completed cast"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_activity.go",
+    "old": "gcd = *c.Scoring.GCDEnergyMs",
+    "new": "gcd = *c.Scoring.GCDMs",
+    "killed_by": "TestEnergyAndFailedCasts",
+    "rule": "energy gcd"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_activity.go",
+    "old": "case model.CastFailed:\n\t\t\tdelete(starts, e.SpellID)",
+    "new": "case model.CastFailed:\n            spans=append(spans,interval{e.TimeMs,e.TimeMs+*c.Scoring.GCDMs})\n\t\t\tdelete(starts, e.SpellID)",
+    "killed_by": "TestEnergyAndFailedCasts",
+    "rule": "failed casts never activity"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_activity.go",
+    "old": "if e.Src.ID != v.actor.ID {",
+    "new": "if e.Src.ID != v.actor.ID && e.Src.OwnerID != v.actor.ID {",
+    "killed_by": "TestActiveIntervals",
+    "rule": "pet uptime deferred"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_activity.go",
+    "old": "e.Stream == model.SwingLanded || e.Kind == model.Missed && e.SpellID == 0",
+    "new": "e.Stream == model.SwingLanded",
+    "killed_by": "TestActiveIntervals",
+    "rule": "melee misses count"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_activity.go",
+    "old": "e.Stream == model.SwingLanded || e.Kind == model.Missed && e.SpellID == 0",
+    "new": "e.Kind == model.Damage || e.Kind == model.Missed",
+    "killed_by": "TestActiveIntervals",
+    "rule": "RANGE events ignored"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_activity.go",
+    "old": "interval{e.TimeMs, e.TimeMs + *c.Scoring.GCDMs}",
+    "new": "interval{e.TimeMs, e.TimeMs}",
+    "killed_by": "TestActiveIntervals",
+    "rule": "gcd after melee"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_activity.go",
+    "old": "n > 0 && s.start <= union[n-1].end",
+    "new": "false && n > 0 && s.start <= union[n-1].end",
+    "killed_by": "TestActiveIntervals",
+    "rule": "overlap union not sum"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_activity.go",
+    "old": "min(s.end, a.end)-max(s.start, a.start)",
+    "new": "s.end-s.start+0*a.end",
+    "killed_by": "TestActivityAliveClipping",
+    "rule": "clip to alive intervals"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "id = owner(f, e.Caster.ID)",
+    "new": "id = owner(f, e.Src.ID)",
+    "killed_by": "TestHealerHalvesAndAbsorbs",
+    "rule": "absorbs credit caster"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "amount = effective(e.Amount, e.Overheal)",
+    "new": "amount = effective(e.Amount, model.Opt{})",
+    "killed_by": "TestHealerHalvesAndAbsorbs",
+    "rule": "effective healing"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "if low[e.Dst.ID] && all[e.Dst.ID] != nil {",
+    "new": "if all[e.Dst.ID] != nil {",
+    "killed_by": "TestHealerHalvesAndAbsorbs",
+    "rule": "low health only and unknown omitted"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "low[e.InfoUnit] =",
+    "new": "low[e.Src.ID] =",
+    "killed_by": "TestHealerHalvesAndAbsorbs",
+    "rule": "health sample InfoUnit"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "decimal(*c.Scoring.Healer.LowHealthFraction))) <= 0",
+    "new": "decimal(*c.Scoring.Healer.LowHealthFraction))) < 0",
+    "killed_by": "TestHealerHalvesAndAbsorbs",
+    "rule": "health cutoff inclusive"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "&& slices.Contains(d.Owners, v.actor.Name)",
+    "new": "&& (slices.Contains(d.Owners, v.actor.Name) || true)",
+    "killed_by": "TestSecondDeathJoinSameMillisecond",
+    "rule": "classifier owns the living-healer charge; no score survival replay"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "team = decimal(c.Scoring.Healer.UnhealedTeamScore)",
+    "new": "team = decimal(c.Scoring.CountStartScore)",
+    "killed_by": "TestHealerHalvesAndAbsorbs",
+    "rule": "unhealed team half"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "p.Tenths.V = min(p.Tenths.V, points(decimal(c.Scoring.Healer.UnhealedOutputCap), c).V)",
+    "new": "p.Tenths.V = p.Tenths.V",
+    "killed_by": "TestHealerUnmeasuredAndCap",
+    "rule": "unhealed cap"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "n >= c.Scoring.Confidence.MinMeasurablePlayers && total > 0",
+    "new": "n >= 1 && total > 0",
+    "killed_by": "TestCorrectedCoverageTable",
+    "rule": "lone healer individual unmeasured"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_mechanics.go",
+    "old": "death.OwnerKind != model.OwnerPlayer",
+    "new": "death.OwnerKind == model.OwnerNobody",
+    "killed_by": "TestMechanicsOwnership",
+    "rule": "only owned player deaths"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_mechanics.go",
+    "old": "death.Cause == model.CauseAfterWipe ||",
+    "new": "false ||",
+    "killed_by": "TestMechanicsOwnership",
+    "rule": "after wipe no penalty"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_mechanics.go",
+    "old": "if death.FightID != f.ID {",
+    "new": "if false && death.FightID != f.ID {",
+    "killed_by": "TestMechanicsOwnership",
+    "rule": "fight scoped deaths"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_mechanics.go",
+    "old": "sub(integer(1), div(integer(elapsed), mul(integer(2), integer(d.V))))",
+    "new": "integer(1+0*elapsed)",
+    "killed_by": "TestMechanicsConfigAndFloor",
+    "rule": "early to late severity"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_mechanics.go",
+    "old": "penalty, ok := c.Scoring.CountPenalties[\"owned_death\"]",
+    "new": "penalty, ok := c.Scoring.CountPenalties[\"boss_swing_taken\"]",
+    "killed_by": "TestMechanicsConfigAndFloor",
+    "rule": "configured owned penalty"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_mechanics.go",
+    "old": "if v.role != \"tank\" {",
+    "new": "if true {",
+    "killed_by": "TestLoneTankCoverage",
+    "rule": "tank has no boss swings measure"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_mechanics.go",
+    "old": "e.Stream == model.SwingLanded &&",
+    "new": "e.Stream != model.StreamNone &&",
+    "killed_by": "TestMechanicsOwnership",
+    "rule": "boss swings landed once"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_mechanics.go",
+    "old": "counts[\"interrupts\"]++",
+    "new": "counts[\"interrupts\"] += 0",
+    "killed_by": "TestMechanicsOwnership",
+    "rule": "utility evidence"
+  },
+  {
+    "file": "desktop/internal/raid/score/prep.go",
+    "old": "if !exact[name] {",
+    "new": "if true {",
+    "killed_by": "TestMatchPrep",
+    "rule": "full exact before folded"
+  },
+  {
+    "file": "desktop/internal/raid/score/prep.go",
+    "old": "b[i] = c + ('a' - 'A')",
+    "new": "b[i] = c",
+    "killed_by": "TestMatchPrep",
+    "rule": "ASCII lowercase fallback"
+  },
+  {
+    "file": "desktop/internal/raid/score/prep.go",
+    "old": "if !ok || ambiguous[key] {",
+    "new": "if !ok {",
+    "killed_by": "TestMatchPrep",
+    "rule": "ambiguous folded unmatched"
+  },
+  {
+    "file": "desktop/internal/raid/score/prep.go",
+    "old": "unmatched = append(unmatched, report)",
+    "new": "unmatched = unmatched",
+    "killed_by": "TestMatchPrep",
+    "rule": "unmatched preserved"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "if r.Stamped < chosen.Stamped ||",
+    "new": "if r.Stamped > chosen.Stamped ||",
+    "killed_by": "TestPrepSelectionAndMeasures",
+    "rule": "earliest fallback"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "r.Stamped <= f.EndMs/",
+    "new": "r.Stamped <= f.StartMs/",
+    "killed_by": "TestPrepSelectionAndMeasures",
+    "rule": "last before END not start"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "r.Stamped <= f.EndMs/",
+    "new": "r.Stamped < f.EndMs/",
+    "killed_by": "TestPrepSelectionAndMeasures",
+    "rule": "END inclusive"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "r.Stamped > chosen.Stamped",
+    "new": "r.Stamped < chosen.Stamped",
+    "killed_by": "TestPrepSelectionAndMeasures",
+    "rule": "latest eligible"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "chosen.Stamped, chosen.SenderClock",
+    "new": "chosen.SenderClock, chosen.Stamped",
+    "killed_by": "TestPrepSelectionAndMeasures",
+    "rule": "both prep clocks"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "if r.ConsumablesUnreadable {",
+    "new": "if false && r.ConsumablesUnreadable {",
+    "killed_by": "TestPrepMarkersAndFlask",
+    "rule": "stock unreadable"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "counts[key] = max(counts[key], bags[category])",
+    "new": "counts[key] = bags[category]",
+    "killed_by": "TestPrepSelectionAndMeasures",
+    "rule": "stock any report"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "if counts[\"potion_count\"] > 0 {",
+    "new": "if counts[\"potion_count\"] > 0 || counts[\"flask_count\"] > 0 {",
+    "killed_by": "TestPrepMarkersAndFlask",
+    "rule": "flasks evidence not points"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "chosen.GearChecked && !chosen.GearUnreadable",
+    "new": "chosen.GearChecked",
+    "killed_by": "TestPrepMarkersAndFlask",
+    "rule": "gear unreadable"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "chosen.GearChecked && !chosen.GearUnreadable",
+    "new": "!chosen.GearUnreadable",
+    "killed_by": "TestPrepMarkersAndFlask",
+    "rule": "gear not checked"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "if !skipped[row.Slot] {",
+    "new": "if true {",
+    "killed_by": "TestPrepSelectionAndMeasures",
+    "rule": "not scored slots omitted"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "slots[row.Slot] = true",
+    "new": "slots[int64(len(slots))] = true",
+    "killed_by": "TestPrepSelectionAndMeasures",
+    "rule": "distinct better gear slot once"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "{\"used\", nil}",
+    "new": "{\"used\", integer(100)}",
+    "killed_by": "TestCorrectedCoverageTable",
+    "rule": "used unmeasurable"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "if len(reports) == 0 {\n\t\treturn",
+    "new": "if len(reports) == 0 {\n        measures[0].value=integer(0)\n\t\treturn",
+    "killed_by": "TestLoneTankCoverage",
+    "rule": "no prep report unmeasured"
+  },
+  {
+    "file": "desktop/internal/raid/score/numbers.go",
+    "old": "Cmp(a.Denom()) >= 0",
+    "new": "Cmp(a.Denom()) > 0",
+    "killed_by": "TestRoundingAndClockShift",
+    "rule": "half-away rounding"
+  },
+  {
+    "file": "desktop/internal/raid/score/numbers.go",
+    "old": "div(p.coverage, integer(100))",
+    "new": "integer(1)",
+    "killed_by": "TestCorrectedCoverageTable",
+    "rule": "weighted part coverage"
+  },
+  {
+    "file": "desktop/internal/raid/score/numbers.go",
+    "old": "c.Scoring.Confidence.ProvisionalMinCoverage",
+    "new": "c.Scoring.Confidence.MinCoverage",
+    "killed_by": "TestLoneTankCoverage",
+    "rule": "fight provisional threshold"
+  },
+  {
+    "file": "desktop/internal/raid/score/night.go",
+    "old": "!enough(coverage, c.Scoring.Confidence.ProvisionalMinCoverage)",
+    "new": "!enough(coverage, c.Scoring.Confidence.MinCoverage)",
+    "killed_by": "TestLoneTankCoverage",
+    "rule": "night provisional threshold"
+  },
+  {
+    "file": "desktop/internal/raid/score/night.go",
+    "old": "c.Scoring.Night.WipeWeight",
+    "new": "c.Scoring.Night.KillWeight",
+    "killed_by": "TestNightWeightsAndConfidence",
+    "rule": "wipe lower weight"
+  },
+  {
+    "file": "desktop/internal/raid/score/night.go",
+    "old": "w = mul(w, decimal(c.Scoring.Confidence.ShortFightWeight))",
+    "new": "w = mul(w, integer(1))",
+    "killed_by": "TestNightWeightsAndConfidence",
+    "rule": "short fights half weight"
+  },
+  {
+    "file": "desktop/internal/raid/score/night.go",
+    "old": "covered := mul(w, coverage)",
+    "new": "covered := mul(w, integer(100))",
+    "killed_by": "TestCoverageWeightedNight",
+    "rule": "coverage scales night weight"
+  },
+  {
+    "file": "desktop/internal/raid/score/night.go",
+    "old": "trash = decimal(min(c.Scoring.Night.TrashShare, c.Scoring.Night.MaxTrashShare, 1-c.Scoring.Night.MinBossShare))",
+    "new": "trash = decimal(0.5)",
+    "killed_by": "TestNightWeightsAndConfidence",
+    "rule": "trash at most configured share"
+  },
+  {
+    "file": "desktop/internal/raid/score/night.go",
+    "old": "n.Tenths.Present && enough(coverage[i], c.Scoring.Confidence.MinCoverage)",
+    "new": "n.Tenths.Present",
+    "killed_by": "TestRanksAndThresholds",
+    "rule": "provisional absent rank order"
+  },
+  {
+    "file": "desktop/internal/raid/score/night.go",
+    "old": "i == 0 || out[j].Tenths.V != out[eligible[i-1]].Tenths.V",
+    "new": "true",
+    "killed_by": "TestRanksAndThresholds",
+    "rule": "ties share rank skip next"
+  },
+  {
+    "file": "desktop/internal/raid/score/validate.go",
+    "old": "p.Coverage < 1 || p.Coverage > 100",
+    "new": "p.Coverage < 0 || p.Coverage > 100",
+    "killed_by": "TestWriterGuard",
+    "rule": "zero measured coverage refused"
+  },
+  {
+    "file": "desktop/internal/raid/score/validate.go",
+    "old": "p.Coverage < 1 || p.Coverage > 100",
+    "new": "p.Coverage < 1",
+    "killed_by": "TestWriterGuard",
+    "rule": "too large coverage refused"
+  },
+  {
+    "file": "desktop/internal/raid/score/validate.go",
+    "old": "case \"\", \"own\", \"guild\", \"role\":",
+    "new": "case \"\", \"own\", \"guild\", \"role\", \"spec\":",
+    "killed_by": "TestWriterGuard",
+    "rule": "unknown baseline refused"
+  },
+  {
+    "file": "desktop/internal/raid/score/validate.go",
+    "old": "(p.Name == \"output\" || p.Name == \"activity\") && p.Baseline == \"\"",
+    "new": "false && p.Baseline == \"\"",
+    "killed_by": "TestWriterGuard",
+    "rule": "required baseline refused"
+  },
+  {
+    "file": "desktop/internal/raid/score/numbers.go",
+    "old": "!enough(measured, c.Scoring.Confidence.ProvisionalMinCoverage)",
+    "new": "measured.Cmp(integer(round(mul(decimal(c.Scoring.Confidence.ProvisionalMinCoverage), integer(100))))) < 0",
+    "killed_by": "TestFractionalCoverageThreshold",
+    "rule": "same exact threshold at fight and night"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "d.Cause == model.CauseUnhealed",
+    "new": "d.Cause == model.CauseUnresolved",
+    "killed_by": "TestDeathReviewUnhealedCapsHealerTeam"
+  },
+  {
+    "file": "desktop/internal/raid/score/score.go",
+    "old": "if profile, ok := c.Profile(f.Specs[id]); !ok || profile.Uncalibrated {",
+    "new": "if profile, ok := c.Profile(f.Specs[id]); false && (!ok || profile.Uncalibrated) {",
+    "killed_by": "TestUncalibratedOutputExcluded"
+  },
+  {
+    "file": "desktop/internal/raid/score/view.go",
+    "old": "uncalibrated: known && profile.Uncalibrated",
+    "new": "uncalibrated: known && false && profile.Uncalibrated",
+    "killed_by": "TestUncalibratedOutputExcluded"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_output.go",
+    "old": "if p.uncalibrated {",
+    "new": "if false && p.uncalibrated {",
+    "killed_by": "TestUncalibratedOutputExcluded"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "&& !p.uncalibrated",
+    "new": "&& true",
+    "killed_by": "TestUncalibratedOutputExcluded"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "v.aliveMs <= 0 || v.uncalibrated",
+    "new": "v.aliveMs <= 0",
+    "killed_by": "TestUncalibratedOutputExcluded"
+  },
+  {
+    "file": "desktop/internal/raid/score/numbers.go",
+    "old": "weighted = add(weighted, mul(w, clamp(m.value)))",
+    "new": "weighted = add(weighted, mul(w, div(integer(v.V), integer(10))))",
+    "killed_by": "TestMeasuresRoundOnlyAtPart"
+  },
+  {
+    "file": "desktop/internal/raid/score/numbers.go",
+    "old": "p.Coverage = floor(total)",
+    "new": "p.Coverage = int(round(total))",
+    "killed_by": "TestExactCoverageEdges"
+  },
+  {
+    "file": "desktop/internal/raid/score/numbers.go",
+    "old": "coverage := floor(measured)",
+    "new": "coverage := int(round(measured))",
+    "killed_by": "TestExactCoverageEdges"
+  },
+  {
+    "file": "desktop/internal/raid/score/numbers.go",
+    "old": "p.coverage = total",
+    "new": "p.coverage = integer(int64(floor(total)))",
+    "killed_by": "TestExactFractionalThresholdSurvivesStoredFloor"
+  },
+  {
+    "file": "desktop/internal/raid/score/numbers.go",
+    "old": "!enough(measured, c.Scoring.Confidence.ProvisionalMinCoverage)",
+    "new": "!enough(integer(round(measured)), c.Scoring.Confidence.ProvisionalMinCoverage)",
+    "killed_by": "TestExactCoverageEdges"
+  },
+  {
+    "file": "desktop/internal/raid/score/night.go",
+    "old": "cov := floor(coverage)",
+    "new": "cov := int(round(coverage))",
+    "killed_by": "TestExactNightCoverageBeforeFloor"
+  },
+  {
+    "file": "desktop/internal/raid/score/night.go",
+    "old": "!enough(coverage, c.Scoring.Confidence.ProvisionalMinCoverage)",
+    "new": "!enough(integer(round(coverage)), c.Scoring.Confidence.ProvisionalMinCoverage)",
+    "killed_by": "TestExactNightCoverageBeforeFloor"
+  },
+  {
+    "file": "desktop/internal/raid/score/night.go",
+    "old": "enough(coverage[i], c.Scoring.Confidence.MinCoverage)",
+    "new": "enough(integer(round(coverage[i])), c.Scoring.Confidence.MinCoverage)",
+    "killed_by": "TestExactNightCoverageBeforeFloor"
+  },
+  {
+    "file": "desktop/internal/raid/score/night.go",
+    "old": "enough(coverage[i], c.Scoring.Confidence.MinCoverage)",
+    "new": "enough(integer(int64(n.Coverage)), c.Scoring.Confidence.MinCoverage)",
+    "killed_by": "TestExactFractionalThresholdSurvivesStoredFloor"
+  },
+  {
+    "file": "desktop/internal/raid/score/night.go",
+    "old": "return coverage.Cmp(mul(decimal(threshold), integer(100))) >= 0",
+    "new": "return coverage.Cmp(mul(decimal(threshold), integer(100))) > 0",
+    "killed_by": "TestExactCoverageEdges"
+  },
+  {
+    "file": "desktop/internal/raid/score/night.go",
+    "old": "covered := mul(w, coverage)",
+    "new": "covered := mul(w, integer(int64(fs.Coverage)))",
+    "killed_by": "TestCoverageWeightedNight"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "return a.SenderClock > b.SenderClock",
+    "new": "return a.SenderClock < b.SenderClock",
+    "killed_by": "TestPrepSameStampUsesSenderThenStableKey"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_preparation.go",
+    "old": "return bytes.Compare(ak, bk) > 0",
+    "new": "return false && bytes.Compare(ak, bk) > 0",
+    "killed_by": "TestPrepSameStampUsesSenderThenStableKey"
+  },
+  {
+    "file": "desktop/internal/raid/score/score.go",
+    "old": "d.V > 0 && v.observed",
+    "new": "d.V > 0",
+    "killed_by": "TestUnobservedRosterPlayerIsUnmeasured"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_output.go",
+    "old": "&& p.observed",
+    "new": "&& true",
+    "killed_by": "TestUnobservedRosterPlayerIsUnmeasured"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_activity.go",
+    "old": "ok && e.TimeMs-s <= c.Scoring.ActivityCastCapMs",
+    "new": "ok",
+    "killed_by": "TestCastStartUsesConfiguredCap"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_activity.go",
+    "old": "e.TimeMs-s <= c.Scoring.ActivityCastCapMs",
+    "new": "e.TimeMs-s < c.Scoring.ActivityCastCapMs",
+    "killed_by": "TestCastStartUsesConfiguredCap"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_activity.go",
+    "old": "&& e.Src.ID != e.Dst.ID",
+    "new": "&& true",
+    "killed_by": "TestSpellZeroSelfMissIsNotMelee"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_activity.go",
+    "old": "&& e.SpellName == \"\"",
+    "new": "&& true",
+    "killed_by": "TestSpellZeroSelfMissIsNotMelee"
+  },
+  {
+    "file": "desktop/internal/raid/score/view.go",
+    "old": "e.Kind != model.Damage || e.Stream == model.SwingSource",
+    "new": "e.Kind != model.Damage",
+    "killed_by": "TestSwingStreamsAreSeparate"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_activity.go",
+    "old": "e.Stream == model.SwingLanded ||",
+    "new": "e.Stream != model.StreamNone ||",
+    "killed_by": "TestSwingStreamsAreSeparate"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_mechanics.go",
+    "old": "e.Stream == model.SwingLanded &&",
+    "new": "e.Stream != model.StreamNone &&",
+    "killed_by": "TestSwingStreamsAreSeparate"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_output.go",
+    "old": " || v.aliveMs <= 0",
+    "new": "",
+    "killed_by": "TestZeroAliveHasNoRelativeOrHealerOutput"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "v.aliveMs <= 0 || v.uncalibrated",
+    "new": "v.uncalibrated",
+    "killed_by": "TestZeroAliveHasNoRelativeOrHealerOutput"
+  },
+  {
+    "file": "desktop/internal/raid/score/validate.go",
+    "old": "p.Tenths.V < 0 || p.Tenths.V > 100*tenthsPerPoint",
+    "new": "p.Tenths.V < 0",
+    "killed_by": "TestMeasuredPartBoundsAndEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/score/validate.go",
+    "old": "p.Tenths.V < 0 || p.Tenths.V > 100*tenthsPerPoint",
+    "new": "p.Tenths.V > 100*tenthsPerPoint",
+    "killed_by": "TestMeasuredPartBoundsAndEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/score/validate.go",
+    "old": "strings.TrimSpace(p.Evidence.Text) == \"\"",
+    "new": "false && strings.TrimSpace(p.Evidence.Text) == \"\"",
+    "killed_by": "TestMeasuredPartBoundsAndEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/score/validate.go",
+    "old": "|| p.Evidence.Counts == nil",
+    "new": "",
+    "killed_by": "TestMeasuredPartBoundsAndEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/score/validate.go",
+    "old": "utf8.RuneCountInString(p.Evidence.Text) > 200",
+    "new": "false && utf8.RuneCountInString(p.Evidence.Text) > 200",
+    "killed_by": "TestMeasuredPartBoundsAndEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/score/validate.go",
+    "old": "|| len(p.Evidence.AtMs) > 20",
+    "new": "",
+    "killed_by": "TestMeasuredPartBoundsAndEvidence"
+  },
+  {
+    "file": "desktop/internal/raid/score/numbers.go",
+    "old": "if total.Cmp(integer(1)) >= 0 {",
+    "new": "if total.Sign() > 0 {",
+    "killed_by": "TestSubHundredthPartCannotPublishZeroCoverage"
+  },
+  {
+    "file": "desktop/internal/raid/score/numbers.go",
+    "old": "if total.Cmp(integer(1)) >= 0 {",
+    "new": "if total.Cmp(integer(1)) > 0 {",
+    "killed_by": "TestSubHundredthPartCannotPublishZeroCoverage"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "d.Cause == model.CauseUnhealed",
+    "new": "true",
+    "killed_by": "TestHealerDeathChargeRequiresClassifierOwnership",
+    "rule": "M1 non-unhealed death cannot charge the healing team"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "&& d.OwnerKind == model.OwnerHealers",
+    "new": "&& true",
+    "killed_by": "TestHealerDeathChargeRequiresClassifierOwnership",
+    "rule": "only classifier healer ownership"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "d.FightID == f.ID",
+    "new": "true",
+    "killed_by": "TestHealerDeathChargeRequiresClassifierOwnership",
+    "rule": "healer charge scoped to fight"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "mul(decimal(c.Scoring.Healer.TeamShare), integer(100))",
+    "new": "decimal(c.Scoring.Healer.TeamShare * 100)",
+    "killed_by": "TestSecondHealerDecimalScore",
+    "rule": "decimal team share converted before scaling"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "mul(decimal(c.Scoring.Healer.IndividualShare), integer(100))",
+    "new": "decimal(c.Scoring.Healer.IndividualShare * 100)",
+    "killed_by": "TestSecondHealerIndividualDecimalShare",
+    "rule": "decimal individual share converted before scaling"
+  },
+  {
+    "file": "desktop/internal/raid/score/view.go",
+    "old": "owner(f, e.Src.ID) == id || owner(f, e.Caster.ID) == id",
+    "new": "owner(f, e.Src.ID) == id || e.Dst.ID == id || owner(f, e.Caster.ID) == id",
+    "killed_by": "TestDamageTakenOnlyPlayerIsUnmeasured",
+    "rule": "incoming-only damage is not an action"
+  },
+  {
+    "file": "desktop/internal/raid/score/view.go",
+    "old": "owner(f, e.Src.ID) == id || owner(f, e.Caster.ID) == id",
+    "new": "owner(f, e.Src.ID) == id || e.InfoUnit == id || owner(f, e.Caster.ID) == id",
+    "killed_by": "TestDamageTakenOnlyPlayerIsUnmeasured",
+    "rule": "target health is not an action"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_activity.go",
+    "old": "c.Scoring.ActivityCastCapMs",
+    "new": "10 * *c.Scoring.GCDEnergyMs",
+    "killed_by": "TestCastStartUsesConfiguredCap",
+    "rule": "configured cap not old constant"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "ownerUnique := v.actor.Name != \"\"",
+    "new": "ownerUnique := true",
+    "killed_by": "TestHealerOwnerNameResolution",
+    "rule": "empty owner name cannot identify a healer even without a collision"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "ownerUnique = false",
+    "new": "ownerUnique = true",
+    "killed_by": "TestHealerOwnerNameResolution",
+    "rule": "ambiguous owner name never cross-charges distinct roster IDs"
+  },
+  {
+    "file": "desktop/internal/raid/score/measure_healer.go",
+    "old": "p.ID != v.actor.ID",
+    "new": "true",
+    "killed_by": "TestHealerOwnerNameResolution",
+    "rule": "one distinct ID remains resolvable, including duplicate roster rows"
+  }
+]

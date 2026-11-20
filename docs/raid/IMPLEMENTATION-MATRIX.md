@@ -25,21 +25,21 @@
 | IMP-014 | REQ-PAR-06 | forever | R4 | R0 + model addendum 2 | R4 builder | `desktop/internal/raid/fights` | in progress; cast hook only, class open | V-014 |
 | IMP-015 | REQ-PAR-07 | forever | R10 | R7 | unassigned | `desktop/internal/raid/result` | planned | V-015 |
 | IMP-016 | REQ-PAR-09 | forever | R15b, R15c; W8, W9 | R4, W8 | unassigned | `desktop/internal/raid/rawstore`, app upload/download glue; site access and retention | planned (phase 2); R3 uploads nothing | V-016 |
-| IMP-017 | REQ-SCO-01 | forever | R7 | R0 | unassigned | `desktop/internal/raid/score` | planned | V-017 |
-| IMP-018 | REQ-SCO-02 | forever | R7 | R0 | unassigned | `desktop/internal/raid/score` | planned | V-018 |
-| IMP-019 | REQ-SCO-03 | forever | R7 | R0 | unassigned | `desktop/internal/raid/score` | planned | V-019 |
-| IMP-020 | REQ-SCO-04 | forever | R7 | R0 | unassigned | `desktop/internal/raid/score` | planned | V-020 |
-| IMP-021 | REQ-SCO-05 | forever | R7 | R0 | unassigned | `desktop/internal/raid/score` | planned | V-021 |
-| IMP-022 | REQ-SCO-06 | forever | R7 | R0 | unassigned | `desktop/internal/raid/score` | planned | V-022 |
-| IMP-023 | REQ-SCO-07 | forever | R7 | R0 | unassigned | `desktop/internal/raid/score` | planned | V-023 |
+| IMP-017 | REQ-SCO-01 | forever | R7 | R0 + R5 + Part addendum | R7 builder | `desktop/internal/raid/score` | implemented; phase-one engine | V-017 |
+| IMP-018 | REQ-SCO-02 | forever | R7 | R0 + R5 + Part addendum | R7 builder | `desktop/internal/raid/score` | implemented; partial inner coverage | V-018 |
+| IMP-019 | REQ-SCO-03 | forever | R7 | R0 + R5 + Part addendum | R7 builder | `desktop/internal/raid/score` | implemented; provisional thresholds supersede old 60% rule | V-019 |
+| IMP-020 | REQ-SCO-04 | forever | R7 | R0 + R5 + Part addendum | R7 builder | `desktop/internal/raid/score` | implemented; coverage/outcome/short weighting | V-020 |
+| IMP-021 | REQ-SCO-05 | forever | R7 | R0 + R5 + Part addendum | R7 builder | `desktop/internal/raid/score` | in progress; active/alive evidence only, closed flags unchanged | V-021 |
+| IMP-022 | REQ-SCO-06 | forever | R7 | R0 + R5 + Part addendum | R7 builder | `desktop/internal/raid/score` | implemented; ownership and alive intervals | V-022 |
+| IMP-023 | REQ-SCO-07 | forever | R7 | R0 + R5 + Part addendum | R7 builder | `desktop/internal/raid/score` | implemented; fight roles, officer override is R12 | V-023 |
 | IMP-024 | REQ-SCO-08 | forever | R12 | R8 | unassigned | `desktop/internal/raid/score`, officer page | planned | V-024 |
-| IMP-025 | REQ-SCO-09 | forever | R7 | R0 | unassigned | `desktop/internal/raid/score` | planned | V-025 |
+| IMP-025 | REQ-SCO-09 | forever | R7 | R0 + R5 + Part addendum | R7 builder | `desktop/internal/raid/score` | implemented; evidence recomputation, page is R8 | V-025 |
 | IMP-026 | REQ-SCO-10 | forever | R5 | R0 | unassigned | `desktop/internal/raid/cfg`, `rules/raid/` | planned | V-026 |
 | IMP-027 | REQ-SCO-11 | forever | R12 | R8 | unassigned | `desktop/internal/raid/score`, officer page | planned | V-027 |
-| IMP-028 | REQ-SCO-12 | forever | R7 | R0 | unassigned | `desktop/internal/raid/score` | planned | V-028 |
-| IMP-029 | REQ-SCO-12 | forever | R7 | R0 | unassigned | `desktop/internal/raid/score` | planned | V-029 |
-| IMP-030 | REQ-SCO-13 | forever | R7 | R0 | unassigned | `desktop/internal/raid/score` | planned | V-030 |
-| IMP-031 | REQ-SCO-14 | forever | R7 | R0 | unassigned | `desktop/internal/raid/score` | planned | V-031 |
+| IMP-028 | REQ-SCO-12 | forever | R7 | R0 + R5 + Part addendum | R7 builder | `desktop/internal/raid/score` | implemented; role baseline only | V-028 |
+| IMP-029 | REQ-SCO-12 | forever | R7 | R0 + R5 + Part addendum | R7 builder | `desktop/internal/raid/score` | deferred; history fallback is phase 2 | V-029 |
+| IMP-030 | REQ-SCO-13 | forever | R7 | R0 + R5 + Part addendum | R7 builder | `desktop/internal/raid/score` | implemented; flagged profiles have no Output or output-baseline membership; unknown specs retain role fallback | V-030 |
+| IMP-031 | REQ-SCO-14 | forever | R7 | R0 + R5 + Part addendum | R7 builder | `desktop/internal/raid/score` | open; comparison JSON contract/owner unconfirmed, page is R8 | V-031 |
 | IMP-032 | REQ-DTH-01 | forever | R6 | model addendum 2, R5 | R6 builder | `desktop/internal/raid/death` | verified (engine; no UI) | V-032 |
 | IMP-033 | REQ-DTH-02 | forever | R6 | model addendum 2, R5 | R6 builder | `desktop/internal/raid/death` | verified (engine; no UI) | V-033 |
 | IMP-034 | REQ-DTH-03 | forever | R12 | R8 | unassigned | `desktop/internal/raid/score`, officer page | planned | V-034 |
@@ -114,21 +114,21 @@ Statuses: `planned`, `in progress`, `implemented`, `verified`, `blocked`, `defer
 | V-014 | REQ-PAR-06 / R4 | forever; model values | unit | `feat/raid-fights` | Focused tests and mutations in R4-EVIDENCE.md | Synthetic tests pass; see R4-EVIDENCE.md; private/native checks not run; class field absent from shared model; empty cast signatures remain unknown | synthetic pass, integration open |
 | V-015 | REQ-PAR-07 / R10 | forever; build unknown | unit | none yet | Acceptance column of REQ-PAR-07 | not run | not run |
 | V-016 | REQ-PAR-09 / R15b, R15c; W8, W9 | forever; build unknown | integration | none yet | Upload, download and decompress to identical SHA-256; refuse member/anonymous reads; expired or deleted logs are absent. Replaces the superseded R3 upload-path prohibition. | not run (phase 2) | not run |
-| V-017 | REQ-SCO-01 / R7 | forever; build unknown | unit | none yet | Acceptance column of REQ-SCO-01 | not run | not run |
-| V-018 | REQ-SCO-02 / R7 | forever; build unknown | unit | none yet | Acceptance column of REQ-SCO-02 | not run | not run |
-| V-019 | REQ-SCO-03 / R7 | forever; build unknown | unit | none yet | Acceptance column of REQ-SCO-03 | not run | not run |
-| V-020 | REQ-SCO-04 / R7 | forever; build unknown | unit | none yet | Acceptance column of REQ-SCO-04 | not run | not run |
-| V-021 | REQ-SCO-05 / R7 | forever; build unknown | unit | none yet | Acceptance column of REQ-SCO-05 | not run | not run |
-| V-022 | REQ-SCO-06 / R7 | forever; build unknown | unit | none yet | Acceptance column of REQ-SCO-06 | not run | not run |
-| V-023 | REQ-SCO-07 / R7 | forever; build unknown | unit | none yet | Acceptance column of REQ-SCO-07 | not run | not run |
+| V-017 | REQ-SCO-01 / R7 | forever; synthetic model values | unit | `feat/raid-score` | TestEvidenceRecomputationAndAuraEdge | See [R7 evidence](evidence/R7.md); native not run | phase-one engine verified |
+| V-018 | REQ-SCO-02 / R7 | forever; synthetic model values | unit | `feat/raid-score` | TestCorrectedCoverageTable | See [R7 evidence](evidence/R7.md); native not run | phase-one engine verified |
+| V-019 | REQ-SCO-03 / R7 | forever; synthetic model values | unit | `feat/raid-score` | TestRanksAndThresholds, TestLoneTankCoverage, TestFractionalCoverageThreshold | See [R7 evidence](evidence/R7.md); native not run | phase-one engine verified |
+| V-020 | REQ-SCO-04 / R7 | forever; synthetic model values | unit | `feat/raid-score` | TestNightWeightsAndConfidence, TestCoverageWeightedNight | See [R7 evidence](evidence/R7.md); native not run | phase-one engine verified |
+| V-021 | REQ-SCO-05 / R7 | forever; synthetic model values | unit | `feat/raid-score` | TestActiveIntervals; page presentation not implemented | See [R7 evidence](evidence/R7.md); native not run | page/future acceptance open |
+| V-022 | REQ-SCO-06 / R7 | forever; synthetic model values | unit | `feat/raid-score` | TestOutputAliveAndStreams, TestHealerHalvesAndAbsorbs, TestMechanicsOwnership | See [R7 evidence](evidence/R7.md); native not run | phase-one engine verified |
+| V-023 | REQ-SCO-07 / R7 | forever; synthetic model values | unit | `feat/raid-score` | TestOutputRoleMedian, TestGatesPurityAndDungeon | See [R7 evidence](evidence/R7.md); native not run | phase-one engine verified |
 | V-024 | REQ-SCO-08 / R12 | forever; build unknown | unit | none yet | Acceptance column of REQ-SCO-08 | not run | not run |
-| V-025 | REQ-SCO-09 / R7 | forever; build unknown | unit | none yet | Acceptance column of REQ-SCO-09 | not run | not run |
+| V-025 | REQ-SCO-09 / R7 | forever; synthetic model values | unit | `feat/raid-score` | TestEvidenceRecomputationAndAuraEdge; TestRealLogsR7 | See [R7 evidence](evidence/R7.md); native not run | phase-one engine verified |
 | V-026 | REQ-SCO-10 / R5 | forever; build unknown | unit | none yet | Acceptance column of REQ-SCO-10 | not run | not run |
 | V-027 | REQ-SCO-11 / R12 | forever; build unknown | unit | none yet | Acceptance column of REQ-SCO-11 | not run | not run |
-| V-028 | REQ-SCO-12 / R7 | forever; build unknown | unit | none yet | Acceptance column of REQ-SCO-12 | not run | not run |
-| V-029 | REQ-SCO-12 / R7 | forever; build unknown | unit | none yet | Acceptance column of REQ-SCO-12 | not run | not run |
-| V-030 | REQ-SCO-13 / R7 | forever; build unknown | unit | none yet | Acceptance column of REQ-SCO-13 | not run | not run |
-| V-031 | REQ-SCO-14 / R7 | forever; build unknown | unit | none yet | Acceptance column of REQ-SCO-14 | not run | not run |
+| V-028 | REQ-SCO-12 / R7 | forever; synthetic model values | unit | `feat/raid-score` | TestOutputRoleMedian, TestCorrectedCoverageTable | See [R7 evidence](evidence/R7.md); native not run | phase-one engine verified |
+| V-029 | REQ-SCO-12 / R7 | forever; synthetic model values | unit | `feat/raid-score` | not in phase-one scorer | See [R7 evidence](evidence/R7.md); native not run | page/future acceptance open |
+| V-030 | REQ-SCO-13 / R7 | forever; synthetic model values | unit | `feat/raid-score` | TestUncalibratedOutputExcluded; explicitly uncalibrated profiles have no Output or output-baseline membership; unknown specs retain role fallback | See [R7 evidence](evidence/R7.md); native not run | phase-one engine verified |
+| V-031 | REQ-SCO-14 / R7 | forever; synthetic model values | unit | `feat/raid-score` | ranked engine output ready; comparison UI/input not implemented | See [R7 evidence](evidence/R7.md); native not run | page/future acceptance open |
 | V-032 | REQ-DTH-01 / R6 | forever; model values and private logs | unit/integration | `feat/raid-death` | All seven causes, feigns/pets, killing/majority damage, environmental and aggro ambiguity; [module evidence](../../test/raid/death/README.md) | Synthetic tests and mutation controls pass; gated two-log check passes; counts only; native not run | engine pass |
 | V-033 | REQ-DTH-02 / R6 | forever; model values and private logs | unit/integration | `feat/raid-death` | Victim/tank ownership, whole living healer team, no owner for unavoidable/wipe/unresolved; [module evidence](../../test/raid/death/README.md) | Synthetic tests and mutation controls pass; gated two-log check passes; counts only; native not run | engine pass |
 | V-034 | REQ-DTH-03 / R12 | forever; build unknown | unit | none yet | Acceptance column of REQ-DTH-03 | not run | not run |
