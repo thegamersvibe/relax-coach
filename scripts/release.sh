@@ -2,7 +2,7 @@
 # Build release artifacts only. Never commits, tags, pushes or publishes.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-V=${1:-1.8.0}
+V=${1:-1.8.1}
 [[ "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { printf 'Invalid version\n' >&2; exit 1; }
 # Reuse the builder's app-owned floor; a missing/unparseable floor is fatal.
 RAID=$(python3 -B -c 'import runpy,sys; print("yes" if runpy.run_path("scripts/build_guild_bundle.py")["raid_release"](sys.argv[1]) else "no")' "$V")
