@@ -55,7 +55,6 @@ type context struct {
 	start, end int // absolute event indices; end identifies this UNIT_DIED line
 	window     []model.Event
 	wipeCall   model.Opt
-	wipeLine   int
 }
 
 // Review returns deaths in stable time order, summaries of wiped boss fights,
@@ -75,7 +74,7 @@ func Review(f model.Fight, runEndMs int64, config cfg.Config) ([]model.Death, []
 	snapshot := config.Snapshot()
 	v := newView(f)
 	encounter, _ := snapshot.Encounter(f.EncounterID)
-	call, callLine := wipeCall(v, snapshot.Scoring.Death)
+	call := wipeCall(v, snapshot.Scoring.Death)
 	var deaths []model.Death
 	excluded := 0
 	for i, e := range v.events {
@@ -87,7 +86,7 @@ func Review(f model.Fight, runEndMs int64, config cfg.Config) ([]model.Death, []
 			excluded++
 			continue
 		}
-		c := context{view: v, params: snapshot.Scoring.Death, victim: p, at: e.TimeMs, end: i, mechanics: encounter.Mechanics, wipeCall: call, wipeLine: callLine}
+		c := context{view: v, params: snapshot.Scoring.Death, victim: p, at: e.TimeMs, end: i, mechanics: encounter.Mechanics, wipeCall: call}
 		c.start, c.window = v.deathWindow(p.ID, c.at-c.params.WindowMs, i)
 		deaths = append(deaths, classify(&c))
 	}

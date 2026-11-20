@@ -248,20 +248,32 @@ class RunnerTests(unittest.TestCase):
                 self.assertEqual(seconds, elapsed)
                 self.assertEqual(run.call_args.kwargs["timeout"], limit + 5)
 
+    def test_module_limit_upper_bound(self):
+        runner = runner_module()
+        self.t.module("a", "lib/a/")
+        path = "test/raid/a/module.json"
+        with open(os.path.join(self.t.root, path), encoding="utf-8") as f:
+            spec = json.load(f)
+        for value in (300.5, 1000000):  # no subTest: the mutant runner reads one FAIL line
+            self.t.write(path, json.dumps(dict(spec, limit=value)))
+            with self.assertRaisesRegex(SystemExit, "at most 300"):
+                runner.load_modules(self.t.root)
+        self.t.write(path, json.dumps(dict(spec, limit=300)))
+        self.assertEqual(runner.load_modules(self.t.root)["a"]["limit"], 300)
+
     def test_module_limit_validation_and_cfg_only_override(self):
         runner = runner_module()
         self.t.module("a", "lib/a/")
         path = "test/raid/a/module.json"
         with open(os.path.join(self.t.root, path), encoding="utf-8") as f:
             spec = json.load(f)
-        for value in (0, -1, True, None, "60", [], float("inf"), float("nan"), 300.5, 1000000):
+        for value in (0, -1, True, None, "60", [], float("inf"), float("nan")):
             with self.subTest(value=value):
                 self.t.write(path, json.dumps(dict(spec, limit=value)))
                 with self.assertRaisesRegex(SystemExit, "limit"):
                     runner.load_modules(self.t.root)
-        for value in (60, 300):
-            self.t.write(path, json.dumps(dict(spec, limit=value)))
-            self.assertEqual(runner.load_modules(self.t.root)["a"]["limit"], value)
+        self.t.write(path, json.dumps(dict(spec, limit=60)))
+        self.assertEqual(runner.load_modules(self.t.root)["a"]["limit"], 60)
         root = os.path.dirname(os.path.dirname(RUNNER))
         modules = runner.load_modules(root)
         self.assertEqual({name: s["limit"] for name, s in modules.items() if "limit" in s}, {"cfg": 60})

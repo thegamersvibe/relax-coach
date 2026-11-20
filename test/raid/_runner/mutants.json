@@ -9,6 +9,6 @@
     "file": "tools/raidtest.py",
     "old": "MAX_LIMIT = 300",
     "new": "MAX_LIMIT = 300000000",
-    "killed_by": "test_module_limit_validation_and_cfg_only_override"
+    "killed_by": "test_module_limit_upper_bound"
   }
 ]

@@ -7,15 +7,18 @@ import (
 
 func init() { Register(1, afterWipe) }
 func afterWipe(c *context) verdict {
-	if c.wipeCall.Present && c.end > c.wipeLine && c.at > c.wipeCall.V {
+	if c.wipeCall.Present && c.at > c.wipeCall.V {
 		// Keep priority, but still count other actual matches for confidence.
 		return verdict{cause: AfterWipeCall, owner: model.OwnerNobody}
 	}
 	return verdict{}
 }
-func wipeCall(v *fightView, p cfg.Death) (model.Opt, int) {
+
+// With a monotonic clock (classify declines any step), a call on a later line
+// is never strictly earlier than this death, so time order equals log order.
+func wipeCall(v *fightView, p cfg.Death) model.Opt {
 	dead := map[string]bool{}
-	for i, e := range v.events {
+	for _, e := range v.events {
 		if _, ok := v.players[e.Dst.ID]; !ok {
 			continue
 		}
@@ -40,10 +43,10 @@ func wipeCall(v *fightView, p cfg.Death) (model.Opt, int) {
 			return count > 0
 		}
 		if p.WipeDeadShare > 0 && float64(len(dead))/float64(len(v.ids)) >= p.WipeDeadShare || p.WipeAllTanksDead && allRoleDead("tank") || p.WipeAllHealersDead && allRoleDead("healer") {
-			return model.Some(e.TimeMs), i
+			return model.Some(e.TimeMs)
 		}
 	}
-	return model.Opt{}, -1
+	return model.Opt{}
 }
 func summaries(v *fightView, deaths []model.Death, p cfg.Death) []model.Wipe {
 	if !v.f.Boss || v.f.Success != model.Some(0) || p.SummaryWindowMs == nil {

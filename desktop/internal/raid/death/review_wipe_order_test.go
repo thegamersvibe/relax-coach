@@ -16,4 +16,7 @@ func TestFutureWipeCallLine(t *testing.T) {
 	wantDeath(t, forVictim(t, f, c), model.CauseUnresolved, "low", model.OwnerUndecided, "")
 	f = fight(hit(9999, boss, victim, 81, 1), died(10000, victim), died(10001, tank))
 	wantDeath(t, forVictim(t, f, c), model.CauseAvoidable, "high", model.OwnerPlayer, "", victim.Name)
+	// Same millisecond, later line: the call is still after this death line.
+	f = fight(hit(9999, boss, victim, 81, 1), died(10000, victim), died(10000, tank))
+	wantDeath(t, forVictim(t, f, c), model.CauseAvoidable, "high", model.OwnerPlayer, "", victim.Name)
 }

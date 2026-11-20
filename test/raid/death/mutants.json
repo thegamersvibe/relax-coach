@@ -739,11 +739,5 @@
   "old": "v.clock = monotonic(v.events)",
   "new": "v.clock = len(v.events) < 2 || monotonic(v.events[:len(v.events)-1])",
   "killed_by": "TestRollbackNeverPromotesLaterRule"
-},
-{
-  "file": "desktop/internal/raid/death/rule_wipe.go",
-  "old": " && c.end > c.wipeLine",
-  "new": "",
-  "killed_by": "TestFutureWipeCallLine"
 }
 ]
