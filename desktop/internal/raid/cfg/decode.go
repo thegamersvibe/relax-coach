@@ -59,6 +59,9 @@ func uniqueKeys(d *json.Decoder, b []byte, path string) error {
 	if !utf8.Valid(b[start:d.InputOffset()]) {
 		return fmt.Errorf("%s: invalid UTF-8", path)
 	}
+	if _, isString := t.(string); isString && !validSurrogateEscapes(b[start:d.InputOffset()]) {
+		return fmt.Errorf("%s: unpaired UTF-16 surrogate escape", path)
+	}
 	switch t {
 	case json.Delim('{'):
 		seen := map[string]bool{}
@@ -66,7 +69,7 @@ func uniqueKeys(d *json.Decoder, b []byte, path string) error {
 			start := d.InputOffset()
 			key, err := d.Token()
 			if err != nil {
-				return fmt.Errorf("%s: %w", path, err)
+				return fmt.Errorf("%s: %w", rawKeyPath(b[start:], path), err)
 			}
 			name, ok := key.(string)
 			if !ok {
@@ -75,6 +78,9 @@ func uniqueKeys(d *json.Decoder, b []byte, path string) error {
 			field := path + "." + name
 			if !utf8.Valid(b[start:d.InputOffset()]) {
 				return fmt.Errorf("%s: invalid UTF-8 in object key", field)
+			}
+			if !validSurrogateEscapes(b[start:d.InputOffset()]) {
+				return fmt.Errorf("%s: unpaired UTF-16 surrogate escape in object key", field)
 			}
 			if seen[normalized(name)] {
 				return fmt.Errorf("%s: duplicate key %q", field, name)

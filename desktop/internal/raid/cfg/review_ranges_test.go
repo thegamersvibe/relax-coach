@@ -8,13 +8,13 @@ import (
 func TestReviewRanges(t *testing.T) {
 	for _, value := range []int{-1, 0, 1, 4} {
 		t.Run(fmt.Sprintf("raid_cutoff_%d", value), func(t *testing.T) {
-			dir := copyData(t)
+			dir := copyValidationData(t)
 			change(t, dir, "instances.json", func(d map[string]any) { d["raid_group_size_above"] = value })
 			refusedField(t, dir, "instances.json", "raid_group_size_above")
 		})
 	}
 	for _, value := range []int{5, 6, 40} {
-		dir := copyData(t)
+		dir := copyValidationData(t)
 		change(t, dir, "instances.json", func(d map[string]any) { d["raid_group_size_above"] = value })
 		load(t, dir)
 	}
@@ -28,12 +28,12 @@ func TestReviewRanges(t *testing.T) {
 		{"measure_weights", "output", map[string]any{"damage": 1e300}},
 	} {
 		t.Run(tc.group+"/"+tc.key+fmt.Sprint(tc.value), func(t *testing.T) {
-			dir := copyData(t)
+			dir := copyValidationData(t)
 			change(t, dir, "scoring.json", func(d map[string]any) { d[tc.group].(map[string]any)[tc.key] = tc.value })
 			refusedField(t, dir, "scoring.json", tc.group+"."+tc.key)
 		})
 	}
-	dir := copyData(t)
+	dir := copyValidationData(t)
 	change(t, dir, "scoring.json", func(d map[string]any) {
 		d["fights"].(map[string]any)["tail_ms"] = 10000
 		d["night"].(map[string]any)["wipe_weight"] = 0
@@ -58,14 +58,14 @@ func TestReviewScoringFields(t *testing.T) {
 		{"death", "window_ms", 0}, {"death", "wipe_dead_share", 0}, {"death", "summary_window_ms", 0},
 	} {
 		t.Run(tc.group+"/"+tc.key, func(t *testing.T) {
-			dir := copyData(t)
+			dir := copyValidationData(t)
 			change(t, dir, "scoring.json", func(d map[string]any) { d[tc.group].(map[string]any)[tc.key] = tc.value })
 			refusedField(t, dir, "scoring.json", tc.group+"."+tc.key)
 		})
 	}
 	for _, key := range []string{"new_at_60_seconds", "gcd_ms", "rounding_step", "count_start_score"} {
 		t.Run(key, func(t *testing.T) {
-			dir := copyData(t)
+			dir := copyValidationData(t)
 			change(t, dir, "scoring.json", func(d map[string]any) { d[key] = -1 })
 			refusedField(t, dir, "scoring.json", key)
 		})
@@ -94,7 +94,7 @@ func TestReviewSurvivorCases(t *testing.T) {
 		{"null_map_value", "scoring.json", "count_penalties", func(d map[string]any) { d["count_penalties"] = map[string]any{"owned_death": nil} }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			dir := copyData(t)
+			dir := copyValidationData(t)
 			change(t, dir, tc.file, tc.edit)
 			refusedField(t, dir, tc.file, tc.field)
 		})
@@ -102,7 +102,7 @@ func TestReviewSurvivorCases(t *testing.T) {
 }
 
 func TestLowercaseClassRefused(t *testing.T) {
-	dir := copyData(t)
+	dir := copyValidationData(t)
 	change(t, dir, "spec-ids.json", func(d map[string]any) {
 		m := d["classes"].(map[string]any)
 		m["warrior"] = m["WARRIOR"]
