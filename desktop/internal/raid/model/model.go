@@ -240,9 +240,12 @@ type Evidence struct {
 
 // Part is one scored part. Scores are integers so rounding happens once, in score.
 type Part struct {
-	Name     string
-	Tenths   Opt // score times 10; unset means not measured (4A row 7)
-	Evidence Evidence
+	Name        string
+	Tenths      Opt // score times 10; unset means not measured (4A row 7)
+	Evidence    Evidence
+	Coverage    int    // hundredths, 0 to 100; 0 when not set
+	Provisional bool   // fewer baseline samples than the configured minimum; false when not set
+	Baseline    string // "own", "guild", "role" or "" when not set
 }
 
 // FightScore is R7's output for one player in one fight.

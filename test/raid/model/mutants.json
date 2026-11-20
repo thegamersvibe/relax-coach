@@ -184,5 +184,53 @@
     "old": "b.r.GearChecked, b.r.NotScored = true, append(b.r.NotScored, slots...)",
     "new": "b.r.NotScored = append(b.r.NotScored, slots...)",
     "killed_by": "TestResultTypesThroughBuilders"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "return &PartBuilder{p: Part(name, tenths, ev)}",
+    "new": "return &PartBuilder{p: model.Part{Name: name}}",
+    "killed_by": "TestPartBuildersPinned"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.p.Coverage = h; return b",
+    "new": "b.p.Coverage = 0; return b",
+    "killed_by": "TestPartBuildersPinned"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.p.Coverage = h; return b",
+    "new": "if h != 0 { b.p.Coverage = h }; return b",
+    "killed_by": "TestPartBuildersPinned"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.p.Provisional = true; return b",
+    "new": "b.p.Provisional = false; return b",
+    "killed_by": "TestPartBuildersPinned"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.p.Baseline = baseline; return b",
+    "new": "b.p.Baseline = \"\"; return b",
+    "killed_by": "TestPartBuildersPinned"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "b.p.Baseline = baseline; return b",
+    "new": "if baseline != \"\" { b.p.Baseline = baseline }; return b",
+    "killed_by": "TestPartBuildersPinned"
+  },
+  {
+    "file": "desktop/internal/raid/model/modeltest/build.go",
+    "old": "func (b *PartBuilder) Build() model.Part { return b.p }",
+    "new": "func (b *PartBuilder) Build() model.Part { return Part(b.p.Name, b.p.Tenths.V, b.p.Evidence) }",
+    "killed_by": "TestPartBuildersPinned"
+  },
+  {
+    "file": "desktop/internal/raid/model/model.go",
+    "old": "\tBaseline    string // \"own\", \"guild\", \"role\" or \"\" when not set\n}",
+    "new": "\tBaseline    string // \"own\", \"guild\", \"role\" or \"\" when not set\n\tUnexpected int\n}",
+    "killed_by": "TestPartFieldsPinned"
   }
 ]

@@ -122,6 +122,63 @@ func TestFightWithEveryNewField(t *testing.T) {
 	}
 }
 
+// Part's full field inventory pins names, types and order, including the three additive metadata fields.
+func TestPartFieldsPinned(t *testing.T) {
+	want := []string{"Name string", "Tenths model.Opt", "Evidence model.Evidence",
+		"Coverage int", "Provisional bool", "Baseline string"}
+	typ := reflect.TypeOf(model.Part{})
+	var got []string
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		got = append(got, field.Name+" "+field.Type.String())
+		if field.Tag != "" || field.Anonymous || !field.IsExported() {
+			t.Errorf("Part.%s must remain an exported, untagged, non-embedded field", field.Name)
+		}
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Part fields: got %v, want %v", got, want)
+	}
+}
+
+// The additive builder preserves the original helpers and sets metadata without changing the score or evidence.
+func TestPartBuildersPinned(t *testing.T) {
+	ev := modeltest.Evidence("Used 3 abilities.", []int64{10, 20}, "casts", 3)
+	want := model.Part{Name: "activity", Tenths: model.Some(0), Evidence: ev}
+	if got := modeltest.Part("activity", 0, ev); !reflect.DeepEqual(got, want) {
+		t.Errorf("legacy measured part: got %+v, want %+v", got, want)
+	}
+	if got := modeltest.Unmeasured("utility"); !reflect.DeepEqual(got, model.Part{Name: "utility"}) {
+		t.Errorf("legacy unmeasured part: %+v", got)
+	}
+	if got := modeltest.NewPart("activity", 0, ev).Build(); !reflect.DeepEqual(got, want) {
+		t.Errorf("new builder defaults: got %+v, want %+v", got, want)
+	}
+	for _, baseline := range []string{"", "own", "guild", "role"} {
+		for _, coverage := range []int{0, 37, 100} {
+			got := modeltest.NewPart("activity", 0, ev).Coverage(coverage).Baseline(baseline).Build()
+			want.Coverage, want.Baseline = coverage, baseline
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("metadata: got %+v, want %+v", got, want)
+			}
+		}
+	}
+	b := modeltest.NewPart("activity", 0, ev).Coverage(73).Provisional().Baseline("role")
+	first := b.Build()
+	want.Coverage, want.Provisional, want.Baseline = 73, true, "role"
+	if !reflect.DeepEqual(first, want) {
+		t.Errorf("provisional part: got %+v, want %+v", first, want)
+	}
+	// Explicit zero and empty setters clear metadata, not the measured zero score.
+	got := b.Coverage(0).Baseline("").Build()
+	want.Coverage, want.Baseline = 0, ""
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("cleared metadata: got %+v, want %+v", got, want)
+	}
+	if first.Coverage != 73 || first.Baseline != "role" || !first.Provisional {
+		t.Errorf("later setters changed the built value: %+v", first)
+	}
+}
+
 // The lane-to-lane result types, built only through builders, every field set and checked.
 func TestResultTypesThroughBuilders(t *testing.T) {
 	p := modeltest.Player("Cato-PvP-EU")
@@ -134,12 +191,13 @@ func TestResultTypesThroughBuilders(t *testing.T) {
 	if ev.Counts["hits"] != 3 || ev.AtMs[1] != 3400 || ev.Text != "Stood in fire 3 times." {
 		t.Errorf("evidence: %+v", ev)
 	}
-	part := modeltest.Part("mechanics", 873, ev)
+	part := modeltest.NewPart("output", 873, ev).Coverage(70).Provisional().Baseline("role").Build()
 	allSet(t, part)
 	if !reflect.DeepEqual(part.Evidence, ev) {
 		t.Errorf("part keeps the whole evidence: %+v", part.Evidence)
 	}
-	if part.Tenths != model.Some(873) || part.Name != "mechanics" || modeltest.Unmeasured("utility").Tenths.Present {
+	if part.Tenths != model.Some(873) || part.Name != "output" || modeltest.Unmeasured("utility").Tenths.Present ||
+		part.Coverage != 70 || !part.Provisional || part.Baseline != "role" {
 		t.Errorf("parts: %+v", part)
 	}
 	fs := modeltest.FightScore("f1", p, "dps").Score(912).Coverage(85).Parts(part, modeltest.Unmeasured("utility")).

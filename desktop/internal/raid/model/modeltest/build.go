@@ -364,6 +364,26 @@ func Part(name string, tenths int64, ev model.Evidence) model.Part {
 // Unmeasured builds a part that could not be measured (Tenths unset).
 func Unmeasured(name string) model.Part { return model.Part{Name: name} }
 
+// PartBuilder sets a part's coverage, provisional status and baseline.
+type PartBuilder struct{ p model.Part }
+
+// NewPart starts from Part(name, tenths, ev).
+func NewPart(name string, tenths int64, ev model.Evidence) *PartBuilder {
+	return &PartBuilder{p: Part(name, tenths, ev)}
+}
+
+// Coverage sets coverage in hundredths (0 to 100).
+func (b *PartBuilder) Coverage(h int) *PartBuilder { b.p.Coverage = h; return b }
+
+// Provisional marks the part as having fewer baseline samples than the configured minimum.
+func (b *PartBuilder) Provisional() *PartBuilder { b.p.Provisional = true; return b }
+
+// Baseline sets which baseline was used.
+func (b *PartBuilder) Baseline(baseline string) *PartBuilder { b.p.Baseline = baseline; return b }
+
+// Build returns the part.
+func (b *PartBuilder) Build() model.Part { return b.p }
+
 // FightScoreBuilder builds one player's score in one fight.
 type FightScoreBuilder struct{ s model.FightScore }
 
