@@ -9,6 +9,7 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -23,6 +24,7 @@ type OfficerFile struct {
 
 // ParseOfficer parses caller-selected bytes; the caller owns the path and I/O.
 func ParseOfficer(data []byte) (OfficerFile, error) {
+	data = bytes.TrimPrefix(data, []byte("\xef\xbb\xbf"))
 	if !validJSONText(data) {
 		return OfficerFile{}, errors.New("invalid officer JSON or Unicode")
 	}
@@ -75,6 +77,11 @@ func ParseOfficer(data []byte) (OfficerFile, error) {
 	if err := out.validate(); err != nil {
 		return OfficerFile{}, err
 	}
+	for _, list := range [][]string{out.Top, out.Bottom} {
+		for i, name := range list {
+			list[i] = strings.TrimSpace(name)
+		}
+	}
 	return out, nil
 }
 
@@ -88,8 +95,16 @@ func (f OfficerFile) validate() error {
 			return errors.New("top and bottom require 1 to 5 names each")
 		}
 		for _, name := range list {
-			key := asciiLower(name)
-			if strings.TrimSpace(name) == "" || seen[key] {
+			trimmed := strings.TrimSpace(name)
+			if len(trimmed) > 64 {
+				return errors.New("officer name exceeds 64 bytes")
+			}
+			// Check the original spelling so trimming cannot hide a control.
+			if strings.ContainsFunc(name, unicode.IsControl) {
+				return errors.New("officer name contains a control character")
+			}
+			key := asciiLower(trimmed)
+			if trimmed == "" || seen[key] {
 				return errors.New("empty or repeated officer name")
 			}
 			seen[key] = true

@@ -20,6 +20,7 @@ type NightSummary struct {
 // NightRoleParts summarizes one player's fight scores using the original fight
 // metadata. The caller supplies the same configuration used for scoring.
 func NightRoleParts(fights []model.Fight, night model.NightScore, c cfg.Config) (NightSummary, error) {
+	c = c.Snapshot()
 	out := NightSummary{Parts: map[string]*big.Rat{}}
 	byID := map[string]model.Fight{}
 	for _, f := range fights {

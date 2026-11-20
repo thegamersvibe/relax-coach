@@ -21,6 +21,9 @@ func explain(player score.NightSummary, ranked map[string]score.NightSummary, c 
 	if player.Split {
 		return nil, "role split evenly, no part comparison"
 	}
+	if player.Role == "" {
+		return nil, "no scored fights, no part comparison"
+	}
 	weights := roleWeights(c, player.Role)
 	var best *PartComparison
 	for name, value := range player.Parts {
@@ -51,6 +54,9 @@ func explain(player score.NightSummary, ranked map[string]score.NightSummary, c 
 	}
 	if best == nil {
 		return nil, "no comparison in his role"
+	}
+	if (top && best.Impact.Sign() >= 0) || (!top && best.Impact.Sign() <= 0) {
+		return nil, "no single part explains it"
 	}
 	return best, ""
 }

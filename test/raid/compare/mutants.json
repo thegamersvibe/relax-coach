@@ -19,20 +19,20 @@
   },
   {
     "file": "desktop/internal/raid/compare/officer.go",
-    "old": "strings.TrimSpace(name) == \"\" || seen[key]",
-    "new": "strings.TrimSpace(name) == \"\" || false && seen[key]",
+    "old": "trimmed == \"\" || seen[key]",
+    "new": "trimmed == \"\" || false && seen[key]",
     "killed_by": "TestOfficerStrict"
   },
   {
     "file": "desktop/internal/raid/compare/officer.go",
-    "old": "strings.TrimSpace(name) == \"\" || seen[key]",
-    "new": "false && strings.TrimSpace(name) == \"\" || seen[key]",
+    "old": "trimmed == \"\" || seen[key]",
+    "new": "false && trimmed == \"\" || seen[key]",
     "killed_by": "TestOfficerStrict"
   },
   {
     "file": "desktop/internal/raid/compare/officer.go",
-    "old": "key := asciiLower(name)",
-    "new": "key := name",
+    "old": "key := asciiLower(trimmed)",
+    "new": "key := trimmed",
     "killed_by": "TestOfficerStrict"
   },
   {
@@ -280,5 +280,101 @@
     "old": "strconv.FormatFloat(v, 'f', -1, 64)",
     "new": "strconv.FormatFloat(v, 'f', 1, 64)",
     "killed_by": "TestCompareAllRoleWeights"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "if player.Role == \"\" {",
+    "new": "if false && player.Role == \"\" {",
+    "killed_by": "TestCompareNoScoredFightsReason"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "(top && best.Impact.Sign() >= 0)",
+    "new": "(false && top && best.Impact.Sign() >= 0)",
+    "killed_by": "TestComparePartExplainsDisagreement"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "(!top && best.Impact.Sign() <= 0)",
+    "new": "(false && !top && best.Impact.Sign() <= 0)",
+    "killed_by": "TestComparePartExplainsDisagreement"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "best.Impact.Sign() >= 0",
+    "new": "best.Impact.Sign() > 0",
+    "killed_by": "TestComparePartExplainsDisagreement"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "best.Impact.Sign() <= 0",
+    "new": "best.Impact.Sign() < 0",
+    "killed_by": "TestComparePartExplainsDisagreement"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "\tdata = bytes.TrimPrefix(data, []byte(\"\\xef\\xbb\\xbf\"))\n",
+    "new": "",
+    "killed_by": "TestOfficerBOM"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "trimmed := strings.TrimSpace(name)",
+    "new": "trimmed := name",
+    "killed_by": "TestOfficerTrimmedDuplicates"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "list[i] = strings.TrimSpace(name)",
+    "new": "list[i] = name",
+    "killed_by": "TestOfficerTrimNames"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "if len(trimmed) > 64 {",
+    "new": "if false && len(trimmed) > 64 {",
+    "killed_by": "TestOfficerNameByteLimit"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "if len(trimmed) > 64 {",
+    "new": "if len(trimmed) > 65 {",
+    "killed_by": "TestOfficerNameByteLimit"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "if len(trimmed) > 64 {",
+    "new": "if len(trimmed) >= 64 {",
+    "killed_by": "TestOfficerNameByteLimit"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "if len(trimmed) > 64 {",
+    "new": "if utf8.RuneCountInString(trimmed) > 64 {",
+    "killed_by": "TestOfficerNameByteLimit"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "if strings.ContainsFunc(name, unicode.IsControl) {",
+    "new": "if false && strings.ContainsFunc(name, unicode.IsControl) {",
+    "killed_by": "TestOfficerNameControls"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "if strings.ContainsFunc(name, unicode.IsControl) {",
+    "new": "if strings.ContainsFunc(trimmed, unicode.IsControl) {",
+    "killed_by": "TestOfficerNameControls"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "if strings.ContainsFunc(name, unicode.IsControl) {",
+    "new": "if strings.ContainsFunc(name, func(r rune) bool { return r != 0 && unicode.IsControl(r) }) {",
+    "killed_by": "TestOfficerNameControls"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "if strings.ContainsFunc(name, unicode.IsControl) {",
+    "new": "if strings.ContainsFunc(name, func(r rune) bool { return r == 0 && unicode.IsControl(r) }) {",
+    "killed_by": "TestOfficerNameControls"
   }
 ]

@@ -48,6 +48,7 @@ func TestCompareRoleAvailability(t *testing.T) {
 	c := config(t)
 	f := officer(roster[3].Name, roster[0].Name)
 	ns[3].Fights[0].Role = "tank"
+	ns[3].Fights[0].Parts[0].Tenths = model.Some(500) // below the eventual tank median
 	got, err := Compare(ns, roster, c, f, fights)
 	if err != nil || got.Top[0].Part != nil || got.Top[0].PartReason != "no comparison in his role" {
 		t.Fatal("lone role fabricated median")
@@ -59,7 +60,7 @@ func TestCompareRoleAvailability(t *testing.T) {
 	if err != nil || got.Top[0].Part != nil || got.Top[0].PartReason != "no comparison in his role" {
 		t.Fatal("unmeasured peer fabricated zero")
 	}
-	ns[2].Fights[0].Parts[0].Tenths = model.Some(500)
+	ns[2].Fights[0].Parts[0].Tenths = model.Some(700)
 	got, err = Compare(ns, roster, c, f, fights)
 	if err != nil || got.Top[0].Part == nil || got.Top[0].Part.Median.Cmp(big.NewRat(60, 1)) != 0 || got.Top[0].Part.Weight.Cmp(big.NewRat(10, 1)) != 0 {
 		t.Fatal("two measured ranked tanks should compare")

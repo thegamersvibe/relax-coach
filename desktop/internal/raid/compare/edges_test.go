@@ -79,7 +79,8 @@ func TestCompareOriginalFightWeighting(t *testing.T) {
 	c := config(t)
 	c.Scoring.Night.KillWeight = 2
 	c.Scoring.Night.WipeWeight = .5
-	for i, v := range []int64{800, 600, 500, 400} {
+	// Both selected roles have a negative delta, so this isolates fight weighting.
+	for i, v := range []int64{800, 600, 1000, 400} {
 		parts(&ns[i], v, 0)
 		ns[i].Fights[0].Parts = ns[i].Fights[0].Parts[:1]
 	}
@@ -93,13 +94,14 @@ func TestCompareOriginalFightWeighting(t *testing.T) {
 	}
 	fights[0].Success = model.Some(0)
 	got, err = Compare(ns, roster, c, f, fights)
-	if err != nil || got.Top[0].Part == nil || got.Top[0].Part.Role != "tank" || got.Top[0].Part.Score.Cmp(big.NewRat(90, 1)) != 0 || got.Top[0].Part.Median.Cmp(big.NewRat(70, 1)) != 0 {
+	if err != nil || got.Top[0].Part == nil || got.Top[0].Part.Role != "tank" || got.Top[0].Part.Score.Cmp(big.NewRat(90, 1)) != 0 || got.Top[0].Part.Median.Cmp(big.NewRat(95, 1)) != 0 {
 		t.Fatal("original wipe/trash weights did not reach night summary")
 	}
 }
 
 func TestComparePurityAndOrder(t *testing.T) {
 	ns, roster, fights := fixture(6)
+	ns[5].Fights[0].Parts[0].Tenths = model.Some(400) // an explanatory negative delta
 	c := config(t)
 	f := officer(roster[5].Name, roster[0].Name)
 	before, _ := json.Marshal([]any{ns, roster, c, f, fights})
