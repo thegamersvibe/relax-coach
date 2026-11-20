@@ -52,7 +52,13 @@ func TestClockRollbackScope(t *testing.T) {
 				f.Events = append([]model.Event{{TimeMs: 8000}}, f.Events...)
 			}
 			ds, _, _ := review(t, f, 100000, c)
-			wantDeath(t, ds[len(ds)-1], death.Avoidable, "high", model.OwnerPlayer, "", victim.Name)
+			// Any backward step anywhere in the fight declines every rule; equal
+			// timestamps are not a step.
+			if mode == "equal_time" {
+				wantDeath(t, ds[len(ds)-1], death.Avoidable, "high", model.OwnerPlayer, "", victim.Name)
+				return
+			}
+			wantDeath(t, ds[len(ds)-1], death.Unresolved, "low", model.OwnerUndecided, "")
 		})
 	}
 }

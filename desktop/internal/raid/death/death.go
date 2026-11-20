@@ -99,24 +99,17 @@ func Review(f model.Fight, runEndMs int64, config cfg.Config) ([]model.Death, []
 func classify(c *context) model.Death {
 	d := model.Death{Player: c.victim, FightID: c.view.f.ID, TimeMs: c.at,
 		Cause: Unresolved, Confidence: "low", OwnerKind: model.OwnerUndecided, Evidence: recap(c.window, c.victim.ID)}
-	// A backward clock inside this life/window invalidates every attribution,
-	// including low-confidence suggestions. Unrelated lines count too.
-	if !monotonic(c.view, c.start, c.end) {
+	// One backward clock step anywhere in the fight's log order declines every
+	// rule for every death in it: no rule runs and nothing falls through to a
+	// later rule. The whole fight is the range because the raid-wide rule reads
+	// survival and same-spell hits across it, including lines after the death.
+	// A miss is preferred to a false charge (see the package README).
+	if !c.view.clock {
 		return d
 	}
 	var best verdict
 	matches := 0
 	for _, r := range rules {
-		from := c.start
-		switch r.order {
-		case 1, 3, 4, 6:
-			// Wipe state, openers, holder engagement and healer survival
-			// read history before this life/window, up to this death line.
-			from = 0
-		}
-		if !monotonic(c.view, from, c.end) {
-			continue
-		}
 		m := r.apply(c)
 		if m.cause == "" {
 			continue

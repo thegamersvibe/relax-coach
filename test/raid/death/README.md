@@ -54,30 +54,24 @@ made the remaining last-target mutant observable. The final pack killed
 104/104, including 44 additions to the 60 inherited entries. Obsolete anchors
 were migrated to the replacement predicates, never counted as compiler kills.
 
-## Chronology ranges (round 3)
+## Chronology (round 4: whole-fight decline)
 
-`monotonic(view, from, to)` checks every adjacent pair of original log-order
-indices in the inclusive span, including unrelated lines. Equal timestamps
-are valid. The common life-scoped death window is still checked before any
-rule runs. Each rule additionally uses the span of all history it relies on:
+One backward timestamp step anywhere in the selected fight's original log order
+(`monotonic(events)` over every adjacent pair, unrelated lines included; equal
+timestamps are valid) makes **every death in that fight** `unresolved` / `low` /
+`undecided`, with empty owners and no suggestion. It is checked once per fight
+(`fightView.clock`) before any rule runs: no rule runs and nothing falls through
+to a later rule. The round-3 per-rule spans are deleted, because declining one
+rule let a later one charge (the reviewer's wipe -> avoidable/victim and
+raid-wide -> unhealed/healers repros).
 
-| Rule | Inclusive checked span |
-|---|---|
-| 1, after wipe call | Fight index 0 through this death line: all roster survival transitions. The call also carries its original index; only a later line with a strictly later timestamp qualifies. |
-| 2, avoidable | First line of the victim's life-scoped death window through this death line. Earlier lives/pre-window history is not evidence for this rule. |
-| 3, pulled aggro | Fight index 0 through this death line: first victim/tank damage can predate the window or the current life. |
-| 4, tank lost boss | Fight index 0 through this death line: prior boss target, holder survival, holder damage, and rule-3 exclusion all read that prefix. |
-| 5, environmental/one-shot | Life-scoped death window through this death line. |
-| 5, raid-wide subrule | Entire selected fight, because its symmetric timestamp interval and alive-at-start denominator scan that input, including post-death lines. |
-| 6, unhealed | Fight index 0 through this death line: health/damage stays life-window scoped, but healer survival reads the prefix. |
-
-A failed span declines that rule without owners or suggestion; independently
-valid narrower rules are not discarded for history they never read. The
-pre-window aggro probes therefore return unresolved/low/undecided with empty
-owners/suggestion, while the avoidable earlier-life/pre-window controls retain
-their verdict. The full 40000-fight seeded perturbation test also checks that
-one corrupt timestamp cannot create or change a personal charge. Native Go
-fuzzing exercises the same assertion on generated seeds.
+The range is the whole fight, not only fight start through the death line: the
+raid-wide subrule reads same-spell hits and survival across the fight, including
+lines after the death, so a post-death step must decline too (reviewer repro
+with 20002/20001; the 20002/20002 control keeps its verdict). A miss is
+preferred to a false charge: a fight with clock jitter gives unresolved deaths.
+`TestClockPerturbationCauseShapes` perturbs one line of clean wipe, avoidable,
+raid-wide and unhealed fights (8000 cases) and requires the declined result.
 
 The holder's `e.TimeMs > at` defensive guard is independently unit-tested below
 dispatch, so the prefix guard cannot mask its deletion. Both reported survivor

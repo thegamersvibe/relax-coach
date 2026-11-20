@@ -4,5 +4,11 @@
     "old": "if src == \"desktop\":",
     "new": "if False:",
     "killed_by": "test_go_root_package_mutant"
+  },
+  {
+    "file": "tools/raidtest.py",
+    "old": "MAX_LIMIT = 300",
+    "new": "MAX_LIMIT = 300000000",
+    "killed_by": "test_module_limit_validation_and_cfg_only_override"
   }
 ]

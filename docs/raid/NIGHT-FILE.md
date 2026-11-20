@@ -266,10 +266,10 @@ fire, lava or slime). Unknown types remain unresolved.
 - Positional rules use the original `Fight.Events` order, never a timestamp
   sort: this death line, the previous real death, the last preceding boss
   swing and window membership all retain their original event indices. A
-  backward clock step anywhere in the positional death-window span (including
-  unrelated events) makes the death `unresolved` / `low` / `undecided`, with
-  empty owners and suggestion. Steps before the window or after this death
-  cannot contaminate it. Only returned death rows are sorted for presentation.
+  backward clock step anywhere in the fight's log order (including unrelated
+  events, before the window or after the death) makes every death in that
+  fight `unresolved` / `low` / `undecided`, with empty owners and suggestion;
+  no rule runs. Only returned death rows are sorted for presentation.
 - The review window begins at death minus `death.window_ms` (inclusive), or
   just after the victim's previous real `UNIT_DIED` line, whichever is later.
   It ends at **this particular death line**, not the end of its millisecond.

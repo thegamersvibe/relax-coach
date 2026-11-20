@@ -254,13 +254,14 @@ class RunnerTests(unittest.TestCase):
         path = "test/raid/a/module.json"
         with open(os.path.join(self.t.root, path), encoding="utf-8") as f:
             spec = json.load(f)
-        for value in (0, -1, True, None, "60", [], float("inf"), float("nan")):
+        for value in (0, -1, True, None, "60", [], float("inf"), float("nan"), 300.5, 1000000):
             with self.subTest(value=value):
                 self.t.write(path, json.dumps(dict(spec, limit=value)))
                 with self.assertRaisesRegex(SystemExit, "limit"):
                     runner.load_modules(self.t.root)
-        self.t.write(path, json.dumps(dict(spec, limit=60)))
-        self.assertEqual(runner.load_modules(self.t.root)["a"]["limit"], 60)
+        for value in (60, 300):
+            self.t.write(path, json.dumps(dict(spec, limit=value)))
+            self.assertEqual(runner.load_modules(self.t.root)["a"]["limit"], value)
         root = os.path.dirname(os.path.dirname(RUNNER))
         modules = runner.load_modules(root)
         self.assertEqual({name: s["limit"] for name, s in modules.items() if "limit" in s}, {"cfg": 60})

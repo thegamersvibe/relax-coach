@@ -670,14 +670,14 @@
   },
   {
     "file": "desktop/internal/raid/death/view.go",
-    "old": "v.events[i].TimeMs < v.events[i-1].TimeMs",
+    "old": "events[i].TimeMs < events[i-1].TimeMs",
     "new": "false",
     "killed_by": "TestClockRollbackDeclinesEveryRule"
   },
   {
     "file": "desktop/internal/raid/death/view.go",
-    "old": "v.events[i].TimeMs < v.events[i-1].TimeMs",
-    "new": "v.events[i].TimeMs <= v.events[i-1].TimeMs",
+    "old": "events[i].TimeMs < events[i-1].TimeMs",
+    "new": "events[i].TimeMs <= events[i-1].TimeMs",
     "killed_by": "TestClockRollbackScope"
   },
   {
@@ -712,8 +712,8 @@
 },
 {
   "file": "desktop/internal/raid/death/view.go",
-  "old": "for i := from + 1; i <= to; i++ {",
-  "new": "for i := from + 2; i <= to; i++ {",
+  "old": "for i := 1; i < len(events); i++ {",
+  "new": "for i := 2; i < len(events); i++ {",
   "killed_by": "TestClockGuardFirstAdjacentPair"
 },
 {
@@ -724,21 +724,21 @@
 },
 {
   "file": "desktop/internal/raid/death/death.go",
-  "old": "from = 0",
-  "new": "from = c.start",
-  "killed_by": "TestPreWindowHistoryRollback"
-},
-{
-  "file": "desktop/internal/raid/death/death.go",
-  "old": "case 1, 3, 4, 6:",
-  "new": "case 3, 4:",
-  "killed_by": "TestHistoryRollbackDeclinesSurvivalRules"
-},
-{
-  "file": "desktop/internal/raid/death/rule_unavoidable.go",
-  "old": "if !monotonic(c.view, 0, len(c.view.events)-1) {",
+  "old": "if !c.view.clock {",
   "new": "if false {",
-  "killed_by": "TestRaidwideFutureClockStep"
+  "killed_by": "TestRollbackNeverPromotesLaterRule"
+},
+{
+  "file": "desktop/internal/raid/death/view.go",
+  "old": "v.clock = monotonic(v.events)",
+  "new": "v.clock = true",
+  "killed_by": "TestClockRollbackScope"
+},
+{
+  "file": "desktop/internal/raid/death/view.go",
+  "old": "v.clock = monotonic(v.events)",
+  "new": "v.clock = len(v.events) < 2 || monotonic(v.events[:len(v.events)-1])",
+  "killed_by": "TestRollbackNeverPromotesLaterRule"
 },
 {
   "file": "desktop/internal/raid/death/rule_wipe.go",

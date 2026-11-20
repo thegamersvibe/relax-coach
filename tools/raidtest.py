@@ -10,8 +10,8 @@ Modules are the directories test/raid/<name>/ holding a module.json:
   {"kind": "go"|"lua"|"py", "source": "<path>", "test": ["<argv>", ...], "depends": ["<module>", ...]}
 Optional "inputs": ["<path>", ...] declares data dependencies for --changed selection only;
 mutant targets remain restricted to source.
-Optional positive finite "limit" sets that module's wall-time budget in seconds,
-overriding the --limit fallback (30s). It does not change named-mutant deadlines.
+Optional positive finite "limit" (at most 300) sets that module's wall-time budget in
+seconds, overriding the --limit fallback (30s). It does not change named-mutant deadlines.
 Test commands run from the repository root (Go modules use "go -C desktop ..."). A module whose command runs no
 test at all fails. mutants.json holds a list of {"file", "old", "new", "killed_by"}; an empty list is "no mutants".
 
@@ -43,6 +43,9 @@ KINDS = ("go", "lua", "py")
 RAID_PATHS = ("desktop/internal/raid/", "addon/RelaxRaid/", "test/raid/", "rules/raid/", "tools/raidtest.py")
 
 
+
+MAX_LIMIT = 300  # seconds; a per-module limit is headroom, not a way around the gate
+
 def repo_root(start):
     return os.path.abspath(start)
 
@@ -62,8 +65,8 @@ def load_modules(root):
         if spec.get("kind") not in KINDS or not isinstance(spec.get("source"), str) or not isinstance(spec.get("test"), list):
             raise SystemExit("%s: needs kind (go|lua|py), source and test" % path)
         if "limit" in spec and (type(spec["limit"]) not in (int, float)
-                                or not math.isfinite(spec["limit"]) or spec["limit"] <= 0):
-            raise SystemExit("%s: limit must be positive finite seconds" % path)
+                                or not math.isfinite(spec["limit"]) or not 0 < spec["limit"] <= MAX_LIMIT):
+            raise SystemExit("%s: limit must be positive finite seconds, at most %d" % (path, MAX_LIMIT))
         spec.setdefault("depends", [])
         spec["name"] = name
         spec["dir"] = "test/raid/%s/" % name
