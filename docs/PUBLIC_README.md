@@ -6,7 +6,7 @@ This is a **legacy Coach-only archive**, not the current combined guild download
 
 ## What's new in v1.8.1 (combined bundle)
 
-- **Relax Raid 0.2.0, preparation reports:** in a raid group your Relax Raid sends the raid's loggers a short report on your own character (class, level, consumables, better gear you own per Relax Coach, time played at your level) when you join, at ready checks and after boss fights; hidden addon channel only, never chat, never in combat. Loggers keep the last 3 nights within fixed size limits. The game's time-played lines may show in chat once per raid join.
+- **Relax Raid 0.2.0, preparation reports:** in a raid group your Relax Raid sends the raid's loggers a short report on your own character (class, level, consumables, better gear you own per Relax Coach, time played at your level, at level 60 only) when you join, at ready checks and after boss fights; hidden addon channel only, never chat, never in combat. Loggers keep the last 3 nights within fixed size limits. The game's time-played lines may show in chat when you join a raid, and after a login or `/reload` while in one.
 - **Hot items (app, Farming page):** item names and quality colours instead of numbers (update Relax Coach and visit the auction house to name more), a new **Down since yesterday** list, and at least 10 units listed with **listed / usual** shown.
 - **Update on app 1.8.0:** **Updates → Update everything** (or **Update App** first), then restart WoW once for the new Relax Raid files.
 - Coach and the app are **1.8.1**; Relax Raid **0.2.0**; Relax Journey (`4.00.04`), guide content (`4.00.12`) and Relax Quest Planner (`0.4.0`) are unchanged.
