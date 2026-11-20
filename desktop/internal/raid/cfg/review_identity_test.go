@@ -11,7 +11,7 @@ import (
 
 func TestNormalizedDuplicates(t *testing.T) {
 	// json.Marshal sorts uppercase keys first; exercise authored reverse order too.
-	dir := copyData(t)
+	dir := copyValidationData(t)
 	path := filepath.Join(dir, "scoring.json")
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -106,7 +106,7 @@ func TestNormalizedDuplicates(t *testing.T) {
 			}},
 		} {
 			t.Run(transform.name+"/"+tc.name, func(t *testing.T) {
-				dir := copyData(t)
+				dir := copyValidationData(t)
 				change(t, dir, tc.file, func(d map[string]any) { tc.edit(d, transform.f) })
 				refused(t, dir, tc.file)
 				if tc.name == "spec_ids" {
@@ -128,14 +128,14 @@ func TestSpellIdentity(t *testing.T) {
 			{sourcedSpell("First", 77), sourcedSpell(" first ", 78)},
 		} {
 			t.Run(field+fmt.Sprint(spells), func(t *testing.T) {
-				dir := copyData(t)
+				dir := copyValidationData(t)
 				change(t, dir, "specs.json", func(d map[string]any) { d["profiles"].([]any)[0].(map[string]any)[field] = spells })
 				refusedField(t, dir, "specs.json", field)
 			})
 		}
 	}
 	for _, different := range []bool{false, true} {
-		dir := copyData(t)
+		dir := copyValidationData(t)
 		change(t, dir, "specs.json", func(d map[string]any) {
 			d["profiles"].([]any)[0].(map[string]any)["spells"] = []any{sourcedSpell("First", 77)}
 		})

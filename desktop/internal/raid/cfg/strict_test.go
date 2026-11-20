@@ -38,7 +38,7 @@ func refused(t *testing.T, dir, file string) error {
 func TestRejectUnknownKeys(t *testing.T) {
 	for _, file := range dataFiles {
 		t.Run(file, func(t *testing.T) {
-			dir := copyData(t)
+			dir := copyValidationData(t)
 			change(t, dir, file, func(d map[string]any) { d["typo"] = true })
 			refused(t, dir, file)
 		})
@@ -58,7 +58,11 @@ func TestRejectUnknownKeys(t *testing.T) {
 			d["effects"].([]any)[0].(map[string]any)["spell"].(map[string]any)["spellID"] = 42
 		}},
 	} {
-		t.Run("nested/"+tc.file, func(t *testing.T) { dir := copyData(t); change(t, dir, tc.file, tc.edit); refused(t, dir, tc.file) })
+		t.Run("nested/"+tc.file, func(t *testing.T) {
+			dir := copyValidationData(t)
+			change(t, dir, tc.file, tc.edit)
+			refused(t, dir, tc.file)
+		})
 	}
 }
 
@@ -66,7 +70,7 @@ func TestRejectVersions(t *testing.T) {
 	for _, file := range dataFiles {
 		for _, v := range []any{0, 2, -1, nil, "1"} {
 			t.Run(file, func(t *testing.T) {
-				dir := copyData(t)
+				dir := copyValidationData(t)
 				change(t, dir, file, func(d map[string]any) { d["schema"] = v })
 				refused(t, dir, file)
 			})
@@ -74,20 +78,20 @@ func TestRejectVersions(t *testing.T) {
 	}
 	for _, field := range []string{"schema", "version", "source"} {
 		t.Run("missing/"+field, func(t *testing.T) {
-			dir := copyData(t)
+			dir := copyValidationData(t)
 			change(t, dir, "scoring.json", func(d map[string]any) { delete(d, field) })
 			refused(t, dir, "scoring.json")
 		})
 	}
 	for _, v := range []string{"", "1.2", "latest", "1.-1.0", "01.0.0"} {
 		t.Run("bad-content-version/"+v, func(t *testing.T) {
-			dir := copyData(t)
+			dir := copyValidationData(t)
 			change(t, dir, "scoring.json", func(d map[string]any) { d["version"] = v })
 			refused(t, dir, "scoring.json")
 		})
 	}
 	// A new content version with the same format is precisely the no-release path.
-	dir := copyData(t)
+	dir := copyValidationData(t)
 	change(t, dir, "scoring.json", func(d map[string]any) { d["version"] = "99.2.0" })
 	if load(t, dir).Scoring.Version != "99.2.0" {
 		t.Fatal("content revision rejected/cached")
@@ -104,7 +108,7 @@ func TestRejectJSONShape(t *testing.T) {
 		func(d map[string]any) { d["Schema"] = d["schema"]; delete(d, "schema") },
 		func(d map[string]any) { d["source"] = "   " },
 	} {
-		dir := copyData(t)
+		dir := copyValidationData(t)
 		change(t, dir, "scoring.json", edit)
 		refused(t, dir, "scoring.json")
 	}
@@ -120,7 +124,7 @@ func TestRejectJSONShape(t *testing.T) {
 			return bytes.Replace(b, []byte(`"tail_ms": 2500`), []byte(`"tail_ms": 2500, "tail_ms": 1`), 1)
 		},
 	} {
-		dir := copyData(t)
+		dir := copyValidationData(t)
 		path := filepath.Join(dir, "scoring.json")
 		b, err := os.ReadFile(path)
 		if err != nil {
@@ -142,14 +146,18 @@ func TestRejectCaseFoldedAliases(t *testing.T) {
 		{"scoring.json", func(d map[string]any) { d["fights"].(map[string]any)["TAIL_MS"] = 1 }},
 		{"specs.json", func(d map[string]any) { d["profiles"].([]any)[0].(map[string]any)["Uncalibrated"] = true }},
 	} {
-		t.Run(tc.file, func(t *testing.T) { dir := copyData(t); change(t, dir, tc.file, tc.edit); refused(t, dir, tc.file) })
+		t.Run(tc.file, func(t *testing.T) {
+			dir := copyValidationData(t)
+			change(t, dir, tc.file, tc.edit)
+			refused(t, dir, tc.file)
+		})
 	}
 }
 
 func TestMissingFileNoPartialConfig(t *testing.T) {
 	for _, file := range dataFiles {
 		t.Run(file, func(t *testing.T) {
-			dir := copyData(t)
+			dir := copyValidationData(t)
 			if err := os.Remove(filepath.Join(dir, file)); err != nil {
 				t.Fatal(err)
 			}

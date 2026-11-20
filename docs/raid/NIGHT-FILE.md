@@ -182,6 +182,21 @@ recognises "not enough data" by `score` being `null`.
 | `provisional` | boolean | yes | Fewer baseline samples than the configured minimum. `false` for parts without a baseline. |
 | `evidence` | evidence | yes | Why the part has this score. |
 
+These existing file fields are carried directly by `model.Part` (model addendum 3),
+not by reserved keys in `Evidence.Counts`:
+
+- `Coverage int`: hundredths, 0 to 100 inclusive. The writer formats it as `0.00`
+  to `1.00` without rounding again; for example, 75 becomes `0.75`.
+- `Provisional bool`: fewer baseline samples than the configured minimum.
+  It is `false` when not set, including parts without a baseline.
+- `Baseline string`: exactly `"own"`, `"guild"`, `"role"` or `""`. The empty
+  string means not set and is written as `null`.
+
+The model's zero values (`0`, `false`, `""`) mean not set. Coverage has no separate
+presence bit; `Tenths` remains the optional score that distinguishes an unmeasured
+part from a measured score of zero. This is an additive in-memory model change,
+not a new file field or a change to `formatVersion`.
+
 ## Evidence
 
 | Field | Type | Required | Meaning |

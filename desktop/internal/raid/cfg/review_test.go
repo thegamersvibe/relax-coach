@@ -23,7 +23,7 @@ func TestSelectorNPCIdentity(t *testing.T) {
 		}
 	}
 	for _, label := range []string{"", "日本語"} {
-		dir := copyData(t)
+		dir := copyValidationData(t)
 		change(t, dir, "encounters-enabled.json", func(d map[string]any) {
 			u := d["encounters"].([]any)[0].(map[string]any)["boss_units"].([]any)[0].(map[string]any)
 			if label == "" {
@@ -37,7 +37,7 @@ func TestSelectorNPCIdentity(t *testing.T) {
 
 	for _, id := range []any{nil, 0, -1} {
 		t.Run("invalid", func(t *testing.T) {
-			dir := copyData(t)
+			dir := copyValidationData(t)
 			change(t, dir, "encounters-enabled.json", func(d map[string]any) {
 				u := d["encounters"].([]any)[0].(map[string]any)["boss_units"].([]any)[0].(map[string]any)
 				if id == nil {
@@ -63,7 +63,7 @@ func TestSelectorNPCIdentity(t *testing.T) {
 }
 
 func TestDuplicateBossNPC(t *testing.T) {
-	dir := copyData(t)
+	dir := copyValidationData(t)
 	change(t, dir, "encounters-enabled.json", func(d map[string]any) {
 		units := d["encounters"].([]any)[0].(map[string]any)["boss_units"].([]any)
 		units[1].(map[string]any)["id"] = units[0].(map[string]any)["id"]

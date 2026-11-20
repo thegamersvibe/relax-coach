@@ -1,0 +1,15 @@
+{
+  "kind": "lua",
+  "source": "addon/RelaxRaid/Store.lua",
+  "test": [
+    "python3",
+    "-I",
+    "-B",
+    "test/raid/store/test_lifetime_fill.py",
+    "-k",
+    "test_sixty_pull_max_size_keeps_every_window"
+  ],
+  "depends": [
+    "store"
+  ]
+}
