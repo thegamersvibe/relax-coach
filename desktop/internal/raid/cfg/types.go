@@ -102,6 +102,10 @@ type Fights struct {
 	BossUnitSelection           string  `json:"boss_unit_selection"`
 }
 type Death struct {
+	FullHealthFraction float64 `json:"full_health_fraction"`
+	MinHealthSamples   int     `json:"min_health_samples"`
+	RaidwideShare      float64 `json:"raidwide_share"`
+	RaidwideWindowMs   int64   `json:"raidwide_window_ms"`
 	WindowMs           int64   `json:"window_ms"`
 	WipeDeadShare      float64 `json:"wipe_dead_share"`
 	WipeAllTanksDead   bool    `json:"wipe_all_tanks_dead"`

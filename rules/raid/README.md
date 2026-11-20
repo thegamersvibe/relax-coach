@@ -111,10 +111,10 @@ All file structs embed `Metadata { Schema int; Version, Source string }`.
 - `Scoring.Confidence Confidence { MinCoverage, ProvisionalMinCoverage float64;
   LowConfidenceFightMs int64; ShortFightWeight float64;
   MinBaselinePlayers, MinMeasurablePlayers int }` (3 and 2; a sole player is N/A).
-  `MinCoverage` stays 0.6; `ProvisionalMinCoverage` is 0.25. At or above 0.6 a
-  raid night can receive a normal score/rank; at or above 0.25 but below 0.6 it
+  `MinCoverage` stays 0.6; `ProvisionalMinCoverage` is 0.15. At or above 0.6 a
+  raid night can receive a normal score/rank; at or above 0.15 but below 0.6 it
   receives an unranked provisional score, labelled with measured coverage.
-  Below 0.25, or without a scored fight, the night score is null. The same
+  Below 0.15, or without a scored fight, the night score is null. The same
   coverage thresholds apply per fight (which has no rank). Dungeon runs still
   have no rank. These are consumer rules, not a scorer implemented in cfg.
 - `Scoring.RatioPoints []RatioPoint { Ratio, Score float64 }` stores
@@ -142,7 +142,7 @@ All file structs embed `Metadata { Schema int; Version, Source string }`.
   Consumers must leave the affected measure unmeasured, not substitute zero
   or treat it as fully measured. The shipped GCD/rounding values are non-null.
 
-### Architect-ruled raid-1 data (scoring 1.2.0)
+### Architect-ruled raid-1 data (scoring 1.2.0 and 1.3.0)
 
 The PHASE1-BRIEF section **R6 and R7 on main 6208b16** supplies the starting
 values; **Raid 1 gets a score** supersedes its tank-output, preparation and
@@ -157,7 +157,7 @@ change. The JSON `source` distinguishes measured evidence, rulings and guesses.
 | `healer.low_health_fraction` | 0.5 | Starting guess |
 | `death.lost_boss_gap_ms` | 4000 | Starting guess |
 | `death.summary_window_ms` | 10000 | Same as the death window |
-| `confidence.provisional_min_coverage` | 0.25 | Raid-1 architect ruling, starting value |
+| `confidence.provisional_min_coverage` | 0.15 | Raid-1 architect ruling, starting value |
 | `count_penalties.owned_death` | 40 | Starting guess |
 | `count_penalties.boss_swing_taken` | 2 | Starting guess |
 | `count_penalties.better_item_in_bags` | 25 | Raid-1 architect ruling, per better-gear slot |
@@ -182,6 +182,31 @@ better-item slot, floors at zero, and is unmeasured if unchecked or unreadable;
 not-scored slots are skipped. With both stock and bag gear measurable,
 preparation coverage is 0.6, not 1. A weight is not evidence of measurability.
 The app-side prep reader and scoring/attribution belong to later lanes.
+
+### R6 predicate data (scoring 1.3.0)
+
+The PHASE1-BRIEF **R6: four predicates DESIGN 8 left open** ruling adds four
+required, non-null fields under `death`. All four are architect guesses to tune
+after raid 1, not log-calibrated values:
+
+| JSON key | Go field/type | Value | Validation |
+|---|---|---|---|
+| `full_health_fraction` | `FullHealthFraction float64` | 0.9 | `(0,1]` |
+| `min_health_samples` | `MinHealthSamples int` | 2 | integer >= 1, bounded by Go int |
+| `raidwide_share` | `RaidwideShare float64` | 0.6 | `(0,1]` |
+| `raidwide_window_ms` | `RaidwideWindowMs int64` | 2000 | integer > 0, bounded by int64 |
+
+Existing reflection decoding enforces exact keys, types, required values and
+file/field errors. `Snapshot()` and Load views copy these scalar fields by value.
+A changed value requires reloading the files, not rebuilding the consumer.
+R6 uses the full-health cutoff to start the unhealed span, the sample minimum to
+withhold attribution, and the raid-wide share/window to test distinct players
+hit around the killing hit. Pets belong in neither side of that share.
+
+Version 1.3.0 also follows **R7: three gaps found by the builder** and PLAN 4A
+row 15: `confidence.provisional_min_coverage` changes from 0.25 to 0.15. A lone
+tank's measurable coverage can now qualify without inventing a peer baseline.
+The validation rule stays `0 < provisional_min_coverage < min_coverage`.
 
 ### Validation bounds
 

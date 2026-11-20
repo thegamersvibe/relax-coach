@@ -548,3 +548,82 @@ RESULT: 7/7 modules passed
 
 Open implementation questions: none. Values remain explicitly uncalibrated;
 R6/R7 application of these fields and prep-reader integration are separate work.
+
+## R6 predicates and provisional correction — scoring 1.3.0
+
+Base: `d8a8ddc7f455b80c2519153bf9e6b3b1286d0043`, clean branch
+`feat/raid-scoring-data`. One local follow-up commit. No push, PR, tag, model
+change or root README version edit. Source: PHASE1-BRIEF **R6: four predicates
+DESIGN 8 left open**, plus the later **R7: three gaps found by the builder**
+correction and PLAN 4A row 15.
+
+Added required non-null `Death.FullHealthFraction float64` (0.9),
+`MinHealthSamples int` (2), `RaidwideShare float64` (0.6), and
+`RaidwideWindowMs int64` (2000). The two fractions must be in `(0,1]`, the sample
+count at least 1, and the window positive. Integer representation overflow and
+fractional integer values are rejected. The existing reflection decoder handles
+all four; no decoder fork or fallback. Scalar fields already copy by value in
+`Snapshot`; tests mutate both public views independently and compare with an
+independent full load. Source text identifies all four as architect guesses to
+tune after raid 1. The same commit changes provisional coverage from 0.25 to
+0.15 so a lone tank can qualify; `0 < p < min_coverage` validation is unchanged.
+
+### Test-first observations
+
+Commands: `go -C desktop test -count=1 [-v] -run '^<test>$' ./internal/raid/cfg`.
+
+| Test | Observed red (exit 1) | Green |
+|---|---|---|
+| `TestDeathPredicatesDecode` | all four keys unknown; missing keys accepted; no null diagnostic | 0.038s |
+| `TestDeathPredicateRanges` | accepted negative/zero fractions, fractions above 1, sample/window zero and negatives | combined predicate group 0.140s |
+| `TestDeathPredicateSeed` | version 1.2.0, missing ruling/field/guess provenance | full cfg run 2.712s |
+| `TestRaidOneScoringSeed` (latest correction) | provisional value still 0.25 rather than 0.15 | full cfg run 2.712s |
+
+Range tests accept the smallest positive float, 1, integer 1 and maximum
+representable integers; reject adjacent upper fraction, overflow, wrong types,
+null/missing keys, and both sides of zero. Existing scalar-copy behavior was
+green before changes and is demonstrated by mutation-red, not claimed as a new
+copy implementation. The 15 new mutants challenge each fraction bound, sample
+and window strictness, required decoding for all four keys, and snapshot
+isolation. All prior 120 entries remain unchanged.
+
+### Sequential acceptance output
+
+`gofmt -l internal/raid` was empty; `go vet ./internal/raid/...` was silent.
+`go test -count=1 ./internal/raid/...` returned exit 0:
+
+```text
+ok  github.com/thegamersvibe/relax-coach/desktop/internal/raid          0.015s
+ok  github.com/thegamersvibe/relax-coach/desktop/internal/raid/cfg      2.712s
+ok  github.com/thegamersvibe/relax-coach/desktop/internal/raid/fights   0.199s
+ok  github.com/thegamersvibe/relax-coach/desktop/internal/raid/fixture  0.006s
+ok  github.com/thegamersvibe/relax-coach/desktop/internal/raid/logfmt   4.925s
+ok  github.com/thegamersvibe/relax-coach/desktop/internal/raid/model    0.114s
+?   github.com/thegamersvibe/relax-coach/desktop/internal/raid/model/modeltest [no test files]
+```
+
+Three sequential runs of `python3 -I -B tools/raidtest.py --all --kind go`
+each returned `RESULT: 7/7 modules passed`. Cfg's race-module wall times were
+**21.7s, 22.6s, 21.5s**, all under the unchanged **30s** budget. No performance
+or fixture changes were needed in this follow-up. Other modules also stayed
+inside their existing budgets; no full desktop test suite was run.
+
+Using Python 3.14 through the supplied uv requirements invocation:
+
+```text
+$PY -I -B tools/raidtest.py --mutants cfg
+RESULT: 135/135 mutants killed
+$PY -I -B tools/raidtest.py --all --kind lua,py
+ok   _client                 0.2s
+ok   _runner                20.1s
+ok   core                    0.2s
+ok   log                     0.3s
+ok   prep                    0.2s
+ok   store                  16.9s
+ok   wire                    0.6s
+RESULT: 7/7 modules passed
+```
+
+Both commands exited 0. No surviving/refused mutant. No private logs were read
+for this data change. Runtime tuning and native Windows/game behavior are not
+claimed. R6's implementation and real-log evidence belong to the next branch.

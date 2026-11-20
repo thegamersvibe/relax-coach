@@ -851,5 +851,95 @@
     "old": "if !nonblank(id) || !scoreValue(v) {\n\t\t\treturn fmt.Errorf(\"count_penalties.",
     "new": "if !nonblank(id) || v < 0 {\n\t\t\treturn fmt.Errorf(\"count_penalties.",
     "killed_by": "TestRaidOneCountPenaltyRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.FullHealthFraction <= 0 || !fraction(d.FullHealthFraction)",
+    "new": "d.FullHealthFraction < 0 || !fraction(d.FullHealthFraction)",
+    "killed_by": "TestDeathPredicateRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.FullHealthFraction <= 0 || !fraction(d.FullHealthFraction)",
+    "new": "d.FullHealthFraction <= 0",
+    "killed_by": "TestDeathPredicateRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.FullHealthFraction <= 0 || !fraction(d.FullHealthFraction)",
+    "new": "d.FullHealthFraction <= 0 || d.FullHealthFraction >= 1",
+    "killed_by": "TestDeathPredicateRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.RaidwideShare <= 0 || !fraction(d.RaidwideShare)",
+    "new": "d.RaidwideShare < 0 || !fraction(d.RaidwideShare)",
+    "killed_by": "TestDeathPredicateRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.RaidwideShare <= 0 || !fraction(d.RaidwideShare)",
+    "new": "d.RaidwideShare <= 0",
+    "killed_by": "TestDeathPredicateRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.RaidwideShare <= 0 || !fraction(d.RaidwideShare)",
+    "new": "d.RaidwideShare <= 0 || d.RaidwideShare >= 1",
+    "killed_by": "TestDeathPredicateRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.MinHealthSamples < 1",
+    "new": "d.MinHealthSamples < 0",
+    "killed_by": "TestDeathPredicateRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.MinHealthSamples < 1",
+    "new": "d.MinHealthSamples <= 1",
+    "killed_by": "TestDeathPredicateRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.RaidwideWindowMs <= 0",
+    "new": "d.RaidwideWindowMs < 0",
+    "killed_by": "TestDeathPredicateRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/validate.go",
+    "old": "d.RaidwideWindowMs <= 0",
+    "new": "d.RaidwideWindowMs <= 1",
+    "killed_by": "TestDeathPredicateRanges"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/types.go",
+    "old": "`json:\"full_health_fraction\"`",
+    "new": "`json:\"full_health_fraction,omitempty\"`",
+    "killed_by": "TestDeathPredicatesDecode"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/types.go",
+    "old": "`json:\"min_health_samples\"`",
+    "new": "`json:\"min_health_samples,omitempty\"`",
+    "killed_by": "TestDeathPredicatesDecode"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/types.go",
+    "old": "`json:\"raidwide_share\"`",
+    "new": "`json:\"raidwide_share,omitempty\"`",
+    "killed_by": "TestDeathPredicatesDecode"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/types.go",
+    "old": "`json:\"raidwide_window_ms\"`",
+    "new": "`json:\"raidwide_window_ms,omitempty\"`",
+    "killed_by": "TestDeathPredicatesDecode"
+  },
+  {
+    "file": "desktop/internal/raid/cfg/copy.go",
+    "old": "return c.snapshot",
+    "new": "return c",
+    "killed_by": "TestDeathPredicateCopies"
   }
 ]
