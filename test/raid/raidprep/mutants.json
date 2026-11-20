@@ -1,0 +1,104 @@
+[
+  {
+    "file": "desktop/raid_prep.go",
+    "old": "f.Events[0].OffsetH",
+    "new": "f.Events[len(f.Events)-1].OffsetH",
+    "killed_by": "TestRaidPrepUTCUnorderedFights"
+  },
+  {
+    "file": "desktop/raid_prep.go",
+    "old": "int64(f.Events[0].OffsetH) * msPerHour",
+    "new": "int64(f.Events[0].OffsetH) * 0 * msPerHour",
+    "killed_by": "TestRaidPrepUTCWindowAndScore"
+  },
+  {
+    "file": "desktop/raid_prep.go",
+    "old": "f.StartMs-offset, f.EndMs-offset",
+    "new": "f.StartMs+offset, f.EndMs+offset",
+    "killed_by": "TestRaidPrepUTCWindowAndScore"
+  },
+  {
+    "file": "desktop/raid_prep.go",
+    "old": "prepread.Parse(data, firstS, lastS)",
+    "new": "prepread.Parse(data, firstS-2*int64(time.Hour/time.Second), lastS)",
+    "killed_by": "TestRaidPrepUTCWindowAndScore"
+  },
+  {
+    "file": "desktop/raid_prep.go",
+    "old": "firstS := firstUTC / msPerSecond",
+    "new": "firstS := (firstUTC+msPerSecond-1) / msPerSecond",
+    "killed_by": "TestRaidPrepUTCWindowAndScore"
+  },
+  {
+    "file": "desktop/raid_prep.go",
+    "old": "lastS := (lastUTC + msPerSecond - 1) / msPerSecond",
+    "new": "lastS := lastUTC / msPerSecond",
+    "killed_by": "TestRaidPrepUTCWindowAndScore"
+  },
+  {
+    "file": "desktop/raid_prep.go",
+    "old": "start < firstUTC",
+    "new": "start > firstUTC",
+    "killed_by": "TestRaidPrepUTCUnorderedFights"
+  },
+  {
+    "file": "desktop/raid_prep.go",
+    "old": "end > lastUTC",
+    "new": "end < lastUTC",
+    "killed_by": "TestRaidPrepUTCUnorderedFights"
+  },
+  {
+    "file": "desktop/raid_prep.go",
+    "old": "if len(fights) == 0 {",
+    "new": "if false && len(fights) == 0 {",
+    "killed_by": "TestRaidPrepRejectsUnusableFights"
+  },
+  {
+    "file": "desktop/raid_prep.go",
+    "old": "if len(f.Events) == 0 {",
+    "new": "if false && len(f.Events) == 0 {",
+    "killed_by": "TestRaidPrepRejectsUnusableFights"
+  },
+  {
+    "file": "desktop/raid_prep.go",
+    "old": "start < 0 || end < start",
+    "new": "false",
+    "killed_by": "TestRaidPrepRejectsUnusableFights"
+  },
+  {
+    "file": "desktop/raid_prep.go",
+    "old": "score.MatchPrep(reports, names)",
+    "new": "score.MatchPrep(reports, names[:0])",
+    "killed_by": "TestRaidPrepUTCWindowAndScore"
+  },
+  {
+    "file": "desktop/raid_prep.go",
+    "old": "score.Score(fights, deaths, reports, c)",
+    "new": "score.Score(fights, deaths, nil, c)",
+    "killed_by": "TestRaidPrepUTCWindowAndScore"
+  },
+  {
+    "file": "desktop/raid_prep.go",
+    "old": "Diagnostics: diagnostics",
+    "new": "Diagnostics: prepread.Report{Skipped:diagnostics.Skipped}",
+    "killed_by": "TestRaidPrepDiagnosticsDeathsAndPurity"
+  },
+  {
+    "file": "desktop/raid_prep.go",
+    "old": "score.Score(fights, deaths, reports, c)",
+    "new": "score.Score(fights, nil, reports, c)",
+    "killed_by": "TestRaidPrepDiagnosticsDeathsAndPurity"
+  },
+  {
+    "file": "desktop/raid_prep.go",
+    "old": "matched, unmatched := score.MatchPrep(reports, names)",
+    "new": "for i := range reports { reports[i].Stamped += int64(time.Hour/time.Second) }; matched, unmatched := score.MatchPrep(reports, names)",
+    "killed_by": "TestRaidPrepUTCWindowAndScore"
+  },
+  {
+    "file": "desktop/raid_prep.go",
+    "old": "WindowStartS: firstS - 2*int64(time.Hour/time.Second)",
+    "new": "WindowStartS: firstS",
+    "killed_by": "TestRaidPrepUTCWindowAndScore"
+  }
+]
