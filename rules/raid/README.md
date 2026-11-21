@@ -1,11 +1,20 @@
 # Relax Raid configuration (R5)
 
-`cfg.Load(dir)` reads all nine JSON files in this directory on **every call**;
-there are no embedded defaults or process caches. It returns `(*cfg.Config,
-error)` and returns no partial config on error. Publish an update as a complete
-validated directory, then switch directories between scoring jobs; callers must
-not edit the directory while a snapshot is being loaded. Keep the previous good
-snapshot when a replacement fails. The loader never writes the input files.
+`cfg.Load(dir)` delegates to `cfg.LoadFS(os.DirFS(dir))`; both read all nine
+JSON files on **every call**, without caching or writing. They return
+`(*cfg.Config, error)` and no partial config on error. Library callers must not
+edit a source filesystem while a snapshot is loading.
+
+For raid 1 the app uses only the rules compiled into the exe: one app version
+means one config. There is no override beside the exe, in app data, or through
+an update channel. After editing these canonical JSON files, run
+`go generate` in `desktop/raidrules/` (or `python3 scripts/gen_raid_rules.py` from the repo
+root), then commit the generated `desktop/raidrules/raid_rules/` copy. The normal Go test
+suite compares every byte and the complete embedded file inventory before any
+regeneration; stale, missing and extra files fail CI. The app accessor loads
+once, retains any error for the Raids page, and hands callers detached snapshots.
+A tuning change therefore needs an app release until a separate validated rule
+update channel exists.
 
 `Load` exposes a detached public view and retains a private validated snapshot.
 `Profile`, `Encounter`, and `OutputTargets` return deep copies, including nested

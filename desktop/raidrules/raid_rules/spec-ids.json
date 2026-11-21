@@ -1,0 +1,190 @@
+{
+  "schema": 1,
+  "version": "1.0.0",
+  "source": "Copied from wow-forever-leveling/assets/specs.json (GearQuest spec list). Identity is CLASS.spec because spec words repeat between classes.",
+  "classes": {
+    "WARRIOR": [
+      {
+        "id": "arms",
+        "label": "Arms",
+        "default": true
+      },
+      {
+        "id": "fury",
+        "label": "Fury",
+        "default": false
+      },
+      {
+        "id": "protection",
+        "label": "Protection",
+        "default": false
+      }
+    ],
+    "PALADIN": [
+      {
+        "id": "retribution",
+        "label": "Retribution",
+        "default": true
+      },
+      {
+        "id": "holy",
+        "label": "Holy",
+        "default": false
+      },
+      {
+        "id": "protection",
+        "label": "Protection",
+        "default": false
+      },
+      {
+        "id": "shockadin",
+        "label": "Shockadin",
+        "default": false
+      }
+    ],
+    "HUNTER": [
+      {
+        "id": "beast_mastery",
+        "label": "Beast Mastery",
+        "default": true
+      },
+      {
+        "id": "marksmanship",
+        "label": "Marksmanship",
+        "default": false
+      },
+      {
+        "id": "survival",
+        "label": "Survival",
+        "default": false
+      }
+    ],
+    "ROGUE": [
+      {
+        "id": "combat",
+        "label": "Combat",
+        "default": true
+      },
+      {
+        "id": "assassination",
+        "label": "Assassination",
+        "default": false
+      },
+      {
+        "id": "subtlety",
+        "label": "Subtlety",
+        "default": false
+      }
+    ],
+    "PRIEST": [
+      {
+        "id": "shadow",
+        "label": "Shadow",
+        "default": true
+      },
+      {
+        "id": "discipline",
+        "label": "Discipline",
+        "default": false
+      },
+      {
+        "id": "holy",
+        "label": "Holy",
+        "default": false
+      }
+    ],
+    "SHAMAN": [
+      {
+        "id": "elemental",
+        "label": "Elemental",
+        "default": true
+      },
+      {
+        "id": "enhancement",
+        "label": "Enhancement",
+        "default": false
+      },
+      {
+        "id": "enhancement_tank",
+        "label": "Enhancement Tank",
+        "default": false
+      },
+      {
+        "id": "restoration",
+        "label": "Restoration",
+        "default": false
+      }
+    ],
+    "MAGE": [
+      {
+        "id": "frost",
+        "label": "Frost",
+        "default": true
+      },
+      {
+        "id": "arcane",
+        "label": "Arcane",
+        "default": false
+      },
+      {
+        "id": "fire",
+        "label": "Fire",
+        "default": false
+      },
+      {
+        "id": "battlemage_frost",
+        "label": "Battle Mage (Frost)",
+        "default": false
+      },
+      {
+        "id": "battlemage_fire",
+        "label": "Battle Mage (Fire)",
+        "default": false
+      },
+      {
+        "id": "battlemage_arcane",
+        "label": "Battle Mage (Arcane)",
+        "default": false
+      }
+    ],
+    "WARLOCK": [
+      {
+        "id": "affliction",
+        "label": "Affliction",
+        "default": true
+      },
+      {
+        "id": "demonology",
+        "label": "Demonology",
+        "default": false
+      },
+      {
+        "id": "destruction",
+        "label": "Destruction",
+        "default": false
+      }
+    ],
+    "DRUID": [
+      {
+        "id": "feral",
+        "label": "Feral (Cat)",
+        "default": true
+      },
+      {
+        "id": "bear",
+        "label": "Bear Tank",
+        "default": false
+      },
+      {
+        "id": "balance",
+        "label": "Balance",
+        "default": false
+      },
+      {
+        "id": "restoration",
+        "label": "Restoration",
+        "default": false
+      }
+    ]
+  }
+}
