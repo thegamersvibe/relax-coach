@@ -44,3 +44,7 @@ func TestRaidPageRouteErrors(t *testing.T) {
 func TestRaidPageDisplayInsertion(t *testing.T) {
 	runRaidUI(t, "native_raid_ui_test.cjs", "every name|display|tiny measured")
 }
+
+func TestRaidLockPreferenceReply(t *testing.T) {
+	runRaidUI(t, "native_raid_pref_ui_test.cjs", "preference reply")
+}

@@ -157,8 +157,26 @@
   },
   {
     "file": "desktop/native_shell.js",
-    "old": "if (generation !== reportGeneration) return;\n      }\n    }\n    displayReport(result);",
-    "new": "/* stale re-admission context bypassed */\n      }\n    }\n    displayReport(result);",
+    "old": "if (generation !== reportGeneration) return;\n      }\n    }\n    displayReport(result,false,preferenceRevision);",
+    "new": "/* stale re-admission context bypassed */\n      }\n    }\n    displayReport(result,false,preferenceRevision);",
     "killed_by": "TestRaidLockReplyOrdering"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "if (shown === reportDisplaySeq) displayReport(result);",
+    "new": "displayReport(result);",
+    "killed_by": "TestRaidLockPreferenceReply"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "  ++reportDisplaySeq;\n",
+    "new": "",
+    "killed_by": "TestRaidLockPreferenceReply"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "if (shown === reportDisplaySeq) displayReport(result);",
+    "new": "if (false) displayReport(result);",
+    "killed_by": "TestRaidLockPreferenceReply"
   }
 ]

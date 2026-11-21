@@ -299,7 +299,7 @@ $('wowhead-names').addEventListener('change',async()=>{
   const context = lastReport;
   let saveError = '', savedValue;
   wowheadSaving = true; updateButtons();
-  const generation = reportGeneration;
+  const generation = reportGeneration, shown = reportDisplaySeq;
   $('wowhead-names-status').textContent = 'Saving…';
   try {
     const result = await rc.setWowheadNames($('wowhead-names').checked);
@@ -309,7 +309,9 @@ $('wowhead-names').addEventListener('change',async()=>{
     if (lastReport) lastReport = {...lastReport,WowheadNames:savedValue};
     if (generation !== reportGeneration) return;
     wowheadSaving = false;
-    displayReport(result);
+    // A newer report (perhaps one that removed Raids) was displayed meanwhile:
+    // this reply applies only the app-wide preference, never its older report.
+    if (shown === reportDisplaySeq) displayReport(result);
     $('wowhead-names-status').textContent = result.WowheadNames ? 'Online lookup enabled.' : 'Online lookup off. Cached names can still display.';
   } catch (err) {
     const text = 'Could not save preference: '+err.message;
@@ -418,7 +420,9 @@ document.addEventListener('change',event=>{
     const index=event.target.value;requestRaid(()=>rc.raidNight(index));
   }
 });
+let reportDisplaySeq = 0;
 function displayReport(result,folderChanged = false,preferenceRevision = wowheadRevision) {
+  ++reportDisplaySeq;
   // A report already in flight can predate the successful app-wide write.
   if (preferenceRevision !== wowheadRevision && lastReport) result = {...result,WowheadNames:lastReport.WowheadNames};
   lastReport = result;
