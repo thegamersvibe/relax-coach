@@ -22,6 +22,12 @@ window.chrome.webview.addEventListener('message', event => {
 });
 const rc = Object.freeze({
   refresh: () => call('reportRefresh'),
+  raidPage: () => call('raidPage'),
+  raidOpen: path => call('raidOpen', path),
+  raidNight: index => call('raidNight', index),
+  raidOfficerFile: path => call('raidOfficerFile', path),
+  raidChooseLog: () => call('raidChooseLog'),
+  raidChooseOfficer: () => call('raidChooseOfficer'),
   setGame: path => call('setGame',path),
   selectAccount: id => call('selectAccount',id),
   setWowheadNames: enabled => call('setWowheadNames',String(enabled)),
@@ -100,6 +106,12 @@ function show(view) {
   $('update-view').hidden = view !== 'update';
   $('farm-view').hidden = view !== 'farm';
   $('settings-view').hidden = view !== 'settings';
+  if ($('raids-view')) $('raids-view').hidden = view !== 'raids';
+  if ($('nav-raids')) {
+    $('nav-raids').classList.toggle('active',view === 'raids');
+    if (view === 'raids') $('nav-raids').setAttribute('aria-current','page');
+    else $('nav-raids').removeAttribute('aria-current');
+  }
   for (const name of ['setup','report','farm','update','settings']) {
     $('nav-'+name).classList.toggle('active',name === view);
     if (name === view) $('nav-'+name).setAttribute('aria-current','page');
@@ -315,6 +327,97 @@ $('wowhead-names').addEventListener('change',async()=>{
   }
 });
 $('farm-body').addEventListener('change',event=>{ if (event.target && event.target.id === 'farm-house') filterFarmHouse(); });
+// Raids are removed, not CSS-hidden, when admission changes. No retained
+// template/fragment contains a locked account's raid data.
+let raidGeneration = 0, raidVerdictGeneration = 0;
+const raidLocks = new Map();
+const raidContext = result => JSON.stringify([result && result.Game,result && result.Account]);
+const raidLocked = result => raidLocks.get(raidContext(result));
+const isRaidRefusal = error => /^Raids locked(?::|$)/.test(error.message);
+// Display-only counterpart of raidDisplayName; never sanitize a submitted path.
+const raidDisplayText = text => text.replace(/[\u061c\ufeff\u2060-\u2064\u00ad\u180e\u200b-\u200f\u202a-\u202e\u2066-\u2069\u115f\u1160\u3164\uffa0\u034f\u17b4\u17b5\u{e0000}-\u{e007f}]/gu,'');
+function lockRaids(error, key = raidContext(lastReport || renderedReport)) {
+  ++raidVerdictGeneration;
+  const text=raidDisplayText(error.message);
+  raidLocks.set(key,text);
+  if (key === raidContext(lastReport || renderedReport)) { clearRaids();message(text); }
+}
+function clearRaids() {
+  ++raidGeneration;
+  if ($('raids-view') && !$('raids-view').hidden) show('report');
+  if ($('raids-view')) $('raids-view').remove();
+  if ($('nav-raids')) $('nav-raids').remove();
+}
+function displayRaids(result) {
+  if (raidLocked(result)) { clearRaids();message(raidLocked(result));return; }
+  if (result.HasRaids !== true) { clearRaids(); return; }
+  if (!$('raids-view')) {
+    // Only escaped, Go-template-owned HTML may enter this sink.
+    $('update-view').insertAdjacentHTML('beforebegin',result.RaidHTML);
+  }
+  if (!$('nav-raids')) {
+    const button=document.createElement('button');button.id='nav-raids';button.className='navbtn';
+    const text=document.createElement('span');text.textContent='Raids';button.append(text);
+    $('nav-update').before(button);
+  }
+}
+document.addEventListener('click',event=>{
+  const page=$('raids-view');
+  if (!page || !page.contains(event.target)) return;
+  const row=event.target.closest('[data-raid-player]');
+  if (row) {
+    const detail=$('raid-player-'+row.dataset.raidPlayer);
+    if (detail) {detail.hidden=false;detail.focus();}
+  }
+  const close=event.target.closest('[data-raid-close]');
+  if (close) {
+    const detail=close.closest('.raid-player-detail');detail.hidden=true;
+    const key=detail.id.slice('raid-player-'.length);
+    const button=page.querySelector('[data-raid-player="'+key+'"] button');if (button) button.focus();
+  }
+  const filter=event.target.closest('[data-death-filter]');
+  if (filter) {
+    for (const b of page.querySelectorAll('[data-death-filter]')) b.setAttribute('aria-pressed',String(b===filter));
+    for (const death of page.querySelectorAll('[data-death-kind]')) death.hidden=filter.dataset.deathFilter!=='all'&&death.dataset.deathKind!==filter.dataset.deathFilter;
+  }
+});
+async function requestRaid(action) {
+  if (switchingAccount || switchingFolder || !$('nav-raids')) return;
+  const generation=++raidGeneration, context=reportGeneration;
+  const key=raidContext(lastReport || renderedReport);
+  try {
+    const html=await action();
+    if (generation!==raidGeneration || context!==reportGeneration || !$('nav-raids')) return;
+    if (typeof html!=='string') return; // Native picker cancellation leaves the current night intact.
+    $('raids-view').outerHTML=html;
+    userNavigated=true;show('raids');
+  } catch(err) {
+    // A refusal owns its account's lock even when newer work superseded its HTML.
+    if (isRaidRefusal(err)) lockRaids(err,key);
+    else if (generation===raidGeneration && context===reportGeneration) message(raidDisplayText(err.message));
+  }
+}
+document.addEventListener('click',event=>{
+  if (event.target.closest('#nav-raids')) { requestRaid(rc.raidPage); return; }
+  const page=$('raids-view');
+  if (!page || !page.contains(event.target)) return;
+  if (event.target.closest('#raid-open')) {
+    const input=$('raid-log-path');
+    // Reopening an unchanged display must retain the actual filename's bytes.
+    const path=input.value===input.defaultValue ? input.dataset.raidOriginalPath : input.value;
+    requestRaid(()=>rc.raidOpen(path));
+  } else if (event.target.closest('[data-raid-newest]')) requestRaid(()=>rc.raidOpen(''));
+  else if (event.target.closest('[data-raid-log]')) requestRaid(rc.raidChooseLog);
+  else if (event.target.closest('[data-raid-officer]')) requestRaid(rc.raidChooseOfficer);
+  else if (event.target.closest('[data-raid-officer-open]')) {
+    const path=$('raid-officer-path').value;requestRaid(()=>rc.raidOfficerFile(path));
+  }
+});
+document.addEventListener('change',event=>{
+  if (event.target.id==='raid-night-select') {
+    const index=event.target.value;requestRaid(()=>rc.raidNight(index));
+  }
+});
 function displayReport(result,folderChanged = false,preferenceRevision = wowheadRevision) {
   // A report already in flight can predate the successful app-wide write.
   if (preferenceRevision !== wowheadRevision && lastReport) result = {...result,WowheadNames:lastReport.WowheadNames};
@@ -343,6 +446,8 @@ function displayReport(result,folderChanged = false,preferenceRevision = wowhead
     renderedReport = {HTML:result.HTML,Game:result.Game,Account:result.Account};
   }
   displayFarm(result);
+  if (!sameContext) clearRaids();
+  displayRaids(result);
   $('installed-version').textContent = result.InstalledVersion === '0.0.0' ? 'Not installed' : result.InstalledVersion;
   $('setup-installed').textContent = $('installed-version').textContent;
   $('setup-folder').textContent = result.Game || 'Not chosen yet.';
@@ -378,16 +483,31 @@ async function refresh(manual = false) {
   if (refreshing || switchingFolder || switchingAccount) return;
   refreshing = true;
   updateButtons();
-  const generation = reportGeneration, preferenceRevision = wowheadRevision;
+  const generation = reportGeneration, verdict = raidVerdictGeneration, preferenceRevision = wowheadRevision;
   try {
     const result = await rc.refresh();
     if (generation !== reportGeneration) return;
+    // A stale allowed refresh cannot overturn a newer guarded route refusal.
+    // Only a later manual refresh, rechecked by that route, may clear the latch.
+    if (manual && result.HasRaids === true && raidLocked(result) && verdict === raidVerdictGeneration) {
+      try {
+        const html = await rc.raidPage();
+        if (generation !== reportGeneration || verdict !== raidVerdictGeneration) return;
+        raidLocks.delete(raidContext(result));++raidVerdictGeneration;result.RaidHTML=html;
+      } catch(err) {
+        if (isRaidRefusal(err)) lockRaids(err,raidContext(result));
+        else if (generation === reportGeneration && verdict === raidVerdictGeneration) {
+          displayReport(result,false,preferenceRevision);message(raidDisplayText(err.message));return;
+        }
+        if (generation !== reportGeneration) return;
+      }
+    }
     displayReport(result,false,preferenceRevision);
     chooseInitialView(result);
     acknowledgeRenderedShell();
-    if (manual) message('Report refreshed. The game must save before new data appears.', true);
+    if (manual && !raidLocked(result)) message('Report refreshed. The game must save before new data appears.', true);
   }
-  catch (err) { if (generation === reportGeneration) message('Could not refresh the report: '+err.message); }
+  catch (err) { if (generation === reportGeneration) message(raidLocked(lastReport || renderedReport) || 'Could not refresh the report: '+err.message); }
   finally { refreshing = false; updateButtons(); }
 }
 $('nav-setup').addEventListener('click',()=>{ userNavigated = true; show('setup'); maybeAutoCheck(); });
@@ -405,6 +525,7 @@ async function changeFolder(select) {
   busy = switchingFolder = true;
   // Invalidate earlier replies before Go can change the selected/update target.
   ++reportGeneration;
+  clearRaids();
   $('folder-label').textContent = 'Changing game folder…';
   $('account-source').textContent = 'Changing game folder…';
   $('report-body').hidden = true;
@@ -416,7 +537,7 @@ async function changeFolder(select) {
       folder = result.Game;
       clearUpdateAllLines();
       displayReport(result,true,preferenceRevision);
-      message('Game folder saved.', true);
+      message(raidLocked(result) || 'Game folder saved.', !raidLocked(result));
     }
   }
   catch(err) { message(err.message); }
@@ -448,6 +569,7 @@ $('account-select').addEventListener('change',async()=>{
   if (!id || (lastReport && id === lastReport.Account)) return;
   busy = switchingAccount = true;
   const generation = ++reportGeneration, preferenceRevision = wowheadRevision;
+  clearRaids();
   // An account switch is a data boundary, including failed reads or writes.
   $('report-body').replaceChildren();
   renderedReport = null;
@@ -462,7 +584,7 @@ $('account-select').addEventListener('change',async()=>{
     const result = await rc.selectAccount(id);
     if (generation !== reportGeneration) return;
     displayReport(result,false,preferenceRevision);
-    message(result.ConfigWarning || 'Account selection remembered for this game folder.');
+    message(raidLocked(result) || result.ConfigWarning || 'Account selection remembered for this game folder.');
   } catch(err) {
     if (generation !== reportGeneration) return;
     if (lastReport) displayAccount(lastReport);

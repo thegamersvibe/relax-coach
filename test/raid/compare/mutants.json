@@ -1,0 +1,380 @@
+[
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "if f.Version != 1 {",
+    "new": "if false && f.Version != 1 {",
+    "killed_by": "TestOfficerStrict"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "len(list) < 1 || len(list) > 5",
+    "new": "len(list) < 0 || len(list) > 5",
+    "killed_by": "TestOfficerStrict"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "len(list) < 1 || len(list) > 5",
+    "new": "len(list) < 1 || len(list) > 6",
+    "killed_by": "TestOfficerStrict"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "trimmed == \"\" || seen[key]",
+    "new": "trimmed == \"\" || false && seen[key]",
+    "killed_by": "TestOfficerStrict"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "trimmed == \"\" || seen[key]",
+    "new": "false && trimmed == \"\" || seen[key]",
+    "killed_by": "TestOfficerStrict"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "key := asciiLower(trimmed)",
+    "new": "key := trimmed",
+    "killed_by": "TestOfficerStrict"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "!ok || seen[key]",
+    "new": "!ok || false && seen[key]",
+    "killed_by": "TestOfficerStrict"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "return OfficerFile{}, errors.New(\"unknown officer field\")",
+    "new": "err = nil",
+    "killed_by": "TestOfficerStrict"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "if bytes.Equal(bytes.TrimSpace(value), []byte(\"null\")) {",
+    "new": "if false && bytes.Equal(bytes.TrimSpace(value), []byte(\"null\")) {",
+    "killed_by": "TestOfficerStrict"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "if !validJSONText(data) {",
+    "new": "if false && !validJSONText(data) {",
+    "killed_by": "TestOfficerUnicode"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "if err := out.validate(); err != nil {",
+    "new": "if err := out.validate(); false && err != nil {",
+    "killed_by": "TestOfficerStrict"
+  },
+  {
+    "file": "desktop/internal/raid/compare/compare.go",
+    "old": "if err := officer.validate(); err != nil {",
+    "new": "if err := officer.validate(); false && err != nil {",
+    "killed_by": "TestCompareMinimumAndInvalid"
+  },
+  {
+    "file": "desktop/internal/raid/compare/compare.go",
+    "old": "if out.Ranked < 4 {",
+    "new": "if out.Ranked < 3 {",
+    "killed_by": "TestCompareMinimumAndInvalid"
+  },
+  {
+    "file": "desktop/internal/raid/compare/compare.go",
+    "old": "if out.Ranked < 4 {",
+    "new": "if out.Ranked < 5 {",
+    "killed_by": "TestCompareMinimumAndInvalid"
+  },
+  {
+    "file": "desktop/internal/raid/compare/compare.go",
+    "old": "if n.Rank.Present {\n\t\t\tout.Ranked++",
+    "new": "if n.Tenths.Present {\n\t\t\tout.Ranked++",
+    "killed_by": "TestCompareRanksAndNames"
+  },
+  {
+    "file": "desktop/internal/raid/compare/compare.go",
+    "old": "if n.Rank.Present {\n\t\t\tranked = append",
+    "new": "if n.Tenths.Present {\n\t\t\tranked = append",
+    "killed_by": "TestCompareOwnFives"
+  },
+  {
+    "file": "desktop/internal/raid/compare/compare.go",
+    "old": "if !n.Rank.Present {",
+    "new": "if false && !n.Rank.Present {",
+    "killed_by": "TestCompareWeightedParts"
+  },
+  {
+    "file": "desktop/internal/raid/compare/compare.go",
+    "old": "score.NightRoleParts(fights, n, c)",
+    "new": "score.NightRoleParts(nil, n, c)",
+    "killed_by": "TestCompareOriginalFightWeighting"
+  },
+  {
+    "file": "desktop/internal/raid/compare/compare.go",
+    "old": "summary, err := score.NightRoleParts(fights, n, c)\n\t\tif err != nil {\n\t\t\treturn Report{}, err",
+    "new": "summary, err := score.NightRoleParts(fights, n, c)\n\t\tif err != nil {\n\t\t\treturn out, nil",
+    "killed_by": "TestCompareRoleAvailability"
+  },
+  {
+    "file": "desktop/internal/raid/compare/compare.go",
+    "old": "score.MatchPrep([]model.PrepReport{{Name: name}}, names)",
+    "new": "score.MatchPrep([]model.PrepReport{{Name: asciiLower(name)}}, names)",
+    "killed_by": "TestCompareMatchingEdges"
+  },
+  {
+    "file": "desktop/internal/raid/compare/compare.go",
+    "old": "if ambiguous[match] {",
+    "new": "if false && ambiguous[match] {",
+    "killed_by": "TestCompareMatchingEdges"
+  },
+  {
+    "file": "desktop/internal/raid/compare/compare.go",
+    "old": "if !e.Rank.Present {",
+    "new": "if false && !e.Rank.Present {",
+    "killed_by": "TestCompareRanksAndNames"
+  },
+  {
+    "file": "desktop/internal/raid/compare/compare.go",
+    "old": "e.Coverage)",
+    "new": "0*e.Coverage)",
+    "killed_by": "TestCompareRanksAndNames"
+  },
+  {
+    "file": "desktop/internal/raid/compare/compare.go",
+    "old": "int64((out.Ranked+1)/2)",
+    "new": "int64(out.Ranked/2)",
+    "killed_by": "TestCompareRanksAndNames"
+  },
+  {
+    "file": "desktop/internal/raid/compare/compare.go",
+    "old": "e.Rank.V <= int64((out.Ranked+1)/2)",
+    "new": "e.Rank.V < int64((out.Ranked+1)/2)",
+    "killed_by": "TestCompareRanksAndNames"
+  },
+  {
+    "file": "desktop/internal/raid/compare/compare.go",
+    "old": "if top != upper {",
+    "new": "if top == upper {",
+    "killed_by": "TestCompareRanksAndNames"
+  },
+  {
+    "file": "desktop/internal/raid/compare/compare.go",
+    "old": "explain(summaries[a.ID], summaries, c, top)",
+    "new": "explain(summaries[a.ID], summaries, c, !top)",
+    "killed_by": "TestCompareWeightedParts"
+  },
+  {
+    "file": "desktop/internal/raid/compare/compare.go",
+    "old": "return a.Rank.V < b.Rank.V",
+    "new": "return a.Rank.V > b.Rank.V",
+    "killed_by": "TestCompareOwnFives"
+  },
+  {
+    "file": "desktop/internal/raid/compare/compare.go",
+    "old": "return a.Rank.V > b.Rank.V",
+    "new": "return a.Rank.V < b.Rank.V",
+    "killed_by": "TestCompareOwnFives"
+  },
+  {
+    "file": "desktop/internal/raid/compare/compare.go",
+    "old": "return a.LoggedName < b.LoggedName",
+    "new": "return a.LoggedName > b.LoggedName",
+    "killed_by": "TestComparePurityAndOrder"
+  },
+  {
+    "file": "desktop/internal/raid/compare/compare.go",
+    "old": "ranked[:min(5, len(ranked))]",
+    "new": "ranked[:min(6, len(ranked))]",
+    "killed_by": "TestCompareOwnFives"
+  },
+  {
+    "file": "desktop/internal/raid/compare/compare.go",
+    "old": "if !named[e.PlayerID] {",
+    "new": "if true || !named[e.PlayerID] {",
+    "killed_by": "TestCompareOwnFives"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "if player.Split {",
+    "new": "if false && player.Split {",
+    "killed_by": "TestCompareRoleAvailability"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "peer.Role == player.Role && peer.Parts[name] != nil",
+    "new": "peer.Parts[name] != nil",
+    "killed_by": "TestCompareWeightedParts"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "if len(values) < 2 {",
+    "new": "if len(values) < 1 {",
+    "killed_by": "TestCompareRoleAvailability"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "if len(values) < 2 {",
+    "new": "if len(values) < 3 {",
+    "killed_by": "TestCompareRoleAvailability"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "if len(values)%2 == 0 {",
+    "new": "if false && len(values)%2 == 0 {",
+    "killed_by": "TestComparePartTiesAndExactMedian"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "new(big.Rat).Sub(value, median)",
+    "new": "new(big.Rat).Sub(median, value)",
+    "killed_by": "TestCompareWeightedParts"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "new(big.Rat).Mul(new(big.Rat).Sub(value, median), weight)",
+    "new": "new(big.Rat).Sub(value, median)",
+    "killed_by": "TestCompareWeightedParts"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "impact := new(big.Rat).Mul",
+    "new": "median.SetString(median.FloatString(1)); impact := new(big.Rat).Mul",
+    "killed_by": "TestComparePartTiesAndExactMedian"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "return cmp < 0",
+    "new": "return cmp > 0",
+    "killed_by": "TestCompareWeightedParts"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "if cmp := a.Weight.Cmp(b.Weight); cmp != 0 {\n\t\treturn cmp > 0",
+    "new": "if cmp := a.Weight.Cmp(b.Weight); cmp != 0 {\n\t\treturn cmp < 0",
+    "killed_by": "TestComparePartTiesAndExactMedian"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "return a.Name < b.Name",
+    "new": "return a.Name > b.Name",
+    "killed_by": "TestComparePartTiesAndExactMedian"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "w = c.Scoring.Weights.DPS",
+    "new": "w = c.Scoring.Weights.Tank",
+    "killed_by": "TestCompareAllRoleWeights"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "w = c.Scoring.Weights.Healer",
+    "new": "w = c.Scoring.Weights.DPS",
+    "killed_by": "TestCompareAllRoleWeights"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "w = c.Scoring.Weights.Tank",
+    "new": "w = c.Scoring.Weights.DPS",
+    "killed_by": "TestCompareAllRoleWeights"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "strconv.FormatFloat(v, 'f', -1, 64)",
+    "new": "strconv.FormatFloat(v, 'f', 1, 64)",
+    "killed_by": "TestCompareAllRoleWeights"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "if player.Role == \"\" {",
+    "new": "if false && player.Role == \"\" {",
+    "killed_by": "TestCompareNoScoredFightsReason"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "(top && best.Impact.Sign() >= 0)",
+    "new": "(false && top && best.Impact.Sign() >= 0)",
+    "killed_by": "TestComparePartExplainsDisagreement"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "(!top && best.Impact.Sign() <= 0)",
+    "new": "(false && !top && best.Impact.Sign() <= 0)",
+    "killed_by": "TestComparePartExplainsDisagreement"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "best.Impact.Sign() >= 0",
+    "new": "best.Impact.Sign() > 0",
+    "killed_by": "TestComparePartExplainsDisagreement"
+  },
+  {
+    "file": "desktop/internal/raid/compare/parts.go",
+    "old": "best.Impact.Sign() <= 0",
+    "new": "best.Impact.Sign() < 0",
+    "killed_by": "TestComparePartExplainsDisagreement"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "\tdata = bytes.TrimPrefix(data, []byte(\"\\xef\\xbb\\xbf\"))\n",
+    "new": "",
+    "killed_by": "TestOfficerBOM"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "trimmed := strings.TrimSpace(name)",
+    "new": "trimmed := name",
+    "killed_by": "TestOfficerTrimmedDuplicates"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "list[i] = strings.TrimSpace(name)",
+    "new": "list[i] = name",
+    "killed_by": "TestOfficerTrimNames"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "if len(trimmed) > 64 {",
+    "new": "if false && len(trimmed) > 64 {",
+    "killed_by": "TestOfficerNameByteLimit"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "if len(trimmed) > 64 {",
+    "new": "if len(trimmed) > 65 {",
+    "killed_by": "TestOfficerNameByteLimit"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "if len(trimmed) > 64 {",
+    "new": "if len(trimmed) >= 64 {",
+    "killed_by": "TestOfficerNameByteLimit"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "if len(trimmed) > 64 {",
+    "new": "if utf8.RuneCountInString(trimmed) > 64 {",
+    "killed_by": "TestOfficerNameByteLimit"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "if strings.ContainsFunc(name, unicode.IsControl) {",
+    "new": "if false && strings.ContainsFunc(name, unicode.IsControl) {",
+    "killed_by": "TestOfficerNameControls"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "if strings.ContainsFunc(name, unicode.IsControl) {",
+    "new": "if strings.ContainsFunc(trimmed, unicode.IsControl) {",
+    "killed_by": "TestOfficerNameControls"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "if strings.ContainsFunc(name, unicode.IsControl) {",
+    "new": "if strings.ContainsFunc(name, func(r rune) bool { return r != 0 && unicode.IsControl(r) }) {",
+    "killed_by": "TestOfficerNameControls"
+  },
+  {
+    "file": "desktop/internal/raid/compare/officer.go",
+    "old": "if strings.ContainsFunc(name, unicode.IsControl) {",
+    "new": "if strings.ContainsFunc(name, func(r rune) bool { return r == 0 && unicode.IsControl(r) }) {",
+    "killed_by": "TestOfficerNameControls"
+  }
+]

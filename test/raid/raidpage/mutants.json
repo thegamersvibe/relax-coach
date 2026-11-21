@@ -1,0 +1,422 @@
+[
+  {
+    "file": "desktop/raid_page.go",
+    "old": "if run.Partial {",
+    "new": "if !run.Partial {",
+    "killed_by": "TestRaidPageHeaderAndLists"
+  },
+  {
+    "file": "desktop/raid_page.go",
+    "old": "row.Rank = fmt.Sprint(s.Rank.V)",
+    "new": "row.Rank = \"\"",
+    "killed_by": "TestRaidPageHeaderAndLists"
+  },
+  {
+    "file": "desktop/raid_page.go",
+    "old": "p.Unmatched = prep.Unmatched",
+    "new": "p.Unmatched = nil",
+    "killed_by": "TestRaidPageWipesAndProblems"
+  },
+  {
+    "file": "desktop/raid_page.go",
+    "old": "p.Excluded += excluded",
+    "new": "p.Excluded += 0 * excluded",
+    "killed_by": "TestRaidPageWipesAndProblems"
+  },
+  {
+    "file": "desktop/raid_page.go",
+    "old": "v.Following = append(v.Following, rows[i])",
+    "new": "v.Following = append(v.Following, rows[i])[:0]",
+    "killed_by": "TestRaidPageWipesAndProblems"
+  },
+  {
+    "file": "desktop/raid_page.go",
+    "old": "if wipe.FirstDeath >= 0 && wipe.FirstDeath < len(rows) {",
+    "new": "if wipe.FirstDeath < len(rows) {",
+    "killed_by": "TestRaidPageWipeWithoutDeath"
+  },
+  {
+    "file": "desktop/raid_page.go",
+    "old": "v.V/10, v.V%10",
+    "new": "v.V/100, v.V%10",
+    "killed_by": "TestRaidPageEvidence"
+  },
+  {
+    "file": "desktop/raid_deaths.go",
+    "old": "d.SuggestedCause == \"\"",
+    "new": "true",
+    "killed_by": "TestRaidPageDeathLabels"
+  },
+  {
+    "file": "desktop/raid_deaths.go",
+    "old": "(role == \"dps\" || role == \"healer\")",
+    "new": "(role == role)",
+    "killed_by": "TestRaidPageDeathLabels"
+  },
+  {
+    "file": "desktop/raid_deaths.go",
+    "old": "e.Stream == model.SwingLanded && slices.Contains",
+    "new": "true && slices.Contains",
+    "killed_by": "TestRaidPageDeathLabels"
+  },
+  {
+    "file": "desktop/raid_evidence.go",
+    "old": "Evidence: part.Evidence",
+    "new": "Evidence: model.Evidence{}",
+    "killed_by": "TestRaidPageEvidence"
+  },
+  {
+    "file": "desktop/raid_pipeline.go",
+    "old": "DetailsFor: func(model.Fight) bool { return true }",
+    "new": "DetailsFor: func(model.Fight) bool { return false }",
+    "killed_by": "TestRaidPageReadStream"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "\"html/template\"",
+    "new": "\"text/template\"",
+    "killed_by": "TestRaidPageEscapesAllNames"
+  },
+  {
+    "file": "desktop/raid.html",
+    "old": "{{if lt .Ranked 10}}",
+    "new": "{{if lt .Ranked 9}}",
+    "killed_by": "TestRaidPageComparisonPresentation"
+  },
+  {
+    "file": "desktop/raid.html",
+    "old": "{{if .PartReason}}<p>{{.PartReason}}</p>{{end}}",
+    "new": "",
+    "killed_by": "TestRaidPageComparisonPresentation"
+  },
+  {
+    "file": "desktop/raid.html",
+    "old": "{{raidDecimal .Impact}}",
+    "new": "0.0",
+    "killed_by": "TestRaidPageComparisonPresentation"
+  },
+  {
+    "file": "desktop/raid_page.go",
+    "old": "v.Duration = (time.Duration(f.DurationMs.V) * time.Millisecond).String()",
+    "new": "v.Duration = \"unknown duration\"",
+    "killed_by": "TestRaidPageWipesAndProblems"
+  },
+  {
+    "file": "desktop/raid_deaths.go",
+    "old": "(role == \"dps\" || role == \"healer\")",
+    "new": "role != \"tank\"",
+    "killed_by": "TestRaidPageDeathLabels"
+  },
+  {
+    "file": "desktop/raid_deaths.go",
+    "old": "if f.Boss && d.Cause",
+    "new": "if true && d.Cause",
+    "killed_by": "TestRaidPageDeathLabels"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "return -1",
+    "new": "return r",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid.html",
+    "old": "<bdi>{{raidName .}}</bdi>",
+    "new": "{{raidName .}}",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid_pipeline.go",
+    "old": "officer, err := compare.ParseOfficer(data)",
+    "new": "officer, err := compare.OfficerFile{Version: 1, Officer: \"forged\"}, error(nil)",
+    "killed_by": "TestRaidPageComparisonRereads"
+  },
+  {
+    "file": "desktop/raid_night_table.go",
+    "old": "if summary.Role == \"\" {",
+    "new": "if false {",
+    "killed_by": "TestRaidPageNightExactDisplay"
+  },
+  {
+    "file": "desktop/raid_night_table.go",
+    "old": "if summary.Split {",
+    "new": "if false {",
+    "killed_by": "TestRaidPageNightExactDisplay"
+  },
+  {
+    "file": "desktop/raid_night_table.go",
+    "old": "value = raidDecimal(points)",
+    "new": "value = points.FloatString(2)",
+    "killed_by": "TestRaidPageNightExactDisplay"
+  },
+  {
+    "file": "desktop/raid_night_table.go",
+    "old": "w = c.Scoring.Weights.Tank",
+    "new": "w = c.Scoring.Weights.DPS",
+    "killed_by": "TestRaidPageNightTable"
+  },
+  {
+    "file": "desktop/raid_night_table.go",
+    "old": "w = c.Scoring.Weights.Healer",
+    "new": "w = c.Scoring.Weights.DPS",
+    "killed_by": "TestRaidPageNightTable"
+  },
+  {
+    "file": "desktop/raid_page.go",
+    "old": "row.NightParts, row.NightReason = raidNightParts(summary, c)",
+    "new": "row.NightParts, row.NightReason = nil, \"\"",
+    "killed_by": "TestRaidPageNightTable"
+  },
+  {
+    "file": "desktop/raid_page.go",
+    "old": "p.Kills++",
+    "new": "p.Kills += 0",
+    "killed_by": "TestRaidPagePullOutcomeHeader"
+  },
+  {
+    "file": "desktop/raid_page.go",
+    "old": "p.WipePulls++",
+    "new": "p.WipePulls += 0",
+    "killed_by": "TestRaidPagePullOutcomeHeader"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "if text == \"-0.0\" {",
+    "new": "if false {",
+    "killed_by": "TestRaidPageComparisonNumberDisplay"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "percent := new(big.Rat).Mul(v, big.NewRat(100, 1))",
+    "new": "percent := new(big.Rat).Mul(v, big.NewRat(1, 1))",
+    "killed_by": "TestRaidPageComparisonNumberDisplay"
+  },
+  {
+    "file": "desktop/raid_evidence.go",
+    "old": "if part.Name == \"preparation\" {",
+    "new": "if false {",
+    "killed_by": "TestRaidPageReportedPreparation"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "if b.raidRulesErr != nil {\n\t\treturn renderRaidScreen",
+    "new": "if false && b.raidRulesErr != nil {\n\t\treturn renderRaidScreen",
+    "killed_by": "TestRaidPageConfigFailure"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "if b.raidRulesErr != nil {\n\t\ta.mu.Unlock()",
+    "new": "if false && b.raidRulesErr != nil {\n\t\ta.mu.Unlock()",
+    "killed_by": "TestRaidPageConfigFailure"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "if err != nil {\n\t\ta.mu.Unlock()\n\t\treturn nil, err",
+    "new": "if false && err != nil {\n\t\ta.mu.Unlock()\n\t\treturn nil, err",
+    "killed_by": "TestRaidPageOpeningAdmission"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "save, err := a.raidSaveLocked()\n\tif err != nil {",
+    "new": "save, err := a.raidSaveLocked()\n\tif false && err != nil {",
+    "killed_by": "TestRaidPagePickerRechecksAdmission"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "if revision != a.raidRevision {",
+    "new": "if false && revision != a.raidRevision {",
+    "killed_by": "TestRaidPagePickerContextChange"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "officerPath = arg",
+    "new": "officerPath = \"\"",
+    "killed_by": "TestRaidPageOfficerPicker"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "a.raidSelection = &selection",
+    "new": "a.raidSelection = nil",
+    "killed_by": "TestRaidPageOpenEmbedded"
+  },
+  {
+    "file": "desktop/raid_pipeline.go",
+    "old": "if index == selected {",
+    "new": "if false && index == selected {",
+    "killed_by": "TestRaidPageOfficerPicker"
+  },
+  {
+    "file": "desktop/native_picker.go",
+    "old": "0x0040 | 0x0010 | 0x0200 | 0x4000",
+    "new": "0x0040 | 0x0010 | 0x0200 | 0x0000",
+    "killed_by": "TestRaidPageNativePickerSpec"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "path, pickErr := b.services.chooseFile(b.ctx, kind)",
+    "new": "path, pickErr := b.services.chooseFile(b.ctx, kind)\n\tif pickErr == nil && path == \"\" { return nil, nil }",
+    "killed_by": "TestRaidPageCancelledPickerRechecksAdmission"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "save, err := a.raidSaveLocked()\n\tif err != nil {\n\t\ta.raidSelection = nil",
+    "new": "save, err := a.raidSaveLocked()\n\tif err != nil {\n\t\t// retained stale night",
+    "killed_by": "TestRaidPageCancelledPickerRechecksAdmission"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "/^Raids locked(?::|$)/.test(error.message)",
+    "new": "true",
+    "killed_by": "TestRaidPageRouteErrors"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "if (isRaidRefusal(err)) lockRaids(err,raidContext(result));",
+    "new": "lockRaids(err,raidContext(result));\n        if (true) {}",
+    "killed_by": "TestRaidPageRouteErrors"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "else if (generation===raidGeneration && context===reportGeneration) message(raidDisplayText(err.message));",
+    "new": "else if (generation===raidGeneration && context===reportGeneration) clearRaids();",
+    "killed_by": "TestRaidPageRouteErrors"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "if text == \"0.0\" && v.Sign() > 0 {",
+    "new": "if false {",
+    "killed_by": "TestRaidPageTinyDecimal"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "return \">-0.1\"",
+    "new": "return \"0.0\"",
+    "killed_by": "TestRaidPageTinyDecimal"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "if text == \"0.0\" && v.Sign() > 0 {",
+    "new": "if text == \"0.0\" {",
+    "killed_by": "TestRaidPageTinyDecimal"
+  },
+  {
+    "file": "desktop/raid.html",
+    "old": "{{raidName .LogPath}}",
+    "new": "{{.LogPath}}",
+    "killed_by": "TestRaidPageScreenDisplay"
+  },
+  {
+    "file": "desktop/raid.html",
+    "old": "{{template \"raid-name\" .Error}}",
+    "new": "{{.Error}}",
+    "killed_by": "TestRaidPageScreenDisplay"
+  },
+  {
+    "file": "desktop/raid.html",
+    "old": "{{template \"raid-name\" .ComparisonError}}",
+    "new": "{{.ComparisonError}}",
+    "killed_by": "TestRaidPageScreenDisplay"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "input.value===input.defaultValue ? input.dataset.raidOriginalPath : input.value",
+    "new": "input.value",
+    "killed_by": "TestRaidPageDisplayInsertion"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "input.value===input.defaultValue ? input.dataset.raidOriginalPath : input.value",
+    "new": "input.dataset.raidOriginalPath",
+    "killed_by": "TestRaidPageDisplayInsertion"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "const raidDisplayText = text => text.replace(",
+    "new": "const raidDisplayText = text => text; const unusedRaidStrip = text => text.replace(",
+    "killed_by": "TestRaidPageDisplayInsertion"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "r == '\\u115f'",
+    "new": "false",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "r == '\\u1160'",
+    "new": "false",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "r == '\\u3164'",
+    "new": "false",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "r == '\\uffa0'",
+    "new": "false",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "r == '\\u034f'",
+    "new": "false",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "r == '\\u17b4'",
+    "new": "false",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "r == '\\u17b5'",
+    "new": "false",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "r >= '\\U000e0000' && r <= '\\U000e007f'",
+    "new": "false",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "r >= '\\U000e0000'",
+    "new": "r > '\\U000e0000'",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid_render.go",
+    "old": "r <= '\\U000e007f'",
+    "new": "r < '\\U000e007f'",
+    "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "if game != a.game || account != a.account {",
+    "new": "if game != game || account != account {",
+    "killed_by": "TestRaidPagePickerOutcomeBinding"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "if game != a.game || account != a.account {\n\t\treturn nil, errRaidPickerStale",
+    "new": "if game != a.game || account != a.account {\n\t\treturn nil, errRaidRankLocked",
+    "killed_by": "TestRaidPagePickerOutcomeBinding"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "path, pickErr := b.services.chooseFile(b.ctx, kind)",
+    "new": "path, pickErr := b.services.chooseFile(b.ctx, kind)\n\tif pickErr != nil { return nil, pickErr }",
+    "killed_by": "TestRaidPagePickerOutcomeBinding"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "\tsave, err := a.raidSaveLocked()\n\tif err != nil {\n\t\ta.raidSelection = nil\n\t\ta.raidRevision++\n\t\treturn nil, err\n\t}\n\tif revision != a.raidRevision {\n\t\treturn nil, errRaidPickerStale\n\t}",
+    "new": "\tif revision != a.raidRevision {\n\t\treturn nil, errRaidPickerStale\n\t}\n\tsave, err := a.raidSaveLocked()\n\tif err != nil {\n\t\ta.raidSelection = nil\n\t\ta.raidRevision++\n\t\treturn nil, err\n\t}",
+    "killed_by": "TestRaidPagePickerOutcomeBinding"
+  }
+]

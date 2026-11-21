@@ -996,5 +996,12 @@
     "new": "if r.Stamped >= endUTC {",
     "killed_by": "TestPrepCutoffInclusiveAndLatest",
     "rule": "stock at the true UTC end remains eligible"
+  },
+  {
+    "file": "desktop/internal/raid/score/night_parts.go",
+    "old": "\tc = c.Snapshot()\n",
+    "new": "",
+    "killed_by": "TestNightRolePartsConfigSnapshot",
+    "rule": "night summary uses the same validated config snapshot as Score"
   }
 ]
