@@ -34,10 +34,17 @@ There is deliberately no Coach-only `RelaxCoach-1.8.2.zip`: older apps must not 
   - Open it with **Detailed recap** under the death pop-up, the **[You died: details]** chat link, or `/recap` (`/recap 2`, `/recap 3` for older deaths). The last three deaths are tabs, newest first.
   - It opens on death and closes on release or revive by default: `/recap auto on|off`, `/recap autoclose on|off`, also under **Options → AddOns → Relax Raid**. `/recap keep on` keeps the last three recaps after logout (off by default); `/recap reset` puts the window back in place.
   - It stays on your PC: nothing is sent and nothing is scored.
-- **Relax Raid now saves each character's guild rank** on your PC, so the app can later show officer-only pages to the top two ranks. This is a **convenience lock, not security**: the save is a local file that can be edited or go stale.
+- **Relax Raid now saves each character's guild rank** on your PC (refreshed at login, on entering the world and on guild updates). The app uses it for the officer lock below.
+- **Officer Raids page (app).** Officers can review a raid night on their own PC.
+  - **Who sees it:** the **Raids** menu appears only when the **selected account** has a character in the guild's top two ranks, read by Relax Raid no more than 14 days ago. Otherwise the menu and page are not there at all. This is a **convenience lock, not security**: the rank comes from a local save that can be edited or go stale.
+  - **Opening a night:** open the newest combat log, choose a log file or paste its path, then pick the night. The raid rules are built into the app.
+  - **What it shows:** the night header (instance, date, boss pulls, wipes and kills, duration), the ranked list, the five-part night table (output, activity, mechanics with deaths inside, utility, preparation) and per-fight evidence, plus wipes and deaths (all, avoidable, unknown). Preparation shows the reported consumables and better items in bags.
+  - **Officer comparison:** pick an officer ranking file and the page compares it with the app's ranking, with reasons. The file is read fresh each time and never stored.
+  - Everything stays on the PC; nothing is uploaded or changed.
+  - **First raid: scores are provisional.** The scoring will be tuned after raid 1.
 - **Farming page (app): names from Wowhead and Wowhead links.** Items that no local source names (AH Profit, Relax Coach, GearQuest) are looked up on Wowhead's Forever item service in the background. Only item IDs are sent; names and quality are cached on this PC for 30 days, and a local name always wins. Turn it off under **Settings → Look up missing item names online (Wowhead)** (on by default). Item names in **Sell now**, **Up since yesterday** and **Down since yesterday** open their Wowhead Forever page in your browser.
 - **Clarifications to the 1.8.1 notes:**
-  - Prep reports are kept by every raid member whose Relax Raid logs. By default that is every guild member in a raid, but a character's own `/rraid logger` choice overrides the default. The officers' page that reads them is not out yet.
+  - Prep reports are kept by every raid member whose Relax Raid logs. By default that is every guild member in a raid, but a character's own `/rraid logger` choice overrides the default.
   - The storage limits count the stored report bodies, not the whole save file.
   - Names and quality colours also arrived in **Sell now**, not only in hot items.
 - Coach and the Windows app move to **1.8.2**; Relax Raid moves to **0.3.0**. Relax Journey (`4.00.04`), guide content (`4.00.12`) and Relax Quest Planner (`0.4.0`) are unchanged.

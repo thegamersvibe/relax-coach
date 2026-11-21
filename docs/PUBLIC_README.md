@@ -7,7 +7,7 @@ This is a **legacy Coach-only archive**, not the current combined guild download
 ## What's new in v1.8.2 (combined bundle)
 
 - **Relax Raid 0.3.0, Death Recap:** after any death, including battlegrounds, arenas and combat, a window shows the hits that killed you (the game keeps only the last few, usually about five, and no heals), who killed you in PvP, and the last three deaths as tabs. `/recap`, the **[You died: details]** chat link or **Detailed recap** under the death pop-up. Local only; nothing is sent or scored.
-- **Guild rank saved** per character for a later officer-only page in the app: a convenience lock, not security.
+- **Officer Raids page (app):** for the guild's top two ranks on the selected account (rank read by Relax Raid within the last 14 days; a convenience lock, not security). Open a combat log, pick the night and review the ranking, the five-part night table, per-fight evidence, wipes and deaths, and compare with an officer ranking file. Local only. **First raid: scores are provisional; tuning after raid 1.**
 - **Farming (app):** missing item names from Wowhead (item IDs only sent, cached on this PC, **Settings → Look up missing item names online** to turn off) and Wowhead links on item names.
 - **Update on app 1.8.0 or 1.8.1:** **Updates → Update everything** (or **Update App** first), then restart WoW once for the new Relax Raid files.
 - Coach and the app are **1.8.2**; Relax Raid **0.3.0**; Relax Journey (`4.00.04`), guide content (`4.00.12`) and Relax Quest Planner (`0.4.0`) are unchanged.
