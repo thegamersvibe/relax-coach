@@ -309,6 +309,8 @@ $('wowhead-names').addEventListener('change',async()=>{
     if (lastReport) lastReport = {...lastReport,WowheadNames:savedValue};
     if (generation !== reportGeneration) return;
     wowheadSaving = false;
+    // displayReport drops a reply older than the shown report (perhaps one that
+    // removed Raids); the app-wide preference above still applies.
     displayReport(result);
     $('wowhead-names-status').textContent = result.WowheadNames ? 'Online lookup enabled.' : 'Online lookup off. Cached names can still display.';
   } catch (err) {
@@ -418,7 +420,13 @@ document.addEventListener('change',event=>{
     const index=event.target.value;requestRaid(()=>rc.raidNight(index));
   }
 });
+// Go stamps each report reply under its bridge lock; a smaller Seq saw older
+// app state than the report already displayed and must not replace it.
+let shownSeq = -1;
+const olderReport = result => typeof result.Seq === 'number' && result.Seq < shownSeq;
 function displayReport(result,folderChanged = false,preferenceRevision = wowheadRevision) {
+  if (olderReport(result)) return;
+  if (typeof result.Seq === 'number') shownSeq = result.Seq;
   // A report already in flight can predate the successful app-wide write.
   if (preferenceRevision !== wowheadRevision && lastReport) result = {...result,WowheadNames:lastReport.WowheadNames};
   lastReport = result;
