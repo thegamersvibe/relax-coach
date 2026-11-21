@@ -109,6 +109,10 @@ function State.Init()
 		_G[SavedVariablesPerCharacterName] = { }
 	end
 	SavedVariablesPerCharacter = _G[SavedVariablesPerCharacterName]
+	-- Relax: guide visibility is per character; first load keeps the old account-wide choice.
+	if (SavedVariablesPerCharacter.hideGuide == nil) then
+		SavedVariablesPerCharacter.hideGuide = SavedVariables.hideGuide == true
+	end
 	SavedVariablesPerCharacter.custom = DefaultEmptyTable(SavedVariablesPerCharacter.custom)
 	SavedVariablesPerCharacter.bookmarks = DefaultEmptyTable(SavedVariablesPerCharacter.bookmarks)
 	SavedVariablesPerCharacter.runeSpoilerLevel = SavedVariablesPerCharacter.runeSpoilerLevel or { }
@@ -144,7 +148,7 @@ function State.IsGroupingEnabled()
 end
 
 function State.IsGuideShown()
-	return SavedVariables.hideGuide ~= true
+	return SavedVariablesPerCharacter.hideGuide ~= true
 end
 
 function State.IsHardcoreEnabled()
@@ -245,7 +249,7 @@ end
 
 function State.SetGuideShown(shown)
 	if (not InCombatLockdown()) then
-		SavedVariables.hideGuide = not shown
+		SavedVariablesPerCharacter.hideGuide = not shown
 		UI.MarkDirty()
 	end
 end
