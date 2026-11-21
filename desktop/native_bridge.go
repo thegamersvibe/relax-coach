@@ -55,6 +55,8 @@ type nativeBridge struct {
 	appNotOfferedFor                                                  string
 	raidRules                                                         cfg.Config
 	raidRulesErr                                                      error
+	// reportSeq orders every report reply; assigned under mu.
+	reportSeq uint64
 }
 
 type nativeReport struct {
@@ -70,6 +72,8 @@ type nativeReport struct {
 	FarmHTML     string
 	HasRaids     bool
 	RaidHTML     string
+	// Seq is assigned under the bridge lock: a larger Seq saw later app state.
+	Seq uint64
 }
 
 // Deliberately omit the download URL/checksum fields from the UI projection.
@@ -290,6 +294,8 @@ func (b *nativeBridge) reportLocked() (nativeReport, error) {
 	if b.closed {
 		return nativeReport{}, errors.New("application is closing")
 	}
+	b.reportSeq++
+	seq := b.reportSeq
 	enabled := savedWowheadNames()
 	b.app.mu.Lock()
 	if b.app.wowhead != nil {
@@ -322,7 +328,7 @@ func (b *nativeBridge) reportLocked() (nativeReport, error) {
 		AppVersion: Version, AppUpdateStatus: currentAppUpdateStatus(),
 		Account: v.Account, Accounts: v.Accounts, SVPath: v.SVPath, SaveTime: saveTime,
 		Stale: v.Warning != "", ConfigWarning: v.ConfigWarning, Bundle: InstalledBundleState(v.Game),
-		HasFarm: v.Farm.Present, FarmHTML: farmHTML, WowheadNames: enabled, HasRaids: v.HasRaids, RaidHTML: raidHTML}, err
+		HasFarm: v.Farm.Present, FarmHTML: farmHTML, WowheadNames: enabled, HasRaids: v.HasRaids, RaidHTML: raidHTML, Seq: seq}, err
 }
 
 func (b *nativeBridge) selectAccount(id string) (nativeReport, error) {

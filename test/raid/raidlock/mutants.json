@@ -157,8 +157,32 @@
   },
   {
     "file": "desktop/native_shell.js",
-    "old": "if (generation !== reportGeneration) return;\n      }\n    }\n    displayReport(result);",
-    "new": "/* stale re-admission context bypassed */\n      }\n    }\n    displayReport(result);",
+    "old": "if (generation !== reportGeneration) return;\n      }\n    }\n    displayReport(result,false,preferenceRevision);",
+    "new": "/* stale re-admission context bypassed */\n      }\n    }\n    displayReport(result,false,preferenceRevision);",
     "killed_by": "TestRaidLockReplyOrdering"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "  if (olderReport(result)) return;\n",
+    "new": "",
+    "killed_by": "TestRaidLockPreferenceReply"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "if (typeof result.Seq === 'number') shownSeq = result.Seq;",
+    "new": "",
+    "killed_by": "TestRaidLockPreferenceReply"
+  },
+  {
+    "file": "desktop/native_bridge.go",
+    "old": "\tb.reportSeq++\n",
+    "new": "",
+    "killed_by": "TestRaidLockReportSeq"
+  },
+  {
+    "file": "desktop/native_bridge.go",
+    "old": "Seq: seq}, err",
+    "new": "Seq: seq / seq}, err",
+    "killed_by": "TestRaidLockReportSeq"
   }
 ]
