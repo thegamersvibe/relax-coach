@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "version": "1.0.0",
+  "source": "Our class-study/roles-and-systems.md preparation discussion; Forever stacking and item mappings unverified. Categories only; no item ids, names, loot or requirements inferred.",
+  "categories": [
+    "flask",
+    "elixir",
+    "food",
+    "potion",
+    "weapon_treatment",
+    "reagent"
+  ]
+}

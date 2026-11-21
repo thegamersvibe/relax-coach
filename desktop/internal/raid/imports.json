@@ -8,6 +8,7 @@
   "fights": ["model", "cfg"],
   "death": ["model", "cfg"],
   "score": ["model", "cfg"],
+  "compare": ["model", "cfg", "score"],
   "prep": ["model"],
   "prepread": ["model"],
   "result": ["model"],

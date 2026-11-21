@@ -8,44 +8,6 @@ Four **separate WoW Forever addons**, plus a native Windows report app:
 - **Relax Raid** (from v1.8.0) — the guild raid logger: turns on the game's combat log in raids (`/rraid`) and, from v1.8.1, sends a short preparation report to the raid; from v1.8.2 it adds a Death Recap window (`/recap`). Works without the other addons.
 - **RelaxCoach.exe** — a real Windows app window with account selection, saved-character reports and explicit app and addon/content updates.
 
-Relax Raid also keeps each character's latest settled guild-rank reading, readable guild name and server time in the account's existing save. It refreshes on login, world entry and guild updates; a still-loading rank leaves the previous reading alone. These local readings support a **convenience lock, not security**: saves can be edited or become stale. This addon change supplies the readings only; the app's officer page and lock are a separate change.
-
-## Death recap
-
-Relax Raid adds a local **Death Recap**, available everywhere, including combat.
-It reads the game's recorded damage hits (usually about five, at most twelve),
-not a ten-second combat-log window; heals and duel losses have no recap. The
-window shows readable damage, source, spell, time before death, health, overkill
-and avoidable flags. Its hostile-player shares use **all retained damage for this
-death** as the denominator; pets remain separate and missing identity is labelled unknown.
-The guild avoidable list is generated from enabled raid mechanics (currently
-empty); the game's own avoidable flag still works. Nothing is sent or scored.
-
-Use `/recap`, `/recap 2`, `/recap 3`, the local **[You died: details]** chat link,
-or **Detailed recap** beside the death popup. Blizzard's buttons are unchanged.
-The three newest deaths have tabs. Close with X, Close or Escape; drag the title
-to move the window and use `/recap reset` to reset its character-specific position.
-Options are under **Options > AddOns > Relax Raid**, or `/recap auto on|off`,
-`/recap autoclose on|off`, `/recap keep on|off`. Automatic opening and closing on
-release/revive default on; keeping recaps after logout defaults off. Kept data
-contains player names, stays local in the existing character settings, and is
-capped at three deaths with twelve rows each. Even with keep off, one numeric
-last-recap timestamp is always saved to reject earlier-life hits after reload.
-No new SavedVariables are added.
-If another addon carries this shared module, the highest version owns one window
-and the saved history; both addons can register hooks. This change includes only
-the Relax Raid hook, not LayerEnemies tracking. If the game supplies no data, the
-window says so; missing popup callbacks leave `/recap` and the chat link working.
-Rows at or below the newest previously recorded recap timestamp are never
-assigned to a new death; mixed snapshots keep only newer rows. If none remain,
-it shows **no recap data for this death** until newer rows arrive within two
-seconds, even after a quick release (without reopening the window). If retry
-timers are missing or fail, the recap is finished and saved immediately.
-Unreadable hits or invalid damage blank the shares and show **some hits unreadable**. The attacker
-block shows three sources plus **+X more** so the window fits a 600-pixel-tall
-screen; all retained hits remain scrollable and all readable damage counts.
-See [API evidence and offline validation](docs/raid/DEATH-RECAP.md).
-
 ## Download
 
 **[Download release v1.8.2](https://github.com/thegamersvibe/relax-coach/releases/tag/v1.8.2)**:
@@ -273,6 +235,69 @@ Use the included `Restore-RelaxCoach.ps1 -Backup <backup-folder>` with WoW close
   Item names: AH Profit's save and bundled files first, then Coach's client cache, then installed GearQuest data. For history IDs still unnamed, the desktop app can fill gaps from Wowhead's Forever tooltip service; local names always win. Remaining unknowns show item IDs. Quality colours use the best-known quality by item ID, from Coach first, then GearQuest, and from Wowhead when it supplies a missing name; unknown quality keeps the default colour. Rows without an item ID cannot be matched to a quality. Coach fills missing history-item names at login and after the auction house closes, pauses in combat, and keeps at most 10,000 entries (no new entries when full); save with `/reload` or logout before refreshing the app. While names are missing, **X of Y item names known** counts distinct valid history item IDs for this account (Y) and those named by any source (X). If the account has no `ForeverCoachDB.itemNames` cache, it adds **(update Relax Coach and visit the auction house to name more)**; an existing cache, even empty or full, has no suffix. When history is empty or all its IDs are named, the line is hidden. This is name coverage, not a live queue or a promise that every item can resolve.
   **Online fallback (on by default):** sends item IDs only to Wowhead, not characters, accounts, prices or saves. It runs in the background (at most 200 requests per refresh, at most one per second), stops and backs off on server/network errors, and honours Retry-After. Only names and quality, plus fetch times or not-found markers, are cached on this PC in the app's configuration directory (`ForeverCoach/wowhead-names-16.json`); no tooltip text or stats, no bundled data and no cache uploads. Names expire after 30 days; not-found entries after 24 hours. Turn requests off under **Settings → Look up missing item names online (Wowhead)**; the choice is remembered and already-cached names can still display until they expire. Names with known item IDs in **Sell now**, **Up since yesterday** and **Down since yesterday** are links to Wowhead Forever, opened in your default browser rather than inside the app. Name-only auction statistics and hashed gathering kinds have no item IDs to link. No Wowhead scripts are embedded in the app.
 - **Hot items (Farming page):** per auction house, separate **Up since yesterday** and **Down since yesterday** lists, each with up to 10 items, never padded. Items must move at least 20% since the previous recorded day and at least 20% against their usual price, ranked by the smaller move. Usual means the median of earlier recorded days in AH Profit's 21-day own-scan history: at least 5 earlier days, a usual price of at least 5 silver and usual listed supply of at least 5 units. Both lists require at least 10 units listed on the scan day and show **listed (scan day) / usual**. Risers also need at least half their usual supply; rejected thin-supply rises are counted separately, and the existing 10-times price cap remains. Fallers have no thin-supply filter or 10-times cap, but must cost at least 1 copper; **dump** marks at least twice the usual listed supply. Risers retain the **spike** marker for a price well above usual and above every earlier high. While no item in a house has enough earlier days, ranking uses only the previous-day change; supply medians use the earlier days available, no price spike is marked, and dump still follows supply. An item with no earlier day is not compared or counted as thin supply. Each item has a small chart and signed percentages, green for rises and red for falls, with names and quality colours from the same sources as bank items. The count is the scan day's highest listed units, not a live count or a count of sellers. Without a scan today both lists use the last scan day, labelled with its date. Guild-only members see a note until AH Profit keeps guild price history; unnamed items are shown by id.
+
+## Death recap
+
+Relax Raid adds a local **Death Recap**, available everywhere, including combat.
+It reads the game's recorded damage hits (usually about five, at most twelve),
+not a ten-second combat-log window; heals and duel losses have no recap. The
+window shows readable damage, source, spell, time before death, health, overkill
+and avoidable flags. Its hostile-player shares use **all retained damage for this
+death** as the denominator; pets remain separate and missing identity is labelled unknown.
+The guild avoidable list is generated from enabled raid mechanics (currently
+empty); the game's own avoidable flag still works. Nothing is sent or scored.
+
+Use `/recap`, `/recap 2`, `/recap 3`, the local **[You died: details]** chat link,
+or **Detailed recap** beside the death popup. Blizzard's buttons are unchanged.
+The three newest deaths have tabs. Close with X, Close or Escape; drag the title
+to move the window and use `/recap reset` to reset its character-specific position.
+Options are under **Options > AddOns > Relax Raid**, or `/recap auto on|off`,
+`/recap autoclose on|off`, `/recap keep on|off`. Automatic opening and closing on
+release/revive default on; keeping recaps after logout defaults off. Kept data
+contains player names, stays local in the existing character settings, and is
+capped at three deaths with twelve rows each. Even with keep off, one numeric
+last-recap timestamp is always saved to reject earlier-life hits after reload.
+No new SavedVariables are added.
+If another addon carries this shared module, the highest version owns one window
+and the saved history; both addons can register hooks. This change includes only
+the Relax Raid hook, not LayerEnemies tracking. If the game supplies no data, the
+window says so; missing popup callbacks leave `/recap` and the chat link working.
+Rows at or below the newest previously recorded recap timestamp are never
+assigned to a new death; mixed snapshots keep only newer rows. If none remain,
+it shows **no recap data for this death** until newer rows arrive within two
+seconds, even after a quick release (without reopening the window). If retry
+timers are missing or fail, the recap is finished and saved immediately.
+Unreadable hits or invalid damage blank the shares and show **some hits unreadable**. The attacker
+block shows three sources plus **+X more** so the window fits a 600-pixel-tall
+screen; all retained hits remain scrollable and all readable damage counts.
+See [API evidence and offline validation](docs/raid/DEATH-RECAP.md).
+
+## Guild-rank readings
+
+Relax Raid keeps each character's latest settled guild-rank reading, readable guild name and server time in the account's existing save. It refreshes on login, world entry and guild updates; a still-loading rank leaves the previous reading alone.
+
+## Raids officer view (in development)
+
+The local Raids menu and page exist only when the **selected account's**
+Relax Raid save contains a validated, current `officer` reading. Its server
+stamp must be no more than 14 days old or one day ahead of the PC's UTC clock;
+missing/invalid times never admit. More than 50 raw rank entries, malformed
+`Name-Realm` string keys or repeated save keys lock the whole page. Invalid row
+values cannot unlock it. Without an eligible officer, both menu and page stay
+absent, and every native route also refuses access. A stale refresh cannot undo
+a newer lock verdict. This is a **convenience lock, not security**: local saves
+can be edited or stale. The stage-2 `/api/companion/me` check is a later lane.
+
+Admitted officers can open the newest combat log, choose a log file or paste a
+path, select a night, and inspect score groups, the five-part night table,
+per-fight evidence, wipes and deaths. Raid-1 rules are **embedded in the exe**:
+one app version means one config, with no disk override or rule-update channel.
+A startup config error is shown on the page instead of a night. Officer ranking
+files are chosen by path, read afresh and validated before comparison; they are
+never stored in a night file. Preparation shows reported stock and better items
+in bags, not unsupported claims about consumable use or being new at 60.
+No files are uploaded or modified by this view. See the
+[resolved R8 rulings and test boundaries](docs/raid/R8-OPEN-QUESTIONS.md).
 
 ## Coverage and known limits
 

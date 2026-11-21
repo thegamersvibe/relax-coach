@@ -86,8 +86,8 @@ python -I -B .github/tests/test_check_results.py
 # The Go native-shell test writes the fixture consumed by the offline UI tests.
 export NATIVE_HTML_OUT="$PWD/dist/native-test.html"
 mkdir -p dist
-(cd desktop && go test -race -count=1 -timeout 20m ./... && go vet ./...)
 npm ci --prefix .github --ignore-scripts
+(cd desktop && go test -race -count=1 -timeout 20m ./... && go vet ./...)
 NODE_PATH="$PWD/.github/node_modules" node --test desktop/*_ui_test.cjs
 
 # Build/test locally only: nothing is installed, uploaded or published.

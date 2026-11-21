@@ -21,7 +21,7 @@ var Version = "1.8.2" // May be overridden with -X main.Version for private veri
 const Repo = "thegamersvibe/relax-coach"
 const RulesSchema = 1
 
-//go:embed report.html farm.html logo.png native_shell.html native_shell.js
+//go:embed report.html farm.html raid.html logo.png native_shell.html native_shell.js
 var assets embed.FS
 
 type Finding struct {
@@ -90,6 +90,7 @@ type StatView struct {
 }
 
 type View struct {
+	HasRaids                    bool
 	Chars                       []CharView
 	SVPath, Error, RulesVersion string
 	Warning                     string
@@ -115,6 +116,9 @@ type App struct {
 	accounts               []AccountChoice
 	configWarning          string
 	canAutoSelect          bool
+	raidNow                func() time.Time // nil uses the PC UTC clock; tests inject it
+	raidSelection          *raidSelection   // log path/index only, never an officer prediction
+	raidRevision           uint64
 	gearNames              gearNameCache
 	wowhead                *wowheadNames  // initialized by the app entrypoint; tests inject only fake servers
 	farmRef                farmRefCache   // AH Profit's bundled names, reparsed only when the files change
@@ -162,6 +166,7 @@ func main() {
 	if game == "" {
 		game = findGame()
 	}
+	_, _ = raidConfig() // Retain the startup error for the Raids page, not a process exit.
 	app := &App{}
 	if !*once {
 		app.wowhead = newWowheadNames(context.Background(), wowheadCachePath(), wowheadTooltipURL, client)
@@ -198,6 +203,8 @@ func (a *App) setGame(game string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.game = game
+	a.raidSelection = nil
+	a.raidRevision++
 	a.addonDir = ""
 	a.account, a.configWarning = "", ""
 	remembered, err := savedAccount(game)
@@ -279,8 +286,10 @@ func (a *App) reloadLocked() {
 	farmFor := View{Game: v.Game, Account: v.Account, Chars: chars, itemNames: v.itemNames, hasItemNames: v.hasItemNames}
 	a.loadFarmLocked(&farmFor, prev)
 	v.Farm = farmFor.Farm
+	v.HasRaids = a.raidAllowedLocked()
 	if v.Error != "" && prev.SVPath != "" && prev.Error == "" && prev.Game == v.Game && prev.Account == v.Account {
 		prev.Farm = v.Farm
+		prev.HasRaids = v.HasRaids
 		prev.Accounts = v.Accounts
 		prev.ConfigWarning = v.ConfigWarning
 		prev.Warning = "Latest save couldn't be read yet, showing the previous one (" + v.Error + ")"

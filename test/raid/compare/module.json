@@ -1,0 +1,7 @@
+{
+  "kind": "go",
+  "source": "desktop/internal/raid/compare/",
+  "test": ["go", "-C", "desktop", "test", "-race", "-count=1", "./internal/raid/compare"],
+  "depends": ["model", "cfg", "score"],
+  "inputs": ["rules/raid/"]
+}

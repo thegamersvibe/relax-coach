@@ -1,0 +1,14 @@
+[
+  {
+    "file": "desktop/raidrules/rules.go",
+    "old": "return c.Snapshot(), nil",
+    "new": "return *c, nil",
+    "killed_by": "TestRaidConfigCachedSnapshot"
+  },
+  {
+    "file": "desktop/raidrules/rules.go",
+    "old": "return cfg.Config{}, err",
+    "new": "return cfg.Config{}, nil",
+    "killed_by": "TestRaidConfigRetainsError"
+  }
+]

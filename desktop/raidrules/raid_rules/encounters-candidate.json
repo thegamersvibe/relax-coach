@@ -1,0 +1,271 @@
+{
+  "schema": 1,
+  "version": "1.0.0",
+  "source": "Our class-study/encounters-and-methods.md Part A. No mechanic is enabled by this catalogue.",
+  "encounters": [
+    {
+      "name": "Chillhowl",
+      "raid": "Barrow Deeps",
+      "source": "class-study/encounters-and-methods.md Part A; preview/datamine only, no validated live rule.",
+      "abilities": [],
+      "note": "Candidate only. Affected players, response and boss units require real-log evidence; no ids or penalties inferred from names."
+    },
+    {
+      "name": "Elder Tangleclaw",
+      "raid": "Barrow Deeps",
+      "source": "class-study/encounters-and-methods.md Part A; preview/datamine only, no validated live rule.",
+      "abilities": [],
+      "note": "Candidate only. Affected players, response and boss units require real-log evidence; no ids or penalties inferred from names."
+    },
+    {
+      "name": "Khalith the Dreadspinner",
+      "raid": "Barrow Deeps",
+      "source": "class-study/encounters-and-methods.md Part A; preview/datamine only, no validated live rule.",
+      "abilities": [],
+      "note": "Candidate only. Affected players, response and boss units require real-log evidence; no ids or penalties inferred from names."
+    },
+    {
+      "name": "Well of Sorrow",
+      "raid": "Barrow Deeps",
+      "source": "class-study/encounters-and-methods.md Part A; preview/datamine only, no validated live rule.",
+      "abilities": [],
+      "note": "Candidate only. Affected players, response and boss units require real-log evidence; no ids or penalties inferred from names."
+    },
+    {
+      "name": "Amethrax",
+      "raid": "Barrow Deeps",
+      "source": "class-study/encounters-and-methods.md Part A; preview/datamine only, no validated live rule.",
+      "abilities": [],
+      "note": "Candidate only. Affected players, response and boss units require real-log evidence; no ids or penalties inferred from names."
+    },
+    {
+      "name": "Del'lynar Songwood",
+      "raid": "Barrow Deeps",
+      "source": "class-study/encounters-and-methods.md Part A; preview/datamine only, no validated live rule.",
+      "abilities": [],
+      "note": "Candidate only. Affected players, response and boss units require real-log evidence; no ids or penalties inferred from names."
+    },
+    {
+      "name": "Ravus and Darlissa",
+      "raid": "Barrow Deeps",
+      "source": "class-study/encounters-and-methods.md Part A; preview/datamine only, no validated live rule.",
+      "abilities": [],
+      "note": "Candidate only. Affected players, response and boss units require real-log evidence; no ids or penalties inferred from names."
+    },
+    {
+      "name": "Sonya Darkhallow",
+      "raid": "Barrow Deeps",
+      "source": "class-study/encounters-and-methods.md Part A; preview/datamine only, no validated live rule.",
+      "abilities": [],
+      "note": "Candidate only. Affected players, response and boss units require real-log evidence; no ids or penalties inferred from names."
+    },
+    {
+      "name": "Bandalar",
+      "raid": "Hyjal Summit",
+      "source": "class-study/encounters-and-methods.md Part A; preview/datamine only, no validated live rule.",
+      "abilities": [],
+      "note": "Candidate only. Affected players, response and boss units require real-log evidence; no ids or penalties inferred from names."
+    },
+    {
+      "name": "Ancient of Decay",
+      "raid": "Hyjal Summit",
+      "source": "class-study/encounters-and-methods.md Part A; preview/datamine only, no validated live rule.",
+      "abilities": [
+        {
+          "name": "Breath of Decay"
+        }
+      ],
+      "note": "Candidate only. Affected players, response and boss units require real-log evidence; no ids or penalties inferred from names."
+    },
+    {
+      "name": "Time-Lost Battalion",
+      "raid": "Hyjal Summit",
+      "source": "class-study/encounters-and-methods.md Part A; preview/datamine only, no validated live rule.",
+      "abilities": [
+        {
+          "name": "Time-Lost Arrow"
+        },
+        {
+          "name": "Prismatic Affliction"
+        }
+      ],
+      "note": "Candidate only. Affected players, response and boss units require real-log evidence; no ids or penalties inferred from names."
+    },
+    {
+      "name": "Sylvestris Dusksong",
+      "raid": "Hyjal Summit",
+      "source": "class-study/encounters-and-methods.md Part A; preview/datamine only, no validated live rule.",
+      "abilities": [
+        {
+          "name": "Everlasting Bond"
+        }
+      ],
+      "note": "Candidate only. Affected players, response and boss units require real-log evidence; no ids or penalties inferred from names."
+    },
+    {
+      "name": "Old Gloomlurker",
+      "raid": "Hyjal Summit",
+      "source": "class-study/encounters-and-methods.md Part A; preview/datamine only, no validated live rule.",
+      "abilities": [
+        {
+          "name": "Renewing Fog"
+        }
+      ],
+      "note": "Candidate only. Affected players, response and boss units require real-log evidence; no ids or penalties inferred from names."
+    },
+    {
+      "name": "Gharalis the Abyssal",
+      "raid": "Hyjal Summit",
+      "source": "class-study/encounters-and-methods.md Part A; preview/datamine only, no validated live rule.",
+      "abilities": [
+        {
+          "name": "Rotting Spit"
+        }
+      ],
+      "note": "Candidate only. Affected players, response and boss units require real-log evidence; no ids or penalties inferred from names."
+    },
+    {
+      "name": "Kathris the Haunted",
+      "raid": "Hyjal Summit",
+      "source": "class-study/encounters-and-methods.md Part A; preview/datamine only, no validated live rule.",
+      "abilities": [
+        {
+          "name": "Soul Tether"
+        },
+        {
+          "name": "Soul Rip"
+        },
+        {
+          "name": "Aura of Fear"
+        },
+        {
+          "name": "Malady"
+        }
+      ],
+      "note": "Candidate only. Affected players, response and boss units require real-log evidence; no ids or penalties inferred from names."
+    },
+    {
+      "name": "Anara Chillwind",
+      "raid": "Hyjal Summit",
+      "source": "class-study/encounters-and-methods.md Part A; preview/datamine only, no validated live rule.",
+      "abilities": [
+        {
+          "name": "Lunar Mark"
+        },
+        {
+          "name": "Umbral Mark"
+        },
+        {
+          "name": "Starfall"
+        },
+        {
+          "name": "Lunar Cascade"
+        },
+        {
+          "name": "Singularity"
+        },
+        {
+          "name": "Collapsing Star"
+        }
+      ],
+      "note": "Candidate only. Affected players, response and boss units require real-log evidence; no ids or penalties inferred from names."
+    },
+    {
+      "name": "Elder Minderel",
+      "raid": "Hyjal Summit",
+      "source": "class-study/encounters-and-methods.md Part A; preview/datamine only, no validated live rule.",
+      "abilities": [
+        {
+          "name": "Crystallize"
+        }
+      ],
+      "note": "Candidate only. Affected players, response and boss units require real-log evidence; no ids or penalties inferred from names."
+    },
+    {
+      "name": "Tracker Stillwind",
+      "raid": "Hyjal Summit",
+      "source": "class-study/encounters-and-methods.md Part A; preview/datamine only, no validated live rule.",
+      "abilities": [],
+      "note": "Candidate only. Affected players, response and boss units require real-log evidence; no ids or penalties inferred from names."
+    },
+    {
+      "name": "Council of Thorns",
+      "raid": "Hyjal Summit",
+      "source": "class-study/encounters-and-methods.md Part A; preview/datamine only, no validated live rule.",
+      "abilities": [],
+      "note": "Candidate only. Affected players, response and boss units require real-log evidence; no ids or penalties inferred from names."
+    },
+    {
+      "name": "Nythus the Dreambound",
+      "raid": "Hyjal Summit",
+      "source": "class-study/encounters-and-methods.md Part A; preview/datamine only, no validated live rule.",
+      "abilities": [
+        {
+          "name": "Emerald Stasis"
+        },
+        {
+          "name": "Unstable Dream"
+        },
+        {
+          "name": "Heavenly Collapse"
+        }
+      ],
+      "note": "Candidate only. Affected players, response and boss units require real-log evidence; no ids or penalties inferred from names."
+    },
+    {
+      "name": "The Wild King",
+      "raid": "Hyjal Summit",
+      "source": "class-study/encounters-and-methods.md Part A; preview/datamine only, no validated live rule.",
+      "abilities": [
+        {
+          "name": "Crown of the Heavens"
+        },
+        {
+          "name": "Wild Form"
+        },
+        {
+          "name": "Spider Form"
+        },
+        {
+          "name": "Convoke the Spirits"
+        },
+        {
+          "name": "Assimilation"
+        },
+        {
+          "name": "Dreamfall"
+        },
+        {
+          "name": "Dreadful Screech"
+        },
+        {
+          "name": "Dire Laceration"
+        }
+      ],
+      "note": "Candidate only. Affected players, response and boss units require real-log evidence; no ids or penalties inferred from names."
+    },
+    {
+      "name": "Onyxia",
+      "raid": "Onyxia's Lair",
+      "source": "class-study/encounters-and-methods.md Part A; preview/datamine only, no validated live rule.",
+      "abilities": [
+        {
+          "name": "Flame Breath"
+        },
+        {
+          "name": "Wing Buffet"
+        },
+        {
+          "name": "Tail Sweep"
+        },
+        {
+          "name": "Knock Away"
+        },
+        {
+          "name": "Bellowing Roar"
+        }
+      ],
+      "note": "Candidate only. Affected players, response and boss units require real-log evidence; no ids or penalties inferred from names."
+    }
+  ]
+}

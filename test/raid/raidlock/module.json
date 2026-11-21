@@ -1,0 +1,23 @@
+{
+  "kind": "go",
+  "source": "desktop/",
+  "test": [
+    "go",
+    "-C",
+    "desktop",
+    "test",
+    "-race",
+    "-count=1",
+    "-run",
+    "^TestRaidLock",
+    "."
+  ],
+  "depends": [
+    "raidprep",
+    "compare",
+    "cfgembed"
+  ],
+  "inputs": [
+    "rules/raid/"
+  ]
+}

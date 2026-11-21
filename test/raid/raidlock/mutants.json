@@ -1,0 +1,164 @@
+[
+  {
+    "file": "desktop/raid_lock.go",
+    "old": "if len(data) > raidSaveMaxBytes {",
+    "new": "if false && len(data) > raidSaveMaxBytes {",
+    "killed_by": "TestRaidLockBudgetAndOptionalGuild"
+  },
+  {
+    "file": "desktop/raid_lock_parse.go",
+    "old": "entries > raidRankMaxCharacters",
+    "new": "false",
+    "killed_by": "TestRaidLockInvalidAndRevocation"
+  },
+  {
+    "file": "desktop/raid_lock.go",
+    "old": "db[\"version\"] != float64(1)",
+    "new": "false",
+    "killed_by": "TestRaidLockInvalidAndRevocation"
+  },
+  {
+    "file": "desktop/raid_lock.go",
+    "old": "if officer {\n\t\treturn nil\n\t}",
+    "new": "if officer {\n\t\treturn errRaidRankLocked\n\t}",
+    "killed_by": "TestRaidLockSelectedAccount"
+  },
+  {
+    "file": "desktop/raid_lock.go",
+    "old": "math.Trunc(at) != at",
+    "new": "false",
+    "killed_by": "TestRaidLockInvalidAndRevocation"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "save, err := b.app.raidSaveLocked()\n\tif err != nil {",
+    "new": "save, err := b.app.raidSaveLocked()\n\tif false && err != nil {",
+    "killed_by": "TestRaidLockSelectedAccount"
+  },
+  {
+    "file": "desktop/raid_lock.go",
+    "old": "delta > int64(raidOfficerMaxAge/time.Second)",
+    "new": "false",
+    "killed_by": "TestRaidLockFreshness"
+  },
+  {
+    "file": "desktop/raid_lock.go",
+    "old": "delta < -int64(raidOfficerFutureAllowance/time.Second)",
+    "new": "false",
+    "killed_by": "TestRaidLockFreshness"
+  },
+  {
+    "file": "desktop/raid_lock.go",
+    "old": "delta > int64(raidOfficerMaxAge/time.Second)",
+    "new": "delta >= int64(raidOfficerMaxAge/time.Second)",
+    "killed_by": "TestRaidLockFreshness"
+  },
+  {
+    "file": "desktop/raid_lock.go",
+    "old": "delta < -int64(raidOfficerFutureAllowance/time.Second)",
+    "new": "delta <= -int64(raidOfficerFutureAllowance/time.Second)",
+    "killed_by": "TestRaidLockFreshness"
+  },
+  {
+    "file": "desktop/raid_lock.go",
+    "old": "const raidRankMaxCharacters = 50",
+    "new": "const raidRankMaxCharacters = 51",
+    "killed_by": "TestRaidLockFiftyRows"
+  },
+  {
+    "file": "desktop/raid_lock.go",
+    "old": "at, ok := row[\"readAt\"].(float64)",
+    "new": "at, ok := row[\"readAt\"].(float64); if !ok { at, ok = float64(now.Unix()), true }",
+    "killed_by": "TestRaidLockFreshness"
+  },
+  {
+    "file": "desktop/raid_lock.go",
+    "old": "now = a.raidNow()",
+    "new": "now = time.Time{}",
+    "killed_by": "TestRaidLockClockExpiryAndUTC"
+  },
+  {
+    "file": "desktop/raid_lock.go",
+    "old": "return errRaidTimeLocked",
+    "new": "return errRaidRankLocked",
+    "killed_by": "TestRaidLockFreshness"
+  },
+  {
+    "file": "desktop/raid_lock.go",
+    "old": "row, ok := raw.(map[string]any)\n\t\tif !ok {\n\t\t\tcontinue\n\t\t}",
+    "new": "row, ok := raw.(map[string]any)\n\t\tif !ok {\n\t\t\treturn errRaidRankLocked\n\t\t}",
+    "killed_by": "TestRaidLockMixedRows"
+  },
+  {
+    "file": "desktop/raid_lock.go",
+    "old": "!raidRankText(s, 96)",
+    "new": "!raidRankText(s, 97)",
+    "killed_by": "TestRaidLockGuildBounds"
+  },
+  {
+    "file": "desktop/luasv.go",
+    "old": "p.entry(p.path, rawKey, entries)",
+    "new": "p.entry(p.path, fmt.Sprint(rawKey), entries)",
+    "killed_by": "TestRaidLockRawKeyAndDuplicateRefusals"
+  },
+  {
+    "file": "desktop/luasv.go",
+    "old": "p.uniqueKeys && exists {\n\t\t\treturn nil, p.err(\"duplicate variable\")",
+    "new": "false && p.uniqueKeys && exists {\n\t\t\treturn nil, p.err(\"duplicate variable\")",
+    "killed_by": "TestRaidLockRawKeyAndDuplicateRefusals"
+  },
+  {
+    "file": "desktop/luasv.go",
+    "old": "p.uniqueKeys && exists {\n\t\t\treturn nil, p.err(\"duplicate table key\")",
+    "new": "false && p.uniqueKeys && exists {\n\t\t\treturn nil, p.err(\"duplicate table key\")",
+    "killed_by": "TestRaidLockRawKeyAndDuplicateRefusals"
+  },
+  {
+    "file": "desktop/luasv.go",
+    "old": "entries++",
+    "new": "entries = len(out) + 1",
+    "killed_by": "TestRaidLockRawEntryBudget"
+  },
+  {
+    "file": "desktop/raid_lock_parse.go",
+    "old": "if len(parts) < 2 {",
+    "new": "if false {",
+    "killed_by": "TestRaidLockRawKeyAndDuplicateRefusals"
+  },
+  {
+    "file": "desktop/raid_lock_parse.go",
+    "old": "part == \"\" || strings.TrimSpace(part) != part",
+    "new": "false && (part == \"\" || strings.TrimSpace(part) != part)",
+    "killed_by": "TestRaidLockRawKeyAndDuplicateRefusals"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "if (isRaidRefusal(err)) lockRaids(err,key);",
+    "new": "if (generation!==raidGeneration || context!==reportGeneration) return;\n    if (isRaidRefusal(err)) lockRaids(err,key);",
+    "killed_by": "TestRaidLockReplyOrdering"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "raidLocks.set(key,text);",
+    "new": "raidLocks.set(raidContext(lastReport || renderedReport),text);",
+    "killed_by": "TestRaidLockReplyOrdering"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "if (generation !== reportGeneration || verdict !== raidVerdictGeneration) return;",
+    "new": "if (generation !== reportGeneration) return;",
+    "killed_by": "TestRaidLockReplyOrdering"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "++raidVerdictGeneration;\n  const text=",
+    "new": "/* refusal generation bypassed */\n  const text=",
+    "killed_by": "TestRaidLockReplyOrdering"
+  },
+  {
+    "file": "desktop/native_shell.js",
+    "old": "if (generation !== reportGeneration) return;\n      }\n    }\n    displayReport(result);",
+    "new": "/* stale re-admission context bypassed */\n      }\n    }\n    displayReport(result);",
+    "killed_by": "TestRaidLockReplyOrdering"
+  }
+]

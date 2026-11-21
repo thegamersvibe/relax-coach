@@ -1,0 +1,20 @@
+{
+  "kind": "go",
+  "source": "desktop/raidrules/",
+  "inputs": [
+    "rules/raid/",
+    "scripts/gen_raid_rules.py"
+  ],
+  "test": [
+    "go",
+    "-C",
+    "desktop",
+    "test",
+    "-race",
+    "-count=1",
+    "./raidrules/"
+  ],
+  "depends": [
+    "cfg"
+  ]
+}
