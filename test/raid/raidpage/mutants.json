@@ -223,8 +223,8 @@
   },
   {
     "file": "desktop/raid_opening.go",
-    "old": "|| revision != a.raidRevision {",
-    "new": "|| revision != revision {",
+    "old": "if revision != a.raidRevision {",
+    "new": "if false && revision != a.raidRevision {",
     "killed_by": "TestRaidPagePickerContextChange"
   },
   {
@@ -397,20 +397,26 @@
   },
   {
     "file": "desktop/raid_opening.go",
-    "old": "if game != a.game || account != a.account ||",
-    "new": "if game != game || account != account ||",
+    "old": "if game != a.game || account != a.account {",
+    "new": "if game != game || account != account {",
     "killed_by": "TestRaidPagePickerOutcomeBinding"
   },
   {
     "file": "desktop/raid_opening.go",
-    "old": "return nil, errRaidPickerStale",
-    "new": "return nil, errRaidRankLocked",
+    "old": "if game != a.game || account != a.account {\n\t\treturn nil, errRaidPickerStale",
+    "new": "if game != a.game || account != a.account {\n\t\treturn nil, errRaidRankLocked",
     "killed_by": "TestRaidPagePickerOutcomeBinding"
   },
   {
     "file": "desktop/raid_opening.go",
     "old": "path, pickErr := b.services.chooseFile(b.ctx, kind)",
     "new": "path, pickErr := b.services.chooseFile(b.ctx, kind)\n\tif pickErr != nil { return nil, pickErr }",
+    "killed_by": "TestRaidPagePickerOutcomeBinding"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "\tsave, err := a.raidSaveLocked()\n\tif err != nil {\n\t\ta.raidSelection = nil\n\t\ta.raidRevision++\n\t\treturn nil, err\n\t}\n\tif revision != a.raidRevision {\n\t\treturn nil, errRaidPickerStale\n\t}",
+    "new": "\tif revision != a.raidRevision {\n\t\treturn nil, errRaidPickerStale\n\t}\n\tsave, err := a.raidSaveLocked()\n\tif err != nil {\n\t\ta.raidSelection = nil\n\t\ta.raidRevision++\n\t\treturn nil, err\n\t}",
     "killed_by": "TestRaidPagePickerOutcomeBinding"
   }
 ]

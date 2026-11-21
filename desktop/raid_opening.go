@@ -132,17 +132,21 @@ func (b *nativeBridge) chooseRaidFile(kind string) (any, error) {
 		return nil, err
 	}
 	a.rescanAccountsLocked()
-	// A result belongs to the account that started the picker. After a switch
-	// (even away and back) it is stale: no refusal may be latched for it.
-	if game != a.game || account != a.account || revision != a.raidRevision {
+	// A result belongs to the game and account that started the picker; for
+	// another one it is stale and no refusal may be latched for it.
+	if game != a.game || account != a.account {
 		return nil, errRaidPickerStale
 	}
-	// Admission is rechecked after every picker outcome, failures included.
+	// Admission is rechecked after every picker outcome, failures included, and
+	// before the revision check so a stale choice cannot hide a real lock.
 	save, err := a.raidSaveLocked()
 	if err != nil {
 		a.raidSelection = nil
 		a.raidRevision++
 		return nil, err
+	}
+	if revision != a.raidRevision {
+		return nil, errRaidPickerStale
 	}
 	if pickErr != nil {
 		return nil, pickErr

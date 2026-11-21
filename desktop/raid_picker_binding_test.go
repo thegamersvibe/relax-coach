@@ -13,7 +13,8 @@ import (
 func TestRaidPagePickerOutcomeBinding(t *testing.T) {
 	member := func() string { return strings.Replace(officerSave(), `"officer"`, `"member"`, 1) }
 	for _, method := range []string{"raidChooseLog", "raidChooseOfficer"} {
-		for _, scene := range []string{"error-demotion", "error-admitted", "switch-cancel", "switch-path", "switch-back-path", "account-field-change"} {
+		for _, scene := range []string{"error-demotion", "error-admitted", "switch-cancel", "switch-path", "switch-back-path", "account-field-change",
+			"night-demote-cancel", "night-demote-path", "aba-demote-cancel", "aba-demote-path"} {
 			t.Run(method+"/"+scene, func(t *testing.T) {
 				game, a, b := raidOpeningFixture(t)
 				accountSave(t, game, "B#2", "Beta")
@@ -35,6 +36,23 @@ func TestRaidPagePickerOutcomeBinding(t *testing.T) {
 						a.mu.Unlock()
 						return log, nil
 					}
+					if strings.HasPrefix(scene, "night-demote") || strings.HasPrefix(scene, "aba-demote") {
+						if strings.HasPrefix(scene, "night-demote") {
+							// Another night opened meanwhile: the revision moves, A stays selected.
+							raidCallHTML(t, b, "raidOpen", log)
+						} else {
+							for _, id := range []string{"B#2", "A#1"} {
+								if _, err := b.Call("selectAccount", nativeArgs(id)); err != nil {
+									t.Fatal(err)
+								}
+							}
+						}
+						raidRankSave(t, game, "A#1", member())
+						if strings.HasSuffix(scene, "cancel") {
+							return "", nil
+						}
+						return log, nil
+					}
 					if _, err := b.Call("selectAccount", nativeArgs("B#2")); err != nil {
 						t.Fatal(err)
 					}
@@ -52,6 +70,16 @@ func TestRaidPagePickerOutcomeBinding(t *testing.T) {
 				msg := ""
 				if err != nil {
 					msg = err.Error()
+				}
+				if strings.HasPrefix(scene, "night-demote") || strings.HasPrefix(scene, "aba-demote") {
+					// The same account is still selected: its real lock wins over staleness.
+					if got != nil || !strings.HasPrefix(msg, "Raids locked:") {
+						t.Fatalf("demoted starter after a revision change: result=%v err=%q, want refusal", got, msg)
+					}
+					if a.raidSelection != nil {
+						t.Fatal("refused stale picker kept the night")
+					}
+					return
 				}
 				switch scene {
 				case "error-demotion":
