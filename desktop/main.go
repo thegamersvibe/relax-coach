@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"flag"
@@ -119,6 +120,7 @@ type App struct {
 	raidSelection          *raidSelection   // log path/index only, never an officer prediction
 	raidRevision           uint64
 	gearNames              gearNameCache
+	wowhead                *wowheadNames  // initialized by the app entrypoint; tests inject only fake servers
 	farmRef                farmRefCache   // AH Profit's bundled names, reparsed only when the files change
 	farmParse              farmParseCache // the parsed AHProfit.lua, reparsed only when the file changes
 }
@@ -166,6 +168,11 @@ func main() {
 	}
 	_, _ = raidConfig() // Retain the startup error for the Raids page, not a process exit.
 	app := &App{}
+	if !*once {
+		app.wowhead = newWowheadNames(context.Background(), wowheadCachePath(), wowheadTooltipURL, client)
+		app.wowhead.setEnabled(savedWowheadNames())
+		defer app.wowhead.Close()
+	}
 	app.setGame(game)
 	app.reload()
 	if *once {

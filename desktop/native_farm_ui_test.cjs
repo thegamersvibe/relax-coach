@@ -25,7 +25,167 @@ async function setup(t,handlers){
   return {$,dom,shown:()=>[...$('farm-sell').querySelectorAll('tr[data-house]')].filter(r=>!r.hidden).map(r=>r.dataset.house)};
 }
 
-test('no AH Profit save: no Farming entry',async t=>{
+test('item names link to Forever through the external browser bridge',async t=>{
+  const opened=[];
+  const {$,dom}=await setup(t,{reportRefresh:()=>report('B#2',true,farm),openExternal:url=>opened.push(url)});
+  $('nav-farm').click();
+  for (const [card,id] of [['farm-sell',2772],['farm-hot',2772],['farm-fallers',8001]]) {
+    const link=$(card).querySelector('td:first-child a');
+    assert.ok(link,card+' has an item-name link');
+    const url='https://www.wowhead.com/forever/item='+id;
+    assert.equal(link.getAttribute('href'),url);
+    assert.ok(link.textContent.trim(),'the name itself is clickable');
+    const click=new dom.window.MouseEvent('click',{bubbles:true,cancelable:true,button:0});
+    assert.equal(link.dispatchEvent(click),false,'native navigation prevented');
+    await settle();
+    assert.equal(opened.at(-1),url,'uses openExternal');
+  }
+  assert.equal(dom.window.document.querySelectorAll('script[src],link[rel="stylesheet"]').length,0,'no remote JS or CSS');
+});
+
+test('Wowhead setting defaults on and saves the off choice through native settings',async t=>{
+  const saved=[];
+  const state={...report('B#2',true,farm),WowheadNames:true};
+  const {$}=await setup(t,{reportRefresh:()=>state,setWowheadNames:enabled=>{saved.push(enabled);state.WowheadNames=enabled==='true';return state}});
+  $('nav-settings').click();
+  const toggle=$('wowhead-names');
+  assert.ok(toggle,'online-name preference in Settings');
+  assert.match(toggle.closest('label').textContent,/Look up missing item names online \(Wowhead\)/);
+  assert.equal(toggle.checked,true);
+  toggle.checked=false;fire(toggle);await settle();await settle();
+  assert.deepEqual(saved,['false']);assert.equal(toggle.checked,false);assert.equal(toggle.disabled,false);
+  $('refresh').click();await settle();await settle();
+  assert.equal(toggle.checked,false,'report refresh preserves persisted opt-out');
+});
+
+test('Wowhead opt-out is loaded on startup and a failed write restores it',async t=>{
+  const {$}=await setup(t,{reportRefresh:()=>({...report('B#2',true,farm),WowheadNames:false}),setWowheadNames:()=>{throw new Error('Test settings failure')}});
+  const toggle=$('wowhead-names');assert.ok(toggle);
+  assert.equal(toggle.checked,false);
+  toggle.checked=true;fire(toggle);await settle();await settle();
+  assert.equal(toggle.checked,false);assert.equal(toggle.disabled,false);
+  assert.match($('wowhead-names-status').textContent,/Test settings failure/);
+});
+
+// Regression from the held native-reply probe: a setting save must not cross
+// the same account boundary already guarded by ordinary report refreshes.
+for (const ordering of ['during-switch','after-switch']) for (const outcome of ['success','failure']) test('preference reply cannot restore account A '+ordering+' '+outcome,async t=>{
+  let finishPreference,finishSelection;
+  // A failed write leaves the stored preference on in the next account report.
+  const state=account=>({...report(account,true,'<p>Synthetic farm '+account+'</p>'),WowheadNames:outcome==='failure'});
+  const {$}=await setup(t,{
+    reportRefresh:()=>({...state('A#1'),WowheadNames:true}),
+    setWowheadNames:()=>new Promise((resolve,reject)=>{finishPreference=result=>outcome==='success'?resolve(result):reject(new Error('Old request failed'))}),
+    selectAccount:()=>new Promise(r=>{finishSelection=r})
+  });
+  $('wowhead-names').checked=false;fire($('wowhead-names'));await settle();
+  assert.equal(typeof finishPreference,'function','preference request pending');
+  assert.equal($('account-select').disabled,false,'account selector stays usable during save');
+  $('account-select').value='B#2';fire($('account-select'));await settle();
+  assert.equal(typeof finishSelection,'function','account switch pending');
+  assert.equal($('farm-body').textContent,'','old farm initially cleared');
+  assert.equal($('report-body').textContent,'','old report initially cleared');
+  if (ordering==='after-switch') { finishSelection(state('B#2'));await settle(); }
+  finishPreference(state('A#1'));await settle();await settle();
+  assert.equal($('account-select').value,'B#2','late preference reply must not restore A');
+  assert.equal($('farm-body').textContent,ordering==='during-switch'?'':'Synthetic farm B#2');
+  assert.equal($('report-body').textContent,ordering==='during-switch'?'':'report B#2');
+  assert.equal($('wowhead-names').checked,outcome==='failure','successful replies own the app-wide setting; failed replies use the latest report');
+  assert.equal($('wowhead-names-status').textContent,'','stale replies leave no success, error or saving message');
+  if (ordering==='during-switch') { finishSelection(state('B#2'));await settle(); }
+  assert.equal($('account-select').value,'B#2');
+  assert.equal($('farm-body').textContent,'Synthetic farm B#2');
+  assert.equal($('report-body').textContent,'report B#2');
+  assert.equal($('account-select').disabled,false);
+  assert.equal($('wowhead-names').disabled,false);
+  assert.equal($('wowhead-names').checked,outcome==='failure','settled checkbox matches the stored preference');
+});
+
+// The backend serializes writes/report snapshots, but native reply delivery can
+// interleave. Adapt the held-service probe with a single app-wide stored value,
+// separating backend completion from transport delivery (24 cases per action).
+const preferenceOrders = [
+  ['save','saveReply','select','selectReply'],
+  ['save','select','saveReply','selectReply'],
+  ['save','select','selectReply','saveReply'],
+  ['select','selectReply','save','saveReply'],
+  ['select','save','selectReply','saveReply'],
+  ['select','save','saveReply','selectReply']
+];
+for (const action of ['account','folder','folder-cancel']) for (const initial of [false,true]) for (const outcome of ['success','failure']) for (const order of preferenceOrders) test('preference backend order '+[action,initial,outcome,order.join('/')].join(' '),async t=>{
+  let stored=initial,account='A#1',game='C:\\WoW\\_forever_',saveResult,selectionResult;
+  const steps={};
+  const snapshot=()=>({...report(account,true,'<p>Synthetic farm '+account+' '+game+'</p>'),Game:game,WowheadNames:stored});
+  const select=(nextAccount,nextGame)=>new Promise(resolve=>{
+    steps.select=()=>{
+      account=nextAccount;game=nextGame;
+      selectionResult=action==='folder-cancel'?null:snapshot();
+    };
+    steps.selectReply=()=>resolve(selectionResult);
+  });
+  const {$,dom}=await setup(t,{
+    reportRefresh:snapshot,
+    setWowheadNames:value=>new Promise((resolve,reject)=>{
+      steps.save=()=>{if(outcome==='success')stored=value==='true';saveResult=snapshot();};
+      steps.saveReply=()=>outcome==='success'?resolve(saveResult):reject(new Error('Synthetic settings failure'));
+    }),
+    selectAccount:next=>select(next,game),
+    setGame:next=>select(account,next),
+    chooseGame:()=>select(account,game)
+  });
+  const toggle=$('wowhead-names');
+  assert.equal(toggle.checked,initial);
+  toggle.checked=!initial;fire(toggle);await settle();
+  if(action==='account'){$('account-select').value='B#2';fire($('account-select'));}
+  else if(action==='folder'){$('game-path').value='D:\\WoW\\_forever_';$('game-form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));}
+  else $('browse-folder').click();
+  await settle();
+  for(const step of order){
+    assert.equal(typeof steps[step],'function',step+' admitted');
+    const body=$('report-body').innerHTML,farmBody=$('farm-body').innerHTML;
+    steps[step]();await settle();
+    if(step==='saveReply'){
+      assert.equal(toggle.checked,outcome==='success'?saveResult.WowheadNames:initial,'reply reconciles the setting');
+      assert.equal($('report-body').innerHTML,body,'save cannot restore an earlier report');
+      assert.equal($('farm-body').innerHTML,farmBody,'save cannot restore an earlier farm');
+    }
+  }
+  assert.equal(toggle.checked,stored,'settled checkbox matches the app-wide backend');
+  assert.equal(toggle.disabled,false);
+  assert.equal($('account-select').value,account);
+  assert.equal($('folder-label').textContent,game);
+  assert.equal($('report-body').textContent,'report '+account);
+  assert.equal($('farm-body').textContent,'Synthetic farm '+account+' '+game);
+  assert.equal($('report-body').hidden,false);
+  assert.equal($('farm-body').hidden,false);
+  if(action==='folder-cancel'&&outcome==='failure')assert.match($('wowhead-names-status').textContent,/Could not save preference: Synthetic settings failure/,'cancelled chooser must retain the current save error');
+  else assert.equal($('wowhead-names-status').textContent,'','dropped reply leaves no stale status');
+});
+
+test('failed preference for the current account is reported after switching away and back',async t=>{
+  let failPreference;
+  const state=account=>({...report(account,true,'<p>Synthetic farm '+account+'</p>'),WowheadNames:true});
+  const {$}=await setup(t,{
+    reportRefresh:()=>state('A#1'),
+    setWowheadNames:()=>new Promise((_,reject)=>{failPreference=()=>reject(new Error('Current settings failure'))}),
+    selectAccount:account=>state(account)
+  });
+  const toggle=$('wowhead-names');
+  toggle.checked=false;fire(toggle);await settle();
+  assert.equal(typeof failPreference,'function');
+  for (const account of ['B#2','A#1']) {
+    $('account-select').value=account;fire($('account-select'));await settle();
+    assert.equal($('report-body').textContent,'report '+account);
+  }
+  failPreference();await settle();await settle();
+  assert.equal(toggle.checked,true,'failed opt-out cannot claim lookups are off');
+  assert.equal(toggle.disabled,false);
+  assert.match($('wowhead-names-status').textContent,/Could not save preference: Current settings failure/);
+  assert.equal($('account-select').value,'A#1');
+  assert.equal($('farm-body').textContent,'Synthetic farm A#1');
+});
+
+test('no AH Profit save: no Farming entry' ,async t=>{
   const {$}=await setup(t,{reportRefresh:()=>report('A#1',false)});
   assert.equal($('nav-farm').hidden,true);
   assert.equal($('farm-view').hidden,true);

@@ -30,6 +30,7 @@ const rc = Object.freeze({
   raidChooseOfficer: () => call('raidChooseOfficer'),
   setGame: path => call('setGame',path),
   selectAccount: id => call('selectAccount',id),
+  setWowheadNames: enabled => call('setWowheadNames',String(enabled)),
   chooseGame: () => call('chooseGame'),
   checkAddon: () => call('checkAddon'),
   applyAddon: version => call('applyAddon',version),
@@ -56,6 +57,7 @@ const clickThen = install => ' Click '+verb(install)+'. WoW can stay open.';
 const progressText = 'Downloading, verifying and installing… Do not force-close the application.';
 const failText = (install,err) => verb(install)+' failed: '+err.message+' Check again before retrying.';
 let offer = null, appOffer = null, busy = false, refreshing = false, restarting = false;
+let wowheadSaving = false, wowheadRevision = 0, wowheadFolderError = null;
 // Reads asked for while busy run once the UI is free again (see updateButtons).
 let startupCheckPending = false, extrasPending = false;
 let healthPending = false, healthSent = false;
@@ -126,6 +128,7 @@ function updateButtons() {
   if (!busy && (startupCheckPending || extrasPending)) queueMicrotask(runDeferred);
   const disabled = document.body.dataset.updatesDisabled === 'true';
   $('refresh').disabled = refreshing || switchingFolder || switchingAccount;
+  $('wowhead-names').disabled = busy || wowheadSaving || !lastReport;
   $('account-select').disabled = busy || !lastReport || !(lastReport.Accounts || []).length;
   $('check-app-update').disabled = busy || disabled;
   $('apply-app-update').disabled = busy || disabled || !appOffer || !appOffer.Available;
@@ -291,6 +294,38 @@ function displayFarm(result) {
   }
   filterFarmHouse();
 }
+$('wowhead-names').addEventListener('change',async()=>{
+  if (wowheadSaving || busy) return;
+  const context = lastReport;
+  let saveError = '', savedValue;
+  wowheadSaving = true; updateButtons();
+  const generation = reportGeneration;
+  $('wowhead-names-status').textContent = 'Saving…';
+  try {
+    const result = await rc.setWowheadNames($('wowhead-names').checked);
+    // The setting is app-wide even when this reply's report is obsolete.
+    savedValue = result.WowheadNames;
+    ++wowheadRevision;
+    if (lastReport) lastReport = {...lastReport,WowheadNames:savedValue};
+    if (generation !== reportGeneration) return;
+    wowheadSaving = false;
+    displayReport(result);
+    $('wowhead-names-status').textContent = result.WowheadNames ? 'Online lookup enabled.' : 'Online lookup off. Cached names can still display.';
+  } catch (err) {
+    const text = 'Could not save preference: '+err.message;
+    if (switchingFolder) wowheadFolderError = {context,text};
+    if (generation === reportGeneration || (!switchingAccount && !switchingFolder && context && lastReport && context.Game === lastReport.Game && context.Account === lastReport.Account)) {
+      saveError = text;
+    }
+  } finally {
+    if (generation !== reportGeneration || saveError) $('wowhead-names-status').textContent = saveError;
+    wowheadSaving = false;
+    // Success owns its value; only failure falls back to the latest report.
+    const value = typeof savedValue === 'boolean' ? savedValue : lastReport && lastReport.WowheadNames;
+    if (typeof value === 'boolean') $('wowhead-names').checked = value;
+    updateButtons();
+  }
+});
 $('farm-body').addEventListener('change',event=>{ if (event.target && event.target.id === 'farm-house') filterFarmHouse(); });
 // Raids are removed, not CSS-hidden, when admission changes. No retained
 // template/fragment contains a locked account's raid data.
@@ -383,8 +418,11 @@ document.addEventListener('change',event=>{
     const index=event.target.value;requestRaid(()=>rc.raidNight(index));
   }
 });
-function displayReport(result,folderChanged = false) {
+function displayReport(result,folderChanged = false,preferenceRevision = wowheadRevision) {
+  // A report already in flight can predate the successful app-wide write.
+  if (preferenceRevision !== wowheadRevision && lastReport) result = {...result,WowheadNames:lastReport.WowheadNames};
   lastReport = result;
+  if (!wowheadSaving && typeof result.WowheadNames === 'boolean') $('wowhead-names').checked = result.WowheadNames;
   if (result.AppVersion) $('installed-app-version').textContent = result.AppVersion;
   if (typeof result.AppUpdateStatus === 'string') $('app-last-result').textContent = result.AppUpdateStatus;
   displayAccount(result);
@@ -445,7 +483,7 @@ async function refresh(manual = false) {
   if (refreshing || switchingFolder || switchingAccount) return;
   refreshing = true;
   updateButtons();
-  const generation = reportGeneration, verdict = raidVerdictGeneration;
+  const generation = reportGeneration, verdict = raidVerdictGeneration, preferenceRevision = wowheadRevision;
   try {
     const result = await rc.refresh();
     if (generation !== reportGeneration) return;
@@ -459,12 +497,12 @@ async function refresh(manual = false) {
       } catch(err) {
         if (isRaidRefusal(err)) lockRaids(err,raidContext(result));
         else if (generation === reportGeneration && verdict === raidVerdictGeneration) {
-          displayReport(result);message(raidDisplayText(err.message));return;
+          displayReport(result,false,preferenceRevision);message(raidDisplayText(err.message));return;
         }
         if (generation !== reportGeneration) return;
       }
     }
-    displayReport(result);
+    displayReport(result,false,preferenceRevision);
     chooseInitialView(result);
     acknowledgeRenderedShell();
     if (manual && !raidLocked(result)) message('Report refreshed. The game must save before new data appears.', true);
@@ -483,6 +521,7 @@ $('refresh').addEventListener('click',()=>refresh(true));
 async function changeFolder(select) {
   if (busy) return;
   let folder = $('folder-label').textContent;
+  const preferenceRevision = wowheadRevision;
   busy = switchingFolder = true;
   // Invalidate earlier replies before Go can change the selected/update target.
   ++reportGeneration;
@@ -497,7 +536,7 @@ async function changeFolder(select) {
     if (result) {
       folder = result.Game;
       clearUpdateAllLines();
-      displayReport(result,true);
+      displayReport(result,true,preferenceRevision);
       message(raidLocked(result) || 'Game folder saved.', !raidLocked(result));
     }
   }
@@ -509,6 +548,11 @@ async function changeFolder(select) {
     $('farm-body').hidden = false;
     if (lastReport) displayAccount(lastReport);
     busy = switchingFolder = false;
+    if (wowheadFolderError) {
+      const {context,text} = wowheadFolderError;
+      wowheadFolderError = null;
+      if (context && lastReport && context.Game === lastReport.Game && context.Account === lastReport.Account) $('wowhead-names-status').textContent = text;
+    }
     updateButtons();
     maybeAutoCheck();
   }
@@ -524,7 +568,7 @@ $('account-select').addEventListener('change',async()=>{
   const id = $('account-select').value;
   if (!id || (lastReport && id === lastReport.Account)) return;
   busy = switchingAccount = true;
-  const generation = ++reportGeneration;
+  const generation = ++reportGeneration, preferenceRevision = wowheadRevision;
   clearRaids();
   // An account switch is a data boundary, including failed reads or writes.
   $('report-body').replaceChildren();
@@ -539,7 +583,7 @@ $('account-select').addEventListener('change',async()=>{
   try {
     const result = await rc.selectAccount(id);
     if (generation !== reportGeneration) return;
-    displayReport(result);
+    displayReport(result,false,preferenceRevision);
     message(raidLocked(result) || result.ConfigWarning || 'Account selection remembered for this game folder.');
   } catch(err) {
     if (generation !== reportGeneration) return;

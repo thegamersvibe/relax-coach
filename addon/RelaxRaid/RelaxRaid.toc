@@ -11,3 +11,6 @@ Log.lua
 Prep.lua
 Wire.lua
 Store.lua
+AvoidableSpells.lua
+DeathRecap.lua
+DeathRecapUI.lua

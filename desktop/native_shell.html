@@ -129,6 +129,7 @@ button:focus-visible,a:focus-visible,.smallprint:focus-visible,input:focus-visib
 .farm-table thead th{color:var(--mut);font-size:12px;font-weight:600;letter-spacing:.3px}
 .farm-table tbody tr:last-child>*{border-bottom:0}
 .farm-table small{font-size:12px}
+.farm-table td a{color:inherit}
 .farm-table .q0{color:#9d9d9d}
 .farm-table .q1{color:#ffffff}
 .farm-table .q2{color:#1eff00}
@@ -255,8 +256,12 @@ button:focus-visible,a:focus-visible,.smallprint:focus-visible,input:focus-visib
 <div id="extra-list"></div>
 <p class="scope">Each addon comes from its own stable GitHub release, verified, with the previous version kept in RelaxCoachBackups; settings, saves and other addons are not touched.</p>
 </div></div></section>
-<section id="settings-view" hidden><header class="pagehead"><div><h2>Settings</h2><p class="subtle">Where Relax Coach is installed, and its shortcuts.</p></div></header>
-<div class="pane"><div class="card updatecard"><h3>App location</h3>
+<section id="settings-view" hidden><header class="pagehead"><div><h2>Settings</h2><p class="subtle">App preferences, installation and shortcuts.</p></div></header>
+<div class="pane"><div class="card updatecard"><h3>Item names</h3>
+<label><input id="wowhead-names" type="checkbox" checked disabled> Look up missing item names online (Wowhead)</label>
+<p class="scope">Sends only unnamed history item IDs to Wowhead for Forever names and quality, in the background. Local names always win. No characters, accounts, prices or saves are sent. Names are cached on this PC for 30 days (not-found results for 24 hours); turning this off stops requests, but valid cached names can still display.</p>
+<p id="wowhead-names-status" class="status" role="status" aria-live="polite"></p>
+</div><div class="card updatecard"><h3>App location</h3>
 <dl class="versions"><div><dt>Running from</dt><dd id="settings-running">Not loaded</dd></div><div><dt>Installed copy</dt><dd id="settings-target">Not loaded</dd></div></dl>
 <p id="settings-location" class="status"></p>
 <h3>Shortcuts</h3><ul id="settings-links" class="links"></ul>

@@ -65,10 +65,11 @@ type nativeReport struct {
 	Stale                                    bool
 	Bundle                                   AddonBundleState
 	// Farming page (AH Profit, same account): HasFarm shows its nav entry.
-	HasFarm  bool
-	FarmHTML string
-	HasRaids bool
-	RaidHTML string
+	HasFarm      bool
+	WowheadNames bool
+	FarmHTML     string
+	HasRaids     bool
+	RaidHTML     string
 }
 
 // Deliberately omit the download URL/checksum fields from the UI projection.
@@ -185,7 +186,7 @@ func (b *nativeBridge) Call(method string, args []json.RawMessage) (any, error) 
 	}
 	var arg string
 	switch method {
-	case "raidOpen", "raidNight", "raidOfficerFile", "setGame", "selectAccount", "applyAddon", "applyApp", "openExternal", "checkExtra", "applyExtra", "repairAppLinks":
+	case "raidOpen", "raidNight", "raidOfficerFile", "setWowheadNames", "setGame", "selectAccount", "applyAddon", "applyApp", "openExternal", "checkExtra", "applyExtra", "repairAppLinks":
 		// A JSON string only: null would decode as "" (for repairAppLinks, "all").
 		if len(args) != 1 || !strings.HasPrefix(strings.TrimSpace(string(args[0])), `"`) || json.Unmarshal(args[0], &arg) != nil || len(arg) > 4096 || strings.IndexByte(arg, 0) >= 0 {
 			return nil, errors.New("expected one text argument")
@@ -208,6 +209,19 @@ func (b *nativeBridge) Call(method string, args []json.RawMessage) (any, error) 
 		return b.chooseRaidFile("officer")
 	case "reportRefresh":
 		return b.report()
+	case "setWowheadNames":
+		if arg != "true" && arg != "false" {
+			return nil, errors.New("expected true or false")
+		}
+		b.mu.Lock()
+		defer b.mu.Unlock()
+		if b.closed {
+			return nil, errors.New("application is closing")
+		}
+		if err := saveWowheadNames(arg == "true"); err != nil {
+			return nil, err
+		}
+		return b.reportLocked()
 	case "setGame":
 		return b.setGame(arg)
 	case "selectAccount":
@@ -276,6 +290,12 @@ func (b *nativeBridge) reportLocked() (nativeReport, error) {
 	if b.closed {
 		return nativeReport{}, errors.New("application is closing")
 	}
+	enabled := savedWowheadNames()
+	b.app.mu.Lock()
+	if b.app.wowhead != nil {
+		b.app.wowhead.setEnabled(enabled)
+	}
+	b.app.mu.Unlock()
 	b.app.refresh()
 	v := b.app.snapshot()
 	html, err := renderReportBody(v)
@@ -302,7 +322,7 @@ func (b *nativeBridge) reportLocked() (nativeReport, error) {
 		AppVersion: Version, AppUpdateStatus: currentAppUpdateStatus(),
 		Account: v.Account, Accounts: v.Accounts, SVPath: v.SVPath, SaveTime: saveTime,
 		Stale: v.Warning != "", ConfigWarning: v.ConfigWarning, Bundle: InstalledBundleState(v.Game),
-		HasFarm: v.Farm.Present, FarmHTML: farmHTML, HasRaids: v.HasRaids, RaidHTML: raidHTML}, err
+		HasFarm: v.Farm.Present, FarmHTML: farmHTML, WowheadNames: enabled, HasRaids: v.HasRaids, RaidHTML: raidHTML}, err
 }
 
 func (b *nativeBridge) selectAccount(id string) (nativeReport, error) {
