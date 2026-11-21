@@ -16,7 +16,7 @@ Four **separate WoW Forever addons**, plus a native Windows report app:
 - `RelaxCoach.exe` — app-only download, for updating the application separately.
 - `SHA256SUMS.txt` — checksums for these release assets.
 
-**On app 1.8.0 or 1.8.1?** Use **Updates → Update everything**, or **Check App Update → Update App** first and then **Updates → Check → Update**. Because this release includes a new app, the app updates itself before it installs the newer addons. Relax Raid gets new files, so exit WoW completely and start it again after the update (`/reload` is not enough).
+**On app 1.8.0 or 1.8.1?** Use **Updates → Update everything**, or **Check App Update → Update App** first and then **Updates → Check → Update**. Because this release includes a new app, the app updates itself before it installs the newer addons. Relax Raid gets new files, so to be safe exit WoW completely and start it again after the update.
 
 **On app 1.7.x?** Run **Check App Update → Update App** first, then **Updates → Check → Update** (or use **Updates → Update everything**). Apps before 1.8.0 do not know the new Relax Raid folder: they report this release as app-only and do not install it until the app has updated itself. After the addon update, exit WoW completely and start it again, because Relax Raid is a new addon folder.
 
@@ -30,7 +30,7 @@ There is deliberately no Coach-only `RelaxCoach-1.8.2.zip`: older apps must not 
 
 ## What's new in v1.8.2
 
-- **Relax Raid 0.3.0 — Death Recap.** After any death (open world, dungeons, raids, battlegrounds and arenas, in combat too) a **Death Recap** window shows the hits that killed you: amount, spell, attacker, time before death and your health. The game keeps only the last few hits of a death (usually about five, at most twelve) and no heals, so that is all the recap can show. In player-versus-player deaths a **who killed you** block shows each attacker's share of the damage (top three, then **+X more**). In raids, hits from mechanics on the guild's avoidable list get an **AVOIDABLE** mark (the list is still empty, so for now only the game's own flag shows).
+- **Relax Raid 0.3.0 — Death Recap.** After any death (open world, dungeons, raids, battlegrounds and arenas, in combat too) a **Death Recap** window shows the hits that killed you: amount, spell, attacker, time before death and your health. It shows up to twelve of the hits the game recorded for that death, five at a time; the game records no heals, and if it recorded nothing the window says so. In player-versus-player deaths a **who killed you** block shows each attacker's share of the damage (top three, then **+X more**). In raids, hits from mechanics on the guild's avoidable list get an avoidable icon (the list is still empty, so for now only the game's own flag shows).
   - Open it with **Detailed recap** under the death pop-up, the **[You died: details]** chat link, or `/recap` (`/recap 2`, `/recap 3` for older deaths). The last three deaths are tabs, newest first.
   - It opens on death and closes on release or revive by default: `/recap auto on|off`, `/recap autoclose on|off`, also under **Options → AddOns → Relax Raid**. `/recap keep on` keeps the last three recaps after logout (off by default); `/recap reset` puts the window back in place.
   - It stays on your PC: nothing is sent and nothing is scored.
@@ -42,13 +42,13 @@ There is deliberately no Coach-only `RelaxCoach-1.8.2.zip`: older apps must not 
   - **Officer comparison:** pick an officer ranking file and the page compares it with the app's ranking, with reasons. The file is read fresh each time and never stored.
   - Everything stays on the PC; nothing is uploaded or changed.
   - **First raid: scores are provisional.** The scoring will be tuned after raid 1.
-- **Farming page (app): names from Wowhead and Wowhead links.** Items that no local source names (AH Profit, Relax Coach, GearQuest) are looked up on Wowhead's Forever item service in the background. Only item IDs are sent; names and quality are cached on this PC for 30 days, and a local name always wins. Turn it off under **Settings → Look up missing item names online (Wowhead)** (on by default). Item names in **Sell now**, **Up since yesterday** and **Down since yesterday** open their Wowhead Forever page in your browser.
+- **Farming page (app): names from Wowhead and Wowhead links.** Items in AH Profit's price history that no local source names (AH Profit, Relax Coach, GearQuest) are looked up on Wowhead's Forever item service in the background. Only item IDs are sent; names and quality are cached on this PC for 30 days, and a local name always wins. Turn it off under **Settings → Look up missing item names online (Wowhead)** (on by default). Item names in **Sell now**, **Up since yesterday** and **Down since yesterday** open their Wowhead Forever page in your browser.
 - **Clarifications to the 1.8.1 notes:**
   - Prep reports are kept by every raid member whose Relax Raid logs. By default that is every guild member in a raid, but a character's own `/rraid logger` choice overrides the default.
   - The storage limits count the stored report bodies, not the whole save file.
   - Names and quality colours also arrived in **Sell now**, not only in hot items.
 - Coach and the Windows app move to **1.8.2**; Relax Raid moves to **0.3.0**. Relax Journey (`4.00.04`), guide content (`4.00.12`) and Relax Quest Planner (`0.4.0`) are unchanged.
-- **Update:** on app 1.8.0 or 1.8.1 use **Updates → Update everything**, or **Check App Update → Update App** first and then **Updates → Check → Update**; then restart WoW once (new Relax Raid files; `/reload` is not enough). Apps before 1.8.0 update the app first, as for 1.8.0.
+- **Update:** on app 1.8.0 or 1.8.1 use **Updates → Update everything**, or **Check App Update → Update App** first and then **Updates → Check → Update**; then restart WoW once to be safe (new Relax Raid files). Apps before 1.8.0 update the app first, as for 1.8.0.
 - **Not tested in game: alpha, owner's decision.** Offline tests do not validate native Forever behavior or the Windows update flow.
 
 ## What's new in v1.8.1
@@ -246,7 +246,7 @@ Use the included `Restore-RelaxCoach.ps1 -Backup <backup-folder>` with WoW close
 ## Death recap
 
 Relax Raid adds a local **Death Recap**, available everywhere, including combat.
-It reads the game's recorded damage hits (usually about five, at most twelve),
+It reads the game's recorded damage hits (up to twelve, five at a time),
 not a ten-second combat-log window; heals and duel losses have no recap. The
 window shows readable damage, source, spell, time before death, health, overkill
 and avoidable flags. Its hostile-player shares use **all retained damage for this
