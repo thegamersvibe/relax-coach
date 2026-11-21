@@ -78,7 +78,35 @@ func validateExternalURL(raw string) error {
 		if u.Path != "/"+Repo && !strings.HasPrefix(u.Path, "/"+Repo+"/") {
 			return denied
 		}
-	case "www.wowhead.com", "wowhead.com", "www.icy-veins.com", "icy-veins.com":
+	case "www.wowhead.com", "wowhead.com":
+		// Match literal guide boundaries, not routes manufactured by decoding.
+		// Keep safe escaped text, queries, fragments and the default HTTPS port.
+		path := u.EscapedPath()
+		pathQuery, _, _ := strings.Cut(raw, "#")
+		query, err := url.PathUnescape(u.RawQuery)
+		if err != nil || strings.ContainsAny(pathQuery, `"'|`) ||
+			strings.Contains(strings.ToLower(path+u.RawQuery), "%2f") ||
+			strings.IndexFunc(u.Path+query, func(r rune) bool { return r < 32 || r == 127 }) >= 0 {
+			return denied
+		}
+		parts := strings.Split(path, "/")
+		if (len(parts) > 2 && parts[1] == "guide") ||
+			(len(parts) > 3 && parts[1] != "" && parts[2] == "guide" && !strings.Contains(strings.SplitN(u.Path, "/", 3)[1], "=")) {
+			for _, part := range parts[1:] {
+				if part == "" {
+					return denied
+				}
+			}
+			break
+		}
+		// Item links use the literal route, not a decoded/normalized equivalent.
+		// Queries, fragments (even empty ones), ports and escapes are refused.
+		const prefix = "https://www.wowhead.com/forever/item="
+		id, ok := strings.CutPrefix(raw, prefix)
+		if !ok || id == "" || strings.IndexFunc(id, func(r rune) bool { return r < '0' || r > '9' }) >= 0 {
+			return denied
+		}
+	case "www.icy-veins.com", "icy-veins.com":
 	default:
 		return denied
 	}

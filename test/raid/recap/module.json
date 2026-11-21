@@ -1,0 +1,7 @@
+{
+  "kind": "lua",
+  "source": "addon/RelaxRaid/",
+  "test": ["python3", "-I", "-B", "test/raid/recap/test_recap.py"],
+  "depends": ["_client"],
+  "inputs": ["scripts/build_rules_lua.py", "rules/raid/encounters-enabled.json"]
+}

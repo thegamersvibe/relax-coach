@@ -116,6 +116,13 @@ class ReleaseGateTests(unittest.TestCase):
         self.assertIn('No compatible new addon update is available. This is an app-only release for this updater;',source)
         self.assertIn('delete(m, "raidVersion")',source)
 
+    def test_refusal_probe_first_file_matches_bundle_order(self):
+        source=(ROOT/'scripts/old_app_refusal_test.go').read_text()
+        first=min('Interface/AddOns/RelaxRaid/'+p.relative_to(ROOT/'addon/RelaxRaid').as_posix()
+                  for p in (ROOT/'addon/RelaxRaid').rglob('*') if p.is_file())
+        self.assertIn('const oldAppUnknownFile = "archive path is outside the fixed guild allowlist: '+first+'"',source)
+        self.assertIn('strings.ReplaceAll(oldAppFallbackError, "'+first.removeprefix('Interface/AddOns/')+'",',source)
+
     def test_refusal_script_requires_every_named_pass(self):
         # Exercise the real shell wrapper with MOCKED Go output, not a 1.8.0
         # compatibility run. Archive the local published tag only for staging.
