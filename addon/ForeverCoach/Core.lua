@@ -2,7 +2,7 @@
 local ADDON, FC = ...
 FC = FC or {}
 _G.ForeverCoach = FC
-FC.VERSION = "1.8.1"
+FC.VERSION = "1.8.2"
 FC.SCHEMA = 1
 
 local function safe(f, ...)
