@@ -260,7 +260,7 @@ See [API evidence and offline validation](docs/raid/DEATH-RECAP.md).
 
 Relax Raid keeps each character's latest settled guild-rank reading, readable guild name and server time in the account's existing save. It refreshes on login, world entry and guild updates; a still-loading rank leaves the previous reading alone.
 
-## Raids officer view (in development)
+## Raids officer view
 
 The local Raids menu and page exist only when the **selected account's**
 Relax Raid save contains a validated, current `officer` reading. Its server

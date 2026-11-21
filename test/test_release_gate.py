@@ -16,7 +16,8 @@ RAID_RELEASE = runpy.run_path(str(ROOT / "scripts/build_guild_bundle.py"))["raid
 
 
 class ReleaseGateTests(unittest.TestCase):
-    def run_release(self, version, *, old_app=None, gate_rc=0, stale_asset=False, stale_sum=False):
+    def run_release(self, version, *, old_app=None, gate_rc=0, stale_asset=False, stale_sum=False,
+                    npm="exit 0\n", bare_path=False):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             (root / "scripts").mkdir()
@@ -35,7 +36,8 @@ class ReleaseGateTests(unittest.TestCase):
             # replaced. Routing, version comparison and failure propagation
             # execute unchanged from release.sh, including inherited variables.
             stubs = {
-                "bin/go": "exit 0\n",
+                "bin/go": 'printf "go|%s\\n" "$*" >> "$ORDER_LOG"\n',
+                "bin/npm": 'printf "npm|%s\\n" "$*" >> "$ORDER_LOG"\n' +(npm or ""),
                 "bin/python3": 'if [[ "$1" == "-B" ]]; then exec "$REAL_PYTHON" "$@"; fi\nexit 0\n',
                 "bin/git": "printf 'v1.7.1\\n'\n",
                 "scripts/check_old_app_accepts_bundle.sh":
@@ -43,11 +45,20 @@ class ReleaseGateTests(unittest.TestCase):
                 "scripts/check_old_app_refuses_bundle.sh":
                     'printf "refuse|%s|%s|%s\\n" "$1" "$2" "$3" >> "$GATE_LOG"\nexit "$GATE_RC"\n',
             }
+            if npm is None:
+                del stubs["bin/npm"]
             for name, body in stubs.items():
                 path = root / name
                 path.write_text("#!/usr/bin/env bash\n" + body)
                 path.chmod(0o755)
-            env = dict(os.environ, PATH=str(root / "bin") + os.pathsep + os.environ["PATH"],
+            path = str(root / "bin") + os.pathsep + os.environ["PATH"]
+            if bare_path:
+                # Only the tools release.sh needs before npm: no real npm reachable.
+                (root / "sys").mkdir()
+                for tool in ("bash", "env", "dirname", "mkdir", "grep"):
+                    (root / "sys" / tool).symlink_to(shutil.which(tool))
+                path = str(root / "bin") + os.pathsep + str(root / "sys")
+            env = dict(os.environ, PATH=path, ORDER_LOG=str(root / "order.log"),
                        GATE_LOG=str(root / "gate.log"), GATE_RC=str(gate_rc), REAL_PYTHON=sys.executable)
             env.pop("OLD_APP", None)
             # No inherited mode/skip setting may turn the pinned refusal into
@@ -58,7 +69,26 @@ class ReleaseGateTests(unittest.TestCase):
             result = subprocess.run(["bash", "scripts/release.sh", version], cwd=root,
                                     env=env, text=True, capture_output=True)
             log = (root / "gate.log").read_text().splitlines() if (root / "gate.log").exists() else []
+            self.order = (root / "order.log").read_text().splitlines() if (root / "order.log").exists() else []
             return result, log
+
+    def test_ui_test_dependencies_install_before_go_tests(self):
+        result, _ = self.run_release("1.8.2")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.order[0], "npm|ci --prefix .github --ignore-scripts")
+        self.assertTrue(self.order[1].startswith("go|test "), self.order)
+
+    def test_failed_npm_install_stops_before_go(self):
+        result, log = self.run_release("1.8.2", npm="exit 3\n")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.order, ["npm|ci --prefix .github --ignore-scripts"])
+        self.assertEqual(log, [])
+
+    def test_missing_npm_fails_early_with_the_command(self):
+        result, log = self.run_release("1.8.2", npm=None, bare_path=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("run npm ci --prefix .github --ignore-scripts", result.stderr)
+        self.assertEqual((self.order, log), ([], []))
 
     def test_refuse_only_exact_1_8_0(self):
         for version in ("1.8.0", "1.7.0", "1.7.1", "1.7.10", "1.8.1", "2.0.0", "1.8.00"):

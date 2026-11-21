@@ -12,6 +12,10 @@ if [[ "$RAID" == yes ]]; then
     BUNDLE="dist/RelaxCoach-RaidBundle-$V.zip"
 fi
 mkdir -p dist
+# Go tests drive the UI through jsdom, as CI does: install the locked UI test
+# dependencies first (no lifecycle scripts), or stop with the command to run.
+command -v npm >/dev/null 2>&1 || { printf 'npm not found: install Node.js, then run npm ci --prefix .github --ignore-scripts\n' >&2; exit 1; }
+npm ci --prefix .github --ignore-scripts
 (cd desktop && go test ./... && GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-H windowsgui" -o ../dist/RelaxCoach.exe .)
 python3 scripts/build_guild_bundle.py --exe dist/RelaxCoach.exe --version "$V"
 if [[ "$RAID" == yes ]]; then
