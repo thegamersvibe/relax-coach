@@ -163,20 +163,26 @@
   },
   {
     "file": "desktop/native_shell.js",
-    "old": "if (shown === reportDisplaySeq) displayReport(result);",
-    "new": "displayReport(result);",
-    "killed_by": "TestRaidLockPreferenceReply"
-  },
-  {
-    "file": "desktop/native_shell.js",
-    "old": "  ++reportDisplaySeq;\n",
+    "old": "  if (olderReport(result)) return;\n",
     "new": "",
     "killed_by": "TestRaidLockPreferenceReply"
   },
   {
     "file": "desktop/native_shell.js",
-    "old": "if (shown === reportDisplaySeq) displayReport(result);",
-    "new": "if (false) displayReport(result);",
+    "old": "if (typeof result.Seq === 'number') shownSeq = result.Seq;",
+    "new": "",
     "killed_by": "TestRaidLockPreferenceReply"
+  },
+  {
+    "file": "desktop/native_bridge.go",
+    "old": "\tb.reportSeq++\n",
+    "new": "",
+    "killed_by": "TestRaidLockReportSeq"
+  },
+  {
+    "file": "desktop/native_bridge.go",
+    "old": "Seq: seq}, err",
+    "new": "Seq: seq / seq}, err",
+    "killed_by": "TestRaidLockReportSeq"
   }
 ]
