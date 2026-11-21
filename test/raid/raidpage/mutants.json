@@ -223,8 +223,8 @@
   },
   {
     "file": "desktop/raid_opening.go",
-    "old": "if revision != a.raidRevision {",
-    "new": "if false && revision != a.raidRevision {",
+    "old": "|| revision != a.raidRevision {",
+    "new": "|| revision != revision {",
     "killed_by": "TestRaidPagePickerContextChange"
   },
   {
@@ -253,8 +253,8 @@
   },
   {
     "file": "desktop/raid_opening.go",
-    "old": "path, err := b.services.chooseFile(b.ctx, kind)",
-    "new": "path, err := b.services.chooseFile(b.ctx, kind)\n\tif err == nil && path == \"\" { return nil, nil }",
+    "old": "path, pickErr := b.services.chooseFile(b.ctx, kind)",
+    "new": "path, pickErr := b.services.chooseFile(b.ctx, kind)\n\tif pickErr == nil && path == \"\" { return nil, nil }",
     "killed_by": "TestRaidPageCancelledPickerRechecksAdmission"
   },
   {
@@ -394,5 +394,23 @@
     "old": "r <= '\\U000e007f'",
     "new": "r < '\\U000e007f'",
     "killed_by": "TestRaidPageNamesIsolated"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "if game != a.game || account != a.account ||",
+    "new": "if game != game || account != account ||",
+    "killed_by": "TestRaidPagePickerOutcomeBinding"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "return nil, errRaidPickerStale",
+    "new": "return nil, errRaidRankLocked",
+    "killed_by": "TestRaidPagePickerOutcomeBinding"
+  },
+  {
+    "file": "desktop/raid_opening.go",
+    "old": "path, pickErr := b.services.chooseFile(b.ctx, kind)",
+    "new": "path, pickErr := b.services.chooseFile(b.ctx, kind)\n\tif pickErr != nil { return nil, pickErr }",
+    "killed_by": "TestRaidPagePickerOutcomeBinding"
   }
 ]

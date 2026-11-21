@@ -12,6 +12,9 @@ type raidSelection struct {
 	Game, Account, Path string
 	Night               int
 }
+
+var errRaidPickerStale = errors.New("raid selection changed while choosing a file")
+
 type raidNightChoice struct {
 	Index int
 	Label string
@@ -105,7 +108,7 @@ func (b *nativeBridge) chooseRaidFile(kind string) (any, error) {
 	a.mu.Lock()
 	a.rescanAccountsLocked()
 	_, err := a.raidSaveLocked()
-	revision := a.raidRevision
+	revision, game, account := a.raidRevision, a.game, a.account
 	if err != nil {
 		a.mu.Unlock()
 		return nil, err
@@ -122,24 +125,27 @@ func (b *nativeBridge) chooseRaidFile(kind string) (any, error) {
 	if b.services.chooseFile == nil {
 		return renderRaidScreen(raidScreen{Error: "file chooser is unavailable; paste the file path instead"})
 	}
-	path, err := b.services.chooseFile(b.ctx, kind)
-	if err != nil {
-		return nil, err
-	}
+	path, pickErr := b.services.chooseFile(b.ctx, kind)
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if err := b.ctx.Err(); err != nil {
 		return nil, err
 	}
 	a.rescanAccountsLocked()
+	// A result belongs to the account that started the picker. After a switch
+	// (even away and back) it is stale: no refusal may be latched for it.
+	if game != a.game || account != a.account || revision != a.raidRevision {
+		return nil, errRaidPickerStale
+	}
+	// Admission is rechecked after every picker outcome, failures included.
 	save, err := a.raidSaveLocked()
 	if err != nil {
 		a.raidSelection = nil
 		a.raidRevision++
 		return nil, err
 	}
-	if revision != a.raidRevision {
-		return nil, errors.New("raid selection changed while choosing a file")
+	if pickErr != nil {
+		return nil, pickErr
 	}
 	if path == "" {
 		return nil, nil
