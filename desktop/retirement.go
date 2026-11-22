@@ -49,6 +49,12 @@ func retireGame(ctx context.Context, game string, running func(context.Context) 
 		result.skip(game, err)
 		return result
 	}
+	// Every source (flag, saved config, discovery) must name the Forever game
+	// folder itself, by the same check discovery uses; anything else is no game.
+	if NormalizeGame(game) != game {
+		result.NoGame = true
+		return result
+	}
 	if err = ctx.Err(); err != nil {
 		result.skip(game, err)
 		return result
@@ -65,6 +71,11 @@ func retireGame(ctx context.Context, game string, running func(context.Context) 
 		return result
 	}
 	retirementSaves(ctx, game, journey, &observer, &result)
+	if !result.SavedSettingsDeferred {
+		// Cleanup finished: drop the ownership receipt so a later foreign Journey's
+		// settings are never treated as ours.
+		retirementRecordJourney(game, false, &result)
+	}
 	return result
 }
 

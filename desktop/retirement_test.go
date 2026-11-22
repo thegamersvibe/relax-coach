@@ -206,3 +206,44 @@ func TestRetirementNoResolvedGameDoesNothing(t *testing.T) {
 		t.Fatalf("unresolved game: %+v", result)
 	}
 }
+
+func TestRetirementReceiptClearedAfterUndeferredCleanup(t *testing.T) {
+	game := retirementFixture(t)
+	addonPut(t, game, "Interface/AddOns/Journey/Journey.toc", "## Title: Relax Journey\n")
+	save := "WTF/Account/ACCT/SavedVariables/Journey_Account.lua"
+	addonPut(t, game, save, "ours")
+	retireGame(context.Background(), game, retirementClosed)
+	retirementExists(t, filepath.Join(game, save), false)
+	// A foreign Journey installed and removed later must never inherit the
+	// finished cleanup's ownership receipt.
+	addonPut(t, game, "Interface/AddOns/Journey/Journey.toc", "## Title: Journey\n")
+	addonPut(t, game, save, "foreign")
+	if err := os.RemoveAll(filepath.Join(game, "Interface/AddOns/Journey")); err != nil {
+		t.Fatal(err)
+	}
+	if retirementKnownJourney(game, &retirementResult{}) {
+		t.Fatal("receipt kept after undeferred cleanup")
+	}
+	retireGame(context.Background(), game, retirementClosed)
+	retirementExists(t, filepath.Join(game, save), true)
+}
+
+func TestRetirementRejectsNonForeverGame(t *testing.T) {
+	for _, name := range []string{"Documents", "World of Warcraft"} {
+		t.Run(name, func(t *testing.T) {
+			retirementFixture(t)
+			game := filepath.Join(t.TempDir(), name)
+			addonPut(t, game, "Interface/AddOns/ForeverCoach/Core.lua", "not a game")
+			addonPut(t, game, "WTF/Account/ACCT/SavedVariables/ForeverCoachDB.lua", "not a game")
+			if err := saveGame(game); err != nil {
+				t.Fatal(err)
+			}
+			result := retireGame(context.Background(), game, retirementClosed)
+			if !result.NoGame || len(result.Removed) != 0 {
+				t.Fatalf("non-Forever folder accepted: %+v", result)
+			}
+			retirementExists(t, filepath.Join(game, "Interface/AddOns/ForeverCoach"), true)
+			retirementExists(t, filepath.Join(game, "WTF/Account/ACCT/SavedVariables/ForeverCoachDB.lua"), true)
+		})
+	}
+}
