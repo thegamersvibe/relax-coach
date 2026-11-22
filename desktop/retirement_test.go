@@ -12,6 +12,9 @@ import (
 
 func retirementFixture(t *testing.T) string {
 	t.Helper()
+	config := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", config)
+	t.Setenv("APPDATA", config)
 	game := filepath.Join(t.TempDir(), "_forever_")
 	if err := os.MkdirAll(filepath.Join(game, "Interface", "AddOns"), 0700); err != nil {
 		t.Fatal(err)
@@ -157,6 +160,41 @@ func TestRetirementSavedVariablesNeverFollowLinks(t *testing.T) {
 			retirementExists(t, filepath.Join(outside, "ForeverCoachDB.lua"), true)
 			if len(result.Skipped) == 0 {
 				t.Fatalf("unreported linked save: %+v", result)
+			}
+		})
+	}
+}
+
+func TestRetirementJourneyDeferredAcrossStarts(t *testing.T) {
+	for _, replacement := range []bool{false, true} {
+		t.Run(fmt.Sprint(replacement), func(t *testing.T) {
+			game := retirementFixture(t)
+			addonPut(t, game, "Interface/AddOns/Journey/Journey.toc", "## Title: Relax Journey\n")
+			save := "WTF/Account/ACCT/SavedVariables/Journey_Account.lua"
+			addonPut(t, game, save, "keep while open")
+			if err := saveGame(game); err != nil {
+				t.Fatal(err)
+			}
+			first := retireGame(context.Background(), game, func(context.Context) (bool, error) { return true, nil })
+			if !first.SavedSettingsDeferred {
+				t.Fatal("no defer")
+			}
+			retirementExists(t, filepath.Join(game, "Interface/AddOns/Journey"), false)
+			retirementExists(t, filepath.Join(game, save), true)
+			if replacement {
+				addonPut(t, game, "Interface/AddOns/Journey/Journey.toc", "## Title: Journey\n")
+			}
+			retireGame(context.Background(), game, retirementClosed)
+			retirementExists(t, filepath.Join(game, save), replacement)
+			if savedGame() != game {
+				t.Fatal("retirement changed the remembered game")
+			}
+			if replacement {
+				if err := os.RemoveAll(filepath.Join(game, "Interface/AddOns/Journey")); err != nil {
+					t.Fatal(err)
+				}
+				retireGame(context.Background(), game, retirementClosed)
+				retirementExists(t, filepath.Join(game, save), true)
 			}
 		})
 	}

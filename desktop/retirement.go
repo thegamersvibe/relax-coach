@@ -71,15 +71,17 @@ func retireGame(ctx context.Context, game string, running func(context.Context) 
 func retirementAddons(game string, result *retirementResult) bool {
 	addons := filepath.Join(game, "Interface", "AddOns")
 	if err := appPlainDirectory(filepath.Dir(addons)); err != nil {
-		if !os.IsNotExist(err) {
-			result.skip(filepath.Dir(addons), err)
+		if os.IsNotExist(err) {
+			return retirementKnownJourney(game, result)
 		}
+		result.skip(filepath.Dir(addons), err)
 		return false
 	}
 	if err := appPlainDirectory(addons); err != nil {
-		if !os.IsNotExist(err) {
-			result.skip(addons, err)
+		if os.IsNotExist(err) {
+			return retirementKnownJourney(game, result)
 		}
+		result.skip(addons, err)
 		return false
 	}
 	root, err := os.OpenRoot(addons)
@@ -97,19 +99,27 @@ func retirementAddons(game string, result *retirementResult) bool {
 			continue
 		}
 		if _, err := root.Lstat(name); os.IsNotExist(err) {
+			if name == "Journey" {
+				journey = retirementKnownJourney(game, result)
+			}
 			continue
 		}
 		if err := retirementTree(target); err != nil {
+			if name == "Journey" {
+				retirementRecordJourney(game, false, result)
+			}
 			result.skip(target, err)
 			continue
 		}
 		if name == "Journey" {
 			ours, readable := addonJourneyTitle(target)
 			if !readable || !ours {
+				retirementRecordJourney(game, false, result)
 				result.Skipped = append(result.Skipped, "skipped Journey (not identified as Relax Journey)")
 				continue
 			}
 			journey = true
+			retirementRecordJourney(game, true, result)
 		}
 		if err := root.RemoveAll(name); err != nil {
 			result.skip(target, err)

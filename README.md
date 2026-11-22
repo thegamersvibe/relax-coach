@@ -18,7 +18,10 @@ only for identified Relax Journey, `Journey_Account` and `Journey_Character`.
 Only their `.lua` and `.lua.bak` files in account or per-character
 `SavedVariables` directories are targeted. These declaration names are distinct
 from WoW's usual addon-named save files; other filenames are not guessed.
-If settings are deferred, close WoW and start Relax Coach again.
+If settings are deferred, close WoW and start Relax Coach again. A small
+per-game Journey ownership receipt is retained in the app's existing config so
+that retry still works after the TOC is gone; a replacement foreign or unreadable
+Journey revokes it.
 
 **What stays:** AHProfit and its saves, all other addons and saves, a non-Relax
 or unreadable Journey, `Interface/Content/Journey-Content`, combat logs, backups,
