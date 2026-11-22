@@ -1,10 +1,9 @@
 // Relax Coach native Windows application.
-// Reads ForeverCoach and AH Profit saves, plus optional AH Profit/GearQuest data (read-only). No memory reading or game automation.
-// Diagnostic HTTP is opt-in; the normal UI uses direct in-process Go bindings.
+// Retirement runs offline after native startup and the existing update handshake.
+// Historical report/installer code remains for compatibility tests, not runtime UI.
 package main
 
 import (
-	"context"
 	"embed"
 	"encoding/json"
 	"flag"
@@ -17,7 +16,7 @@ import (
 	"time"
 )
 
-var Version = "1.8.2" // May be overridden with -X main.Version for private verification builds.
+var Version = "1.9.0" // May be overridden with -X main.Version for private verification builds.
 const Repo = "thegamersvibe/relax-coach"
 const RulesSchema = 1
 
@@ -90,6 +89,7 @@ type StatView struct {
 }
 
 type View struct {
+	Retired                     bool
 	HasRaids                    bool
 	Chars                       []CharView
 	SVPath, Error, RulesVersion string
@@ -108,6 +108,7 @@ type View struct {
 }
 
 type App struct {
+	retirement             *retirementRun
 	game, svPath, addonDir string
 	mu                     sync.Mutex
 	view                   View
@@ -139,54 +140,34 @@ func main() {
 		return
 	}
 	gameFlag := flag.String("game", "", `game folder (the _forever_ folder); default: auto-detect`)
-	port := flag.Int("port", 47321, "diagnostic HTTP port (only with -headless or -no-open)")
-	noOpen := flag.Bool("no-open", false, "diagnostic HTTP mode; never launch a browser")
-	headless := flag.Bool("headless", false, "diagnostic HTTP mode without an application window")
-	noUpdate := flag.Bool("no-update", false, "disable app and addon release checks and updates")
-	once := flag.Bool("once", false, "print the report to the console and exit without updating")
+	// Retained for the unchanged updater's restart argument contract. Retirement
+	// is always offline, even when the old app supplies -no-update=false.
+	_ = flag.Bool("no-update", false, "accepted for compatibility; retirement is always offline")
 	_ = flag.CommandLine.Parse(guiArgs)
 	if flag.NArg() != 0 {
 		log.Print("unexpected positional arguments")
 		os.Exit(1)
 	}
-	if !*once && !*headless && !*noOpen {
-		// One window at a time; a second start brings the open one forward.
-		if !nativeSingleInstance(mode, nativeAcquireInstance, nativeFocusOther) {
-			return
-		}
-		initAppUpdateRuntime(guiArgs)
-		if mode == "start" {
-			if err := initAppStartup(id); err != nil {
-				log.Print(err)
-				os.Exit(1)
-			}
+	// The update-start path keeps the old instance/transaction identity gate.
+	// Ordinary launches each perform their own retirement pass.
+	if mode == "start" && !nativeSingleInstance(mode, nativeAcquireInstance, nativeFocusOther) {
+		return
+	}
+	initAppUpdateRuntime(guiArgs)
+	if mode == "start" {
+		if err := initAppStartup(id); err != nil {
+			log.Print(err)
+			os.Exit(1)
 		}
 	}
 	game := NormalizeGame(*gameFlag)
 	if game == "" {
 		game = findGame()
 	}
-	_, _ = raidConfig() // Retain the startup error for the Raids page, not a process exit.
-	app := &App{}
-	if !*once {
-		app.wowhead = newWowheadNames(context.Background(), wowheadCachePath(), wowheadTooltipURL, client)
-		app.wowhead.setEnabled(savedWowheadNames())
-		defer app.wowhead.Close()
-	}
-	app.setGame(game)
-	app.reload()
-	if *once {
-		printConsole(app.snapshot())
-		return
-	}
-	// The window owns the process. HTTP is an explicit diagnostic opt-in, on every OS.
-	if *headless || *noOpen {
-		if err := serveDiagnostic(app, *port); err != nil {
-			log.Fatal(err)
-		}
-		return
-	}
-	if err := runNative(app, *noUpdate); err != nil {
+	// No deletion here: the plain native page must render and the unchanged
+	// startup health receipt must be acknowledged before cleanup may run.
+	app := newRetirementApp(game)
+	if err := runNative(app, true); err != nil {
 		showNativeError(err)
 		log.Print(err)
 		os.Exit(1)

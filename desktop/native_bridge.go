@@ -123,6 +123,14 @@ func decodeNativeRequest(raw, token string) (nativeRequest, error) {
 }
 
 func newNativeBridge(a *App, disabled bool, s nativeServices) *nativeBridge {
+	if a.retirement != nil {
+		ctx, cancel := context.WithCancel(context.Background())
+		if s.ready == nil {
+			s.ready = acknowledgeAppStartup
+		}
+		// No release, lookup, placement or addon-manager capabilities.
+		return &nativeBridge{app: a, services: nativeServices{ready: s.ready}, ctx: ctx, cancel: cancel, disabled: true}
+	}
 	if s.checkApp == nil {
 		s.checkApp = CheckAppRelease
 	}
@@ -187,6 +195,9 @@ func (b *nativeBridge) Call(method string, args []json.RawMessage) (any, error) 
 	defer b.workers.Done()
 	if err := b.ctx.Err(); err != nil {
 		return nil, err
+	}
+	if b.app.retirement != nil {
+		return b.retirementCall(method, args)
 	}
 	var arg string
 	switch method {

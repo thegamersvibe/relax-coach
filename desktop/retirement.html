@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-{{.Nonce}}'; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Relax Coach</title>
+</head>
+<body>
+<p id="retired">{{.Message}}</p>
+<ul id="removed"></ul>
+<p id="status"></p>
+<ul id="skipped"></ul>
+<script nonce="{{.Nonce}}">
+'use strict';
+const token = {{.Token}};
+const pending = new Map();
+let sequence = 0;
+window.chrome.webview.addEventListener('message', event => {
+  const reply = event.data;
+  if (!reply || reply.kind !== 'native-response') return;
+  const task = pending.get(reply.id);
+  if (!task) return;
+  pending.delete(reply.id);
+  if (reply.error) task.reject(new Error(reply.error));
+  else task.resolve(reply.result);
+});
+function call(method) {
+  return new Promise((resolve, reject) => {
+    const id = ++sequence;
+    pending.set(id, {resolve, reject});
+    window.chrome.webview.postMessage(JSON.stringify({id, method, params: [], token}));
+  });
+}
+function list(id, lines) {
+  const parent = document.getElementById(id);
+  for (const text of lines || []) {
+    const item = document.createElement('li');
+    item.textContent = text;
+    parent.appendChild(item);
+  }
+}
+(async () => {
+  try {
+    document.getElementById('retired').textContent = await call('reportRefresh');
+    // The initial local page and bridge must work, then render, before the
+    // existing update health protocol is allowed to acknowledge startup.
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const result = await call('appReady');
+    list('removed', result.Removed);
+    list('skipped', result.Skipped);
+    const notes = [];
+    if (!result.Removed || !result.Removed.length) notes.push('nothing left to remove');
+    if (result.NoGame) notes.push('no game folder resolved; nothing was deleted');
+    if (result.SavedSettingsDeferred) notes.push('close WoW and start Relax Coach again to remove saved settings');
+    document.getElementById('status').textContent = notes.join('. ');
+  } catch (error) {
+    document.getElementById('status').textContent = 'cleanup did not complete: ' + error.message;
+  }
+})();
+</script>
+</body>
+</html>
