@@ -146,14 +146,16 @@ jobs:
         run: |
           mkdir -p ../dist
           go build -trimpath -ldflags '-H windowsgui' -o ../dist/RelaxCoach.exe .
-      - name: Build a private guild archive (never upload or publish)
+      - name: Build private release assets (retirement is app-only; never publish)
         run: python scripts/build_guild_bundle.py --exe dist/RelaxCoach.exe
       - name: Existing bundle contract tests
         run: python -I -B test/test_guild_bundle.py
       - name: Release gate selection and real current-bundle compatibility (fail closed)
         run: python -I -B test/test_release_gate.py
-      - name: Rank save and bundle accepted by apps 1.8.0 and 1.8.1
-        run: python -I -B test/raid/rank/test_old_apps.py
+      - name: Historical rank saves accepted by apps 1.8.0 and 1.8.1 (no retirement bundle)
+        run: python -I -B test/raid/rank/test_old_apps.py OldAppRankTests.test_app_1_8_0_accepts_save OldAppRankTests.test_app_1_8_1_accepts_save
+      - name: Retirement app-only packaging and negative controls
+        run: python -I -B test/test_retirement_release.py
 
   required-ci:
     # Keep this check name stable: the main ruleset requires its GitHub Actions result.

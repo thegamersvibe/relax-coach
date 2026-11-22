@@ -72,6 +72,12 @@ class ReleaseGateTests(unittest.TestCase):
             self.order = (root / "order.log").read_text().splitlines() if (root / "order.log").exists() else []
             return result, log
 
+    def test_retirement_is_app_only_without_bundle_gate(self):
+        result, log = self.run_release("1.9.0")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(log, [], "retirement must not build/validate a bundle")
+        self.assertIn('go|build -trimpath -ldflags -H windowsgui -o ../dist/RelaxCoach.exe .', self.order)
+
     def test_ui_test_dependencies_install_before_go_tests(self):
         result, _ = self.run_release("1.8.2")
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -234,8 +240,8 @@ class RealGateSetupTests(unittest.TestCase):
                 with mock.patch.object(sys.modules[__name__], 'ROOT', root):
                     suite = unittest.defaultTestLoader.loadTestsFromModule(sys.modules[__name__])
                 real_ids = [name for name in test_ids(suite)
-                            if '.RealRefusalGateTests.' in name or '.RealAcceptanceGateTests.' in name]
-                selected = 'RealRefusalGateTests' if version == '1.8.0' else 'RealAcceptanceGateTests'
+                            if any('.'+case+'.' in name for case in ('RealRefusalGateTests','RealAcceptanceGateTests','RealRetirementGateTests'))]
+                selected = 'RealRetirementGateTests' if version == '1.9.0' else 'RealRefusalGateTests' if version == '1.8.0' else 'RealAcceptanceGateTests'
                 self.assertTrue(real_ids, 'CI must collect a real gate')
                 self.assertTrue(all(f'.{selected}.' in name for name in real_ids), real_ids)
 
@@ -277,7 +283,14 @@ class RealGateSetupTests(unittest.TestCase):
 
 
 def release_version():
-    # The bundle contract also asserts that both build/release defaults match.
+    # App-only retirement leaves historical addon versions untouched.
+    app = ROOT / 'desktop/main.go'
+    if app.exists():
+        match = re.search(r'^var Version = "(\d+\.\d+\.\d+)"', app.read_text(), re.M)
+        if match is None:
+            raise AssertionError('App release version missing or malformed')
+        return match.group(1)
+    # Historical gate-selection fixtures contain only the Coach TOC.
     toc = (ROOT / 'addon/ForeverCoach/ForeverCoach.toc').read_text()
     match = re.search(r'^## Version: (\d+\.\d+\.\d+)$', toc, re.M)
     if match is None:
@@ -365,10 +378,45 @@ class RealAcceptanceGateTests(RealGateAssets, unittest.TestCase):
         print(result.stdout, end='')
 
 
+class RealRetirementGateTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.exe = ROOT / 'dist/RelaxCoach.exe'
+        if not cls.exe.is_file() or not (cls.exe.parent / 'SHA256SUMS.txt').is_file():
+            message = 'release assets missing: build the retirement EXE and checksums first'
+            if os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS'):
+                raise AssertionError(message)
+            raise unittest.SkipTest(message)
+        runpy.run_path(str(ROOT / 'scripts/build_retirement_assets.py'))['validate_release'](cls.exe.parent)
+
+    def run_validator(self, exe):
+        return subprocess.run(['go', 'test', '-count=1', '-v', '-run', '^TestRetirementReleaseExecutable$', '.'],
+                              cwd=ROOT / 'desktop', env=dict(os.environ, RETIREMENT_EXE=str(exe)),
+                              text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+    def test_real_retirement_exe_passes_unchanged_updater_validator(self):
+        result = self.run_validator(self.exe)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn('--- PASS: TestRetirementReleaseExecutable ', result.stdout)
+        self.assertIn('unchanged updater accepted retirement executable sha256=', result.stdout)
+        print(result.stdout, end='')
+
+    def test_real_retirement_exe_corruption_is_refused(self):
+        with tempfile.TemporaryDirectory() as temp:
+            exe = Path(temp) / 'RelaxCoach.exe'
+            data = bytearray(self.exe.read_bytes())
+            data[:2] = b'ZZ'
+            exe.write_bytes(data)
+            result = self.run_validator(exe)
+            self.assertNotEqual(result.returncode, 0, result.stdout)
+            self.assertIn('not a valid Windows amd64 GUI executable', result.stdout)
+
+
 def load_tests(loader, tests, pattern):
     # Explicit selection, not SkipTest: CI must run the real gate for the bundle
     # it just built, without requiring the historical 1.8.0 assets forever.
-    real = RealRefusalGateTests if release_version() == '1.8.0' else RealAcceptanceGateTests
+    version = release_version()
+    real = RealRetirementGateTests if version == '1.9.0' else RealRefusalGateTests if version == '1.8.0' else RealAcceptanceGateTests
     return unittest.TestSuite(loader.loadTestsFromTestCase(case) for case in
                               (ReleaseGateTests, RealGateSetupTests, real))
 

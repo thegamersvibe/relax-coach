@@ -65,9 +65,13 @@ def check_raid_toc(names):
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument('--exe',type=Path,required=True)
-    ap.add_argument('--version',default='1.8.2')
+    ap.add_argument('--version',default='1.9.0')
     a=ap.parse_args()
     if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+',a.version):raise SystemExit('Invalid version')
+    if a.version == '1.9.0':
+        import runpy
+        runpy.run_path(str(Path(__file__).with_name('build_retirement_assets.py')))['build'](a.exe)
+        return
     if not a.exe.is_file() or a.exe.read_bytes()[:2]!=b'MZ':raise SystemExit('Provide the verified Windows EXE')
     # From 1.5.0 the bundle also carries Relax Quest Planner under a new asset
     # name, so apps before 1.5.0 (which refuse that folder) ask for Update App.

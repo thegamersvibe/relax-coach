@@ -1,3 +1,40 @@
+# Relax Coach — retired
+
+Relax Coach is retired. The **1.9.0 app-only release** contains `RelaxCoach.exe`
+and `SHA256SUMS.txt`, with no addon bundle. It opens a plain retirement page,
+works offline and makes no release checks or online name lookups.
+
+On each start, after any app-update health handshake has completed, it removes
+only `ForeverCoach`, `RelaxRaid` and `RelaxQuestPlanner` directly under the
+resolved game's `Interface/AddOns`. It also removes `Journey` **only when its
+TOC identifies Relax Journey**. Linked/junction paths, including addon folders
+containing them, are skipped and reported, never followed. If no game folder is
+resolved, nothing is deleted; an existing `-game` argument can select the folder.
+
+Saved settings are attempted only when WoW is confirmed closed; an unreadable
+process list counts as open. The exact declared-name file stems are
+`ForeverCoachDB`, `RelaxRaidDB`, `RelaxRaidCharDB`, `RelaxQuestPlannerDB`, and,
+only for identified Relax Journey, `Journey_Account` and `Journey_Character`.
+Only their `.lua` and `.lua.bak` files in account or per-character
+`SavedVariables` directories are targeted. These declaration names are distinct
+from WoW's usual addon-named save files; other filenames are not guessed.
+If settings are deferred, close WoW and start Relax Coach again.
+
+**What stays:** AHProfit and its saves, all other addons and saves, a non-Relax
+or unreadable Journey, `Interface/Content/Journey-Content`, combat logs, backups,
+the app itself, its shortcuts and app settings. The page lists this run's
+removals and anything skipped; rerunning is safe.
+
+**Manual removal:** close WoW, open the game's `Interface/AddOns`, and delete
+only the three exact folders above and an identified Relax Journey. In
+`WTF/Account/<account>/SavedVariables` and
+`WTF/Account/<account>/<realm>/<character>/SavedVariables`, delete only the
+listed exact `.lua` / `.lua.bak` files. Do not follow links or delete entire
+account, realm, character or `SavedVariables` directories. You may separately
+delete `RelaxCoach.exe` and its shortcuts yourself; the app never does so.
+
+The documentation below describes the historical, non-retirement releases.
+
 # Relax Coach — guild bundle
 
 Four **separate WoW Forever addons**, plus a native Windows report app:

@@ -267,12 +267,13 @@ class GuildBuilderExeTests(unittest.TestCase):
         self.assertFalse((dist/'guild-package').exists())
 
     def test_raid_floor_is_read_from_the_app(self):
-        self.raid_fixture('1.9.0')
+        # Use a synthetic non-retirement release for the historical bundle rule.
+        self.raid_fixture('1.10.0')
         source=self.root/'desktop/addon_update.go'
-        source.write_text(source.read_text().replace('const addonRaidMinimumVersion = "1.8.0"','const addonRaidMinimumVersion = "1.9.0"'))
-        result=self.run_builder(self.exe,'1.9.0')
+        source.write_text(source.read_text().replace('const addonRaidMinimumVersion = "1.8.0"','const addonRaidMinimumVersion = "1.10.0"'))
+        result=self.run_builder(self.exe,'1.10.0')
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
-        self.assertTrue((self.root/'dist/RelaxCoach-RaidBundle-1.9.0.zip').is_file())
+        self.assertTrue((self.root/'dist/RelaxCoach-RaidBundle-1.10.0.zip').is_file())
         (self.root/'addon/ForeverCoach/ForeverCoach.toc').write_text('## Title: Relax Coach\n## Version: 1.8.0\n')
         result=self.run_builder(self.exe,'1.8.0')
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
@@ -484,8 +485,10 @@ class GuildBundleTests(unittest.TestCase):
         # Coach TOC, Core.lua and the release scripts' default version must agree.
         version=re.search(r'^## Version: (\d+\.\d+\.\d+)\n',toc,re.M).group(1)
         self.assertIn('FC.VERSION = "'+version+'"',core)
-        self.assertIn("default='"+version+"'",(ROOT/'scripts/build_guild_bundle.py').read_text())
-        self.assertIn('V=${1:-'+version+'}',(ROOT/'scripts/release.sh').read_text())
+        app_version=re.search(r'var Version = "([^"]+)"',(ROOT/'desktop/main.go').read_text()).group(1)
+        release='1.9.0' if app_version=='1.9.0' else version
+        self.assertIn("default='"+release+"'",(ROOT/'scripts/build_guild_bundle.py').read_text())
+        self.assertIn('V=${1:-'+release+'}',(ROOT/'scripts/release.sh').read_text())
         self.assertIn('## SavedVariables: ForeverCoachDB\n',toc)
         self.assertNotRegex(toc,r'(?mi)^## (?:Dependencies|RequiredDeps):.*Journey')
 
@@ -505,6 +508,11 @@ class GuildBundleTests(unittest.TestCase):
         for line in result.splitlines():self.assertTrue(line.endswith(': text: unset'),line)
 
     def test_combined_archive_preserves_runtime_and_excludes_saves(self):
+        if 'var Version = "1.9.0"' in (ROOT/'desktop/main.go').read_text():
+            # The retirement release deliberately contains no addon archive.
+            import runpy
+            runpy.run_path(str(ROOT/'scripts/build_retirement_assets.py'))['validate_release'](ROOT/'dist')
+            return
         version=re.search(r'^## Version: (\S+)',(ROOT/'addon/ForeverCoach/ForeverCoach.toc').read_text(),re.M).group(1)
         bundle=tuple(map(int,version.split('.')))>=(1,5,0)
         match=re.search(r'^const addonRaidMinimumVersion = "([0-9.]+)"$',(ROOT/'desktop/addon_update.go').read_text(),re.M)
