@@ -30,9 +30,9 @@ func TestRaidPageNativePickerSpec(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	load := strings.Index(string(main), "_, _ = raidConfig()")
-	app := strings.Index(string(main), "app := &App{}")
-	if load < 0 || load >= app {
-		t.Fatal("embedded config not primed at startup")
+	// Retirement has no Raids page; retain the picker contract above, but never
+	// prime the historical raid configuration in the running app's startup.
+	if strings.Contains(string(main), "raidConfig()") {
+		t.Fatal("retired app must not prime raid config at startup")
 	}
 }

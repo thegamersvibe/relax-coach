@@ -62,7 +62,8 @@ func TestFarmNameCoachTOCUpdaterContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := validateAddonTOC(b, Version); err != nil {
+	// Retirement is app-only: the addon remains at the last shipped bundle version.
+	if err := validateAddonTOC(b, "1.8.2"); err != nil {
 		t.Fatalf("Farming cache must remain installable by the existing updater: %v", err)
 	}
 }
