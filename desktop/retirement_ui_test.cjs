@@ -77,6 +77,16 @@ test('failed initial bridge never asks for health or moves' , async () => {
     assert.match(x.dom.window.document.querySelector('#status').textContent, /bridge failed/);
   } finally { x.dom.window.close(); }
 });
+test('invalid pending journal reports a blocked recovery, never an empty or retryable run', async () => {
+  const x = boot();
+  try {
+    x.reply(0, 'retired'); await settle(); x.frames.shift()(); x.frames.shift()(); await settle();
+    x.reply(1, {Moved: [], RecoveryBlocked: true, Skipped: ['invalid retirement journal']}); await settle();
+    assert.equal(x.dom.window.document.querySelector('#status').textContent, 'a previous move could not be verified; nothing more was moved');
+    assert.doesNotMatch([...x.dom.window.document.querySelectorAll('#status, #skipped')].map(e => e.textContent).join(' '), /nothing left to move|will retry/);
+    assert.deepEqual(x.calls.map(c => c.method), ['reportRefresh', 'appReady', 'checkAppStartup']);
+  } finally { x.dom.window.close(); }
+});
 test('empty run says nothing left and unresolved folder is explicit', async () => {
   const x = boot();
   try {

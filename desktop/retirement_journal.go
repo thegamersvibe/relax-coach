@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"strings"
 )
@@ -100,8 +99,13 @@ func (q *retirementQuarantine) verify(entries []retirementEntry) error {
 	for i := range got {
 		got[i].Source = top.Source + strings.TrimPrefix(got[i].Source, top.Destination)
 	}
-	if !reflect.DeepEqual(got, entries) {
+	if len(got) != len(entries) {
 		return fmt.Errorf("moved contents differ from the pre-move inventory")
+	}
+	for i := range got {
+		if !retirementSameEntry(got[i], entries[i]) {
+			return fmt.Errorf("moved contents differ from the pre-move inventory")
+		}
 	}
 	return nil
 }
@@ -161,26 +165,34 @@ func (q *retirementQuarantine) recover() error {
 		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
-		prior.entries = previous.Entries
+		previous.Schema = 1
+		previous.Extra, err = retirementMergeJSON(previous.Extra, intent.Extra)
+		if err != nil {
+			return err
+		}
 		for _, e := range intent.Entries {
 			exists := false
-			for _, p := range prior.entries {
+			for i, p := range previous.Entries {
 				if p.Source == e.Source {
-					if p != e {
+					if !retirementSameEntry(p, e) {
 						return fmt.Errorf("conflicting retirement journal")
+					}
+					previous.Entries[i].Extra, err = retirementMergeJSON(p.Extra, e.Extra)
+					if err != nil {
+						return err
 					}
 					exists = true
 				}
 			}
 			if !exists {
-				prior.entries = append(prior.entries, e)
+				previous.Entries = append(previous.Entries, e)
 			}
-		}
-		if err = prior.writeManifest(); err != nil {
-			return err
 		}
 		if err = prior.verify(intent.Entries); err != nil {
 			return fmt.Errorf("hash verification failed in %s (kept in quarantine)", run)
+		}
+		if err = prior.atomicJSON("manifest.json", previous); err != nil {
+			return err
 		}
 		if err = prior.clearPending(); err != nil {
 			return err

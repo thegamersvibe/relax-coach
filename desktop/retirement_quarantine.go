@@ -16,14 +16,16 @@ import (
 const retirementStorage = "RelaxCoachRetired"
 
 type retirementEntry struct {
-	Source      string `json:"source"`
-	Destination string `json:"destination"`
-	Type        string `json:"type"`
-	SHA256      string `json:"sha256,omitempty"`
+	Source      string                     `json:"source"`
+	Destination string                     `json:"destination"`
+	Type        string                     `json:"type"`
+	SHA256      string                     `json:"sha256,omitempty"`
+	Extra       map[string]json.RawMessage `json:"-"`
 }
 type retirementManifest struct {
-	Schema  int               `json:"schema"`
-	Entries []retirementEntry `json:"entries"`
+	Schema  int                        `json:"schema"`
+	Entries []retirementEntry          `json:"entries"`
+	Extra   map[string]json.RawMessage `json:"-"`
 }
 type retirementQuarantine struct {
 	game     string
@@ -31,20 +33,55 @@ type retirementQuarantine struct {
 	run      string
 	entries  []retirementEntry
 	created  []string
+	owned    map[string]os.FileInfo
 	serial   int
 	inFlight bool
 	blocked  bool
 }
 
-// Only renames within the already-open game root; never copy and delete.
+// Keep the root-relative seam for failure/crash probes, but use an atomic
+// no-replace primitive for both addon directories and saved-variable files.
 var retirementRename = func(root *os.Root, from, to string) error {
-	// The run directory is private and uniquely created for this pass. Check
-	// again at the mutation boundary: os.Rename would replace an existing file.
+	if !filepath.IsAbs(root.Name()) || !filepath.IsLocal(from) || !filepath.IsLocal(to) {
+		return fmt.Errorf("move is not inside the opened game root")
+	}
+	oldAbs, newAbs := filepath.Join(root.Name(), from), filepath.Join(root.Name(), to)
+	// Revalidate both plain parents and their identity against the opened root.
+	// Absolute paths passed to the OS must still name those validated entries.
+	for _, path := range []string{from, to} {
+		parent := filepath.Dir(path)
+		abs := filepath.Join(root.Name(), parent)
+		if err := appPlainDirectory(abs); err != nil {
+			return err
+		}
+		bound, err := root.Lstat(parent)
+		if err != nil {
+			return err
+		}
+		current, err := os.Lstat(abs)
+		if err != nil || !os.SameFile(bound, current) {
+			return fmt.Errorf("move parent changed")
+		}
+	}
+	bound, err := root.Lstat(from)
+	if err != nil {
+		return err
+	}
+	current, err := os.Lstat(oldAbs)
+	if err != nil || !os.SameFile(bound, current) || (!current.IsDir() && !current.Mode().IsRegular()) {
+		return fmt.Errorf("linked, special or changed move source")
+	}
+	if err := appRejectReparse(oldAbs); err != nil {
+		return err
+	}
 	if _, err := root.Lstat(to); !os.IsNotExist(err) {
 		return fmt.Errorf("destination already exists or is unreadable")
 	}
-	return root.Rename(from, to)
+	// This check is only diagnostic; the primitive MUST reject a destination
+	// created after it, with no copy/delete or replacing-rename fallback.
+	return retirementMoveNoReplace(oldAbs, newAbs)
 }
+var retirementMoveNoReplace = retirementPlatformMoveNoReplace
 var retirementNow = time.Now
 
 func newRetirementQuarantine(game string) (*retirementQuarantine, error) {
@@ -57,13 +94,33 @@ func newRetirementQuarantine(game string) (*retirementQuarantine, error) {
 	}
 	return &retirementQuarantine{game: game, root: root}, nil
 }
+func (q *retirementQuarantine) rememberCreated(path string, info os.FileInfo) {
+	if q.owned == nil {
+		q.owned = make(map[string]os.FileInfo)
+	}
+	q.created = append(q.created, path)
+	q.owned[path] = info
+}
+func (q *retirementQuarantine) forgetCreated(path string) {
+	delete(q.owned, path)
+	for i, name := range q.created {
+		if name == path {
+			q.created = append(q.created[:i], q.created[i+1:]...)
+			return
+		}
+	}
+}
 func (q *retirementQuarantine) mkdir(path string) error {
 	if err := q.root.Mkdir(path, 0700); err != nil {
 		if !os.IsExist(err) {
 			return err
 		}
 	} else {
-		q.created = append(q.created, path)
+		info, err := q.root.Lstat(path)
+		if err != nil {
+			return err
+		}
+		q.rememberCreated(path, info)
 	}
 	return appPlainDirectory(filepath.Join(q.game, path))
 }
@@ -86,8 +143,12 @@ func (q *retirementQuarantine) prepare(relative string) error {
 			if err != nil {
 				return err
 			}
+			info, err := q.root.Lstat(run)
+			if err != nil {
+				return err
+			}
 			q.run = run
-			q.created = append(q.created, run)
+			q.rememberCreated(run, info)
 			break
 		}
 	}
@@ -146,7 +207,7 @@ func (q *retirementQuarantine) digest(path string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 func (q *retirementQuarantine) writeManifest() error {
-	return q.atomicJSON("manifest.json", retirementManifest{1, q.entries})
+	return q.atomicJSON("manifest.json", retirementManifest{Schema: 1, Entries: q.entries})
 }
 func (q *retirementQuarantine) atomicJSON(name string, value any) error {
 	data, err := json.MarshalIndent(value, "", "  ")
@@ -167,7 +228,12 @@ func (q *retirementQuarantine) atomicJSON(name string, value any) error {
 		}
 		break
 	}
-	q.created = append(q.created, temp)
+	info, err := f.Stat()
+	if err != nil {
+		_ = f.Close()
+		return err
+	}
+	q.rememberCreated(temp, info)
 	_, err = f.Write(append(data, '\n'))
 	if err == nil {
 		err = f.Sync()
@@ -179,7 +245,24 @@ func (q *retirementQuarantine) atomicJSON(name string, value any) error {
 	if err != nil {
 		return err
 	}
-	return q.root.Rename(temp, filepath.Join(q.run, name))
+	// Only internal metadata is replaced here, inside our run directory;
+	// user data always uses the separate no-replace primitive.
+	if err = q.root.Rename(temp, filepath.Join(q.run, name)); err != nil {
+		return err
+	}
+	// The temp path no longer belongs to us. Never remove a later occupant,
+	// and never put the published pending/manifest name in the cleanup list.
+	q.forgetCreated(temp)
+	return nil
+}
+func (q *retirementQuarantine) rename(from, to string) error {
+	parent := filepath.Dir(to)
+	owned, ok := q.owned[parent]
+	current, err := q.root.Lstat(parent)
+	if !ok || err != nil || !current.IsDir() || !os.SameFile(owned, current) {
+		return fmt.Errorf("destination parent is no longer our created directory")
+	}
+	return retirementRename(q.root, from, to)
 }
 func (q *retirementQuarantine) move(source, destination string, result *retirementResult, before ...func() bool) {
 	if q.blocked {
@@ -206,7 +289,7 @@ func (q *retirementQuarantine) move(source, destination string, result *retireme
 		return
 	}
 	// Intent is durable BEFORE the rename, but is not a claim of completion.
-	if err = q.atomicJSON("pending.json", retirementManifest{1, entries}); err != nil {
+	if err = q.atomicJSON("pending.json", retirementManifest{Schema: 1, Entries: entries}); err != nil {
 		result.skip(source, err)
 		return
 	}
@@ -215,7 +298,7 @@ func (q *retirementQuarantine) move(source, destination string, result *retireme
 		return
 	}
 	q.inFlight = true
-	if err = retirementRename(q.root, relative, target); err != nil {
+	if err = q.rename(relative, target); err != nil {
 		q.inFlight = false
 		if clearErr := q.clearPending(); clearErr != nil {
 			q.blocked = true
@@ -246,7 +329,12 @@ func (q *retirementQuarantine) close() {
 	// source or a quarantined item. An empty/failed pass leaves no run directory.
 	if len(q.entries) == 0 && !q.inFlight && !q.blocked {
 		for i := len(q.created) - 1; i >= 0; i-- {
-			_ = q.root.Remove(q.created[i])
+			path := q.created[i]
+			owned, ok := q.owned[path]
+			current, err := q.root.Lstat(path)
+			if ok && err == nil && os.SameFile(owned, current) && appRejectReparse(filepath.Join(q.game, path)) == nil {
+				_ = q.root.Remove(q.created[i])
+			}
 		}
 	}
 	_ = q.root.Close()

@@ -15,6 +15,7 @@ type retirementResult struct {
 	Skipped               []string
 	NoGame                bool
 	SavedSettingsDeferred bool
+	RecoveryBlocked       bool
 	journeyRetry          bool // Known-owned save still in place after a failed move.
 }
 
@@ -23,8 +24,8 @@ func (r *retirementResult) skip(path string, err error) {
 }
 
 // A linked addon, including one containing a link/reparse point, is left
-// entirely intact. Check all ancestors too. OpenRoot bounds moves to the
-// already-open game directory rather than trusting a later root lookup.
+// entirely intact. Check all ancestors too. Moves resolve root-relative paths
+// and revalidate their plain parents before the OS no-replace operation.
 func retirementTree(path string) error {
 	if err := appPlainDirectory(path); err != nil {
 		return err
@@ -71,7 +72,8 @@ func retireGame(ctx context.Context, game string, running func(context.Context) 
 	}
 	defer quarantine.close()
 	if err = quarantine.recover(); err != nil {
-		result.skip(filepath.Join(game, retirementStorage), err)
+		result.RecoveryBlocked = true
+		result.Skipped = append(result.Skipped, "a previous move could not be verified; nothing more was moved: "+err.Error())
 		return result
 	}
 	journey := retirementAddons(game, quarantine, &result)

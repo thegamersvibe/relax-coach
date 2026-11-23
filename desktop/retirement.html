@@ -77,9 +77,13 @@ updateButton.addEventListener('click', async () => {
     list('moved', result.Moved);
     list('skipped', result.Skipped);
     const notes = [];
-    if (!result.Moved || !result.Moved.length) notes.push('nothing left to move');
-    if (result.NoGame) notes.push('no game folder resolved; nothing was moved');
-    if (result.SavedSettingsDeferred) notes.push('close WoW and start Relax Coach again to move saved settings (WoW is open or its process state is unreadable)');
+    if (result.RecoveryBlocked) {
+      notes.push('a previous move could not be verified; nothing more was moved');
+    } else {
+      if (!result.Moved || !result.Moved.length) notes.push('nothing left to move');
+      if (result.NoGame) notes.push('no game folder resolved; nothing was moved');
+      if (result.SavedSettingsDeferred) notes.push('close WoW and start Relax Coach again to move saved settings (WoW is open or its process state is unreadable)');
+    }
     document.getElementById('status').textContent = notes.join('. ');
     if (document.body.dataset.updatesDisabled !== 'true') await checkApp();
   } catch (error) {

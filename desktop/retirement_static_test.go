@@ -38,6 +38,46 @@ func TestRetirementBridgeOnlyAppUpdateCapabilities(t *testing.T) {
 		t.Fatal("non-app capability in retirement bridge")
 	}
 }
+func TestRetirementUserDataNeverUsesReplacingRename(t *testing.T) {
+	files, err := filepath.Glob("retirement*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	metadataRenames := 0
+	for _, name := range files {
+		if strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		set := token.NewFileSet()
+		f, err := parser.ParseFile(set, name, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, decl := range f.Decls {
+			ast.Inspect(decl, func(n ast.Node) bool {
+				if c, ok := n.(*ast.CallExpr); ok {
+					var b bytes.Buffer
+					format.Node(&b, set, c)
+					fn, ok := decl.(*ast.FuncDecl)
+					if name == "retirement_quarantine.go" && ok && fn.Name.Name == "atomicJSON" && b.String() == "q.root.Rename(temp, filepath.Join(q.run, name))" {
+						metadataRenames++
+						return false // The only allowed replacing rename: internal metadata.
+					}
+				}
+				if sel, ok := n.(*ast.SelectorExpr); ok && sel.Sel.Name == "Rename" {
+					var b bytes.Buffer
+					format.Node(&b, set, sel)
+					t.Errorf("replacing user-data rename in %s: %s", name, b.String())
+				}
+				return true
+			})
+		}
+	}
+	if metadataRenames != 1 {
+		t.Fatalf("want exactly one documented internal metadata rename, got %d", metadataRenames)
+	}
+}
+
 func TestRetirementNeverDeletesUserDataStatic(t *testing.T) {
 	files, err := filepath.Glob("retirement*.go")
 	if err != nil {
