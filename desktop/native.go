@@ -29,7 +29,7 @@ func nativeToken() (string, error) {
 
 func renderNativeShell(v View, disabled bool, token string) (string, error) {
 	if v.Retired {
-		return renderRetirementShell(token)
+		return renderRetirementShell(token, disabled)
 	}
 	nonce, err := nativeToken()
 	if err != nil {

@@ -1,7 +1,7 @@
 package main
 
 // Retirement is deliberately separate from the old installer: no download,
-// backup, restore, app placement or recursive account discovery is involved.
+// app placement or recursive account discovery is involved.
 import (
 	"context"
 	"fmt"
@@ -11,19 +11,20 @@ import (
 )
 
 type retirementResult struct {
-	Removed               []string
+	Moved                 []string
 	Skipped               []string
 	NoGame                bool
 	SavedSettingsDeferred bool
+	journeyRetry          bool // Known-owned save still in place after a failed move.
 }
 
 func (r *retirementResult) skip(path string, err error) {
-	r.Skipped = append(r.Skipped, fmt.Sprintf("skipped %s (linked, unreadable or unsafe path: %v)", path, err))
+	r.Skipped = append(r.Skipped, fmt.Sprintf("could not move %s, left in place; will retry next start (linked, unreadable or unsafe path: %v)", path, err))
 }
 
 // A linked addon, including one containing a link/reparse point, is left
-// entirely intact. Check all ancestors too. OpenRoot then bounds deletion to
-// the already-open AddOns directory rather than trusting a later path lookup.
+// entirely intact. Check all ancestors too. OpenRoot bounds moves to the
+// already-open game directory rather than trusting a later root lookup.
 func retirementTree(path string) error {
 	if err := appPlainDirectory(path); err != nil {
 		return err
@@ -63,15 +64,25 @@ func retireGame(ctx context.Context, game string, running func(context.Context) 
 		result.skip(game, err)
 		return result
 	}
-	journey := retirementAddons(game, &result)
+	quarantine, err := newRetirementQuarantine(game)
+	if err != nil {
+		result.skip(filepath.Join(game, retirementStorage), err)
+		return result
+	}
+	defer quarantine.close()
+	if err = quarantine.recover(); err != nil {
+		result.skip(filepath.Join(game, retirementStorage), err)
+		return result
+	}
+	journey := retirementAddons(game, quarantine, &result)
 	observer := addonUpdater{running: running}
 	open, err := observer.observeGame(ctx)
 	if open || err != nil {
 		result.SavedSettingsDeferred = true
 		return result
 	}
-	retirementSaves(ctx, game, journey, &observer, &result)
-	if !result.SavedSettingsDeferred {
+	retirementSaves(ctx, game, journey, &observer, quarantine, &result)
+	if !result.SavedSettingsDeferred && !result.journeyRetry {
 		// Cleanup finished: drop the ownership receipt so a later foreign Journey's
 		// settings are never treated as ours.
 		retirementRecordJourney(game, false, &result)
@@ -79,7 +90,7 @@ func retireGame(ctx context.Context, game string, running func(context.Context) 
 	return result
 }
 
-func retirementAddons(game string, result *retirementResult) bool {
+func retirementAddons(game string, quarantine *retirementQuarantine, result *retirementResult) bool {
 	addons := filepath.Join(game, "Interface", "AddOns")
 	if err := appPlainDirectory(filepath.Dir(addons)); err != nil {
 		if os.IsNotExist(err) {
@@ -104,7 +115,7 @@ func retirementAddons(game string, result *retirementResult) bool {
 	journey := false
 	for _, name := range []string{"ForeverCoach", "RelaxRaid", "RelaxQuestPlanner", "Journey"} {
 		target := filepath.Join(addons, name)
-		// Fixed literal names only; containment must hold before any deletion.
+		// Fixed literal names only; containment must hold before any move.
 		if filepath.Dir(target) != addons || filepath.Base(target) != name {
 			result.skip(target, fmt.Errorf("not a direct addon child"))
 			continue
@@ -132,11 +143,7 @@ func retirementAddons(game string, result *retirementResult) bool {
 			journey = true
 			retirementRecordJourney(game, true, result)
 		}
-		if err := root.RemoveAll(name); err != nil {
-			result.skip(target, err)
-			continue
-		}
-		result.Removed = append(result.Removed, filepath.Join(addons, name))
+		quarantine.move(target, filepath.Join("AddOns", name), result)
 	}
 	return journey
 }

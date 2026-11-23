@@ -1,5 +1,5 @@
 // Relax Coach native Windows application.
-// Retirement runs offline after native startup and the existing update handshake.
+// Retirement runs locally after native startup and the existing update handshake.
 // Historical report/installer code remains for compatibility tests, not runtime UI.
 package main
 
@@ -140,17 +140,15 @@ func main() {
 		return
 	}
 	gameFlag := flag.String("game", "", `game folder (the _forever_ folder); default: auto-detect`)
-	// Retained for the unchanged updater's restart argument contract. Retirement
-	// is always offline, even when the old app supplies -no-update=false.
-	_ = flag.Bool("no-update", false, "accepted for compatibility; retirement is always offline")
+	noUpdate := flag.Bool("no-update", false, "disable app release checks and updates")
 	_ = flag.CommandLine.Parse(guiArgs)
 	if flag.NArg() != 0 {
 		log.Print("unexpected positional arguments")
 		os.Exit(1)
 	}
-	// The update-start path keeps the old instance/transaction identity gate.
-	// Ordinary launches each perform their own retirement pass.
-	if mode == "start" && !nativeSingleInstance(mode, nativeAcquireInstance, nativeFocusOther) {
+	// Keep the original single-instance gate on every native launch. Recovery
+	// must never mistake another live retirement pass's intent for a crash.
+	if !nativeSingleInstance(mode, nativeAcquireInstance, nativeFocusOther) {
 		return
 	}
 	initAppUpdateRuntime(guiArgs)
@@ -164,10 +162,10 @@ func main() {
 	if game == "" {
 		game = findGame()
 	}
-	// No deletion here: the plain native page must render and the unchanged
+	// No move here: the plain native page must render and the unchanged
 	// startup health receipt must be acknowledged before cleanup may run.
 	app := newRetirementApp(game)
-	if err := runNative(app, true); err != nil {
+	if err := runNative(app, *noUpdate); err != nil {
 		showNativeError(err)
 		log.Print(err)
 		os.Exit(1)

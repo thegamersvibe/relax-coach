@@ -9,7 +9,7 @@ import (
 
 const retirementJourneyKey = "retirementJourney"
 
-// A small per-game ownership receipt is needed because addon removal is allowed
+// A small per-game ownership receipt is needed because addon movement is allowed
 // while WoW runs. Without it, the next start has no TOC to identify the deferred
 // Journey settings. A currently foreign/unreadable Journey revokes this receipt.
 // Existing application preferences are retained by writeCoachConfig.
@@ -94,6 +94,6 @@ func retirementRecordJourney(game string, ours bool, result *retirementResult) {
 		})
 	}
 	if err != nil {
-		result.skip("Journey ownership receipt (deferred settings may need manual removal)", err)
+		result.skip("Journey ownership receipt (deferred settings may need manual restoration)", err)
 	}
 }

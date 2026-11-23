@@ -1,40 +1,91 @@
 # Relax Coach — retired
 
-Relax Coach is retired. The **1.9.0 app-only release** contains `RelaxCoach.exe`
-and `SHA256SUMS.txt`, with no addon bundle. It opens a plain retirement page,
-works offline and makes no release checks or online name lookups.
+Relax Coach is retired. Its addons have been moved out of the game (kept in RelaxCoachRetired, not deleted).
 
-On each start, after any app-update health handshake has completed, it removes
+The **1.9.0 app-only release** contains `RelaxCoach.exe` and `SHA256SUMS.txt`,
+with no addon bundle. The plain retirement page keeps the normal app update
+check at startup and offers **Update App** for a newer stable release. Nothing
+is downloaded or installed until that button is clicked. `-no-update` disables
+this check and app updates. There are no addon/bundle checks, More addons,
+online name lookups, or other network features.
+
+On each start, after any app-update health handshake has completed, it moves
 only `ForeverCoach`, `RelaxRaid` and `RelaxQuestPlanner` directly under the
-resolved game's `Interface/AddOns`. It also removes `Journey` **only when its
+resolved Forever game's `Interface/AddOns`. It moves `Journey` **only when its
 TOC identifies Relax Journey**. Linked/junction paths, including addon folders
 containing them, are skipped and reported, never followed. If no game folder is
-resolved, nothing is deleted; an existing `-game` argument can select the folder.
+resolved, nothing is moved; an existing `-game` argument can select the folder.
 
-Saved settings are attempted only when WoW is confirmed closed; an unreadable
-process list counts as open. The exact declared-name file stems are
-`ForeverCoachDB`, `RelaxRaidDB`, `RelaxRaidCharDB`, `RelaxQuestPlannerDB`, and,
-only for identified Relax Journey, `Journey_Account` and `Journey_Character`.
-Only their `.lua` and `.lua.bak` files in account or per-character
-`SavedVariables` directories are targeted. These declaration names are distinct
-from WoW's usual addon-named save files; other filenames are not guessed.
-If settings are deferred, close WoW and start Relax Coach again. A small
-per-game Journey ownership receipt is retained in the app's existing config so
-that retry still works after the TOC is gone; a replacement foreign or unreadable
-Journey revokes it.
+**Reversible quarantine:** files stay under `<game>/RelaxCoachRetired/` in one
+UTC timestamp directory per pass that moves something, for example
+`20261123T014500Z`. A name collision adds `-1`, `-2`, and so on; old runs and
+existing destinations are never overwritten. The quarantine must be a plain
+directory, not a link/junction. Addon folders go to `AddOns/<name>/` within the
+run; saves retain their `WTF/Account/<account>/[<realm>/<character>/]SavedVariables/`
+paths. Moves use same-volume rename only, never copy-and-delete. A failed rename
+leaves the original in place and is reported for retry on the next start.
+An empty or failed-only pass leaves no new timestamp directory after normal exit.
+
+Each run's `manifest.json` uses schema 1 and lists the moved folder itself,
+every nested directory (including empty directories), and every file. Paths
+are relative to the game, with `/` separators. Every file has a SHA-256 computed
+before the move and checked against the destination after the move. Example
+for a folder containing a `Core.lua` file whose exact bytes are `example`:
+
+```json
+{
+  "schema": 1,
+  "entries": [
+    {
+      "source": "Interface/AddOns/ForeverCoach",
+      "destination": "RelaxCoachRetired/20261123T014500Z/AddOns/ForeverCoach",
+      "type": "dir"
+    },
+    {
+      "source": "Interface/AddOns/ForeverCoach/Core.lua",
+      "destination": "RelaxCoachRetired/20261123T014500Z/AddOns/ForeverCoach/Core.lua",
+      "type": "file",
+      "sha256": "50d858e0985ecc7f60418aaf0cc5ab587f42c2570a884095a9e8ccacd0f6545c"
+    }
+  ]
+}
+```
+
+For interruption recovery, a flushed `pending.json` intent is written before
+rename; it is **not** a claim that a move completed. After each successful
+rename, the completed entries are published to `manifest.json` using a flushed
+temporary file and atomic rename. The intent is cleared only after destination
+verification. If interrupted between these steps, the next start checks the
+source/destination and recovers the manifest without moving the item twice.
+Ambiguous journals, changed hashes or publication failures are reported and
+preserved for inspection; later moves stop. No quarantined data is deleted.
+
+Saved settings are moved only when WoW is confirmed closed; an unreadable
+process list counts as open, with another check immediately before each move.
+The exact declared-name file stems are `ForeverCoachDB`, `RelaxRaidDB`,
+`RelaxRaidCharDB`, `RelaxQuestPlannerDB`, and, only for identified Relax Journey,
+`Journey_Account` and `Journey_Character`. Only their `.lua` and `.lua.bak` files
+in account or per-character `SavedVariables` directories are targeted. These
+declaration names are distinct from WoW's usual addon-named save files; other
+filenames are not guessed. If settings are deferred, close WoW and start Relax
+Coach again. A per-game Journey ownership receipt is retained in the app's
+existing config while settings are deferred or a known Journey save move has
+failed. It is cleared after the undeferred cleanup completes; a replacement
+foreign or unreadable Journey revokes it.
 
 **What stays:** AHProfit and its saves, all other addons and saves, a non-Relax
 or unreadable Journey, `Interface/Content/Journey-Content`, combat logs, backups,
-the app itself, its shortcuts and app settings. The page lists this run's
-removals and anything skipped; rerunning is safe.
+the app itself, its shortcuts and app settings. The page lists this run's moves,
+failures and deferred settings; rerunning does not move absent items again.
 
-**Manual removal:** close WoW, open the game's `Interface/AddOns`, and delete
-only the three exact folders above and an identified Relax Journey. In
-`WTF/Account/<account>/SavedVariables` and
-`WTF/Account/<account>/<realm>/<character>/SavedVariables`, delete only the
-listed exact `.lua` / `.lua.bak` files. Do not follow links or delete entire
-account, realm, character or `SavedVariables` directories. You may separately
-delete `RelaxCoach.exe` and its shortcuts yourself; the app never does so.
+**Manual restore:** close WoW and Relax Coach. Open a timestamp directory under
+`<game>/RelaxCoachRetired`. Move the folders under its `AddOns` back into the
+game's `Interface/AddOns`, and move the files under its `WTF` back to the same
+relative locations under the game's `WTF`. Use `manifest.json` for the original
+paths. Do not overwrite newer files: keep both copies elsewhere and choose the
+one you want to restore. Do not follow links or replace entire account, realm,
+character or `SavedVariables` directories. Starting the retirement app again
+will quarantine restored in-scope items again; leave it closed after restoring.
 
 The documentation below describes the historical, non-retirement releases.
 

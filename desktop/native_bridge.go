@@ -128,8 +128,15 @@ func newNativeBridge(a *App, disabled bool, s nativeServices) *nativeBridge {
 		if s.ready == nil {
 			s.ready = acknowledgeAppStartup
 		}
-		// No release, lookup, placement or addon-manager capabilities.
-		return &nativeBridge{app: a, services: nativeServices{ready: s.ready}, ctx: ctx, cancel: cancel, disabled: true}
+		if s.checkApp == nil {
+			s.checkApp = CheckAppRelease
+		}
+		if s.applyApp == nil {
+			s.applyApp = ApplyAppRelease
+		}
+		// Retain only the existing app updater and health handshake. No addon,
+		// bundle, online-name lookup, placement or external-browser capabilities.
+		return &nativeBridge{app: a, services: nativeServices{ready: s.ready, checkApp: s.checkApp, applyApp: s.applyApp}, ctx: ctx, cancel: cancel, disabled: disabled}
 	}
 	if s.checkApp == nil {
 		s.checkApp = CheckAppRelease

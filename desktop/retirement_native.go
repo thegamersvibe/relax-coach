@@ -10,7 +10,7 @@ import (
 	"sync"
 )
 
-const retirementMessage = "Relax Coach is retired. Its addons have been removed from this PC."
+const retirementMessage = "Relax Coach is retired. Its addons have been moved out of the game (kept in RelaxCoachRetired, not deleted)."
 
 //go:embed retirement.html
 var retirementHTML string
@@ -29,10 +29,19 @@ func newRetirementApp(game string) *App {
 }
 
 func (b *nativeBridge) retirementCall(method string, args []json.RawMessage) (any, error) {
+	if method == "applyApp" {
+		var version string
+		if len(args) != 1 || !strings.HasPrefix(strings.TrimSpace(string(args[0])), `"`) || json.Unmarshal(args[0], &version) != nil || len(version) > 4096 || strings.IndexByte(version, 0) >= 0 {
+			return nil, errors.New("expected one text argument")
+		}
+		return b.applyApp(version)
+	}
 	if len(args) != 0 {
 		return nil, errors.New("this method takes no arguments")
 	}
 	switch method {
+	case "checkAppStartup":
+		return b.checkApp(startupAppCheckTimeout)
 	case "reportRefresh":
 		b.mu.Lock()
 		b.reportRendered = true
@@ -60,7 +69,7 @@ func (b *nativeBridge) retirementCall(method string, args []json.RawMessage) (an
 	}
 }
 
-func renderRetirementShell(token string) (string, error) {
+func renderRetirementShell(token string, disabled bool) (string, error) {
 	nonce, err := nativeToken()
 	if err != nil {
 		return "", err
@@ -70,6 +79,9 @@ func renderRetirementShell(token string) (string, error) {
 		return "", err
 	}
 	var out strings.Builder
-	err = tpl.Execute(&out, struct{ Token, Nonce, Message string }{token, nonce, retirementMessage})
+	err = tpl.Execute(&out, struct {
+		Token, Nonce, Message string
+		Disabled              bool
+	}{token, nonce, retirementMessage, disabled})
 	return out.String(), err
 }

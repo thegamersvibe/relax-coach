@@ -6,11 +6,13 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-{{.Nonce}}'; connect-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Relax Coach</title>
 </head>
-<body>
+<body data-updates-disabled="{{.Disabled}}">
 <p id="retired">{{.Message}}</p>
-<ul id="removed"></ul>
+<ul id="moved"></ul>
 <p id="status"></p>
 <ul id="skipped"></ul>
+<button id="update-app" type="button" hidden>Update App</button>
+<p id="app-status"></p>
 <script nonce="{{.Nonce}}">
 'use strict';
 const token = {{.Token}};
@@ -25,11 +27,11 @@ window.chrome.webview.addEventListener('message', event => {
   if (reply.error) task.reject(new Error(reply.error));
   else task.resolve(reply.result);
 });
-function call(method) {
+function call(method, ...params) {
   return new Promise((resolve, reject) => {
     const id = ++sequence;
     pending.set(id, {resolve, reject});
-    window.chrome.webview.postMessage(JSON.stringify({id, method, params: [], token}));
+    window.chrome.webview.postMessage(JSON.stringify({id, method, params, token}));
   });
 }
 function list(id, lines) {
@@ -40,6 +42,31 @@ function list(id, lines) {
     parent.appendChild(item);
   }
 }
+let offer;
+const updateButton = document.getElementById('update-app');
+const appStatus = document.getElementById('app-status');
+async function checkApp() {
+ try {
+  const found = await call('checkAppStartup');
+  if (!found || !found.Available) return;
+  offer = found;
+  appStatus.textContent = 'Relax Coach ' + offer.Version + ' is available.';
+  updateButton.hidden = false;
+ } catch (error) { appStatus.textContent = 'App update check failed: ' + error.message; }
+}
+updateButton.addEventListener('click', async () => {
+ if (!offer || updateButton.disabled || document.body.dataset.updatesDisabled === 'true') return;
+ updateButton.disabled = true;
+ appStatus.textContent = 'Downloading and verifying the app…';
+ try {
+  const result = await call('applyApp', offer.Version);
+  appStatus.textContent = result.RestartReady ? 'Restarting Relax Coach…' : 'App update did not complete; start Relax Coach again to retry.';
+ } catch (error) {
+  offer = null;
+  updateButton.hidden = true;
+  appStatus.textContent = 'App update failed: ' + error.message + '; start Relax Coach again to retry.';
+ }
+});
 (async () => {
   try {
     document.getElementById('retired').textContent = await call('reportRefresh');
@@ -47,13 +74,14 @@ function list(id, lines) {
     // existing update health protocol is allowed to acknowledge startup.
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const result = await call('appReady');
-    list('removed', result.Removed);
+    list('moved', result.Moved);
     list('skipped', result.Skipped);
     const notes = [];
-    if (!result.Removed || !result.Removed.length) notes.push('nothing left to remove');
-    if (result.NoGame) notes.push('no game folder resolved; nothing was deleted');
-    if (result.SavedSettingsDeferred) notes.push('close WoW and start Relax Coach again to remove saved settings');
+    if (!result.Moved || !result.Moved.length) notes.push('nothing left to move');
+    if (result.NoGame) notes.push('no game folder resolved; nothing was moved');
+    if (result.SavedSettingsDeferred) notes.push('close WoW and start Relax Coach again to move saved settings (WoW is open or its process state is unreadable)');
     document.getElementById('status').textContent = notes.join('. ');
+    if (document.body.dataset.updatesDisabled !== 'true') await checkApp();
   } catch (error) {
     document.getElementById('status').textContent = 'cleanup did not complete: ' + error.message;
   }

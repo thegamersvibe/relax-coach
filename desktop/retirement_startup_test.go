@@ -14,7 +14,7 @@ import (
 	"testing"
 )
 
-func TestRetirementStartHealthBeforeAnyDeletion(t *testing.T) {
+func TestRetirementStartHealthBeforeAnyMove(t *testing.T) {
 	for _, fail := range []bool{false, true} {
 		t.Run(fmt.Sprint(fail), func(t *testing.T) {
 			game := retirementFixture(t)
@@ -45,7 +45,7 @@ func TestRetirementStartHealthBeforeAnyDeletion(t *testing.T) {
 			}
 			var events []string
 			appStartup.send = func(ctx context.Context, got appTransaction) error {
-				retirementExists(t, filepath.Join(game, "Interface/AddOns/ForeverCoach/Core.lua"), true)
+				retirementKeptOrMoved(t, game, filepath.Join(game, "Interface/AddOns/ForeverCoach/Core.lua"), true)
 				msg := appHealthMessage(got, os.Getpid())
 				want := fmt.Sprintf("healthy %s 1.9.0 %s %d", tx.fingerprint(), tx.NewSHA, os.Getpid())
 				if msg != want {
@@ -61,9 +61,9 @@ func TestRetirementStartHealthBeforeAnyDeletion(t *testing.T) {
 			a := newRetirementApp(game)
 			a.retirement.cleanup = func(ctx context.Context) retirementResult {
 				if !appStartup.acked {
-					t.Fatal("deletion call before health ack")
+					t.Fatal("move call before health ack")
 				}
-				events = append(events, "delete")
+				events = append(events, "move")
 				return retireGame(ctx, game, retirementClosed)
 			}
 			b := newNativeBridge(a, true, nativeServices{})
@@ -82,12 +82,12 @@ func TestRetirementStartHealthBeforeAnyDeletion(t *testing.T) {
 				if err == nil || !reflect.DeepEqual(events, []string{"health receipt"}) {
 					t.Fatalf("failed ack: %v %v", events, err)
 				}
-				retirementExists(t, filepath.Join(game, "Interface/AddOns/ForeverCoach"), true)
+				retirementKeptOrMoved(t, game, filepath.Join(game, "Interface/AddOns/ForeverCoach"), true)
 			} else {
-				if err != nil || !reflect.DeepEqual(events, []string{"health receipt", "ack", "delete"}) {
+				if err != nil || !reflect.DeepEqual(events, []string{"health receipt", "ack", "move"}) {
 					t.Fatalf("ordering: %v %v", events, err)
 				}
-				retirementExists(t, filepath.Join(game, "Interface/AddOns/ForeverCoach"), false)
+				retirementKeptOrMoved(t, game, filepath.Join(game, "Interface/AddOns/ForeverCoach"), false)
 				if _, err = b.Call("appReady", nil); err != nil {
 					t.Fatal(err)
 				}
@@ -99,7 +99,7 @@ func TestRetirementStartHealthBeforeAnyDeletion(t *testing.T) {
 	}
 }
 
-func TestRetirementPlainLaunchAndOfflineBridge(t *testing.T) {
+func TestRetirementPlainLaunchAndAppOnlyBridge(t *testing.T) {
 	prior := appStartup
 	appStartup = nil
 	t.Cleanup(func() { appStartup = prior })
@@ -109,7 +109,7 @@ func TestRetirementPlainLaunchAndOfflineBridge(t *testing.T) {
 	calls := 0
 	b := newNativeBridge(a, false, nativeServices{checkApp: func(context.Context, string) (AppReleaseInfo, error) { calls++; return AppReleaseInfo{}, nil }, check: func(context.Context, string) (AddonReleaseInfo, error) { calls++; return AddonReleaseInfo{}, nil }})
 	defer b.Close()
-	for _, method := range []string{"checkApp", "checkAppStartup", "checkAddon", "extraList", "afterAppUpdate", "reportRefresh-old", "installAppCopy", "setWowheadNames", "openExternal", "setGame"} {
+	for _, method := range []string{"checkAddon", "extraList", "afterAppUpdate", "reportRefresh-old", "installAppCopy", "setWowheadNames", "openExternal", "setGame"} {
 		if _, err := b.Call(method, nil); err == nil {
 			t.Fatalf("retired method allowed: %s", method)
 		}
@@ -123,10 +123,10 @@ func TestRetirementPlainLaunchAndOfflineBridge(t *testing.T) {
 	if _, err := b.Call("appReady", nil); err != nil {
 		t.Fatal(err)
 	}
-	retirementExists(t, filepath.Join(game, "Interface/AddOns/RelaxRaid"), false)
+	retirementKeptOrMoved(t, game, filepath.Join(game, "Interface/AddOns/RelaxRaid"), false)
 }
 
-func TestRetirementRunningEntrypointIsOfflineStatic(t *testing.T) {
+func TestRetirementRunningEntrypointIsAppUpdateOnlyStatic(t *testing.T) {
 	f, err := parser.ParseFile(token.NewFileSet(), "main.go", nil, 0)
 	if err != nil {
 		t.Fatal(err)
@@ -174,16 +174,16 @@ func TestRetirementRunningEntrypointIsOfflineStatic(t *testing.T) {
 }
 
 func TestRetirementPlainPage(t *testing.T) {
-	html, err := renderNativeShell(newRetirementApp("").snapshot(), true, "retirement-token")
+	html, err := renderNativeShell(newRetirementApp("").snapshot(), false, "retirement-token")
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"Relax Coach is retired. Its addons have been removed from this PC.", "nothing left to remove", "close WoW and start Relax Coach again to remove saved settings", "default-src 'none'"} {
+	for _, want := range []string{"Relax Coach is retired. Its addons have been moved out of the game (kept in RelaxCoachRetired, not deleted).", "nothing left to move", "close WoW and start Relax Coach again to move saved settings (WoW is open or its process state is unreadable)", "default-src 'none'"} {
 		if !strings.Contains(html, want) {
 			t.Errorf("missing %q", want)
 		}
 	}
-	for _, bad := range []string{"<button", "<a ", "<nav", "native_shell.js", "checkAppStartup", "setInterval", "fetch(", "XMLHttpRequest", "Wowhead", "More addons"} {
+	for _, bad := range []string{"<a ", "<nav", "native_shell.js", "setInterval", "fetch(", "XMLHttpRequest", "Wowhead", "More addons"} {
 		if strings.Contains(html, bad) {
 			t.Errorf("old/online UI remains: %s", bad)
 		}

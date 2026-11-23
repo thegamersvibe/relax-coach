@@ -50,7 +50,7 @@ func retirementDirectories(path string, result *retirementResult) []string {
 	return dirs
 }
 
-func retirementSaves(ctx context.Context, game string, journey bool, observer *addonUpdater, result *retirementResult) {
+func retirementSaves(ctx context.Context, game string, journey bool, observer *addonUpdater, quarantine *retirementQuarantine, result *retirementResult) {
 	wtf := filepath.Join(game, "WTF")
 	if !retirementDirectory(wtf, result) {
 		return
@@ -60,19 +60,19 @@ func retirementSaves(ctx context.Context, game string, journey bool, observer *a
 		names = append(names, retirementJourneySaveNames...)
 	}
 	for _, account := range retirementDirectories(filepath.Join(wtf, "Account"), result) {
-		retirementSaveDirectory(ctx, filepath.Join(account, "SavedVariables"), names, observer, result)
+		retirementSaveDirectory(ctx, filepath.Join(account, "SavedVariables"), names, observer, quarantine, result)
 		for _, realm := range retirementDirectories(account, result) {
 			if filepath.Base(realm) == "SavedVariables" {
 				continue
 			}
 			for _, char := range retirementDirectories(realm, result) {
-				retirementSaveDirectory(ctx, filepath.Join(char, "SavedVariables"), names, observer, result)
+				retirementSaveDirectory(ctx, filepath.Join(char, "SavedVariables"), names, observer, quarantine, result)
 			}
 		}
 	}
 }
 
-func retirementSaveDirectory(ctx context.Context, path string, names []string, observer *addonUpdater, result *retirementResult) {
+func retirementSaveDirectory(ctx context.Context, path string, names []string, observer *addonUpdater, quarantine *retirementQuarantine, result *retirementResult) {
 	if result.SavedSettingsDeferred || !retirementDirectory(path, result) {
 		return
 	}
@@ -109,11 +109,25 @@ func retirementSaveDirectory(ctx context.Context, path string, names []string, o
 				result.SavedSettingsDeferred = true
 				return
 			}
-			if err = root.Remove(filename); err != nil {
+			relative, err := filepath.Rel(quarantine.game, full)
+			if err != nil {
 				result.skip(full, err)
 				continue
 			}
-			result.Removed = append(result.Removed, full)
+			movedBefore := len(result.Moved)
+			quarantine.move(full, relative, result, func() bool {
+				open, err := observer.observeGame(ctx)
+				if open || err != nil {
+					result.SavedSettingsDeferred = true
+					return false
+				}
+				return true
+			})
+			if len(result.Moved) == movedBefore && (name == "Journey_Account" || name == "Journey_Character") {
+				// The TOC may already have moved. Keep ownership only while a known
+				// Journey save is still pending, so a failed rename can retry next start.
+				result.journeyRetry = true
+			}
 		}
 	}
 }
